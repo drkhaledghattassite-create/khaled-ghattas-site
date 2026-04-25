@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { usePathname } from 'next/navigation'
 import { resolvePageLabel, stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
+import { Ornament } from '@/components/shared/Ornament'
 import { cn } from '@/lib/utils'
 import { LocaleSwitcher } from './LocaleSwitcher'
 
@@ -37,30 +38,35 @@ export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
     return () => window.removeEventListener('scroll', update)
   }, [isHome, activeDot])
 
+  const isRtl = locale === 'ar'
   const pillLabel = isHome ? t('page_index') : t('page_index_numbered', { n: label })
 
   return (
     <header
-      dir={locale === 'ar' ? 'rtl' : 'ltr'}
-      className="fixed inset-x-0 top-0 z-50 h-[48px] bg-cream/85 backdrop-blur-sm"
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className="fixed inset-x-0 top-0 z-50 h-[52px] border-b border-ink/10 bg-paper/80 backdrop-blur-md"
     >
       <div className="container flex h-full items-center justify-between gap-3">
-        <ul className="hidden items-center gap-2 md:flex" aria-label={t('progress')}>
+        {/* Chapter ribbon — discrete fold marks instead of stacked dashes */}
+        <ul className="hidden items-center gap-1.5 md:flex" aria-label={t('progress')}>
+          <li className="me-1 text-brass">
+            <Ornament glyph="fleuron" size={13} />
+          </li>
           {Array.from({ length: SECTION_COUNT }).map((_, i) => {
             const isFilled = i < scrollActive
             const isActive = i === scrollActive
             return (
-              <li key={i} className="flex items-center gap-2">
+              <li key={i} className="flex items-center gap-1.5">
                 <span
                   aria-current={isActive ? 'step' : undefined}
                   className={cn(
-                    'block h-2 w-2 rounded-full border border-ink transition-colors duration-200',
+                    'block h-[7px] w-[7px] rounded-full border border-ink/60 transition-colors duration-300',
                     isFilled && 'bg-ink',
-                    isActive && 'bg-ink',
+                    isActive && 'bg-brass border-brass',
                   )}
                 />
                 {i < SECTION_COUNT - 1 && (
-                  <span className="block h-px w-6 bg-ink/40" aria-hidden />
+                  <span className="block h-px w-5 bg-ink/30" aria-hidden />
                 )}
               </li>
             )
@@ -68,8 +74,19 @@ export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
         </ul>
 
         <div className="flex items-center gap-2">
-          <div className="font-label hidden items-center gap-2 rounded-full border border-ink px-4 py-1 text-ink transition-colors duration-200 hover:bg-ink hover:text-cream-soft md:inline-flex">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink" />
+          <div
+            className={cn(
+              'hidden items-center gap-2 rounded-full border border-ink px-3.5 py-1 transition-colors duration-200 hover:bg-ink hover:text-paper-soft md:inline-flex',
+            )}
+            style={{
+              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+              fontStyle: isRtl ? 'normal' : 'italic',
+              fontWeight: isRtl ? 600 : 400,
+              fontSize: 12,
+              letterSpacing: isRtl ? 0 : '0.04em',
+            }}
+          >
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brass" />
             {pillLabel}
           </div>
           <LocaleSwitcher />

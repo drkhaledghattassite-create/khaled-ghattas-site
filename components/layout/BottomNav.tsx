@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import { MobileMenu } from './MobileMenu'
 import { LogoLink } from '@/components/shared/Logo'
+import { Ornament } from '@/components/shared/Ornament'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -20,6 +21,7 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
   const locale = useLocale()
   const t = useTranslations('nav')
   const tCta = useTranslations('cta')
+  const isRtl = locale === 'ar'
   const [visible, setVisible] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const lastY = useRef(0)
@@ -27,13 +29,9 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY
-      if (y < 300) {
-        setVisible(true)
-      } else if (y > lastY.current + 8) {
-        setVisible(false)
-      } else if (y < lastY.current - 8) {
-        setVisible(true)
-      }
+      if (y < 300) setVisible(true)
+      else if (y > lastY.current + 8) setVisible(false)
+      else if (y < lastY.current - 8) setVisible(true)
       lastY.current = y
     }
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -45,13 +43,22 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
       <AnimatePresence>
         {!visible && !menuOpen && (
           <motion.div
-            initial={{ y: -20, opacity: 0 }}
+            initial={{ y: -16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
+            exit={{ y: -16, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.77, 0, 0.175, 1] }}
-            className="fixed inset-x-0 top-[52px] z-40 mx-auto w-max"
+            className="fixed inset-x-0 top-[56px] z-40 mx-auto w-max"
           >
-            <div className="font-label rounded-full border border-ink bg-cream-soft px-4 py-1 text-ink shadow-sm">
+            <div
+              className="rounded-full border border-ink/30 bg-paper-soft px-4 py-1.5 text-ink shadow-[0_4px_20px_-12px_rgba(31,24,18,0.25)]"
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                fontStyle: isRtl ? 'normal' : 'italic',
+                fontSize: isRtl ? 13 : 11.5,
+                letterSpacing: isRtl ? 0 : '0.04em',
+              }}
+            >
+              <Ornament glyph="fleuron" size={11} className="text-brass me-2 align-baseline" />
               {tCta('scroll_up_to_reveal_nav')}
             </div>
           </motion.div>
@@ -60,34 +67,53 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
 
       <motion.nav
         aria-label={t('primary')}
-        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+        dir={isRtl ? 'rtl' : 'ltr'}
         animate={{ y: visible ? '0%' : '100%', opacity: visible ? 1 : 0 }}
         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+        className="fixed inset-x-0 bottom-0 z-50 h-[64px] border-t border-ink/15 bg-paper/92 backdrop-blur-md md:h-[58px]"
         style={{
-          borderTop: '1px solid color-mix(in oklab, var(--color-ink) 20%, transparent)',
-          boxShadow: '0 -8px 24px -12px rgba(37, 35, 33, 0.18)',
+          boxShadow: '0 -10px 30px -16px rgba(31, 24, 18, 0.20)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0)',
         }}
-        className="fixed inset-x-0 bottom-0 z-50 h-[60px] bg-[color:color-mix(in_oklab,var(--color-cream)_95%,transparent)] backdrop-blur-md md:h-[56px]"
       >
         <div className="container flex h-full items-center justify-between text-ink">
           <LogoLink href="/" alt={t('brand')} height={36} />
 
-          <ul className="hidden items-center gap-4 md:flex">
+          <ul className="hidden items-center md:flex">
             {NAV_ITEMS.map((item, i) => (
-              <li key={item.key} className="flex items-center gap-4">
+              <li key={item.key} className="flex items-center">
                 <Link
                   href={item.href}
-                  className="group inline-flex items-baseline gap-1.5 px-1 py-2"
+                  className="group inline-flex items-baseline gap-2 px-4 py-2"
                 >
-                  <span className="font-label text-[11px] text-ink-muted transition-colors group-hover:text-ink">
-                    {item.n}.
+                  <span
+                    className="text-ink-muted transition-colors group-hover:text-brass"
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontStyle: 'italic',
+                      fontWeight: 400,
+                      fontSize: 12,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    .{item.n}
                   </span>
-                  <span className="font-serif italic text-[15px] transition-colors group-hover:text-ink">
+                  <span
+                    className="text-ink transition-colors group-hover:text-brass"
+                    style={{
+                      fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                      fontWeight: isRtl ? 600 : 500,
+                      fontSize: isRtl ? 16 : 14.5,
+                      letterSpacing: isRtl ? 0 : 0,
+                    }}
+                  >
                     {t(item.key)}
                   </span>
                 </Link>
                 {i < NAV_ITEMS.length - 1 && (
-                  <span aria-hidden className="h-3 w-px bg-ink/30" />
+                  <span aria-hidden className="text-ink-muted/45">
+                    <Ornament glyph="asterism" size={10} />
+                  </span>
                 )}
               </li>
             ))}
@@ -103,7 +129,7 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
             )}
           >
             <span className="block h-px w-5 bg-ink" />
-            <span className="block h-px w-5 bg-ink" />
+            <span className="block h-px w-3 bg-brass" />
             <span className="block h-px w-5 bg-ink" />
           </button>
         </div>

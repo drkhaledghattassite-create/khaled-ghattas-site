@@ -2,41 +2,85 @@
 
 import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { Ornament } from '@/components/shared/Ornament'
 
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 const CLIPPINGS = [
-  { src: '/placeholder/nav/nav-1.jpg', rotate: -6 },
-  { src: '/placeholder/nav/nav-2.jpg', rotate: 4 },
-  { src: '/placeholder/nav/nav-3.jpg', rotate: -3 },
-  { src: '/placeholder/nav/nav-4.jpg', rotate: 7 },
-  { src: '/placeholder/nav/nav-5.jpg', rotate: -8 },
-  { src: '/placeholder/nav/nav-1.jpg', rotate: 5 },
+  { src: '/placeholder/nav/nav-1.jpg', rotate: -4 },
+  { src: '/placeholder/nav/nav-2.jpg', rotate: 3 },
+  { src: '/placeholder/nav/nav-3.jpg', rotate: -2 },
+  { src: '/placeholder/nav/nav-4.jpg', rotate: 5 },
+  { src: '/placeholder/nav/nav-5.jpg', rotate: -6 },
+  { src: '/placeholder/nav/nav-1.jpg', rotate: 4 },
 ]
 
+/**
+ * Bridge between Articles and Interviews — a single warm garnet plate
+ * with a slow ghost row and a press clipping pin board. Calmer than the
+ * original two-row marquee chaos.
+ */
 export function ArticlesBridgeMarquee() {
   const t = useTranslations('articles.bridge')
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
 
   return (
-    <section className="relative z-[2] overflow-hidden bg-cream py-12">
+    <section
+      className="relative z-[2] overflow-hidden py-[var(--spacing-xl)]"
+      style={{
+        background:
+          'linear-gradient(180deg, var(--color-paper) 0%, var(--color-brand-black) 18%, var(--color-brand-black) 82%, var(--color-paper) 100%)',
+      }}
+    >
       <GiantRow text={t('row_1')} direction="left" tone="ghost" />
-      <GiantRow text={t('row_2')} direction="right" tone="dark" />
+      <div className="my-8 flex justify-center text-brass">
+        <Ornament glyph="fleuron" size={26} />
+      </div>
+      <GiantRow text={t('row_2')} direction="right" tone="bright" />
 
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-10 px-[var(--spacing-md)]">
+      <div className="mt-12 flex flex-wrap items-end justify-center gap-5 px-[var(--section-pad-x)] md:gap-9">
         {CLIPPINGS.map((c, i) => (
           <motion.div
             key={i}
-            className="relative h-40 w-28 overflow-hidden border border-dashed border-ink bg-cream-soft"
-            style={{ willChange: 'transform, opacity' }}
+            className="frame-print relative h-32 w-24 md:h-40 md:w-28"
+            style={{
+              background: 'var(--color-paper-soft)',
+              willChange: 'transform, opacity',
+            }}
             initial={{ y: '120%', opacity: 0, rotate: c.rotate }}
             whileInView={{ y: 0, opacity: 1, rotate: c.rotate }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, delay: i * 0.08, ease: EASE_OUT_EXPO }}
+            transition={{ duration: 0.85, delay: i * 0.08, ease: EASE_OUT_EXPO }}
           >
-            <Image src={c.src} alt="" fill sizes="112px" className="object-cover" />
+            <div className="relative h-full w-full overflow-hidden">
+              <Image src={c.src} alt="" fill sizes="112px" className="object-cover duotone-warm" />
+            </div>
+            {/* "Pin" — small brass dot up top */}
+            <span
+              aria-hidden
+              className="absolute -top-1.5 left-1/2 block h-2 w-2 -translate-x-1/2 rounded-full bg-brass"
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.35)' }}
+            />
           </motion.div>
         ))}
+      </div>
+
+      <div className="mt-10 flex justify-center">
+        <span
+          className="text-[11px] tracking-[0.22em] uppercase text-paper-soft/55"
+          style={{
+            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+            fontStyle: isRtl ? 'normal' : 'italic',
+            letterSpacing: isRtl ? 0 : '0.22em',
+            textTransform: isRtl ? 'none' : 'uppercase',
+            fontWeight: 500,
+            fontSize: isRtl ? 12 : 11,
+          }}
+        >
+          {isRtl ? 'مختارات من المطبوعات' : 'Press clippings & cuttings'}
+        </span>
       </div>
     </section>
   )
@@ -49,36 +93,48 @@ function GiantRow({
 }: {
   text: string
   direction: 'left' | 'right'
-  tone: 'ghost' | 'dark'
+  tone: 'ghost' | 'bright'
 }) {
   const locale = useLocale()
+  const reduce = useReducedMotion() ?? false
   const isRtl = locale === 'ar'
-  const copies = new Array(6).fill(text)
-  const color = tone === 'ghost' ? '#C9C3B7' : '#252321'
-  const x = direction === 'left' ? '-50%' : '50%'
+  const copies = new Array(8).fill(text)
+  const color = tone === 'ghost' ? 'rgba(240, 230, 216, 0.14)' : 'rgba(240, 230, 216, 0.95)'
+  const fromX = direction === 'left' ? '0%' : '-50%'
+  const toX = direction === 'left' ? '-50%' : '0%'
+  const accent = tone === 'ghost' ? 'rgba(168, 196, 214, 0.7)' : 'rgba(168, 196, 214, 1)'
 
   return (
     <div className="relative w-full overflow-hidden">
       <motion.div
-        className="flex whitespace-nowrap"
-        animate={{ x }}
-        transition={{ duration: 22, ease: 'linear', repeat: Infinity, repeatType: 'loop' }}
-        style={{ willChange: 'transform' }}
+        className="flex items-center whitespace-nowrap"
+        initial={{ x: fromX }}
+        animate={reduce ? { x: '-25%' } : { x: toX }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { duration: 42, ease: 'linear', repeat: Infinity, repeatType: 'loop' }
+        }
+        style={{ willChange: reduce ? undefined : 'transform' }}
       >
         {[...copies, ...copies].map((line, i) => (
-          <span
-            key={i}
-            className="pe-xl uppercase"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              fontWeight: isRtl ? 700 : 400,
-              fontSize: 'clamp(80px, 22vw, 240px)',
-              lineHeight: 1,
-              color,
-            }}
-          >
-            {line}
+          <span key={i} className="flex items-center pe-md md:pe-lg">
+            <span
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-serif)',
+                fontStyle: isRtl ? 'normal' : 'italic',
+                fontWeight: isRtl ? 500 : 400,
+                fontSize: 'clamp(48px, 11vw, 142px)',
+                lineHeight: 0.98,
+                color,
+                letterSpacing: isRtl ? 0 : '-0.015em',
+              }}
+            >
+              {line}
+            </span>
+            <span aria-hidden className="mx-6" style={{ color: accent }}>
+              <Ornament glyph="fleuron" size={28} />
+            </span>
           </span>
         ))}
       </motion.div>

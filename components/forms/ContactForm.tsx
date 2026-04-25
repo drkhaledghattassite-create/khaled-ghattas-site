@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { contactSchema, type ContactInput } from '@/lib/validators/contact'
 import {
@@ -19,7 +19,18 @@ import { Textarea } from '@/components/ui/textarea'
 
 export function ContactForm() {
   const t = useTranslations('contact.form')
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
   const [submitting, setSubmitting] = useState(false)
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+    fontStyle: isRtl ? 'normal' : 'italic',
+    fontWeight: 400,
+    fontSize: isRtl ? 14 : 13,
+    color: 'var(--color-ink-muted)',
+    letterSpacing: isRtl ? 0 : '0.02em',
+  }
 
   const form = useForm<ContactInput>({
     resolver: zodResolver(contactSchema),
@@ -28,7 +39,6 @@ export function ContactForm() {
 
   async function onSubmit(values: ContactInput) {
     setSubmitting(true)
-    // TODO: wire to /api/contact when backend is live
     await new Promise((r) => setTimeout(r, 400))
     setSubmitting(false)
     toast.success(t('submitted'))
@@ -40,7 +50,7 @@ export function ContactForm() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-6"
         noValidate
       >
         <FormField
@@ -48,11 +58,13 @@ export function ContactForm() {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-[12px] text-ink-muted">
-                {t('name')}
-              </FormLabel>
+              <FormLabel style={labelStyle}>{t('name')}</FormLabel>
               <FormControl>
-                <Input {...field} placeholder={t('name_placeholder')} />
+                <Input
+                  {...field}
+                  placeholder={t('name_placeholder')}
+                  className="border-x-0 border-t-0 border-b border-ink/35 bg-transparent rounded-none px-0 py-2 text-[16px] focus-visible:border-brass focus-visible:ring-0"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -64,11 +76,14 @@ export function ContactForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-[12px] text-ink-muted">
-                {t('email')}
-              </FormLabel>
+              <FormLabel style={labelStyle}>{t('email')}</FormLabel>
               <FormControl>
-                <Input {...field} type="email" placeholder={t('email_placeholder')} />
+                <Input
+                  {...field}
+                  type="email"
+                  placeholder={t('email_placeholder')}
+                  className="border-x-0 border-t-0 border-b border-ink/35 bg-transparent rounded-none px-0 py-2 text-[16px] focus-visible:border-brass focus-visible:ring-0"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,11 +95,13 @@ export function ContactForm() {
           name="subject"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-[12px] text-ink-muted">
-                {t('subject')}
-              </FormLabel>
+              <FormLabel style={labelStyle}>{t('subject')}</FormLabel>
               <FormControl>
-                <Input {...field} placeholder={t('subject_placeholder')} />
+                <Input
+                  {...field}
+                  placeholder={t('subject_placeholder')}
+                  className="border-x-0 border-t-0 border-b border-ink/35 bg-transparent rounded-none px-0 py-2 text-[16px] focus-visible:border-brass focus-visible:ring-0"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -96,14 +113,13 @@ export function ContactForm() {
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-label text-[12px] text-ink-muted">
-                {t('message')}
-              </FormLabel>
+              <FormLabel style={labelStyle}>{t('message')}</FormLabel>
               <FormControl>
                 <Textarea
                   {...field}
                   rows={6}
                   placeholder={t('message_placeholder')}
+                  className="border border-ink/35 bg-paper-soft rounded-md px-3 py-3 text-[16px] focus-visible:border-brass focus-visible:ring-0"
                 />
               </FormControl>
               <FormMessage />
@@ -111,14 +127,13 @@ export function ContactForm() {
           )}
         />
 
-        <div>
+        <div className="pt-2">
           <button
             type="submit"
             disabled={submitting}
-            className="font-label inline-flex items-center gap-2 rounded-full border border-dashed border-ink bg-ink px-5 py-2.5 text-[12px] text-cream-soft transition-colors duration-300 hover:bg-transparent hover:text-ink disabled:opacity-60"
-            style={{ letterSpacing: '0.08em' }}
+            className="pill pill-solid disabled:opacity-60"
           >
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cream-soft" />
+            <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
             {submitting ? t('submitting') : t('submit')}
           </button>
         </div>

@@ -29,15 +29,15 @@ export function LocaleSwitcher({
 
   const sizeClasses =
     variant === 'stacked'
-      ? 'text-[13px] px-4 py-2'
-      : 'text-[11px] px-3 py-1.5'
+      ? 'text-[12px] px-4 py-1.5'
+      : 'text-[10.5px] px-3 py-1'
 
   return (
     <div
       role="group"
       aria-label="Language"
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border border-dashed border-ink p-1',
+        'inline-flex items-center gap-0.5 rounded-full border border-ink/40 bg-paper-soft p-[3px]',
         pending && 'opacity-60',
         className,
       )}
@@ -47,13 +47,18 @@ export function LocaleSwitcher({
         onClick={() => switchTo('ar')}
         aria-pressed={locale === 'ar'}
         className={cn(
-          'font-label rounded-full transition-colors duration-200',
+          'rounded-full transition-all duration-300 uppercase tracking-[0.16em]',
           sizeClasses,
           locale === 'ar'
-            ? 'bg-ink text-cream'
-            : 'bg-transparent text-ink hover:bg-ink/10',
+            ? 'bg-ink text-paper-soft shadow-[inset_0_0_0_1px_rgba(168,196,214,0.7)]'
+            : 'text-ink-muted hover:text-ink',
         )}
-        style={{ letterSpacing: locale === 'ar' ? 0 : '0.08em' }}
+        style={{
+          fontFamily: locale === 'ar' ? 'var(--font-arabic)' : 'var(--font-display)',
+          fontWeight: locale === 'ar' ? 600 : 500,
+          letterSpacing: locale === 'ar' ? 0 : '0.16em',
+          textTransform: locale === 'ar' ? 'none' : 'uppercase',
+        }}
       >
         {t('ar')}
       </button>
@@ -62,13 +67,17 @@ export function LocaleSwitcher({
         onClick={() => switchTo('en')}
         aria-pressed={locale === 'en'}
         className={cn(
-          'font-label rounded-full transition-colors duration-200',
+          'rounded-full transition-all duration-300 uppercase tracking-[0.16em]',
           sizeClasses,
           locale === 'en'
-            ? 'bg-ink text-cream'
-            : 'bg-transparent text-ink hover:bg-ink/10',
+            ? 'bg-ink text-paper-soft shadow-[inset_0_0_0_1px_rgba(168,196,214,0.7)]'
+            : 'text-ink-muted hover:text-ink',
         )}
-        style={{ letterSpacing: '0.08em' }}
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontWeight: 500,
+          letterSpacing: '0.16em',
+        }}
       >
         {t('en')}
       </button>

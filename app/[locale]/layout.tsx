@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
-import { Noto_Naskh_Arabic, Instrument_Serif, Oswald } from 'next/font/google'
+import { Noto_Naskh_Arabic, Instrument_Serif, Fraunces, Reem_Kufi } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
 import { routing } from '@/lib/i18n/routing'
@@ -17,6 +17,13 @@ const arabic = Noto_Naskh_Arabic({
   display: 'swap',
 })
 
+const arabicDisplay = Reem_Kufi({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-arabic-display',
+  display: 'swap',
+})
+
 const serif = Instrument_Serif({
   subsets: ['latin'],
   weight: '400',
@@ -25,12 +32,14 @@ const serif = Instrument_Serif({
   display: 'swap',
 })
 
-const oswald = Oswald({
+const display = Fraunces({
   subsets: ['latin'],
-  weight: ['200', '300', '400', '500', '600', '700'],
-  variable: '--font-oswald',
+  style: ['normal', 'italic'],
+  axes: ['opsz', 'SOFT'],
+  variable: '--font-display',
   display: 'swap',
 })
+
 
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
@@ -70,7 +79,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html
       lang={locale}
       dir={dir}
-      className={`${arabic.variable} ${serif.variable} ${oswald.variable}`}
+      className={`${arabic.variable} ${arabicDisplay.variable} ${serif.variable} ${display.variable}`}
       suppressHydrationWarning
     >
       <body>

@@ -39,7 +39,12 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(pkill -f \"next-server\")",
       "mcp__playwright__playwright_navigate",
-      "mcp__playwright__playwright_resize"
+      "mcp__playwright__playwright_resize",
+      "Bash(mkdir -p ~/.claude/skills)",
+      "Read(//c/Users/OATech/.claude/**)",
+      "mcp__playwright__playwright_evaluate",
+      "mcp__playwright__playwright_screenshot",
+      "mcp__playwright__playwright_close"
     ]
   }
 }

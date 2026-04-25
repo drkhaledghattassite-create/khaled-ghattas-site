@@ -6,13 +6,20 @@ import Lenis from 'lenis'
 
 /**
  * Mounts Lenis smooth-scroll at the document root.
- * lerp ≈ 0.1 (Studio Freight default) — see BEHAVIORS.md §1.1.
- * Applies to both RTL and LTR — Lenis handles scroll direction internally.
+ *
+ * Honors prefers-reduced-motion: when set, the Lenis instance is not started
+ * so the browser falls back to native scroll. Sticky-scroll choreography in
+ * InterviewRotator still works without Lenis (it reads scrollYProgress, which
+ * the browser's native scroll feeds just as well as Lenis's smoothed scroll).
  */
 export function LenisProvider({ children }: { children: React.ReactNode }) {
   const locale = useLocale()
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) return
+
     const lenis = new Lenis({
       lerp: 0.1,
       smoothWheel: true,

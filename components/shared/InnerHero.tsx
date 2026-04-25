@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useLocale } from 'next-intl'
 import { motion } from 'motion/react'
+import { Ornament } from '@/components/shared/Ornament'
 
 const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
 
@@ -13,11 +14,13 @@ type Props = {
   description?: string
   image?: { src: string; alt: string }
   align?: 'start' | 'center'
+  chapterNumber?: string
 }
 
 /**
- * Reusable hero for inner pages. Mask-reveal heading, optional italic
- * serif lead, optional B&W image with dotted-outline frame.
+ * Inner page hero — the journal-chapter opener for /about, /articles, etc.
+ * Brass fleuron + chapter number eyebrow, mask-revealed heading pair,
+ * optional duotone portrait inside a printed frame, generous lead text.
  */
 export function InnerHero({
   eyebrow,
@@ -26,67 +29,97 @@ export function InnerHero({
   description,
   image,
   align = 'start',
+  chapterNumber,
 }: Props) {
   const locale = useLocale()
   const isRtl = locale === 'ar'
-  const alignClass = align === 'center' ? 'text-center items-center' : 'text-start items-start'
+  const alignClass = align === 'center' ? 'items-center text-center' : 'items-start text-start'
 
   return (
-    <section className="relative z-[2] bg-cream px-[var(--spacing-md)] pt-[calc(var(--spacing-xl)+43px)] pb-[var(--spacing-xl)]">
+    <section className="relative z-[2] overflow-hidden bg-paper px-[var(--section-pad-x)] pt-[calc(var(--section-pad-y)+44px)] pb-[var(--spacing-xl)]">
+      {/* Soft top vignette */}
       <div
-        className={`mx-auto grid max-w-[1440px] gap-[var(--spacing-lg)] ${image ? 'md:grid-cols-[1.2fr_1fr]' : ''}`}
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(50% 35% at 80% 0%, rgba(168, 196, 214, 0.10) 0%, transparent 70%)',
+        }}
+      />
+
+      <div
+        className={`relative mx-auto grid max-w-[1280px] gap-[var(--spacing-lg)] ${image ? 'md:grid-cols-[1.2fr_1fr] md:gap-[var(--spacing-xl)]' : ''}`}
       >
         <div className={`flex flex-col gap-[var(--spacing-md)] ${alignClass}`}>
           {eyebrow && (
-            <motion.span
-              initial={{ opacity: 0, y: 12 }}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15, ease: 'easeOut' }}
-              className="font-label text-ink-muted"
+              transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
+              className={`flex items-baseline gap-3 text-ink-muted ${align === 'center' ? 'justify-center' : ''}`}
             >
-              {eyebrow}
-            </motion.span>
+              <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
+              <span
+                className="text-[11px] tracking-[0.2em] uppercase"
+                style={{
+                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                  fontStyle: isRtl ? 'normal' : 'italic',
+                  fontWeight: 500,
+                  letterSpacing: isRtl ? 0 : '0.18em',
+                  textTransform: isRtl ? 'none' : 'uppercase',
+                  fontSize: isRtl ? 13 : 11,
+                }}
+              >
+                {chapterNumber ? `${chapterNumber} — ${eyebrow}` : eyebrow}
+              </span>
+            </motion.div>
           )}
-          <header className="space-y-2">
+          <h1 className="m-0 space-y-2 text-balance">
             {headingItalic && (
               <MaskedLine delay={0}>
                 <span
-                  className="uppercase text-ink"
+                  className="text-garnet"
                   style={{
                     fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
                     fontStyle: isRtl ? 'normal' : 'italic',
-                    fontWeight: isRtl ? 700 : 400,
-                    fontSize: 'clamp(36px, 9vw, 88.2px)',
+                    fontWeight: isRtl ? 600 : 400,
+                    fontSize: 'clamp(32px, 5.6vw, 72px)',
                     lineHeight: 1.05,
+                    letterSpacing: isRtl ? 0 : '-0.005em',
                   }}
                 >
                   {headingItalic}
                 </span>
               </MaskedLine>
             )}
-            <MaskedLine delay={headingItalic ? 0.15 : 0}>
+            <MaskedLine delay={headingItalic ? 0.18 : 0}>
               <span
-                className="uppercase text-ink"
+                className="text-ink"
                 style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-                  fontWeight: isRtl ? 700 : 600,
-                  fontSize: 'clamp(42px, 11vw, 92.88px)',
-                  lineHeight: 0.95,
-                  letterSpacing: isRtl ? 'normal' : '-3px',
+                  fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
+                  fontWeight: isRtl ? 500 : 400,
+                  fontSize: 'clamp(40px, 7vw, 96px)',
+                  lineHeight: 0.96,
+                  letterSpacing: isRtl ? 0 : '-0.024em',
                 }}
               >
                 {headingSans}
               </span>
             </MaskedLine>
-          </header>
+          </h1>
 
           {description && (
             <motion.p
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-              className="max-w-prose text-ink-muted text-[15px] leading-[1.7]"
+              transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
+              className={`max-w-[58ch] text-pretty text-ink-soft ${align === 'center' ? 'mx-auto' : ''}`}
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                fontSize: isRtl ? 17 : 17,
+                lineHeight: isRtl ? 1.95 : 1.6,
+              }}
             >
               {description}
             </motion.p>
@@ -95,20 +128,22 @@ export function InnerHero({
 
         {image && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.9, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
-            className="relative mx-auto aspect-[3/4] w-full max-w-[520px]"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.1, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
+            className="relative mx-auto w-full max-w-[520px]"
           >
-            <div className="dotted-outline absolute inset-0 overflow-hidden bg-cream-warm">
-              <Image
-                src={image.src}
-                alt={image.alt}
-                fill
-                priority
-                sizes="(min-width: 768px) 520px, 100vw"
-                className="object-cover object-center grayscale"
-              />
+            <div className="frame-print relative aspect-[3/4]">
+              <div className="relative h-full w-full overflow-hidden">
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  priority
+                  sizes="(min-width: 768px) 520px, 100vw"
+                  className="object-cover object-center duotone-warm"
+                />
+              </div>
             </div>
           </motion.div>
         )}
@@ -122,10 +157,10 @@ function MaskedLine({ children, delay }: { children: React.ReactNode; delay: num
     <span className="relative block overflow-hidden">
       <motion.span
         className="relative inline-block"
-        initial={{ y: '100%', opacity: 0 }}
+        initial={{ y: '102%', opacity: 0 }}
         whileInView={{ y: '0%', opacity: 1 }}
         viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.8, delay, ease: EASE_IN_OUT_QUART }}
+        transition={{ duration: 0.95, delay, ease: EASE_IN_OUT_QUART }}
       >
         {children}
       </motion.span>

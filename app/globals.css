@@ -5,118 +5,200 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
-   Design tokens — drkhaledghattass.com
-   Reference: ../dayanjayatillekaWEBSITE/docs/research/DESIGN_TOKENS.md
+   Mawqid (موقد) — warm editorial humanism, portrait-derived edition
+   Design system for drkhaledghattass.com
+   Palette extracted from Dr. Khaled's portrait: warm cream (skin highlights),
+   warm charcoal (beard), mauve dusk (background), sky blue (shirt), warm
+   skin midtones. Logo is pure black on transparent — strong B&W is part of
+   brand identity (see --color-brand-black). Numbered chapters, drop caps,
+   printer's flourish. Existing brass/garnet/rose tokens are remapped to the
+   new palette so legacy classNames stay valid; new sky/mauve/skin tokens
+   are the canonical names going forward.
    ========================================================================== */
 @theme inline {
-  /* Core palette */
-  --color-cream: #EDE7DF;
-  --color-cream-soft: #F6F4F1;
-  --color-cream-warm: #DED9D0;
-  --color-beige: #CEC8BD;
-  --color-ink: #252321;
-  --color-ink-muted: #8B8378;
-  --color-amber: #BC884A;
-  --color-navy: #002A5C;
-  --color-success: #7DC242;
+  /* ---------- Core palette: warm cream library (from skin highlights) ---- */
+  --color-paper:        #F0E6D8;  /* warm cream — primary surface */
+  --color-paper-soft:   #F7EFE3;  /* lightest tier */
+  --color-paper-warm:   #E5D5BE;  /* warm sand block */
+  --color-paper-deep:   #D2BFA1;  /* deeper sand divider */
+  --color-paper-shadow: #BFA98A;  /* edge tone */
 
-  /* shadcn mapping — keeps shadcn primitives on our palette */
-  --color-background: var(--color-cream);
-  --color-foreground: var(--color-ink);
-  --color-card: var(--color-cream-soft);
-  --color-card-foreground: var(--color-ink);
-  --color-popover: var(--color-cream-soft);
-  --color-popover-foreground: var(--color-ink);
-  --color-primary: var(--color-ink);
-  --color-primary-foreground: var(--color-cream);
-  --color-secondary: var(--color-cream-warm);
-  --color-secondary-foreground: var(--color-ink);
-  --color-muted: var(--color-cream-warm);
-  --color-muted-foreground: var(--color-ink-muted);
-  --color-accent: var(--color-amber);
+  /* Aliases preserved so existing components keep working — values warmed. */
+  --color-cream:        #F0E6D8;
+  --color-cream-soft:   #F7EFE3;
+  --color-cream-warm:   #E5D5BE;
+  --color-beige:        #D2BFA1;
+
+  --color-ink:          #2A2528;  /* warm charcoal (beard tone) */
+  --color-ink-muted:    #6E6066;  /* mauve-tinted taupe */
+  --color-ink-soft:     #4A4045;  /* mid-warm */
+
+  /* ---------- Canonical NEW palette (portrait-derived) ------------------- */
+  --color-mauve:        #5A4A55;  /* portrait background — depth/secondary surface */
+  --color-mauve-soft:   #7B6E78;  /* hover states, subtle borders, neutral cards */
+  --color-skin:         #C9A586;  /* warm midtone — soft tags, accent cards */
+  --color-skin-soft:    #DCC0A6;  /* tinted skin */
+  --color-sky:          #A8C4D6;  /* shirt tone — CTAs, links, active states */
+  --color-sky-deep:     #6B8FA8;  /* CTA hover, deeper accent */
+  --color-sky-soft:     #CADBE7;  /* light sky tint */
+  --color-silver:       #9B9B9B;  /* hair tone — neutral borders, dividers */
+  --color-brand-black:  #1A1818;  /* logo-derived deep near-black for high-contrast bands */
+
+  /* ---------- Backwards-compat token remap ------------------------------- */
+  /* Existing components reference brass/garnet/rose. Values now point to the
+     new palette so visual outcome matches the portrait while existing
+     classNames keep working. New code should prefer --color-sky / --color-mauve
+     / --color-skin directly. */
+  --color-brass:        #A8C4D6;  /* → sky — primary accent */
+  --color-brass-deep:   #6B8FA8;  /* → sky-deep — hover accent */
+  --color-brass-soft:   #CADBE7;  /* → sky-soft */
+  --color-amber:        #A8C4D6;  /* → sky (alias kept) */
+
+  --color-garnet:       #5A4A55;  /* → mauve — emphasis */
+  --color-garnet-soft:  #7B6E78;  /* → mauve-soft */
+  --color-olive:        #6E6066;  /* → ink-muted — secondary accent (de-emphasized) */
+  --color-olive-soft:   #8A7E84;  /* → mauve-soft tint */
+  --color-rose:         #C9A586;  /* → skin — soft tag */
+  --color-rose-soft:    #DCC0A6;  /* → skin-soft */
+  --color-navy:         #2A3344;  /* very rare, only for trust marks */
+  --color-success:      #5E8A6C;  /* real green — kept distinct from olive remap */
+
+  /* Semantic aliases — short names for new code */
+  --color-bg:           var(--color-paper);
+  --color-fg:           var(--color-ink);
+  --color-accent-deep:  var(--color-sky-deep);
+  /* Note: --color-accent already defined above as brass→sky.
+     --color-muted is intentionally kept as shadcn's "muted surface" token
+     (paper-warm). For text-muted-equivalent neutrals, use ink-muted or
+     mauve-soft directly. */
+
+  /* shadcn mapping → warm palette */
+  --color-background:        var(--color-paper);
+  --color-foreground:        var(--color-ink);
+  --color-card:              var(--color-paper-soft);
+  --color-card-foreground:   var(--color-ink);
+  --color-popover:           var(--color-paper-soft);
+  --color-popover-foreground:var(--color-ink);
+  --color-primary:           var(--color-ink);
+  --color-primary-foreground:var(--color-paper-soft);
+  --color-secondary:         var(--color-paper-warm);
+  --color-secondary-foreground:var(--color-ink);
+  --color-muted:             var(--color-paper-warm);
+  --color-muted-foreground:  var(--color-ink-muted);
+  --color-accent:            var(--color-sky);
   --color-accent-foreground: var(--color-ink);
-  --color-destructive: #B3261E;
-  --color-border: var(--color-ink);
-  --color-input: var(--color-ink-muted);
-  --color-ring: var(--color-ink-muted);
+  --color-destructive:       #8B2F2A;
+  --color-border:            var(--color-ink-soft);
+  --color-input:             var(--color-paper-deep);
+  --color-ring:              var(--color-sky);
 
-  /* Fonts — wired to next/font CSS variables */
-  --font-arabic: var(--font-arabic);
-  --font-serif: var(--font-serif);
-  --font-oswald: var(--font-oswald);
-  --font-sans: var(--font-arabic);
-  --font-heading: var(--font-oswald);
-  --font-mono: var(--font-oswald);
+  /* ---------- Typography stack ---------- */
+  /* All font CSS variables are wired in app/[locale]/layout.tsx via next/font */
+  --font-arabic:        var(--font-arabic);          /* Noto Naskh Arabic */
+  --font-arabic-display:var(--font-arabic-display);  /* Reem Kufi */
+  --font-display:       var(--font-display);         /* Fraunces — humanist serif */
+  --font-serif:         var(--font-serif);           /* Instrument Serif italic */
+  --font-mono:          var(--font-display);         /* Fraunces small caps */
+  --font-sans:          var(--font-arabic);          /* default body Arabic */
+  --font-heading:       var(--font-display);         /* default heading display */
 
-  /* Typography scale (from DESIGN_TOKENS.md, unified line-height for hero) */
-  --text-hero-sans: 92.88px;
-  --text-hero-italic: 88.2px;
-  --text-body: 16px;
-  --text-label: 14px;
-  --leading-hero: 50.57px;
-  --leading-body: 1.6;
-  --tracking-hero: -3px;
-  --tracking-label: 0.1em;
+  /* Typography scale — refined for journal rhythm */
+  --text-display:   clamp(64px, 9vw, 124px);
+  --text-h1:        clamp(48px, 6.5vw, 88px);
+  --text-h2:        clamp(36px, 5vw, 64px);
+  --text-h3:        clamp(24px, 3.5vw, 36px);
+  --text-lead:      clamp(18px, 1.6vw, 22px);
+  --text-body:      16.5px;
+  --text-small:     14px;
+  --text-label:     11px;
 
-  /* Spacing rhythm */
+  --leading-display:   0.92;
+  --leading-heading:   1.05;
+  --leading-body:      1.65;
+  --leading-arabic-body: 1.95;
+  --tracking-display: -0.025em;
+  --tracking-label:    0.18em;
+
+  /* Spacing rhythm — generous editorial */
   --spacing-xs: 8px;
   --spacing-sm: 16px;
-  --spacing-md: 24px;
-  --spacing-lg: 48px;
-  --spacing-xl: 96px;
+  --spacing-md: 28px;
+  --spacing-lg: 56px;
+  --spacing-xl: 112px;
+  --spacing-2xl: 168px;
 
-  /* Radii — dashed outlines, no rounded corners on cards */
-  --radius: 0;
+  --section-pad-y: clamp(64px, 10vw, 168px);
+  --section-pad-x: clamp(20px, 4vw, 56px);
+
+  /* Radii — most surfaces stay sharp; pills + soft cards rounded */
+  --radius:    0;
   --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
   --radius-pill: 999px;
 
-  /* Easing curves (Webflow IX2 → CSS) */
+  /* Easing curves */
   --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-out-quart: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ease-back-out: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-back-out:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo:     cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Shadows — soft printed feel, no harsh drop shadows */
+  --shadow-page:  0 1px 0 0 rgba(31, 24, 18, 0.04), 0 12px 40px -28px rgba(31, 24, 18, 0.18);
+  --shadow-lift:  0 2px 0 0 rgba(31, 24, 18, 0.05), 0 18px 48px -32px rgba(31, 24, 18, 0.28);
 }
 
 /* ==========================================================================
    Base — RTL primary
    ========================================================================== */
 :root {
-  --background: var(--color-cream);
-  --foreground: var(--color-ink);
+  --background:       var(--color-paper);
+  --foreground:       var(--color-ink);
   --muted-foreground: var(--color-ink-muted);
-  --accent: var(--color-amber);
-  --border: var(--color-ink);
+  --accent:           var(--color-sky);
+  --border:           var(--color-ink-soft);
+  /* Backwards-compat: every legacy `var(--font-oswald)` reference now
+     resolves to Fraunces. Lets us migrate components incrementally. */
+  --font-oswald: var(--font-display);
+
+  /* Force-emit new palette tokens so they're available via var() at runtime
+     even before any Tailwind utility consumes them. (Tailwind v4 tree-shakes
+     @theme tokens that aren't referenced by a generated class.) */
+  --color-mauve:        #5A4A55;
+  --color-mauve-soft:   #7B6E78;
+  --color-skin:         #C9A586;
+  --color-skin-soft:    #DCC0A6;
+  --color-sky-soft:     #CADBE7;
+  --color-silver:       #9B9B9B;
+  --color-paper-shadow: #BFA98A;
 }
 
 @layer base {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
 
   html {
-    background-color: var(--color-cream);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-arabic), "Amiri", Georgia, serif;
     font-size: 16px;
-    line-height: 1.6;
+    line-height: var(--leading-body);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html[dir="ltr"] {
-    font-family: var(--font-oswald), "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-display), "Iowan Old Style", Georgia, serif;
   }
 
-  /* Arabic body copy reads better at a looser leading (Noto Naskh has tall ascenders / deep descenders). */
   html[lang="ar"] body {
-    line-height: 1.85;
+    line-height: var(--leading-arabic-body);
     letter-spacing: 0;
+    font-feature-settings: "kern", "liga";
   }
 
-  /* Headings inside RTL: trim Latin-style tracking that hurts Arabic shaping. */
+  /* Arabic headings — weight 600, never 700 (looks too inky) */
   html[lang="ar"] h1,
   html[lang="ar"] h2,
   html[lang="ar"] h3,
@@ -127,53 +209,82 @@
     font-weight: 600;
   }
 
-  /* Visible focus ring — works against the cream background. */
-  :focus-visible {
-    outline: 2px solid var(--color-amber);
-    outline-offset: 2px;
-    border-radius: 2px;
+  /* Arabic body — Latin numbers stay in latn for legibility against Naskh */
+  html[lang="ar"] {
+    font-feature-settings: "lnum", "kern", "liga";
+  }
+  /* Number-only spans render as tabular Latin lining figures */
+  .num-latn {
+    font-feature-settings: "lnum", "tnum";
+    font-variant-numeric: tabular-nums lining-nums;
   }
 
-  /* Reduced-motion: kill the always-on marquee/spin animations. */
+  /* Long-form prose helpers */
+  h1, h2, h3 { text-wrap: balance; }
+  p          { text-wrap: pretty; }
+
+  /* Brass focus ring — works against parchment */
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  /* Reduced-motion: kill always-on animations + ramp transitions to instant */
   @media (prefers-reduced-motion: reduce) {
     .animate-marquee-left,
     .animate-marquee-right,
     .animate-bob,
     .animate-spin-cw,
-    .animate-spin-ccw {
+    .animate-spin-ccw,
+    .animate-grain,
+    .animate-flourish-pulse {
       animation: none !important;
     }
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 
-  /* Skip-to-main-content link, visible on keyboard focus only. */
+  /* Skip link */
   .skip-link {
     position: absolute;
     inset-inline-start: 1rem;
     top: -3rem;
     z-index: 100;
-    padding: 0.5rem 1rem;
+    padding: 0.65rem 1rem;
     background: var(--color-ink);
-    color: var(--color-cream);
-    font-family: var(--font-oswald), sans-serif;
+    color: var(--color-paper-soft);
+    font-family: var(--font-display), serif;
     font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.06em;
     transition: top 0.2s ease;
+    border-radius: 2px;
   }
-  .skip-link:focus {
-    top: 1rem;
-  }
+  .skip-link:focus { top: 1rem; }
 
   body {
-    background-color: var(--color-cream);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     font-synthesis: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+  }
+
+  /* Subtle paper grain overlay — site-wide, behind all content */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.42;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' seed='4'/><feColorMatrix values='0 0 0 0 0.31  0 0 0 0 0.25  0 0 0 0 0.18  0 0 0 0.16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
+    background-size: 240px 240px;
   }
 
   a {
@@ -183,9 +294,7 @@
 }
 
 /* ==========================================================================
-   Logical-property utilities (RTL-safe).
-   Tailwind v4 already ships ms-, me-, ps-, pe-, text-start, text-end.
-   The classes below are safety fallbacks for raw usage.
+   Logical-property safety fallbacks
    ========================================================================== */
 .text-start { text-align: start; }
 .text-end   { text-align: end; }
@@ -215,53 +324,282 @@
 .pe-xl { padding-inline-end: var(--spacing-xl); }
 
 /* ==========================================================================
-   Typography helpers
+   Typography helpers — editorial system
    ========================================================================== */
-.font-hero-sans {
-  font-family: var(--font-oswald), sans-serif;
-  font-size: var(--text-hero-sans);
-  line-height: var(--leading-hero);
-  letter-spacing: var(--tracking-hero);
-  font-weight: 600;
-  text-transform: uppercase;
+.font-display {
+  font-family: var(--font-display), "Iowan Old Style", Georgia, serif;
+  font-feature-settings: "ss01", "ss02", "kern", "liga";
+}
+.font-display-italic {
+  font-family: var(--font-serif), "Iowan Old Style", Georgia, serif;
+  font-style: italic;
+}
+.font-arabic-display {
+  font-family: var(--font-arabic-display), var(--font-arabic), serif;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
+/* Hero scale */
+.font-hero {
+  font-family: var(--font-display), serif;
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: 400;
+  font-style: normal;
+}
 .font-hero-italic {
   font-family: var(--font-serif), serif;
   font-style: italic;
-  font-size: var(--text-hero-italic);
-  line-height: var(--leading-hero);
-  text-transform: uppercase;
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: -0.02em;
+  font-weight: 400;
 }
-
 .font-hero-arabic {
-  font-family: var(--font-arabic), serif;
-  font-size: var(--text-hero-sans);
-  line-height: var(--leading-hero);
-  font-weight: 700;
+  font-family: var(--font-arabic-display), var(--font-arabic), serif;
+  font-size: var(--text-display);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
+/* Hero sans alias kept for backwards-compat — points to the new display font */
+.font-hero-sans {
+  font-family: var(--font-display), serif;
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: 400;
+}
+
+/* Editorial labels — small caps Latin, regular Arabic */
 .font-label {
-  font-family: var(--font-oswald), sans-serif;
+  font-family: var(--font-display), sans-serif;
   font-size: var(--text-label);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   font-weight: 500;
+  font-feature-settings: "ss01", "kern";
 }
-
 [dir="rtl"] .font-label {
   font-family: var(--font-arabic), sans-serif;
   text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Drop cap — first letter of paragraph in brass display serif */
+.dropcap::first-letter {
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: 5.6em;
+  line-height: 0.85;
+  float: inline-start;
+  margin-inline-end: 0.12em;
+  margin-block-start: 0.06em;
+  margin-block-end: -0.05em;
+  color: var(--color-brass);
+  font-feature-settings: "ss01";
+}
+[dir="rtl"] .dropcap::first-letter {
+  font-family: var(--font-arabic-display), var(--font-arabic), serif;
+  font-size: 4.4em;
+  font-weight: 600;
+  margin-inline-end: 0.08em;
+}
+
+/* Pull quote — garnet display serif, oversized */
+.pull-quote {
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+  font-size: clamp(28px, 3.6vw, 44px);
+  line-height: 1.25;
+  color: var(--color-garnet);
+  letter-spacing: -0.005em;
+}
+[dir="rtl"] .pull-quote {
+  font-family: var(--font-arabic), serif;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 /* ==========================================================================
-   Signature pattern: 1px dashed outlines (no shadows anywhere)
+   Surface treatments — paper grain by intensity
    ========================================================================== */
-.dotted-outline       { border: 1px dashed var(--color-ink); }
-.dotted-outline-muted { border: 1px dashed var(--color-ink-muted); }
+.paper-warm { background-color: var(--color-paper-warm); }
+.paper-soft { background-color: var(--color-paper-soft); }
+.paper-deep { background-color: var(--color-paper-deep); }
+
+/* Hand-printed warm vignette inside cards */
+.paper-card {
+  background: linear-gradient(180deg, var(--color-paper-soft) 0%, var(--color-paper) 100%);
+  box-shadow: var(--shadow-page);
+}
+.paper-card-warm {
+  background: linear-gradient(180deg, var(--color-paper-warm) 0%, var(--color-paper-deep) 120%);
+  box-shadow: var(--shadow-page);
+}
+
+/* Brass-edged hairline frame for photographs */
+.frame-print {
+  background: var(--color-paper-soft);
+  padding: 8px;
+  box-shadow:
+    inset 0 0 0 1px rgba(31, 24, 18, 0.15),
+    0 1px 0 0 rgba(31, 24, 18, 0.04),
+    0 18px 36px -28px rgba(31, 24, 18, 0.32);
+}
+
+/* Duotone — sepia/brass photograph treatment */
+.duotone-warm img,
+.duotone-warm {
+  filter: sepia(0.32) saturate(1.05) hue-rotate(-8deg) contrast(1.02);
+}
+
+/* Backwards-compat — dotted-outline now reads as a printed frame */
+.dotted-outline       { border: 1px solid color-mix(in oklab, var(--color-ink) 22%, transparent); }
+.dotted-outline-muted { border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent); }
 
 /* ==========================================================================
-   Ambient motion keyframes (Webflow marquee + star rotations)
+   Dividers — printer's rule + ornamental flourish
+   ========================================================================== */
+/* Solid hairline divider with center ornament */
+.rule-ornament {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    color-mix(in oklab, var(--color-ink) 30%, transparent) 8%,
+    color-mix(in oklab, var(--color-ink) 30%, transparent) 44%,
+    transparent 46%,
+    transparent 54%,
+    color-mix(in oklab, var(--color-ink) 30%, transparent) 56%,
+    color-mix(in oklab, var(--color-ink) 30%, transparent) 92%,
+    transparent 100%
+  );
+  margin-block: var(--spacing-md);
+}
+.rule-ornament::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-brass);
+  font-size: 14px;
+  background: var(--color-paper);
+  padding: 0 10px;
+  line-height: 1;
+}
+
+/* Printed hairline used for borders */
+.hairline-b { border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.hairline-t { border-top: 1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.hairline   { border:    1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
+
+/* Chapter mark — used at top of every major section */
+.chapter-mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-display), serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.04em;
+}
+.chapter-mark::before {
+  content: "❦";
+  font-style: normal;
+  color: var(--color-brass);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Editorial link — underline with brass swatch on hover
+   ========================================================================== */
+.editorial-link {
+  position: relative;
+  color: var(--color-ink);
+  font-family: var(--font-display), serif;
+  border-block-end: 1px solid color-mix(in oklab, var(--color-ink) 30%, transparent);
+  padding-block-end: 1px;
+  transition: color 220ms var(--ease-out-quart), border-color 220ms var(--ease-out-quart);
+}
+.editorial-link:hover {
+  color: var(--color-brass-deep);
+  border-block-end-color: var(--color-brass);
+}
+
+/* Pill button — softened, ink+parchment hover swap */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms var(--ease-out-quart),
+    color 180ms var(--ease-out-quart),
+    border-color 180ms var(--ease-out-quart),
+    transform 160ms var(--ease-out-quart);
+  min-height: 42px;
+  user-select: none;
+}
+.pill:hover {
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+}
+.pill:active {
+  transform: translateY(1px);
+}
+.pill:disabled,
+.pill[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pill-solid {
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+}
+.pill-solid:hover {
+  background: var(--color-brass-deep);
+  border-color: var(--color-brass-deep);
+}
+.pill-brass {
+  background: var(--color-brass);
+  color: var(--color-paper-soft);
+  border-color: var(--color-brass);
+}
+.pill-brass:hover {
+  background: var(--color-brass-deep);
+  border-color: var(--color-brass-deep);
+}
+[dir="rtl"] .pill {
+  font-family: var(--font-arabic), sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+/* ==========================================================================
+   Ambient motion keyframes
    ========================================================================== */
 @keyframes marquee-left {
   from { transform: translate3d(0, 0, 0); }
@@ -277,18 +615,23 @@
 }
 @keyframes spin-cw  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes spin-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@keyframes flourish-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
 
-.animate-marquee-left  { animation: marquee-left 20s linear infinite; }
-.animate-marquee-right { animation: marquee-right 20s linear infinite; }
-.animate-bob           { animation: bob-y 1400ms var(--ease-in-out-quart) infinite; }
-.animate-spin-cw       { animation: spin-cw 8s linear infinite; }
-.animate-spin-ccw      { animation: spin-ccw 14s linear infinite; }
+.animate-marquee-left   { animation: marquee-left 32s linear infinite; }
+.animate-marquee-right  { animation: marquee-right 32s linear infinite; }
+.animate-bob            { animation: bob-y 1800ms var(--ease-in-out-quart) infinite; }
+.animate-spin-cw        { animation: spin-cw 14s linear infinite; }
+.animate-spin-ccw       { animation: spin-ccw 22s linear infinite; }
+.animate-flourish-pulse { animation: flourish-pulse 4.4s var(--ease-in-out-quart) infinite; }
 
 /* ==========================================================================
-   Container
+   Container — generous editorial gutter
    ========================================================================== */
 @utility container {
   margin-inline: auto;
-  padding-inline: 1.5rem;
+  padding-inline: clamp(20px, 4vw, 56px);
   max-width: 80rem;
 }

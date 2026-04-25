@@ -1,14 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { Ornament } from '@/components/shared/Ornament'
 
 const schema = z.object({ email: z.string().email() })
 
 export function NewsletterSignup() {
   const t = useTranslations('newsletter')
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -20,7 +23,6 @@ export function NewsletterSignup() {
       return
     }
     setSubmitting(true)
-    // TODO: wire to /api/newsletter when backend is live
     await new Promise((r) => setTimeout(r, 400))
     setSubmitting(false)
     setEmail('')
@@ -30,22 +32,39 @@ export function NewsletterSignup() {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex w-full flex-col gap-3 rounded-lg border border-dashed border-ink bg-cream-soft p-6 sm:flex-row sm:items-center"
+      className="paper-card-warm relative flex w-full flex-col gap-4 p-7 sm:flex-row sm:items-end sm:gap-6 md:p-9"
+      style={{ borderRadius: '4px' }}
     >
+      <span aria-hidden className="absolute -top-3 inset-inline-start-7 bg-paper px-2 text-brass">
+        <Ornament glyph="fleuron" size={18} />
+      </span>
+
       <div className="flex-1">
         <h3
-          className="text-[18px] uppercase text-ink"
+          className="text-ink"
           style={{
-            fontFamily: 'var(--font-oswald)',
-            fontWeight: 600,
-            letterSpacing: '0.04em',
+            fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
+            fontWeight: isRtl ? 500 : 400,
+            fontSize: 'clamp(22px, 3vw, 32px)',
+            lineHeight: 1.1,
+            letterSpacing: isRtl ? 0 : '-0.018em',
           }}
         >
           {t('heading')}
         </h3>
-        <p className="mt-1 text-[13px] text-ink-muted">{t('description')}</p>
+        <p
+          className="mt-1.5 text-ink-soft"
+          style={{
+            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
+            fontStyle: isRtl ? 'normal' : 'italic',
+            fontSize: isRtl ? 14 : 14.5,
+          }}
+        >
+          {t('description')}
+        </p>
       </div>
-      <div className="flex items-center gap-2">
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="sr-only" htmlFor="newsletter-email">
           {t('email_label')}
         </label>
@@ -55,16 +74,15 @@ export function NewsletterSignup() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={t('email_placeholder')}
-          className="h-10 min-w-[220px] rounded-full border border-dashed border-ink bg-transparent px-4 text-[13px] text-ink placeholder:text-ink-muted focus:outline-none"
+          className="h-11 min-w-[240px] rounded-full border border-ink/35 bg-paper-soft px-5 text-[14px] text-ink placeholder:text-ink-muted focus:border-brass focus:outline-none"
           required
         />
         <button
           type="submit"
           disabled={submitting}
-          className="font-label inline-flex items-center gap-2 rounded-full border border-dashed border-ink bg-ink px-4 py-2 text-[12px] text-cream-soft transition-colors duration-300 hover:bg-transparent hover:text-ink disabled:opacity-60"
-          style={{ letterSpacing: '0.08em' }}
+          className="pill pill-solid disabled:opacity-60"
         >
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cream-soft" />
+          <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
           {submitting ? t('submitting') : t('subscribe')}
         </button>
       </div>

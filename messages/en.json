@@ -110,7 +110,17 @@
     },
     "meta": {
       "title": "Articles",
-      "description": "An archive of Dr. Khaled Ghattass's writing on philosophy, psychology, and society"
+      "description": "An archive of Dr. Khaled Ghattass's writing on philosophy, psychology, and society",
+      "read_time": "{minutes} min read",
+      "read_time_one": "1 min read"
+    },
+    "categories": {
+      "PHILOSOPHY": "Philosophy",
+      "PSYCHOLOGY": "Psychology",
+      "SOCIETY": "Society",
+      "POLITICS": "Politics",
+      "CULTURE": "Culture",
+      "OTHER": "Other"
     },
     "page": {
       "eyebrow": "Intellectual Archive",

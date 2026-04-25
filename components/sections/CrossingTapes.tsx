@@ -1,19 +1,21 @@
 'use client'
 
 import { useLocale, useTranslations } from 'next-intl'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { Ornament } from '@/components/shared/Ornament'
 
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 /**
- * Section 2 — crossing marquee tapes. See FULL_AUDIT.md §3a.
- * Cream tape tilts -8.52°, drifts left over 28s. Dark tape tilts +5.29°,
- * drifts right. Both enter from off-screen opposite sides on scroll.
+ * Section .02 — twin journal banderoles. Two slow-drifting tape rows
+ * (cream + ink) at gentle opposing angles, separated by a brass ornament.
+ * Quieter than the original Webflow chaos: longer durations, calmer
+ * angles, fleuron arbiter between them.
  */
 export function CrossingTapes() {
   return (
     <motion.section
-      className="relative z-[2] overflow-hidden bg-cream py-[var(--spacing-xl)]"
+      className="relative z-[2] overflow-hidden bg-paper py-[var(--spacing-xl)]"
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.15 }}
@@ -21,31 +23,44 @@ export function CrossingTapes() {
     >
       <div
         className="relative"
-        style={{ transform: 'rotateZ(-8.52deg) translate3d(-6.5em, 0em, 0)' }}
+        style={{ transform: 'rotateZ(-3.4deg) translate3d(-3em, 0, 0)' }}
       >
         <motion.div
           variants={{
-            hidden: { x: '-120%' },
-            show: { x: '0%', transition: { duration: 0.9, ease: EASE_OUT_EXPO } },
+            hidden: { x: '-110%', opacity: 0 },
+            show: { x: '0%', opacity: 1, transition: { duration: 1.2, ease: EASE_OUT_EXPO } },
           }}
           style={{ willChange: 'transform' }}
         >
-          <Tape theme="cream" direction="left" translationKey="tapes.cream" />
+          <Tape theme="paper" direction="left" translationKey="tapes.cream" />
+        </motion.div>
+      </div>
+
+      {/* Brass ornament between the bands */}
+      <div className="relative -my-6 flex justify-center text-brass">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, scale: 0.6, rotate: -45 },
+            show: { opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.9, ease: EASE_OUT_EXPO, delay: 0.3 } },
+          }}
+          className="bg-paper px-3"
+        >
+          <Ornament glyph="fleuron" size={28} />
         </motion.div>
       </div>
 
       <div
-        className="relative -mt-10"
-        style={{ transform: 'rotateZ(5.29deg) translate3d(5em, -5em, 0)' }}
+        className="relative"
+        style={{ transform: 'rotateZ(2.4deg) translate3d(2em, 0, 0)' }}
       >
         <motion.div
           variants={{
-            hidden: { x: '120%' },
-            show: { x: '0%', transition: { duration: 0.9, ease: EASE_OUT_EXPO } },
+            hidden: { x: '110%', opacity: 0 },
+            show: { x: '0%', opacity: 1, transition: { duration: 1.2, ease: EASE_OUT_EXPO } },
           }}
           style={{ willChange: 'transform' }}
         >
-          <Tape theme="dark" direction="right" translationKey="tapes.dark" />
+          <Tape theme="ink" direction="right" translationKey="tapes.dark" />
         </motion.div>
       </div>
     </motion.section>
@@ -57,44 +72,54 @@ function Tape({
   direction,
   translationKey,
 }: {
-  theme: 'cream' | 'dark'
+  theme: 'paper' | 'ink'
   direction: 'left' | 'right'
   translationKey: 'tapes.cream' | 'tapes.dark'
 }) {
   const locale = useLocale()
   const t = useTranslations()
+  const reduce = useReducedMotion() ?? false
   const isRtl = locale === 'ar'
   const text = t(translationKey)
   const items = new Array(8).fill(text)
-  const bg = theme === 'cream' ? '#EDE7DF' : '#252321'
-  const color = theme === 'cream' ? '#252321' : '#F6F4F1'
+  const bg = theme === 'paper' ? 'var(--color-paper-warm)' : 'var(--color-ink)'
+  const color = theme === 'paper' ? 'var(--color-ink)' : 'var(--color-paper-soft)'
+  const accent = theme === 'paper' ? 'var(--color-brass-deep)' : 'var(--color-brass-soft)'
   const x = direction === 'left' ? '-50%' : '50%'
 
   return (
     <div
-      className="w-[200vw] overflow-hidden py-3"
-      style={{ background: bg }}
+      className="w-[200vw] overflow-hidden py-4 hairline-t hairline-b"
+      style={{ background: bg, borderColor: 'rgba(31,24,18,0.18)' }}
     >
       <motion.div
-        className="flex whitespace-nowrap"
-        animate={{ x }}
-        transition={{ duration: 28, ease: 'linear', repeat: Infinity, repeatType: 'loop' }}
-        style={{ willChange: 'transform' }}
+        className="flex items-center whitespace-nowrap"
+        animate={reduce ? { x: 0 } : { x }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { duration: 38, ease: 'linear', repeat: Infinity, repeatType: 'loop' }
+        }
+        style={{ willChange: reduce ? undefined : 'transform' }}
       >
         {[...items, ...items].map((line, i) => (
-          <span
-            key={i}
-            className="pe-md uppercase"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              fontWeight: isRtl ? 700 : 400,
-              fontSize: '30.96px',
-              lineHeight: 1,
-              color,
-            }}
-          >
-            {line}
+          <span key={i} className="flex items-center pe-md">
+            <span
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-serif)',
+                fontStyle: isRtl ? 'normal' : 'italic',
+                fontWeight: isRtl ? 500 : 400,
+                fontSize: 'clamp(22px, 3.2vw, 36px)',
+                lineHeight: 1,
+                color,
+                letterSpacing: isRtl ? 0 : '-0.005em',
+              }}
+            >
+              {line}
+            </span>
+            <span aria-hidden className="mx-4" style={{ color: accent }}>
+              <Ornament glyph="asterism" size={14} />
+            </span>
           </span>
         ))}
       </motion.div>

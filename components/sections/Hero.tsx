@@ -4,13 +4,12 @@ import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
+import { Ornament } from '@/components/shared/Ornament'
 import { cn } from '@/lib/utils'
 
 const EASE_OUT_QUART: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
 const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
 
-/* Staggered headline reveal — each line slides up + fades in 80ms after the
-   previous one, matching the Webflow hero stagger (see BEHAVIORS.md §2.2). */
 function LineReveal({
   children,
   delay,
@@ -24,9 +23,9 @@ function LineReveal({
     <span className="block overflow-hidden">
       <motion.span
         className={cn('block', className)}
-        initial={{ y: '100%', opacity: 0 }}
+        initial={{ y: '102%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: EASE_OUT_QUART, delay }}
+        transition={{ duration: 0.95, ease: EASE_IN_OUT_QUART, delay }}
       >
         {children}
       </motion.span>
@@ -47,31 +46,20 @@ function CtaPill({
 }) {
   return (
     <motion.span
-      initial={{ y: 20, opacity: 0 }}
+      initial={{ y: 14, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: EASE_OUT_QUART, delay }}
+      transition={{ duration: 0.6, ease: EASE_OUT_QUART, delay }}
       className="inline-block"
     >
       <Link
         href={href}
         className={cn(
-          'group relative inline-flex min-h-[44px] items-center gap-2 rounded-full border border-dashed px-5 py-2.5 text-[13px] transition-colors duration-300',
-          variant === 'outline'
-            ? 'border-ink text-ink hover:bg-ink hover:text-cream-soft'
-            : 'border-ink bg-ink text-cream-soft hover:bg-transparent hover:text-ink',
+          'pill',
+          variant === 'solid' && 'pill-solid',
         )}
-        style={{ letterSpacing: '0.08em' }}
       >
-        <span
-          aria-hidden
-          className={cn(
-            'h-[9px] w-[9px] rounded-full transition-colors duration-300',
-            variant === 'outline'
-              ? 'bg-ink group-hover:bg-cream-soft'
-              : 'bg-cream-soft group-hover:bg-ink',
-          )}
-        />
-        <span className="font-label">{children}</span>
+        <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
+        <span>{children}</span>
       </Link>
     </motion.span>
   )
@@ -83,54 +71,79 @@ export function Hero() {
   const tCta = useTranslations('cta')
   const isRtl = locale === 'ar'
 
+  // Pair the headline as: Italic line / Display line / Italic line / Display line.
+  // Latin uses Fraunces + Instrument Serif italic; Arabic uses Reem Kufi.
   const lines = [
-    { text: t('line_1'), style: 'sans' as const },
+    { text: t('line_1'), style: 'display' as const },
     { text: t('line_2'), style: 'italic' as const },
-    { text: t('line_3'), style: 'sans' as const },
+    { text: t('line_3'), style: 'display' as const },
     { text: t('line_4'), style: 'italic' as const },
-    { text: t('line_5'), style: 'sans' as const },
+    { text: t('line_5'), style: 'display' as const },
   ]
 
   return (
     <section
       aria-label={t('section_label')}
-      className="relative overflow-hidden bg-cream pt-[64px] pb-[var(--spacing-xl)]"
+      className="relative isolate overflow-hidden bg-paper pt-[88px] pb-[var(--spacing-xl)]"
     >
-      <div className="container grid items-center gap-[var(--spacing-lg)] md:grid-cols-[1.15fr_1fr] md:gap-[var(--spacing-xl)]">
-        <div className="text-start">
-          <motion.span
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: EASE_OUT_QUART, delay: 0.2 }}
-            className="font-label mb-6 inline-block text-ink-muted"
-          >
-            {t('eyebrow')}
-          </motion.span>
+      {/* Sky/mauve vignette in upper-end corner so the portrait melts into paper */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-80"
+        style={{
+          background:
+            'radial-gradient(60% 50% at 80% 20%, rgba(168, 196, 214, 0.14) 0%, transparent 70%), radial-gradient(50% 40% at 10% 80%, rgba(90, 74, 85, 0.07) 0%, transparent 70%)',
+        }}
+      />
 
-          <h1 className="flex flex-col gap-1">
+      <div className="container relative grid items-center gap-[var(--spacing-lg)] md:grid-cols-[1.18fr_1fr] md:gap-[var(--spacing-xl)]">
+        <div className="text-start">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE_OUT_QUART, delay: 0.15 }}
+            className="mb-7 flex items-baseline gap-3 text-ink-muted"
+          >
+            <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
+            <span
+              className="text-[11px] tracking-[0.18em] uppercase"
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                fontWeight: 500,
+                letterSpacing: isRtl ? 0 : '0.18em',
+                textTransform: isRtl ? 'none' : 'uppercase',
+                fontSize: isRtl ? 13 : 11,
+              }}
+            >
+              .01 — {t('eyebrow')}
+            </span>
+          </motion.div>
+
+          <h1 className={cn('flex flex-col text-balance', isRtl ? 'gap-1.5' : 'gap-0')}>
             {lines.map((line, i) => {
-              const isArabic = isRtl
-              const isItalic = line.style === 'italic' && !isArabic
+              const isItalic = line.style === 'italic' && !isRtl
               return (
                 <LineReveal
                   key={i}
-                  delay={0.3 + i * 0.09}
+                  delay={0.32 + i * 0.11}
                   className={cn(
-                    'uppercase',
-                    isArabic
-                      ? 'text-[clamp(44px,7.5vw,84px)] leading-[1.05]'
-                      : 'text-[clamp(40px,6.5vw,92.88px)] leading-[1.02] tracking-[-0.03em]',
+                    isRtl
+                      ? 'text-[clamp(40px,7vw,84px)] leading-[1.08]'
+                      : isItalic
+                        ? 'text-[clamp(40px,6.6vw,96px)] leading-[1.0] italic'
+                        : 'text-[clamp(44px,6.8vw,100px)] leading-[0.96] tracking-[-0.022em]',
                   )}
                 >
                   <span
                     style={{
-                      fontFamily: isArabic
-                        ? 'var(--font-arabic)'
+                      fontFamily: isRtl
+                        ? 'var(--font-arabic-display)'
                         : isItalic
                           ? 'var(--font-serif)'
-                          : 'var(--font-oswald)',
+                          : 'var(--font-display)',
                       fontStyle: isItalic ? 'italic' : 'normal',
-                      fontWeight: isArabic ? 700 : isItalic ? 400 : 600,
+                      fontWeight: isRtl ? 500 : isItalic ? 400 : 400,
+                      color: isItalic ? 'var(--color-garnet)' : 'var(--color-ink)',
                     }}
                   >
                     {line.text}
@@ -140,70 +153,101 @@ export function Hero() {
             })}
           </h1>
 
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              ease: EASE_OUT_QUART,
-              delay: 0.9,
-            }}
-            className="mt-[var(--spacing-md)] max-w-prose text-ink-muted text-[15px] leading-[1.7]"
+            transition={{ duration: 0.7, ease: EASE_OUT_QUART, delay: 1.0 }}
+            className="mt-[var(--spacing-md)] max-w-[58ch]"
           >
-            {t('description')}
-          </motion.p>
+            <p
+              className="text-pretty text-ink-soft"
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                fontSize: isRtl ? 17 : 17,
+                lineHeight: isRtl ? 1.95 : 1.65,
+                fontWeight: 400,
+              }}
+            >
+              {t('description')}
+            </p>
+          </motion.div>
 
           <div className="mt-[var(--spacing-lg)] flex flex-wrap items-center gap-3">
-            <CtaPill href="/articles" delay={1.4} variant="outline">
+            <CtaPill href="/articles" delay={1.45} variant="outline">
               {tCta('articles')}
             </CtaPill>
-            <CtaPill href="/books" delay={1.5} variant="solid">
+            <CtaPill href="/books" delay={1.55} variant="solid">
               {tCta('books')}
             </CtaPill>
-
-            <motion.span
-              aria-hidden
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.8, duration: 0.4 }}
-              className="animate-bob ms-xs inline-block h-[10px] w-[10px] rounded-full bg-ink"
-            />
           </div>
         </div>
 
-        {/* REPLACE: real portrait from Dr. Ghattass */}
+        {/* Portrait — printed frame with warm sepia duotone */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.9, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
-          className="relative mx-auto aspect-[3/4] w-full max-w-[520px]"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.1, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
+          className="relative mx-auto w-full max-w-[520px]"
         >
-          <div className="dotted-outline absolute inset-0 overflow-hidden bg-cream-warm">
-            <Image
-              src="/dr khaled photo.jpeg"
-              alt=""
-              fill
-              priority
-              sizes="(min-width: 768px) 520px, 100vw"
-              className="object-cover object-center"
-            />
+          <div className="relative aspect-[3/4] frame-print">
+            <div className="relative h-full w-full overflow-hidden">
+              <Image
+                src="/dr-khaled-portrait.jpg"
+                alt={isRtl ? 'د. خالد غطاس' : 'Dr. Khaled Ghattass'}
+                fill
+                priority
+                sizes="(min-width: 768px) 520px, 100vw"
+                className="object-cover"
+                style={{ objectPosition: 'center top' }}
+              />
+              {/* Soft cream + mauve wash on the inner edge — bleeds the portrait into the paper */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    'linear-gradient(115deg, rgba(240, 230, 216, 0.45) 0%, transparent 35%, transparent 70%, rgba(42, 37, 40, 0.15) 100%)',
+                  mixBlendMode: 'multiply',
+                }}
+              />
+            </div>
           </div>
-          {/* Soft cream feather on the inner edge to match the clone's gradient seam */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-cream/80 via-transparent to-transparent rtl:bg-gradient-to-l"
-          />
+
+          {/* Marginalia: handwritten-style attribution under the portrait */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4, duration: 0.6 }}
+            className="absolute -bottom-3 inset-inline-end-3 flex items-baseline gap-2 bg-paper px-2.5 py-1 text-ink-muted"
+          >
+            <Ornament glyph="asterism" size={12} className="text-brass" />
+            <span
+              className="text-[10px] tracking-[0.16em] uppercase"
+              style={{
+                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
+                fontStyle: isRtl ? 'normal' : 'italic',
+                fontWeight: 500,
+                letterSpacing: isRtl ? 0 : '0.14em',
+                textTransform: isRtl ? 'none' : 'uppercase',
+                fontSize: isRtl ? 11 : 10,
+              }}
+            >
+              {isRtl ? 'صورة بورتريه — ٢٠٢٤' : 'Portrait — Beirut, 2024'}
+            </span>
+          </motion.div>
         </motion.div>
       </div>
 
+      {/* Bottom rule with a centered fleuron — bridges into the next section */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.6, duration: 0.5 }}
-        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2"
-        aria-hidden
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.7, duration: 0.6 }}
+        className="container mt-[var(--spacing-xl)] flex items-center justify-center gap-4 text-ink-muted/40"
       >
-        <span className="animate-bob block h-[10px] w-[10px] rounded-full bg-ink" />
+        <span aria-hidden className="block h-px flex-1 bg-current" />
+        <Ornament glyph="fleuron" size={18} className="text-brass animate-bob" />
+        <span aria-hidden className="block h-px flex-1 bg-current" />
       </motion.div>
     </section>
   )
