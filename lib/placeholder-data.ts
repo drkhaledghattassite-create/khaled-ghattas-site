@@ -1,0 +1,681 @@
+/**
+ * Placeholder data — DISPOSABLE.
+ *
+ * Shapes are schema-derived types from `lib/db/schema.ts` so `queries.ts`
+ * can swap between Drizzle and these arrays transparently.
+ *
+ * Imported ONLY by `lib/db/queries.ts`. Pages and components must use
+ * the queries layer.
+ */
+
+import type {
+  Article,
+  Book,
+  ContactMessage,
+  ContentBlock,
+  Event,
+  GalleryItem,
+  Interview,
+  Order,
+  SiteSetting,
+  Subscriber,
+  User,
+} from './db/schema'
+
+const NOW = new Date('2026-04-24T00:00:00Z')
+
+const LONG_AR =
+  'تتناول هذه المقالة أطرًا فلسفية ونفسية لقراءة تحولات الذات العربية المعاصرة، عبر إعادة قراءة نقدية للتراث وموقعه من الوعي الحديث. ' +
+  'ينطلق الكاتب من تجربة سريرية ممتدة في العلاج النفسي، متقاطعة مع خلفية فلسفية صلبة، ليقدم رؤية تربط بين مفهوم الحرية والمسؤولية الأخلاقية. ' +
+  'يعالج النص أيضًا جدلية الانتماء والانفتاح، ويطرح أسئلة حول معنى الحضور الإنساني في ظل التحولات الرقمية.'
+
+const LONG_EN =
+  'This essay develops a philosophical-psychological framework for reading the transformations of the contemporary Arab self. ' +
+  'Drawing on decades of clinical practice in psychotherapy and a rigorous philosophical grounding, the author articulates a view that ties freedom to moral responsibility. ' +
+  'The piece also engages the dialectic of belonging and openness, and poses questions about the meaning of human presence amid digital transformation.'
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Articles                                                               */
+/* ────────────────────────────────────────────────────────────────────── */
+
+export const placeholderArticles: Article[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000a1',
+    slug: 'freedom-and-responsibility',
+    titleAr: 'الحرية والمسؤولية في فكر الإنسان المعاصر',
+    titleEn: 'Freedom and Responsibility in Contemporary Thought',
+    excerptAr: 'قراءة في علاقة الحرية بالمسؤولية الأخلاقية من منظور فلسفي نفسي.',
+    excerptEn: 'An inquiry into the bond between freedom and moral responsibility.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-1.jpg',
+    category: 'PHILOSOPHY',
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 0,
+    viewCount: 1284,
+    publishedAt: new Date('2025-02-14'),
+    createdAt: new Date('2025-02-14'),
+    updatedAt: new Date('2025-02-14'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a2',
+    slug: 'anxiety-in-the-age-of-noise',
+    titleAr: 'القلق في عصر الضوضاء الرقمية',
+    titleEn: 'Anxiety in the Age of Digital Noise',
+    excerptAr: 'كيف يعيد الضجيج الرقمي تشكيل علاقتنا بالهدوء الداخلي وبالذات؟',
+    excerptEn: 'How digital noise reshapes our relationship with inner stillness.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-2.jpg',
+    category: 'PSYCHOLOGY',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 1,
+    viewCount: 942,
+    publishedAt: new Date('2025-01-28'),
+    createdAt: new Date('2025-01-28'),
+    updatedAt: new Date('2025-01-28'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a3',
+    slug: 'arab-identity-between-heritage-and-modernity',
+    titleAr: 'الهوية العربية بين الموروث والحداثة',
+    titleEn: 'Arab Identity Between Heritage and Modernity',
+    excerptAr: 'جدلية الانتماء والانفتاح في الوعي العربي المعاصر.',
+    excerptEn: 'The dialectic of belonging and openness in contemporary Arab consciousness.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-3.jpg',
+    category: 'SOCIETY',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 2,
+    viewCount: 1820,
+    publishedAt: new Date('2025-01-15'),
+    createdAt: new Date('2025-01-15'),
+    updatedAt: new Date('2025-01-15'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a4',
+    slug: 'meaning-after-trauma',
+    titleAr: 'المعنى بعد الصدمة: من الألم إلى البناء',
+    titleEn: 'Meaning After Trauma: From Pain to Reconstruction',
+    excerptAr: 'تأملات في رحلة إعادة بناء الذات بعد التجارب الصعبة.',
+    excerptEn: 'Reflections on rebuilding the self after hardship.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-4.jpg',
+    category: 'PSYCHOLOGY',
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 3,
+    viewCount: 2110,
+    publishedAt: new Date('2024-12-20'),
+    createdAt: new Date('2024-12-20'),
+    updatedAt: new Date('2024-12-20'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a5',
+    slug: 'philosophy-of-solitude',
+    titleAr: 'فلسفة العزلة الخلاقة',
+    titleEn: 'The Philosophy of Creative Solitude',
+    excerptAr: 'العزلة بوصفها فضاء للتأمل والإبداع، لا هروبًا من العالم.',
+    excerptEn: 'Solitude as a space for reflection and creation, not escape.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-5.jpg',
+    category: 'PHILOSOPHY',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 4,
+    viewCount: 880,
+    publishedAt: new Date('2024-11-30'),
+    createdAt: new Date('2024-11-30'),
+    updatedAt: new Date('2024-11-30'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a6',
+    slug: 'education-in-the-age-of-ai',
+    titleAr: 'التربية في زمن الذكاء الاصطناعي',
+    titleEn: 'Education in the Age of Artificial Intelligence',
+    excerptAr: 'تحديات التعليم ومفهوم الإنسان في ظل الذكاء الاصطناعي.',
+    excerptEn: 'The challenges facing education and humanity under AI.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-1.jpg',
+    category: 'SOCIETY',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 5,
+    viewCount: 1340,
+    publishedAt: new Date('2024-11-08'),
+    createdAt: new Date('2024-11-08'),
+    updatedAt: new Date('2024-11-08'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a7',
+    slug: 'language-and-identity',
+    titleAr: 'اللغة العربية ومسألة الهوية',
+    titleEn: 'Arabic Language and the Question of Identity',
+    excerptAr: 'اللغة وعاء للهوية ومرآة للوجدان الجمعي.',
+    excerptEn: 'Language as vessel of identity and mirror of collective spirit.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-2.jpg',
+    category: 'CULTURE',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 6,
+    viewCount: 760,
+    publishedAt: new Date('2024-10-22'),
+    createdAt: new Date('2024-10-22'),
+    updatedAt: new Date('2024-10-22'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a8',
+    slug: 'digital-loneliness',
+    titleAr: 'الوحدة الرقمية: كيف فقدنا الحضور؟',
+    titleEn: 'Digital Loneliness: How We Lost Presence',
+    excerptAr: 'عن غياب الحضور الإنساني في عصر الاتصال المستمر.',
+    excerptEn: 'On the absence of human presence in the era of constant connection.',
+    contentAr: LONG_AR,
+    contentEn: LONG_EN,
+    coverImage: '/placeholder/nav/nav-3.jpg',
+    category: 'PSYCHOLOGY',
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 7,
+    viewCount: 612,
+    publishedAt: new Date('2024-10-05'),
+    createdAt: new Date('2024-10-05'),
+    updatedAt: new Date('2024-10-05'),
+  },
+]
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Books                                                                  */
+/* ────────────────────────────────────────────────────────────────────── */
+
+export const placeholderBooks: Book[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000b1',
+    slug: 'psychology-of-the-arab-self',
+    titleAr: 'سيكولوجيا الذات العربية',
+    titleEn: 'Psychology of the Arab Self',
+    subtitleAr: 'قراءة في تشكل الذات وتحولاتها',
+    subtitleEn: 'On the Formation and Transformation of the Self',
+    descriptionAr:
+      'يفتح هذا الكتاب أفقًا نقديًا لفهم الذات العربية من منظور علم النفس العميق، عبر قراءة التحولات السياسية والاجتماعية للقرن الأخير.',
+    descriptionEn:
+      'A critical horizon on the Arab self through depth psychology, reading the political and social transformations of the past century.',
+    coverImage: '/placeholder/nav/nav-1.jpg',
+    price: '24.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Ghattass',
+    publicationYear: 2023,
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 0,
+    createdAt: new Date('2023-09-01'),
+    updatedAt: new Date('2023-09-01'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b2',
+    slug: 'the-meaning-within',
+    titleAr: 'المعنى في الداخل',
+    titleEn: 'The Meaning Within',
+    subtitleAr: 'نحو فلسفة للحضور',
+    subtitleEn: 'Toward a Philosophy of Presence',
+    descriptionAr:
+      'يضع الكتاب أساسًا فلسفيًا لرؤية العالم من الداخل: لا المعنى موجود في الخارج، بل يُنتج في التجربة الداخلية للذات.',
+    descriptionEn:
+      'A philosophical foundation for seeing the world from within: meaning is not found out there, but produced in the inner experience of the self.',
+    coverImage: '/placeholder/nav/nav-2.jpg',
+    price: '19.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Nahdha',
+    publicationYear: 2021,
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 1,
+    createdAt: new Date('2021-05-10'),
+    updatedAt: new Date('2021-05-10'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b3',
+    slug: 'anxiety-and-healing',
+    titleAr: 'القلق والشفاء',
+    titleEn: 'Anxiety and Healing',
+    subtitleAr: 'دليل للعلاج النفسي الحديث',
+    subtitleEn: 'A Guide to Modern Psychotherapy',
+    descriptionAr:
+      'يقدّم الكتاب دليلاً عمليًا يستند إلى عقود من الممارسة السريرية، يربط بين نظريات القلق المعاصرة والتقنيات العلاجية، مع تأطير ثقافي عربي.',
+    descriptionEn:
+      'A practical guide grounded in decades of clinical practice, bridging contemporary theories of anxiety with therapeutic techniques, framed within an Arab cultural context.',
+    coverImage: '/placeholder/nav/nav-3.jpg',
+    price: '22.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Fikr',
+    publicationYear: 2019,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 2,
+    createdAt: new Date('2019-11-20'),
+    updatedAt: new Date('2019-11-20'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b4',
+    slug: 'essays-on-arab-thought',
+    titleAr: 'مقالات في الفكر العربي المعاصر',
+    titleEn: 'Essays on Contemporary Arab Thought',
+    subtitleAr: 'قراءات نقدية',
+    subtitleEn: 'Critical Readings',
+    descriptionAr:
+      'مجموعة مقالات تنتظم حول أسئلة الهوية والمعنى والانتماء، تشتبك مع التيارات الفكرية المعاصرة وتقدم قراءة نقدية للمشهد الفكري العربي.',
+    descriptionEn:
+      'A set of essays organized around questions of identity, meaning, and belonging, in dialogue with contemporary currents of thought and providing a critical reading of the Arab intellectual scene.',
+    coverImage: '/placeholder/nav/nav-4.jpg',
+    price: '18.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Saqi',
+    publicationYear: 2018,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 3,
+    createdAt: new Date('2018-03-15'),
+    updatedAt: new Date('2018-03-15'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b5',
+    slug: 'family-and-modern-identity',
+    titleAr: 'الأسرة والهوية الحديثة',
+    titleEn: 'Family and Modern Identity',
+    subtitleAr: 'بين الأصالة والتحدي',
+    subtitleEn: 'Between Tradition and Challenge',
+    descriptionAr:
+      'دراسة معمقة في التحولات التي تشهدها الأسرة العربية، وانعكاس ذلك على بناء الهوية الفردية والجماعية.',
+    descriptionEn:
+      'An in-depth study of transformations in the Arab family and their reflection on individual and collective identity.',
+    coverImage: '/placeholder/nav/nav-5.jpg',
+    price: '17.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Adab',
+    publicationYear: 2016,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 4,
+    createdAt: new Date('2016-08-05'),
+    updatedAt: new Date('2016-08-05'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b6',
+    slug: 'the-art-of-listening',
+    titleAr: 'فن الإصغاء',
+    titleEn: 'The Art of Listening',
+    subtitleAr: 'ممارسة علاجية وإنسانية',
+    subtitleEn: 'A Therapeutic and Human Practice',
+    descriptionAr:
+      'يقدم الكتاب الإصغاء بوصفه فنًا يحتاج تدريبًا وحضورًا، ومفتاحًا للعلاقة الإنسانية والشفاء.',
+    descriptionEn:
+      'Listening is presented as an art that requires practice and presence — a key to human relationship and healing.',
+    coverImage: '/placeholder/nav/nav-1.jpg',
+    price: '15.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Ghattass',
+    publicationYear: 2014,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 5,
+    createdAt: new Date('2014-02-18'),
+    updatedAt: new Date('2014-02-18'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b7',
+    slug: 'the-silent-soul',
+    titleAr: 'الروح الصامتة',
+    titleEn: 'The Silent Soul',
+    subtitleAr: 'سيكولوجيا الصمت',
+    subtitleEn: 'The Psychology of Silence',
+    descriptionAr:
+      'يستكشف الكتاب أبعاد الصمت بوصفه فضاءً للمعنى، لا غيابًا للكلام، في عصر تغلب عليه الضوضاء.',
+    descriptionEn:
+      'An exploration of silence as a space of meaning — not the absence of speech — in an age dominated by noise.',
+    coverImage: '/placeholder/nav/nav-2.jpg',
+    price: '14.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Nahdha',
+    publicationYear: 2012,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 6,
+    createdAt: new Date('2012-06-30'),
+    updatedAt: new Date('2012-06-30'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000b8',
+    slug: 'philosophical-dialogues',
+    titleAr: 'حوارات فلسفية',
+    titleEn: 'Philosophical Dialogues',
+    subtitleAr: 'في الفكر والنفس والمجتمع',
+    subtitleEn: 'On Thought, Psyche, and Society',
+    descriptionAr:
+      'سلسلة حوارات تجمع عقودًا من التفكير، تتناول الأسئلة الكبرى بلغة حوارية ميسرة.',
+    descriptionEn:
+      'A series of dialogues gathering decades of reflection, engaging the great questions in an accessible conversational register.',
+    coverImage: '/placeholder/nav/nav-3.jpg',
+    price: '16.00',
+    currency: 'USD',
+    digitalFile: null,
+    externalUrl: null,
+    publisher: 'Dar Al Fikr',
+    publicationYear: 2010,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 7,
+    createdAt: new Date('2010-10-12'),
+    updatedAt: new Date('2010-10-12'),
+  },
+]
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Interviews                                                             */
+/* ────────────────────────────────────────────────────────────────────── */
+
+const INTERVIEW_TEMPLATE: ReadonlyArray<{
+  slug: string
+  titleAr: string
+  titleEn: string
+  descAr: string
+  descEn: string
+  source: string
+  sourceAr: string
+  year: number
+}> = [
+  { slug: 'al-jazeera-identity',     titleAr: 'مقابلة مع الجزيرة: الهوية والمعنى',     titleEn: 'Al Jazeera Interview: Identity and Meaning',  descAr: 'حوار مطول حول أسئلة الهوية والمعنى في العالم العربي.',     descEn: 'A long-form dialogue on identity and meaning.',                  source: 'Al Jazeera',      sourceAr: 'الجزيرة',          year: 2024 },
+  { slug: 'bbc-arabic-thought',      titleAr: 'مقابلة مع BBC عربي: الفكر والمجتمع',    titleEn: 'BBC Arabic Interview: Thought and Society',   descAr: 'حديث حول تحديات الفكر العربي المعاصر.',                    descEn: 'A conversation on contemporary Arab thought.',                   source: 'BBC Arabic',      sourceAr: 'بي بي سي عربي',    year: 2023 },
+  { slug: 'al-arabiya-youth',        titleAr: 'مقابلة مع العربية: الشباب وسؤال المستقبل', titleEn: 'Al Arabiya Interview: Youth and the Future', descAr: 'قضايا الشباب العربي في ظل التحولات الكبرى.',               descEn: 'Arab youth issues amid major transformations.',                  source: 'Al Arabiya',      sourceAr: 'العربية',          year: 2023 },
+  { slug: 'sky-arabia-wellbeing',    titleAr: 'مقابلة مع سكاي نيوز عربية: الصحة النفسية', titleEn: 'Sky News Arabia: Mental Wellbeing',          descAr: 'نظرة على الصحة النفسية في مجتمعاتنا العربية.',             descEn: 'A look at mental health in Arab societies.',                     source: 'Sky News Arabia', sourceAr: 'سكاي نيوز عربية',  year: 2023 },
+  { slug: 'france24-arabic',         titleAr: 'مقابلة مع فرانس24: الفلسفة والسياسة',    titleEn: 'France 24 Arabic: Philosophy and Politics',  descAr: 'حوار حول الفلسفة والسياسة في الفضاء العربي.',              descEn: 'A dialogue on philosophy and politics in the Arab sphere.',      source: 'France 24 Arabic',sourceAr: 'فرانس 24 عربي',    year: 2022 },
+  { slug: 'dw-arabic-education',     titleAr: 'مقابلة مع دويتشه فيله: التربية والهوية', titleEn: 'DW Arabic: Education and Identity',          descAr: 'التربية بوصفها مشروعًا للهوية.',                            descEn: 'Education as a project of identity.',                            source: 'DW Arabic',       sourceAr: 'دويتشه فيله',      year: 2022 },
+  { slug: 'podcast-dialogue',        titleAr: 'بودكاست حوارات: المعنى في زمن السرعة',   titleEn: 'Dialogues Podcast: Meaning in Fast Times',   descAr: 'حديث عن المعنى في عصر السرعة والاستهلاك.',                 descEn: 'A discussion on meaning amid speed and consumption.',            source: 'Hiwarat Podcast', sourceAr: 'بودكاست حوارات',  year: 2021 },
+  { slug: 'asharq-future',           titleAr: 'مقابلة مع الشرق: المستقبل والإنسان',    titleEn: 'Asharq Interview: Future and Human',         descAr: 'تأملات حول مستقبل الإنسان في عصر التكنولوجيا.',           descEn: 'Reflections on the human future in the technology age.',         source: 'Asharq News',     sourceAr: 'الشرق',            year: 2021 },
+]
+
+export const placeholderInterviews: Interview[] = INTERVIEW_TEMPLATE.map((it, i) => ({
+  id: `00000000-0000-0000-0000-0000000000i${i + 1}` as string,
+  slug: it.slug,
+  titleAr: it.titleAr,
+  titleEn: it.titleEn,
+  descriptionAr: it.descAr,
+  descriptionEn: it.descEn,
+  thumbnailImage: `/placeholder/nav/nav-${(i % 5) + 1}.jpg`,
+  videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  source: it.source,
+  sourceAr: it.sourceAr,
+  year: it.year,
+  status: 'PUBLISHED',
+  featured: i < 3,
+  orderIndex: i,
+  createdAt: new Date(`${it.year}-06-15`),
+  updatedAt: new Date(`${it.year}-06-15`),
+}))
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Gallery (20 items)                                                     */
+/* ────────────────────────────────────────────────────────────────────── */
+
+const GALLERY_TEMPLATE: ReadonlyArray<{ titleAr: string; titleEn: string; category: string }> = [
+  { titleAr: 'محاضرة في بيروت 2024',     titleEn: 'Beirut Lecture 2024',       category: 'lecture' },
+  { titleAr: 'معرض القاهرة للكتاب',       titleEn: 'Cairo Book Fair',           category: 'event' },
+  { titleAr: 'مؤتمر الدوحة للحوار',        titleEn: 'Doha Dialogue Conference',  category: 'conference' },
+  { titleAr: 'ورشة عمل في عمّان',          titleEn: 'Amman Workshop',            category: 'workshop' },
+  { titleAr: 'ندوة في تونس',              titleEn: 'Tunis Panel',               category: 'panel' },
+  { titleAr: 'منتدى الرباط',              titleEn: 'Rabat Forum',               category: 'forum' },
+  { titleAr: 'جلسة قراءة خاصة',           titleEn: 'Private Reading Session',   category: 'portrait' },
+  { titleAr: 'محاضرة في باريس',           titleEn: 'Paris Lecture',             category: 'lecture' },
+  { titleAr: 'قمة دبي للفكر',             titleEn: 'Dubai Thought Summit',      category: 'conference' },
+  { titleAr: 'ندوة الكويت',               titleEn: 'Kuwait Symposium',          category: 'panel' },
+  { titleAr: 'محاضرة في مسقط',            titleEn: 'Muscat Talk',               category: 'lecture' },
+  { titleAr: 'مهرجان جدة الأدبي',          titleEn: 'Jeddah Literary Festival',  category: 'event' },
+  { titleAr: 'الشارقة للناشرين',           titleEn: 'Sharjah Publishers Forum',  category: 'forum' },
+  { titleAr: 'ورشة الرياض',               titleEn: 'Riyadh Workshop',           category: 'workshop' },
+  { titleAr: 'لقاء المنامة',              titleEn: 'Manama Gathering',          category: 'event' },
+  { titleAr: 'مؤتمر بغداد',               titleEn: 'Baghdad Conference',        category: 'conference' },
+  { titleAr: 'قراءة في إسطنبول',          titleEn: 'Istanbul Reading',          category: 'event' },
+  { titleAr: 'محاضرة في برلين',           titleEn: 'Berlin Lecture',            category: 'lecture' },
+  { titleAr: 'ندوة في لندن',              titleEn: 'London Panel',              category: 'panel' },
+  { titleAr: 'صورة خاصة',                 titleEn: 'Studio Portrait',           category: 'portrait' },
+]
+
+export const placeholderGallery: GalleryItem[] = GALLERY_TEMPLATE.map((g, i) => ({
+  id: `00000000-0000-0000-0000-00000000g${(i + 1).toString().padStart(3, '0')}`,
+  titleAr: g.titleAr,
+  titleEn: g.titleEn,
+  image: `/placeholder/nav/nav-${(i % 5) + 1}.jpg`,
+  category: g.category,
+  status: 'PUBLISHED',
+  orderIndex: i,
+  createdAt: new Date(2024 - Math.floor(i / 4), (i * 3) % 12, ((i * 5) % 28) + 1),
+}))
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Events                                                                 */
+/* ────────────────────────────────────────────────────────────────────── */
+
+export const placeholderEvents: Event[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000e1',
+    slug: 'beirut-philosophy-forum-2026',
+    titleAr: 'منتدى بيروت للفلسفة 2026',
+    titleEn: 'Beirut Philosophy Forum 2026',
+    descriptionAr: 'كلمة افتتاحية حول "الذات العربية في عصر السرعة".',
+    descriptionEn: 'Keynote on "The Arab Self in the Age of Speed".',
+    locationAr: 'بيروت، لبنان',
+    locationEn: 'Beirut, Lebanon',
+    coverImage: null,
+    startDate: new Date('2026-06-12T18:00:00Z'),
+    endDate: new Date('2026-06-12T20:00:00Z'),
+    registrationUrl: 'https://example.com/register/beirut',
+    status: 'UPCOMING',
+    orderIndex: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e2',
+    slug: 'doha-dialogues-2026',
+    titleAr: 'حوارات الدوحة 2026',
+    titleEn: 'Doha Dialogues 2026',
+    descriptionAr: 'حلقة نقاش حول الفكر والمجتمع في المنطقة العربية.',
+    descriptionEn: 'A panel on thought and society in the Arab region.',
+    locationAr: 'الدوحة، قطر',
+    locationEn: 'Doha, Qatar',
+    coverImage: null,
+    startDate: new Date('2026-09-05T16:00:00Z'),
+    endDate: new Date('2026-09-05T19:00:00Z'),
+    registrationUrl: 'https://example.com/register/doha',
+    status: 'UPCOMING',
+    orderIndex: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e3',
+    slug: 'cairo-book-signing-2026',
+    titleAr: 'توقيع كتاب في القاهرة 2026',
+    titleEn: 'Cairo Book Signing 2026',
+    descriptionAr: 'توقيع كتاب "سيكولوجيا الذات العربية" في معرض القاهرة.',
+    descriptionEn: 'Book signing for "Psychology of the Arab Self" at the Cairo Fair.',
+    locationAr: 'القاهرة، مصر',
+    locationEn: 'Cairo, Egypt',
+    coverImage: null,
+    startDate: new Date('2026-11-20T15:00:00Z'),
+    endDate: new Date('2026-11-20T18:00:00Z'),
+    registrationUrl: 'https://example.com/register/cairo',
+    status: 'UPCOMING',
+    orderIndex: 2,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e4',
+    slug: 'amman-workshop-2025',
+    titleAr: 'ورشة عمل في عمّان 2025',
+    titleEn: 'Amman Workshop 2025',
+    descriptionAr: 'ورشة تدريبية في العلاج النفسي الحديث.',
+    descriptionEn: 'A workshop on modern psychotherapy practice.',
+    locationAr: 'عمّان، الأردن',
+    locationEn: 'Amman, Jordan',
+    coverImage: null,
+    startDate: new Date('2025-10-14T09:00:00Z'),
+    endDate: new Date('2025-10-14T17:00:00Z'),
+    registrationUrl: null,
+    status: 'PAST',
+    orderIndex: 3,
+    createdAt: new Date('2025-10-14'),
+    updatedAt: new Date('2025-10-14'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e5',
+    slug: 'tunis-symposium-2025',
+    titleAr: 'ندوة تونس 2025',
+    titleEn: 'Tunis Symposium 2025',
+    descriptionAr: 'ندوة حول الهوية الثقافية في شمال أفريقيا.',
+    descriptionEn: 'A symposium on cultural identity in North Africa.',
+    locationAr: 'تونس، تونس',
+    locationEn: 'Tunis, Tunisia',
+    coverImage: null,
+    startDate: new Date('2025-05-03T17:00:00Z'),
+    endDate: new Date('2025-05-03T20:00:00Z'),
+    registrationUrl: null,
+    status: 'PAST',
+    orderIndex: 4,
+    createdAt: new Date('2025-05-03'),
+    updatedAt: new Date('2025-05-03'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e6',
+    slug: 'riyadh-lecture-2024',
+    titleAr: 'محاضرة الرياض 2024',
+    titleEn: 'Riyadh Lecture 2024',
+    descriptionAr: 'محاضرة حول العقل العربي والتحولات الرقمية.',
+    descriptionEn: 'A lecture on the Arab mind and digital transformations.',
+    locationAr: 'الرياض، السعودية',
+    locationEn: 'Riyadh, Saudi Arabia',
+    coverImage: null,
+    startDate: new Date('2024-03-18T18:00:00Z'),
+    endDate: new Date('2024-03-18T20:00:00Z'),
+    registrationUrl: null,
+    status: 'PAST',
+    orderIndex: 5,
+    createdAt: new Date('2024-03-18'),
+    updatedAt: new Date('2024-03-18'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e7',
+    slug: 'paris-institute-talk-2023',
+    titleAr: 'محاضرة معهد العالم العربي في باريس 2023',
+    titleEn: 'IMA Paris Talk 2023',
+    descriptionAr: 'محاضرة عامة في معهد العالم العربي في باريس.',
+    descriptionEn: 'A public lecture at the Arab World Institute in Paris.',
+    locationAr: 'باريس، فرنسا',
+    locationEn: 'Paris, France',
+    coverImage: null,
+    startDate: new Date('2023-11-09T19:00:00Z'),
+    endDate: new Date('2023-11-09T21:00:00Z'),
+    registrationUrl: null,
+    status: 'PAST',
+    orderIndex: 6,
+    createdAt: new Date('2023-11-09'),
+    updatedAt: new Date('2023-11-09'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000e8',
+    slug: 'dubai-keynote-2023',
+    titleAr: 'كلمة رئيسية في دبي 2023',
+    titleEn: 'Dubai Keynote 2023',
+    descriptionAr: 'كلمة رئيسية في مؤتمر الإمارات للفكر.',
+    descriptionEn: 'A keynote at the UAE Thought Conference.',
+    locationAr: 'دبي، الإمارات',
+    locationEn: 'Dubai, UAE',
+    coverImage: null,
+    startDate: new Date('2023-04-22T18:30:00Z'),
+    endDate: new Date('2023-04-22T20:30:00Z'),
+    registrationUrl: null,
+    status: 'PAST',
+    orderIndex: 7,
+    createdAt: new Date('2023-04-22'),
+    updatedAt: new Date('2023-04-22'),
+  },
+]
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Site settings + content blocks                                         */
+/* ────────────────────────────────────────────────────────────────────── */
+
+export const placeholderSettings: SiteSetting[] = [
+  { id: 's-1', key: 'site_title_ar',       value: 'د. خالد غطاس',                       updatedAt: NOW },
+  { id: 's-2', key: 'site_title_en',       value: 'Dr. Khaled Ghattass',                updatedAt: NOW },
+  { id: 's-3', key: 'site_description_ar', value: 'الموقع الرسمي للدكتور خالد غطاس.',   updatedAt: NOW },
+  { id: 's-4', key: 'site_description_en', value: 'The official site of Dr. Khaled Ghattass.', updatedAt: NOW },
+  { id: 's-5', key: 'twitter_url',         value: 'https://twitter.com/',               updatedAt: NOW },
+  { id: 's-6', key: 'facebook_url',        value: 'https://facebook.com/',              updatedAt: NOW },
+  { id: 's-7', key: 'youtube_url',         value: 'https://youtube.com/',               updatedAt: NOW },
+  { id: 's-8', key: 'instagram_url',       value: 'https://instagram.com/',             updatedAt: NOW },
+  { id: 's-9', key: 'contact_email',       value: 'contact@drkhaledghattass.com',       updatedAt: NOW },
+]
+
+export const placeholderContentBlocks: ContentBlock[] = [
+  {
+    id: 'cb-1',
+    key: 'hero_eyebrow',
+    valueAr: 'فكر ومعنى',
+    valueEn: 'Thought & Meaning',
+    description: 'Small label above the hero headline.',
+    updatedAt: NOW,
+  },
+  {
+    id: 'cb-2',
+    key: 'hero_description',
+    valueAr:
+      'الموقع الرسمي للدكتور خالد غطاس — أرشيف يجمع المقالات والكتب والمقابلات.',
+    valueEn:
+      'The official site of Dr. Khaled Ghattass — an archive of articles, books, and interviews.',
+    description: 'Hero supporting paragraph.',
+    updatedAt: NOW,
+  },
+  {
+    id: 'cb-3',
+    key: 'footer_description',
+    valueAr:
+      'موقع يعرّف بالمنجز الفكري للدكتور خالد غطاس، ويجمع كتاباته ومقابلاته.',
+    valueEn:
+      'A curated archive of Dr. Khaled Ghattass\'s essays, books, and interviews.',
+    description: 'Footer supporting copy.',
+    updatedAt: NOW,
+  },
+]
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* Empty stubs for tables that have no public data yet.                   */
+/* ────────────────────────────────────────────────────────────────────── */
+
+export const placeholderUsers: User[] = []
+export const placeholderOrders: Order[] = []
+export const placeholderSubscribers: Subscriber[] = []
+export const placeholderContactMessages: ContactMessage[] = []

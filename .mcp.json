@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "glance": {
+      "command": "glance-mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@executeautomation/playwright-mcp-server"]
+    }
+  }
+}

@@ -1,26 +1,236 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* ==========================================================================
+   Design tokens — drkhaledghattass.com
+   Reference: ../dayanjayatillekaWEBSITE/docs/research/DESIGN_TOKENS.md
+   ========================================================================== */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Core palette */
+  --color-cream: #EDE7DF;
+  --color-cream-soft: #F6F4F1;
+  --color-cream-warm: #DED9D0;
+  --color-beige: #CEC8BD;
+  --color-ink: #252321;
+  --color-ink-muted: #8B8378;
+  --color-amber: #BC884A;
+  --color-navy: #002A5C;
+  --color-success: #7DC242;
+
+  /* shadcn mapping — keeps shadcn primitives on our palette */
+  --color-background: var(--color-cream);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-cream-soft);
+  --color-card-foreground: var(--color-ink);
+  --color-popover: var(--color-cream-soft);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-cream);
+  --color-secondary: var(--color-cream-warm);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted: var(--color-cream-warm);
+  --color-muted-foreground: var(--color-ink-muted);
+  --color-accent: var(--color-amber);
+  --color-accent-foreground: var(--color-ink);
+  --color-destructive: #B3261E;
+  --color-border: var(--color-ink);
+  --color-input: var(--color-ink-muted);
+  --color-ring: var(--color-ink-muted);
+
+  /* Fonts — wired to next/font CSS variables */
+  --font-arabic: var(--font-arabic);
+  --font-serif: var(--font-serif);
+  --font-oswald: var(--font-oswald);
+  --font-sans: var(--font-arabic);
+  --font-heading: var(--font-oswald);
+  --font-mono: var(--font-oswald);
+
+  /* Typography scale (from DESIGN_TOKENS.md, unified line-height for hero) */
+  --text-hero-sans: 92.88px;
+  --text-hero-italic: 88.2px;
+  --text-body: 16px;
+  --text-label: 14px;
+  --leading-hero: 50.57px;
+  --leading-body: 1.6;
+  --tracking-hero: -3px;
+  --tracking-label: 0.1em;
+
+  /* Spacing rhythm */
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 48px;
+  --spacing-xl: 96px;
+
+  /* Radii — dashed outlines, no rounded corners on cards */
+  --radius: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-pill: 999px;
+
+  /* Easing curves (Webflow IX2 → CSS) */
+  --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-out-quart: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-back-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ==========================================================================
+   Base — RTL primary
+   ========================================================================== */
+:root {
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
+  --muted-foreground: var(--color-ink-muted);
+  --accent: var(--color-amber);
+  --border: var(--color-ink);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-arabic), "Amiri", Georgia, serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  html[dir="ltr"] {
+    font-family: var(--font-oswald), "Helvetica Neue", Arial, sans-serif;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================================================
+   Logical-property utilities (RTL-safe).
+   Tailwind v4 already ships ms-, me-, ps-, pe-, text-start, text-end.
+   The classes below are safety fallbacks for raw usage.
+   ========================================================================== */
+.text-start { text-align: start; }
+.text-end   { text-align: end; }
+
+.ms-xs { margin-inline-start: var(--spacing-xs); }
+.ms-sm { margin-inline-start: var(--spacing-sm); }
+.ms-md { margin-inline-start: var(--spacing-md); }
+.ms-lg { margin-inline-start: var(--spacing-lg); }
+.ms-xl { margin-inline-start: var(--spacing-xl); }
+
+.me-xs { margin-inline-end: var(--spacing-xs); }
+.me-sm { margin-inline-end: var(--spacing-sm); }
+.me-md { margin-inline-end: var(--spacing-md); }
+.me-lg { margin-inline-end: var(--spacing-lg); }
+.me-xl { margin-inline-end: var(--spacing-xl); }
+
+.ps-xs { padding-inline-start: var(--spacing-xs); }
+.ps-sm { padding-inline-start: var(--spacing-sm); }
+.ps-md { padding-inline-start: var(--spacing-md); }
+.ps-lg { padding-inline-start: var(--spacing-lg); }
+.ps-xl { padding-inline-start: var(--spacing-xl); }
+
+.pe-xs { padding-inline-end: var(--spacing-xs); }
+.pe-sm { padding-inline-end: var(--spacing-sm); }
+.pe-md { padding-inline-end: var(--spacing-md); }
+.pe-lg { padding-inline-end: var(--spacing-lg); }
+.pe-xl { padding-inline-end: var(--spacing-xl); }
+
+/* ==========================================================================
+   Typography helpers
+   ========================================================================== */
+.font-hero-sans {
+  font-family: var(--font-oswald), sans-serif;
+  font-size: var(--text-hero-sans);
+  line-height: var(--leading-hero);
+  letter-spacing: var(--tracking-hero);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.font-hero-italic {
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+  font-size: var(--text-hero-italic);
+  line-height: var(--leading-hero);
+  text-transform: uppercase;
+}
+
+.font-hero-arabic {
+  font-family: var(--font-arabic), serif;
+  font-size: var(--text-hero-sans);
+  line-height: var(--leading-hero);
+  font-weight: 700;
+}
+
+.font-label {
+  font-family: var(--font-oswald), sans-serif;
+  font-size: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+[dir="rtl"] .font-label {
+  font-family: var(--font-arabic), sans-serif;
+  text-transform: none;
+}
+
+/* ==========================================================================
+   Signature pattern: 1px dashed outlines (no shadows anywhere)
+   ========================================================================== */
+.dotted-outline       { border: 1px dashed var(--color-ink); }
+.dotted-outline-muted { border: 1px dashed var(--color-ink-muted); }
+
+/* ==========================================================================
+   Ambient motion keyframes (Webflow marquee + star rotations)
+   ========================================================================== */
+@keyframes marquee-left {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes marquee-right {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+@keyframes bob-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(6px); }
+}
+@keyframes spin-cw  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spin-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+.animate-marquee-left  { animation: marquee-left 20s linear infinite; }
+.animate-marquee-right { animation: marquee-right 20s linear infinite; }
+.animate-bob           { animation: bob-y 1400ms var(--ease-in-out-quart) infinite; }
+.animate-spin-cw       { animation: spin-cw 8s linear infinite; }
+.animate-spin-ccw      { animation: spin-ccw 14s linear infinite; }
+
+/* ==========================================================================
+   Container
+   ========================================================================== */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+  max-width: 80rem;
 }

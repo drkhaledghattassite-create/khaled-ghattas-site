@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --skip-install --yes)"
+      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --skip-install --yes)",
+      "Bash(npm install *)",
+      "Bash(npx next *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npx --yes shadcn@latest init --defaults --yes 2>&1 | Select-Object -Last 30)",
+      "PowerShell(npx --yes shadcn@latest add input label textarea select dialog sheet dropdown-menu form skeleton table card badge separator sonner --yes --overwrite 2>&1 | Select-Object -Last 20)",
+      "PowerShell(npx --yes shadcn@latest add form --yes 2>&1 | Select-Object -Last 15)",
+      "Bash(npx --yes shadcn@latest add form --yes)",
+      "Bash(npx --yes shadcn@latest add form --overwrite --yes)",
+      "Bash(npx --yes shadcn@latest add form button --overwrite)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -Last 80)",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "PowerShell(npm run lint 2>&1)",
+      "Bash(curl -sS -o /dev/null -w \"ar -> %{http_code}\\\\n\" http://localhost:3001/)",
+      "Bash(curl -sS -o /dev/null -w \"en -> %{http_code}\\\\n\" http://localhost:3001/en)",
+      "Bash(curl -sS -o /dev/null -w \"ar -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/)",
+      "Bash(curl -sS -o /dev/null -w \"en -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/en)",
+      "PowerShell(npx drizzle-kit generate 2>&1 | Select-Object -Last 30)"
     ]
   }
 }

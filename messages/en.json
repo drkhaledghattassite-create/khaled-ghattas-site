@@ -1,0 +1,270 @@
+{
+  "nav": {
+    "brand": "Dr. Khaled Ghattass",
+    "home": "Home",
+    "about": "About",
+    "articles": "Articles",
+    "books": "Books",
+    "interviews": "Interviews",
+    "gallery": "Gallery",
+    "contact": "Contact",
+    "events": "Events",
+    "menu": "Menu",
+    "close": "Close",
+    "primary": "Primary navigation",
+    "progress": "Page progress indicator",
+    "page_index": "Page - Index",
+    "page_index_numbered": "Page - {n}"
+  },
+  "common": {
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "breadcrumb": "Breadcrumb",
+    "lightbox": "Image viewer"
+  },
+  "hero": {
+    "section_label": "Opening section",
+    "eyebrow": "Thought & Meaning",
+    "line_1": "A leading Arab",
+    "line_2": "thinker,",
+    "line_3": "Philosopher",
+    "line_4": "and psychoanalyst",
+    "line_5": "on self and society.",
+    "description": "The official site of Dr. Khaled Ghattass — an archive of articles, books, and interviews, tracing a lifelong inquiry into philosophy, psychology, and contemporary Arab thought."
+  },
+  "cta": {
+    "articles": "View Articles",
+    "books": "View Books",
+    "read_more": "Read more",
+    "view_all": "View all",
+    "view_all_articles": "View all articles",
+    "view_interview": "View interview",
+    "read_book": "Read book",
+    "all_books": "All books",
+    "enter_gallery": "Enter gallery",
+    "subscribe": "Subscribe",
+    "scroll_up_to_reveal_nav": "Scroll up to reveal nav"
+  },
+  "loading": {
+    "intro": "Loading",
+    "marquee": "Thinker — Philosopher — Author — Psychoanalyst — Columnist — Professor",
+    "marquee_row_1": "POLITICAL ANALYST — COMMENTATOR — AUTHOR — COLUMNIST — FORMER AMBASSADOR",
+    "marquee_row_2": "1000+ ARTICLES — 30+ INTERVIEWS — 5+ BOOKS — 4 DECADES"
+  },
+  "tapes": {
+    "cream": "1000+ ARTICLES PUBLISHED — OVER 10 PUBLISHERS",
+    "dark": "40+ YEARS — CONTRIBUTING TO POLITICS"
+  },
+  "stats": {
+    "bio": "Dr. Khaled Ghattass has contributed to Arab intellectual and cultural life for four decades — as a writer, philosopher, and psychoanalyst, and as a university professor with a lasting presence in international media through more than five years of dedicated programming on thought and society.",
+    "media": "HE HAS APPEARED ON BBC ARABIC, AL JAZEERA, SKY NEWS ARABIA, LBC, MTV, OTV, AL ARABIYA.",
+    "cta": "Learn more"
+  },
+  "about": {
+    "meta": {
+      "title": "About Dr. Khaled Ghattass",
+      "description": "Biography, research, and career of Dr. Khaled Ghattass"
+    },
+    "eyebrow": "Biography & Career",
+    "hero": {
+      "italic": "About",
+      "sans": "Dr. Khaled Ghattass",
+      "description": "Four decades in thought, psychoanalysis, philosophy, public writing, and dialogue."
+    },
+    "entry_1": "Dr. Khaled Ghattass is a prominent Arab intellectual, psychotherapist, and philosopher",
+    "entry_2": "An author of books on psychology, philosophy, and society",
+    "entry_3": "A prominent public speaker across the Arab world",
+    "entry_4": "A specialist in psychotherapy and mental health",
+    "bio_paragraph": "For over four decades Dr. Khaled Ghattass has contributed to Arab intellectual and cultural life through a practice that bridges clinical psychotherapy, philosophical inquiry, journalistic writing, and media presence. He has authored hundreds of articles in the Arab and international press, published five books in psychology, philosophy, and society, and participated in hundreds of television and podcast conversations.",
+    "stats": {
+      "articles": "Articles",
+      "interviews": "Interviews",
+      "books": "Books",
+      "decades": "Decades"
+    }
+  },
+  "articles": {
+    "heading": {
+      "part_1": "Intellectual Archive:",
+      "part_2": "Articles of Insight & Impact"
+    },
+    "bridge": {
+      "row_1": "600+ ARTICLE COLLECTION - ",
+      "row_2": "ONE ARTICLE EVERY WEEK - "
+    },
+    "meta": {
+      "title": "Articles",
+      "description": "An archive of Dr. Khaled Ghattass's writing on philosophy, psychology, and society"
+    },
+    "page": {
+      "eyebrow": "Intellectual Archive",
+      "hero": {
+        "italic": "A Collection of",
+        "sans": "600+ Articles"
+      },
+      "description": "A unique repository of articles by Dr. Khaled Ghattass, accessible thematically and chronologically, reflecting contemporary concerns of self, society, and thought."
+    }
+  },
+  "article": {
+    "author": "Author",
+    "related": "Related articles",
+    "share": {
+      "label": "Share:",
+      "twitter": "Twitter",
+      "facebook": "Facebook",
+      "whatsapp": "WhatsApp"
+    }
+  },
+  "interviews": {
+    "heading": {
+      "part_1": "Voices of Insight:",
+      "part_2": "Featured interviews with Dr. Khaled Ghattass"
+    },
+    "badge": "View all interviews",
+    "badge_short": "View\nAll",
+    "stamp_text": "Click To View All — Click To View —",
+    "meta": {
+      "title": "Interviews",
+      "description": "A curated selection of Dr. Khaled Ghattass's most notable interviews"
+    },
+    "page": {
+      "eyebrow": "Filmed Interviews",
+      "hero": {
+        "italic": "Dive into some of the",
+        "sans": "Featured Interviews"
+      },
+      "description": "A collection of notable television, radio, and podcast interviews with Dr. Khaled Ghattass across the Arab and international press."
+    }
+  },
+  "books": {
+    "heading": {
+      "part_1": "Discover Books",
+      "part_2": "That Define the Intellectual Discourse"
+    },
+    "bridge": {
+      "row_1": "VIEW ALL BOOKS - ",
+      "row_2": "VIEW ALL BOOKS - "
+    },
+    "meta": {
+      "title": "Books",
+      "description": "Books by Dr. Khaled Ghattass on psychology, philosophy, and society"
+    },
+    "page": {
+      "eyebrow": "Library",
+      "hero": {
+        "italic": "Insights and Interventions",
+        "sans": "Into Contemporary Thought"
+      },
+      "description": "A complete set of Dr. Khaled Ghattass's books on psychology, philosophy, and society — tracing questions of the Arab self in contemporary life."
+    }
+  },
+  "book": {
+    "buy": "Buy now",
+    "sample": "Read sample",
+    "format": "Format",
+    "format_digital": "Digital PDF",
+    "format_print": "Print edition",
+    "publisher": "Publisher",
+    "year": "Year",
+    "category": "Category",
+    "related": "Related books"
+  },
+  "gallery": {
+    "heading": {
+      "part_1": "A Gallery of",
+      "part_2": "Memories"
+    },
+    "meta": {
+      "title": "Gallery",
+      "description": "Moments from Dr. Khaled Ghattass's life events and lectures"
+    },
+    "page": {
+      "eyebrow": "Visual Archive",
+      "hero": {
+        "italic": "A Gallery of",
+        "sans": "Dr. Khaled Ghattass's Life Events"
+      },
+      "description": "Memorable moments from lectures, events, and engagements across Arab cities and beyond."
+    }
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact",
+      "description": "Reach Dr. Khaled Ghattass — inquiries, invitations, engagements"
+    },
+    "page": {
+      "eyebrow": "Contact",
+      "hero": {
+        "italic": "Get in touch with",
+        "sans": "Dr. Khaled Ghattass"
+      },
+      "description": "For press inquiries, invitations, and engagement requests for events and interviews."
+    },
+    "form": {
+      "name": "Name",
+      "name_placeholder": "Your full name",
+      "email": "Email",
+      "email_placeholder": "name@example.com",
+      "subject": "Subject",
+      "subject_placeholder": "Message subject",
+      "message": "Message",
+      "message_placeholder": "Write your message here...",
+      "submit": "Send message",
+      "submitting": "Sending...",
+      "submitted": "Thank you, your message has been received"
+    },
+    "info": {
+      "heading": "Contact information",
+      "description": "Reach us by email or through the channels below:",
+      "email": "contact@drkhaledghattass.com",
+      "location": "Beirut, Lebanon",
+      "social": "Follow:",
+      "speaking_label": "Speaking engagements",
+      "speaking_text": "For speaking invitations, please use the form above and include the full event details."
+    }
+  },
+  "events": {
+    "meta": {
+      "title": "Events",
+      "description": "Upcoming and past engagements of Dr. Khaled Ghattass"
+    },
+    "page": {
+      "eyebrow": "Events",
+      "hero": {
+        "italic": "Upcoming events",
+        "sans": "& Engagements"
+      },
+      "description": "A list of upcoming and past lectures, conferences, and public engagements by Dr. Khaled Ghattass."
+    },
+    "upcoming": "Upcoming events",
+    "past": "Past events",
+    "register": "Register"
+  },
+  "newsletter": {
+    "heading": "Newsletter",
+    "description": "Subscribe to receive new articles and releases.",
+    "email_label": "Email",
+    "email_placeholder": "name@example.com",
+    "subscribe": "Subscribe",
+    "submitting": "Subscribing...",
+    "subscribed": "Subscribed successfully",
+    "invalid_email": "Please enter a valid email address"
+  },
+  "footer": {
+    "brand": "Dr. Khaled Ghattass",
+    "end_of_page": "End of page",
+    "description": "A curated archive of Dr. Khaled Ghattass's essays, books, and interviews — tracing his inquiry into the self, society, and the Arab intellectual tradition.",
+    "go_to_next_page": "Go to next page",
+    "next_page_label": "About",
+    "copyright": "All rights reserved"
+  },
+  "sections": {
+    "articles_placeholder": "Articles section — coming in next phase",
+    "books_placeholder": "Books section — coming in next phase",
+    "interviews_placeholder": "Interviews section — coming in next phase",
+    "gallery_placeholder": "Gallery section — coming in next phase",
+    "newsletter_placeholder": "Newsletter — coming in next phase"
+  }
+}
