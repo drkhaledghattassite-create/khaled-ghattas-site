@@ -266,5 +266,283 @@
     "interviews_placeholder": "Interviews section — coming in next phase",
     "gallery_placeholder": "Gallery section — coming in next phase",
     "newsletter_placeholder": "Newsletter — coming in next phase"
+  },
+  "admin": {
+    "user": { "panel": "Admin panel", "brand": "Dr. Khaled Ghattass", "logout": "Sign out" },
+    "groups": {
+      "content": "Content",
+      "commerce": "Commerce",
+      "audience": "Audience",
+      "site": "Site"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "articles": "Articles",
+      "books": "Books",
+      "interviews": "Interviews",
+      "gallery": "Gallery",
+      "events": "Events",
+      "orders": "Orders",
+      "products": "Products",
+      "subscribers": "Subscribers",
+      "messages": "Messages",
+      "users": "Users",
+      "settings": "Settings",
+      "content": "Content blocks",
+      "media": "Media library",
+      "new": "New",
+      "edit": "Edit"
+    },
+    "topbar": {
+      "quick_actions": "Quick actions",
+      "new": "New",
+      "new_article": "New article",
+      "new_book": "New book",
+      "new_event": "New event",
+      "notifications": "Notifications",
+      "logout": "Sign out"
+    },
+    "forms": {
+      "search": "Search…",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "view": "View",
+      "actions": "Actions",
+      "all": "All",
+      "drag_drop": "Drag and drop, or browse",
+      "browse": "Browse files",
+      "copy_url": "Copy URL",
+      "selected": "selected"
+    },
+    "empty": { "title": "No items yet" },
+    "actions": {
+      "confirm_delete": "Delete this item?",
+      "no_undo": "This action cannot be undone.",
+      "success_saved": "Saved",
+      "success_deleted": "Deleted",
+      "success_uploaded": "{count} file(s) uploaded",
+      "success_exported": "CSV exported",
+      "error_generic": "Something went wrong",
+      "cache_cleared": "Cache cleared",
+      "url_copied": "URL copied"
+    },
+    "pagination": {
+      "page": "Page {current} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "dashboard": {
+      "stats": {
+        "articles": "Articles",
+        "books": "Books",
+        "orders": "Orders",
+        "revenue": "Revenue"
+      },
+      "charts": {
+        "revenue": "Revenue (30d)",
+        "views": "Article views (30d)",
+        "subscribers": "Subscribers (30d)"
+      },
+      "recent_orders": "Recent orders",
+      "recent_messages": "Unread messages",
+      "quick_actions": "Quick actions",
+      "quick": {
+        "new_article": "Add article",
+        "new_book": "Add book",
+        "new_event": "Add event",
+        "review_messages": "Review inbox"
+      },
+      "empty": {
+        "orders": "No recent orders.",
+        "messages": "All caught up — no unread messages."
+      }
+    },
+    "articles": {
+      "description": "Manage all published and draft articles.",
+      "add": "Add article"
+    },
+    "article_form": {
+      "slug": "Slug",
+      "auto_slug": "Auto",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "excerpt_ar": "Excerpt (Arabic)",
+      "excerpt_en": "Excerpt (English)",
+      "content_ar": "Content (Arabic)",
+      "content_en": "Content (English)",
+      "cover_image": "Cover image",
+      "category": "Category",
+      "status": "Status",
+      "featured": "Featured",
+      "order_index": "Order",
+      "published_at": "Published"
+    },
+    "books": {
+      "description": "Manage book catalog and storefront entries.",
+      "add": "Add book"
+    },
+    "book_form": {
+      "slug": "Slug",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "subtitle_ar": "Subtitle (Arabic)",
+      "subtitle_en": "Subtitle (English)",
+      "description_ar": "Description (Arabic)",
+      "description_en": "Description (English)",
+      "cover_image": "Cover image",
+      "price": "Price",
+      "currency": "Currency",
+      "digital_file": "Digital file (PDF URL)",
+      "external_url": "External URL",
+      "publisher": "Publisher",
+      "publication_year": "Publication year",
+      "status": "Status",
+      "featured": "Featured",
+      "order_index": "Order"
+    },
+    "interviews": {
+      "description": "Manage interviews and media appearances.",
+      "add": "Add interview"
+    },
+    "interview_form": {
+      "slug": "Slug",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "description_ar": "Description (Arabic)",
+      "description_en": "Description (English)",
+      "thumbnail_image": "Thumbnail",
+      "video_url": "Video URL",
+      "source": "Source",
+      "source_ar": "Source (Arabic)",
+      "year": "Year",
+      "status": "Status",
+      "featured": "Featured",
+      "order_index": "Order"
+    },
+    "gallery": {
+      "description": "Photographic archive — bulk upload supported.",
+      "upload": "Upload photos",
+      "no_files": "Choose at least one image first.",
+      "upload_count": "Upload {count} file(s)"
+    },
+    "events": {
+      "description": "Upcoming and past public engagements.",
+      "add": "Add event"
+    },
+    "event_form": {
+      "slug": "Slug",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "description_ar": "Description (Arabic)",
+      "description_en": "Description (English)",
+      "location_ar": "Location (Arabic)",
+      "location_en": "Location (English)",
+      "cover_image": "Cover image",
+      "start_date": "Start date",
+      "end_date": "End date",
+      "registration_url": "Registration URL",
+      "status": "Status",
+      "order_index": "Order"
+    },
+    "orders": {
+      "description": "Customer orders and Stripe payments.",
+      "id": "Order ID",
+      "customer": "Customer",
+      "total": "Total",
+      "status": "Status",
+      "created_at": "Date",
+      "actions": "Actions",
+      "mark_fulfilled": "Mark fulfilled",
+      "refund": "Refund",
+      "cancel_order": "Cancel",
+      "open_stripe": "Open in Stripe",
+      "back_to_orders": "All orders"
+    },
+    "subscribers": {
+      "description": "Newsletter subscribers and audience growth.",
+      "email": "Email",
+      "name": "Name",
+      "source": "Source",
+      "status": "Status",
+      "subscribed_at": "Subscribed",
+      "send_newsletter": "Send newsletter",
+      "export_csv": "Export CSV",
+      "newsletter_coming": "Newsletter sender wires in Phase 6."
+    },
+    "users": {
+      "description": "Manage user accounts and roles.",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "created_at": "Joined",
+      "edit_role": "Edit role",
+      "confirm_role": "Choose the new role for this user."
+    },
+    "messages": {
+      "filter": {
+        "all": "All",
+        "unread": "Unread",
+        "read": "Read",
+        "archived": "Archived"
+      },
+      "empty": "No messages.",
+      "select_message": "Select a message to view it.",
+      "reply": "Reply",
+      "toggle_read": "Toggle read",
+      "archive": "Archive",
+      "to": "To",
+      "reply_placeholder": "Write your reply…",
+      "reply_sent": "Reply queued (mock).",
+      "send_reply": "Send reply"
+    },
+    "settings": {
+      "tabs": {
+        "general": "General",
+        "social": "Social",
+        "seo": "SEO",
+        "email": "Email",
+        "payments": "Payments",
+        "maintenance": "Maintenance"
+      },
+      "site_title_ar": "Site title (Arabic)",
+      "site_title_en": "Site title (English)",
+      "site_description_ar": "Site description (Arabic)",
+      "site_description_en": "Site description (English)",
+      "default_meta_image": "Default meta image",
+      "robots_indexing": "Allow search-engine indexing",
+      "from_name": "From name",
+      "from_email": "From email",
+      "reply_to_email": "Reply-to email",
+      "resend_status": "Resend status",
+      "resend_ready": "Connected",
+      "currency": "Currency",
+      "tax_rate": "Tax rate (%)",
+      "maintenance_mode": "Maintenance mode",
+      "clear_cache": "Clear cache"
+    },
+    "content_blocks": {
+      "new_key": "New block key",
+      "add_block": "Add block",
+      "suggested": "Suggested keys:",
+      "description": "Description",
+      "description_placeholder": "Where this block appears…"
+    },
+    "media": {
+      "filter": {
+        "all": "All",
+        "image": "Images",
+        "pdf": "PDFs",
+        "video": "Videos"
+      },
+      "upload": "Upload",
+      "upload_coming": "Real upload pipeline lands in Phase 6."
+    },
+    "products": {
+      "coming_soon_title": "Products",
+      "coming_soon_text": "Configure non-book products here once the catalog is ready."
+    }
   }
 }

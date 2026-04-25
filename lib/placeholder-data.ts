@@ -675,7 +675,155 @@ export const placeholderContentBlocks: ContentBlock[] = [
 /* Empty stubs for tables that have no public data yet.                   */
 /* ────────────────────────────────────────────────────────────────────── */
 
-export const placeholderUsers: User[] = []
-export const placeholderOrders: Order[] = []
-export const placeholderSubscribers: Subscriber[] = []
-export const placeholderContactMessages: ContactMessage[] = []
+export const placeholderUsers: User[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000u1',
+    email: 'admin@drkhaledghattass.com',
+    emailVerified: true,
+    name: 'Kamal',
+    image: null,
+    role: 'ADMIN',
+    passwordHash: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000u2',
+    email: 'khaled@drkhaledghattass.com',
+    emailVerified: true,
+    name: 'Dr. Khaled Ghattass',
+    image: null,
+    role: 'CLIENT',
+    passwordHash: null,
+    createdAt: new Date('2026-01-05'),
+    updatedAt: new Date('2026-01-05'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000u3',
+    email: 'reader.one@example.com',
+    emailVerified: true,
+    name: 'Layla Khoury',
+    image: null,
+    role: 'USER',
+    passwordHash: null,
+    createdAt: new Date('2026-02-12'),
+    updatedAt: new Date('2026-02-12'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000u4',
+    email: 'reader.two@example.com',
+    emailVerified: false,
+    name: 'Karim Hadid',
+    image: null,
+    role: 'USER',
+    passwordHash: null,
+    createdAt: new Date('2026-03-20'),
+    updatedAt: new Date('2026-03-20'),
+  },
+]
+
+export const placeholderOrders: Order[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000o1',
+    userId: '00000000-0000-0000-0000-0000000000u3',
+    status: 'PAID',
+    totalAmount: '24.00',
+    currency: 'USD',
+    stripePaymentIntentId: 'pi_mock_001',
+    stripeSessionId: 'cs_mock_001',
+    customerEmail: 'reader.one@example.com',
+    customerName: 'Layla Khoury',
+    createdAt: new Date('2026-04-12T14:30:00Z'),
+    updatedAt: new Date('2026-04-12T14:30:00Z'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000o2',
+    userId: '00000000-0000-0000-0000-0000000000u4',
+    status: 'FULFILLED',
+    totalAmount: '36.00',
+    currency: 'USD',
+    stripePaymentIntentId: 'pi_mock_002',
+    stripeSessionId: 'cs_mock_002',
+    customerEmail: 'reader.two@example.com',
+    customerName: 'Karim Hadid',
+    createdAt: new Date('2026-04-08T09:15:00Z'),
+    updatedAt: new Date('2026-04-09T11:00:00Z'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000o3',
+    userId: null,
+    status: 'PENDING',
+    totalAmount: '19.00',
+    currency: 'USD',
+    stripePaymentIntentId: null,
+    stripeSessionId: 'cs_mock_003',
+    customerEmail: 'guest@example.com',
+    customerName: 'Anonymous',
+    createdAt: new Date('2026-04-22T18:42:00Z'),
+    updatedAt: new Date('2026-04-22T18:42:00Z'),
+  },
+]
+
+export const placeholderSubscribers: Subscriber[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000s1',
+    email: 'reader.one@example.com',
+    nameAr: 'ليلى خوري',
+    nameEn: 'Layla Khoury',
+    status: 'ACTIVE',
+    source: 'homepage',
+    unsubscribeToken: 'tok_001',
+    createdAt: new Date('2026-02-12'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000s2',
+    email: 'reader.two@example.com',
+    nameAr: null,
+    nameEn: 'Karim Hadid',
+    status: 'ACTIVE',
+    source: 'footer',
+    unsubscribeToken: 'tok_002',
+    createdAt: new Date('2026-03-04'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000s3',
+    email: 'old.subscriber@example.com',
+    nameAr: null,
+    nameEn: null,
+    status: 'UNSUBSCRIBED',
+    source: 'article',
+    unsubscribeToken: 'tok_003',
+    createdAt: new Date('2025-09-20'),
+  },
+]
+
+export const placeholderContactMessages: ContactMessage[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000m1',
+    name: 'Sarah Mansour',
+    email: 'sarah@example.com',
+    subject: 'Speaking invitation — AUB Beirut',
+    message:
+      'We would love to invite Dr. Ghattass to give a keynote at our annual philosophy conference next October.',
+    status: 'UNREAD',
+    createdAt: new Date('2026-04-22T10:14:00Z'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000m2',
+    name: 'Tariq Aslan',
+    email: 'tariq@example.com',
+    subject: 'Translation rights query',
+    message: 'Could you share contact details for translation rights to The Meaning Within?',
+    status: 'UNREAD',
+    createdAt: new Date('2026-04-19T16:22:00Z'),
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000m3',
+    name: 'Reem Saab',
+    email: 'reem@example.com',
+    subject: 'Podcast appearance',
+    message: 'Following up on our podcast invitation — happy to schedule any week in May.',
+    status: 'READ',
+    createdAt: new Date('2026-04-10T08:30:00Z'),
+  },
+]

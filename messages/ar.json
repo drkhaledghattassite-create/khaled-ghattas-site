@@ -266,5 +266,283 @@
     "interviews_placeholder": "قسم المقابلات — قريباً في المرحلة القادمة",
     "gallery_placeholder": "قسم الصور — قريباً في المرحلة القادمة",
     "newsletter_placeholder": "النشرة البريدية — قريباً في المرحلة القادمة"
+  },
+  "admin": {
+    "user": { "panel": "لوحة التحكم", "brand": "د. خالد غطاس", "logout": "تسجيل الخروج" },
+    "groups": {
+      "content": "المحتوى",
+      "commerce": "المتجر",
+      "audience": "الجمهور",
+      "site": "الموقع"
+    },
+    "nav": {
+      "dashboard": "لوحة التحكم",
+      "articles": "المقالات",
+      "books": "الكتب",
+      "interviews": "المقابلات",
+      "gallery": "الصور",
+      "events": "الفعاليات",
+      "orders": "الطلبات",
+      "products": "المنتجات",
+      "subscribers": "المشتركون",
+      "messages": "الرسائل",
+      "users": "المستخدمون",
+      "settings": "الإعدادات",
+      "content": "كتل المحتوى",
+      "media": "مكتبة الوسائط",
+      "new": "جديد",
+      "edit": "تعديل"
+    },
+    "topbar": {
+      "quick_actions": "إجراءات سريعة",
+      "new": "جديد",
+      "new_article": "مقال جديد",
+      "new_book": "كتاب جديد",
+      "new_event": "فعالية جديدة",
+      "notifications": "الإشعارات",
+      "logout": "تسجيل الخروج"
+    },
+    "forms": {
+      "search": "بحث…",
+      "save": "حفظ",
+      "saving": "جاري الحفظ…",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "edit": "تعديل",
+      "view": "عرض",
+      "actions": "إجراءات",
+      "all": "الكل",
+      "drag_drop": "اسحب وأفلت أو اضغط للاختيار",
+      "browse": "اختر ملفات",
+      "copy_url": "نسخ الرابط",
+      "selected": "مختار"
+    },
+    "empty": { "title": "لا توجد عناصر بعد" },
+    "actions": {
+      "confirm_delete": "حذف هذا العنصر؟",
+      "no_undo": "لا يمكن التراجع عن هذا الإجراء.",
+      "success_saved": "تم الحفظ",
+      "success_deleted": "تم الحذف",
+      "success_uploaded": "تم رفع {count} ملف",
+      "success_exported": "تم تصدير CSV",
+      "error_generic": "حدث خطأ ما",
+      "cache_cleared": "تم مسح التخزين المؤقت",
+      "url_copied": "تم نسخ الرابط"
+    },
+    "pagination": {
+      "page": "الصفحة {current} من {total}",
+      "previous": "السابق",
+      "next": "التالي"
+    },
+    "dashboard": {
+      "stats": {
+        "articles": "المقالات",
+        "books": "الكتب",
+        "orders": "الطلبات",
+        "revenue": "الإيرادات"
+      },
+      "charts": {
+        "revenue": "الإيرادات (30 يومًا)",
+        "views": "مشاهدات المقالات (30 يومًا)",
+        "subscribers": "المشتركون (30 يومًا)"
+      },
+      "recent_orders": "الطلبات الأخيرة",
+      "recent_messages": "رسائل غير مقروءة",
+      "quick_actions": "إجراءات سريعة",
+      "quick": {
+        "new_article": "إضافة مقال",
+        "new_book": "إضافة كتاب",
+        "new_event": "إضافة فعالية",
+        "review_messages": "مراجعة الصندوق"
+      },
+      "empty": {
+        "orders": "لا توجد طلبات حديثة.",
+        "messages": "كل شيء على ما يرام — لا رسائل غير مقروءة."
+      }
+    },
+    "articles": {
+      "description": "إدارة جميع المقالات المنشورة والمسودات.",
+      "add": "إضافة مقال"
+    },
+    "article_form": {
+      "slug": "المعرف",
+      "auto_slug": "تلقائي",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "excerpt_ar": "المقتطف (عربي)",
+      "excerpt_en": "المقتطف (إنجليزي)",
+      "content_ar": "المحتوى (عربي)",
+      "content_en": "المحتوى (إنجليزي)",
+      "cover_image": "صورة الغلاف",
+      "category": "التصنيف",
+      "status": "الحالة",
+      "featured": "مميز",
+      "order_index": "الترتيب",
+      "published_at": "تاريخ النشر"
+    },
+    "books": {
+      "description": "إدارة فهرس الكتب وبيانات المتجر.",
+      "add": "إضافة كتاب"
+    },
+    "book_form": {
+      "slug": "المعرف",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "subtitle_ar": "العنوان الفرعي (عربي)",
+      "subtitle_en": "العنوان الفرعي (إنجليزي)",
+      "description_ar": "الوصف (عربي)",
+      "description_en": "الوصف (إنجليزي)",
+      "cover_image": "صورة الغلاف",
+      "price": "السعر",
+      "currency": "العملة",
+      "digital_file": "الملف الرقمي (رابط PDF)",
+      "external_url": "رابط خارجي",
+      "publisher": "الناشر",
+      "publication_year": "سنة الإصدار",
+      "status": "الحالة",
+      "featured": "مميز",
+      "order_index": "الترتيب"
+    },
+    "interviews": {
+      "description": "إدارة المقابلات والظهور الإعلامي.",
+      "add": "إضافة مقابلة"
+    },
+    "interview_form": {
+      "slug": "المعرف",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "description_ar": "الوصف (عربي)",
+      "description_en": "الوصف (إنجليزي)",
+      "thumbnail_image": "الصورة المصغرة",
+      "video_url": "رابط الفيديو",
+      "source": "المصدر",
+      "source_ar": "المصدر (عربي)",
+      "year": "السنة",
+      "status": "الحالة",
+      "featured": "مميز",
+      "order_index": "الترتيب"
+    },
+    "gallery": {
+      "description": "أرشيف الصور — يدعم الرفع المتعدد.",
+      "upload": "رفع صور",
+      "no_files": "اختر صورة واحدة على الأقل أولاً.",
+      "upload_count": "رفع {count} ملف"
+    },
+    "events": {
+      "description": "الفعاليات القادمة والسابقة.",
+      "add": "إضافة فعالية"
+    },
+    "event_form": {
+      "slug": "المعرف",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "description_ar": "الوصف (عربي)",
+      "description_en": "الوصف (إنجليزي)",
+      "location_ar": "الموقع (عربي)",
+      "location_en": "الموقع (إنجليزي)",
+      "cover_image": "صورة الغلاف",
+      "start_date": "تاريخ البداية",
+      "end_date": "تاريخ الانتهاء",
+      "registration_url": "رابط التسجيل",
+      "status": "الحالة",
+      "order_index": "الترتيب"
+    },
+    "orders": {
+      "description": "طلبات العملاء ومدفوعات Stripe.",
+      "id": "رقم الطلب",
+      "customer": "العميل",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "created_at": "التاريخ",
+      "actions": "إجراءات",
+      "mark_fulfilled": "تم التنفيذ",
+      "refund": "استرداد",
+      "cancel_order": "إلغاء",
+      "open_stripe": "فتح في Stripe",
+      "back_to_orders": "كل الطلبات"
+    },
+    "subscribers": {
+      "description": "مشتركو النشرة البريدية.",
+      "email": "البريد",
+      "name": "الاسم",
+      "source": "المصدر",
+      "status": "الحالة",
+      "subscribed_at": "تاريخ الاشتراك",
+      "send_newsletter": "إرسال نشرة",
+      "export_csv": "تصدير CSV",
+      "newsletter_coming": "إرسال النشرة سيُربط في المرحلة 6."
+    },
+    "users": {
+      "description": "إدارة الحسابات والأدوار.",
+      "name": "الاسم",
+      "email": "البريد",
+      "role": "الدور",
+      "created_at": "تاريخ الانضمام",
+      "edit_role": "تعديل الدور",
+      "confirm_role": "اختر الدور الجديد لهذا المستخدم."
+    },
+    "messages": {
+      "filter": {
+        "all": "الكل",
+        "unread": "غير مقروء",
+        "read": "مقروء",
+        "archived": "مؤرشف"
+      },
+      "empty": "لا توجد رسائل.",
+      "select_message": "اختر رسالة لعرضها.",
+      "reply": "رد",
+      "toggle_read": "تبديل القراءة",
+      "archive": "أرشفة",
+      "to": "إلى",
+      "reply_placeholder": "اكتب ردك…",
+      "reply_sent": "تم وضع الرد في قائمة الانتظار (تجريبي).",
+      "send_reply": "إرسال الرد"
+    },
+    "settings": {
+      "tabs": {
+        "general": "عام",
+        "social": "وسائل التواصل",
+        "seo": "تحسين محركات البحث",
+        "email": "البريد",
+        "payments": "المدفوعات",
+        "maintenance": "الصيانة"
+      },
+      "site_title_ar": "عنوان الموقع (عربي)",
+      "site_title_en": "عنوان الموقع (إنجليزي)",
+      "site_description_ar": "وصف الموقع (عربي)",
+      "site_description_en": "وصف الموقع (إنجليزي)",
+      "default_meta_image": "صورة meta الافتراضية",
+      "robots_indexing": "السماح بالفهرسة",
+      "from_name": "اسم المرسل",
+      "from_email": "بريد المرسل",
+      "reply_to_email": "بريد الرد",
+      "resend_status": "حالة Resend",
+      "resend_ready": "متصل",
+      "currency": "العملة",
+      "tax_rate": "نسبة الضريبة (%)",
+      "maintenance_mode": "وضع الصيانة",
+      "clear_cache": "مسح التخزين المؤقت"
+    },
+    "content_blocks": {
+      "new_key": "مفتاح جديد",
+      "add_block": "إضافة كتلة",
+      "suggested": "مفاتيح مقترحة:",
+      "description": "الوصف",
+      "description_placeholder": "أين تظهر هذه الكتلة…"
+    },
+    "media": {
+      "filter": {
+        "all": "الكل",
+        "image": "صور",
+        "pdf": "ملفات PDF",
+        "video": "فيديو"
+      },
+      "upload": "رفع",
+      "upload_coming": "خط الرفع الفعلي يأتي في المرحلة 6."
+    },
+    "products": {
+      "coming_soon_title": "المنتجات",
+      "coming_soon_text": "اضبط المنتجات غير الكتب هنا عندما يكون الفهرس جاهزًا."
+    }
   }
 }

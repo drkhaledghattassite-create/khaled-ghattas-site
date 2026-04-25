@@ -1,0 +1,298 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from '@/lib/i18n/navigation'
+import { useForm, type Resolver } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
+import { bookSchema, type BookInput } from '@/lib/validators/book'
+import { CONTENT_STATUSES } from '@/lib/validators/article'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+
+const DEFAULTS: BookInput = {
+  slug: '',
+  titleAr: '',
+  titleEn: '',
+  subtitleAr: '',
+  subtitleEn: '',
+  descriptionAr: '',
+  descriptionEn: '',
+  coverImage: '',
+  price: '',
+  currency: 'USD',
+  digitalFile: '',
+  externalUrl: '',
+  publisher: '',
+  publicationYear: null,
+  status: 'DRAFT',
+  featured: false,
+  orderIndex: 0,
+}
+
+type Props = {
+  initialValues?: Partial<BookInput>
+  mode: 'create' | 'edit'
+  bookId?: string
+}
+
+export function BookForm({ initialValues, mode, bookId }: Props) {
+  const router = useRouter()
+  const t = useTranslations('admin.book_form')
+  const tForms = useTranslations('admin.forms')
+  const tActions = useTranslations('admin.actions')
+  const [submitting, setSubmitting] = useState(false)
+
+  const form = useForm<BookInput>({
+    resolver: zodResolver(bookSchema) as Resolver<BookInput>,
+    defaultValues: { ...DEFAULTS, ...initialValues },
+  })
+
+  async function onSubmit(values: BookInput) {
+    setSubmitting(true)
+    console.log(`[admin] would ${mode} book`, values)
+    await new Promise((r) => setTimeout(r, 300))
+    setSubmitting(false)
+    toast.success(tActions('success_saved'))
+    router.push('/admin/books')
+  }
+
+  async function onDelete() {
+    console.log(`[admin] would delete book ${bookId}`)
+    toast.success(tActions('success_deleted'))
+    router.push('/admin/books')
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_320px]" noValidate>
+        <div className="space-y-5">
+          <FormField
+            control={form.control}
+            name="slug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('slug')}</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField control={form.control} name="titleAr" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('title_ar')}</FormLabel>
+                <FormControl><Input {...field} dir="rtl" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="titleEn" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('title_en')}</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField control={form.control} name="subtitleAr" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('subtitle_ar')}</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} dir="rtl" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="subtitleEn" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('subtitle_en')}</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+
+          <FormField control={form.control} name="descriptionAr" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('description_ar')}</FormLabel>
+              <FormControl><Textarea {...field} dir="rtl" rows={5} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="descriptionEn" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('description_en')}</FormLabel>
+              <FormControl><Textarea {...field} rows={5} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField control={form.control} name="digitalFile" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('digital_file')}</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder="https://…/book.pdf" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="externalUrl" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('external_url')}</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder="https://amazon.com/…" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+        </div>
+
+        <aside className="space-y-5 self-start rounded-md border border-dashed border-ink/30 bg-cream-soft p-5">
+          <FormField control={form.control} name="status" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('status')}</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {CONTENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="coverImage" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('cover_image')}</FormLabel>
+              <FormControl><Input {...field} placeholder="/placeholder/nav/nav-1.jpg" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="price" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('price')}</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder="24.00" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="currency" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('currency')}</FormLabel>
+                <FormControl><Input {...field} maxLength={3} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+
+          <FormField control={form.control} name="publisher" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('publisher')}</FormLabel>
+              <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="publicationYear" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('publication_year')}</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="featured" render={({ field }) => (
+            <FormItem className="flex items-center gap-2 space-y-0">
+              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+              <FormLabel className="!mt-0">{t('featured')}</FormLabel>
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="orderIndex" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('order_index')}</FormLabel>
+              <FormControl>
+                <Input type="number" min={0} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="font-label inline-flex items-center justify-center rounded-full border border-dashed border-ink bg-ink px-4 py-2 text-[12px] text-cream-soft hover:bg-transparent hover:text-ink disabled:opacity-60"
+              style={{ letterSpacing: '0.08em' }}
+            >
+              {submitting ? tForms('saving') : tForms('save')}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/admin/books')}
+              className="font-label rounded-full border border-dashed border-ink/40 px-4 py-2 text-[12px] text-ink hover:bg-cream-warm/40"
+              style={{ letterSpacing: '0.08em' }}
+            >
+              {tForms('cancel')}
+            </button>
+            {mode === 'edit' && (
+              <AlertDialog>
+                <AlertDialogTrigger
+                  className="font-label inline-flex items-center justify-center gap-1.5 rounded-full border border-dashed border-amber/60 px-4 py-2 text-[12px] text-amber hover:bg-amber hover:text-cream-soft"
+                  style={{ letterSpacing: '0.08em' }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  {tForms('delete')}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{tActions('confirm_delete')}</AlertDialogTitle>
+                    <AlertDialogDescription>{tActions('no_undo')}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{tForms('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDelete}>{tForms('delete')}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </aside>
+      </form>
+    </Form>
+  )
+}

@@ -18,7 +18,8 @@
       "Bash(curl -sS -o /dev/null -w \"en -> %{http_code}\\\\n\" http://localhost:3001/en)",
       "Bash(curl -sS -o /dev/null -w \"ar -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/)",
       "Bash(curl -sS -o /dev/null -w \"en -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/en)",
-      "PowerShell(npx drizzle-kit generate 2>&1 | Select-Object -Last 30)"
+      "PowerShell(npx drizzle-kit generate 2>&1 | Select-Object -Last 30)",
+      "PowerShell(npx --yes shadcn@latest add tabs switch alert-dialog checkbox popover avatar scroll-area tooltip --yes --overwrite 2>&1)"
     ]
   }
 }
