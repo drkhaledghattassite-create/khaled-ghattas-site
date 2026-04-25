@@ -25,7 +25,7 @@ export default async function BooksPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/placeholder/hero/portrait-bw.jpg', alt: '' }}
+        image={{ src: '/dr khaled photo.jpeg', alt: '' }}
       />
       <BooksGrid books={books} />
     </>

@@ -25,7 +25,7 @@ export default async function InterviewsPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/placeholder/hero/portrait-color.jpg', alt: '' }}
+        image={{ src: '/DSC06608.JPG', alt: '' }}
       />
       <InterviewsGallery interviews={interviews} />
     </>

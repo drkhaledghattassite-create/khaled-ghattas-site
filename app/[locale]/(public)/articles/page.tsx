@@ -26,7 +26,7 @@ export default async function ArticlesPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/placeholder/hero/portrait-color.jpg', alt: '' }}
+        image={{ src: '/drphoto.JPG', alt: '' }}
       />
 
       <ArticlesList articles={articles} showHeader={false} />

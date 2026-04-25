@@ -1,25 +1,28 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
+import { LogoLink } from '@/components/shared/Logo'
+import { LocaleSwitcher } from './LocaleSwitcher'
 
 const NAV_ITEMS = [
   { n: '01', key: 'about', href: '/about', image: '/placeholder/nav/nav-1.jpg' },
   { n: '02', key: 'articles', href: '/articles', image: '/placeholder/nav/nav-2.jpg' },
   { n: '03', key: 'interviews', href: '/interviews', image: '/placeholder/nav/nav-3.jpg' },
-  { n: '04', key: 'books', href: '/books', image: '/placeholder/nav/nav-4.jpg' },
+  { n: '04', key: 'store', href: '/books', image: '/placeholder/nav/nav-4.jpg' },
   { n: '05', key: 'gallery', href: '/gallery', image: '/placeholder/nav/nav-5.jpg' },
 ] as const
 
 type Props = {
   open: boolean
   onClose: () => void
+  authSlot?: ReactNode
 }
 
-export function MobileMenu({ open, onClose }: Props) {
+export function MobileMenu({ open, onClose, authSlot }: Props) {
   const locale = useLocale()
   const t = useTranslations('nav')
   const isRtl = locale === 'ar'
@@ -54,22 +57,25 @@ export function MobileMenu({ open, onClose }: Props) {
           aria-modal="true"
           aria-label={t('menu')}
         >
-          <div className="flex items-center justify-between px-6 py-5">
-            <span className="font-label text-[13px] text-ink">{t('brand')}</span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t('close')}
-              className="inline-flex h-9 w-9 items-center justify-center text-ink"
-            >
-              <span aria-hidden className="relative block h-5 w-5">
-                <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 rotate-45 bg-ink" />
-                <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 -rotate-45 bg-ink" />
-              </span>
-            </button>
+          <div className="flex items-center justify-between gap-3 px-6 py-5">
+            <LogoLink href="/" onClick={onClose} alt={t('brand')} height={36} />
+            <div className="flex items-center gap-2">
+              <LocaleSwitcher />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t('close')}
+                className="inline-flex h-11 w-11 items-center justify-center text-ink"
+              >
+                <span aria-hidden className="relative block h-5 w-5">
+                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 rotate-45 bg-ink" />
+                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 -rotate-45 bg-ink" />
+                </span>
+              </button>
+            </div>
           </div>
 
-          <ul className="flex flex-1 flex-col justify-center gap-3 px-6 pb-12">
+          <ul className="flex flex-1 flex-col justify-center gap-3 px-6">
             {NAV_ITEMS.map((item, i) => {
               const tiltBase = i % 2 === 0 ? -8 : 8
               const tilt = isRtl ? -tiltBase : tiltBase
@@ -120,6 +126,15 @@ export function MobileMenu({ open, onClose }: Props) {
               )
             })}
           </ul>
+
+          {authSlot && (
+            <div
+              className="flex items-center justify-center gap-2 px-6 pt-6 pb-12"
+              onClick={onClose}
+            >
+              {authSlot}
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -1,8 +1,8 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
-import { getMessages, setRequestLocale } from 'next-intl/server'
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
 import { Noto_Naskh_Arabic, Instrument_Serif, Oswald } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
@@ -35,7 +35,14 @@ const oswald = Oswald({
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
   description:
-    'الموقع الرسمي للدكتور خالد غطاس — مقالات، كتب، مقابلات، ومعرض صور.',
+    'الموقع الرسمي للدكتور خالد غطاس — عالم بيولوجيا الخلايا وخبير في السلوك البشري، كاتب ومحاضر، مؤسس مبادرة الورشة.',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#EDE7DF',
+  width: 'device-width',
+  initialScale: 1,
+  colorScheme: 'light',
 }
 
 export function generateStaticParams() {
@@ -56,6 +63,7 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   setRequestLocale(locale)
   const messages = await getMessages()
+  const t = await getTranslations({ locale, namespace: 'common' })
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
 
   return (
@@ -66,6 +74,9 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
     >
       <body>
+        <a href="#main-content" className="skip-link">
+          {t('skip_to_content')}
+        </a>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
           <Toaster richColors closeButton position="top-center" />

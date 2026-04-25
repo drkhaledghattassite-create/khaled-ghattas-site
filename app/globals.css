@@ -110,6 +110,64 @@
     font-family: var(--font-oswald), "Helvetica Neue", Arial, sans-serif;
   }
 
+  /* Arabic body copy reads better at a looser leading (Noto Naskh has tall ascenders / deep descenders). */
+  html[lang="ar"] body {
+    line-height: 1.85;
+    letter-spacing: 0;
+  }
+
+  /* Headings inside RTL: trim Latin-style tracking that hurts Arabic shaping. */
+  html[lang="ar"] h1,
+  html[lang="ar"] h2,
+  html[lang="ar"] h3,
+  html[lang="ar"] h4,
+  html[lang="ar"] h5,
+  html[lang="ar"] h6 {
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+
+  /* Visible focus ring — works against the cream background. */
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Reduced-motion: kill the always-on marquee/spin animations. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee-left,
+    .animate-marquee-right,
+    .animate-bob,
+    .animate-spin-cw,
+    .animate-spin-ccw {
+      animation: none !important;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Skip-to-main-content link, visible on keyboard focus only. */
+  .skip-link {
+    position: absolute;
+    inset-inline-start: 1rem;
+    top: -3rem;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--color-ink);
+    color: var(--color-cream);
+    font-family: var(--font-oswald), sans-serif;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: top 0.2s ease;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+
   body {
     background-color: var(--color-cream);
     color: var(--color-ink);

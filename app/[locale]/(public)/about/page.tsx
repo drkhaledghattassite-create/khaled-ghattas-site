@@ -46,7 +46,7 @@ export default async function AboutPage({ params }: Props) {
         <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-[var(--spacing-xl)] md:grid-cols-[1fr_1.2fr]">
           <div className="dotted-outline relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden bg-cream-warm">
             <Image
-              src="/placeholder/hero/portrait-bw.jpg"
+              src="/drphoto.JPG"
               alt=""
               fill
               sizes="(min-width: 768px) 420px, 100vw"

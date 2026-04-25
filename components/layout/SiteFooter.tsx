@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
+import { Logo, LogoLink } from '@/components/shared/Logo'
 
 const EASE_IN_OUT_QUART: [number, number, number, number] = [
   0.77, 0, 0.175, 1,
@@ -17,6 +18,14 @@ export function SiteFooter() {
     <footer className="relative overflow-hidden bg-cream">
       <div className="container relative z-10 flex flex-col gap-[var(--spacing-lg)] pt-[var(--spacing-xl)] pb-[var(--spacing-lg)] md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-[var(--spacing-md)] md:max-w-[60%]">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-10%' }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <LogoLink href="/" alt={t('brand')} height={48} />
+          </motion.div>
           <motion.h2
             initial={{ y: '100%', opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
@@ -85,8 +94,11 @@ export function SiteFooter() {
         className="absolute inset-x-0 bottom-0 h-1 bg-ink"
       />
 
-      <div className="container flex items-center justify-between border-t border-ink/15 py-4 text-ink-muted">
-        <span className="font-label text-[11px]">© {new Date().getFullYear()} {t('brand')}</span>
+      <div className="container flex items-center justify-between gap-3 border-t border-ink/15 py-4 text-ink-muted">
+        <div className="flex items-center gap-3">
+          <Logo height={20} alt={t('brand')} />
+          <span className="font-label text-[11px]">© {new Date().getFullYear()} {t('brand')}</span>
+        </div>
         <span className="font-label text-[11px]">{t('copyright')}</span>
       </div>
     </footer>

@@ -5,6 +5,7 @@
     "about": "About",
     "articles": "Articles",
     "books": "Books",
+    "store": "Store",
     "interviews": "Interviews",
     "gallery": "Gallery",
     "contact": "Contact",
@@ -14,7 +15,13 @@
     "primary": "Primary navigation",
     "progress": "Page progress indicator",
     "page_index": "Page - Index",
-    "page_index_numbered": "Page - {n}"
+    "page_index_numbered": "Page - {n}",
+    "signin": "Sign In",
+    "signup": "Sign Up",
+    "dashboard": "Dashboard",
+    "account": "My Account",
+    "admin": "Admin",
+    "signout": "Sign Out"
   },
   "common": {
     "back": "Back",
@@ -22,44 +29,51 @@
     "previous": "Previous",
     "close": "Close",
     "breadcrumb": "Breadcrumb",
-    "lightbox": "Image viewer"
+    "lightbox": "Image viewer",
+    "skip_to_content": "Skip to content",
+    "language_switch": {
+      "ar": "العربية",
+      "en": "EN"
+    }
   },
   "hero": {
     "section_label": "Opening section",
     "eyebrow": "Thought & Meaning",
-    "line_1": "A leading Arab",
-    "line_2": "thinker,",
-    "line_3": "Philosopher",
-    "line_4": "and psychoanalyst",
-    "line_5": "on self and society.",
-    "description": "The official site of Dr. Khaled Ghattass — an archive of articles, books, and interviews, tracing a lifelong inquiry into philosophy, psychology, and contemporary Arab thought."
+    "line_1": "DR. KHALED",
+    "line_2": "GHATTASS",
+    "line_3": "CELL BIOLOGIST",
+    "line_4": "HUMAN BEHAVIOR",
+    "line_5": "AUTHOR & SPEAKER",
+    "description": "The official site of Dr. Khaled Ghattass — cell biologist and expert in human behavior, author, speaker, and founder of Al-Warsheh. Weaving science, art, and philosophy to foster critical thinking and call for positive change."
   },
   "cta": {
     "articles": "View Articles",
-    "books": "View Books",
+    "books": "Visit Store",
     "read_more": "Read more",
     "view_all": "View all",
     "view_all_articles": "View all articles",
     "view_interview": "View interview",
-    "read_book": "Read book",
-    "all_books": "All books",
+    "read_book": "Buy now",
+    "all_books": "Browse store",
+    "details": "Details",
+    "buy_now": "Buy now",
     "enter_gallery": "Enter gallery",
     "subscribe": "Subscribe",
     "scroll_up_to_reveal_nav": "Scroll up to reveal nav"
   },
   "loading": {
     "intro": "Loading",
-    "marquee": "Thinker — Philosopher — Author — Psychoanalyst — Columnist — Professor",
-    "marquee_row_1": "POLITICAL ANALYST — COMMENTATOR — AUTHOR — COLUMNIST — FORMER AMBASSADOR",
-    "marquee_row_2": "1000+ ARTICLES — 30+ INTERVIEWS — 5+ BOOKS — 4 DECADES"
+    "marquee": "Cell Biologist — Human Behavior Expert — Author — Speaker — Founder of Al-Warsheh",
+    "marquee_row_1": "CELL BIOLOGIST — HUMAN BEHAVIOR EXPERT — AUTHOR — SPEAKER — FOUNDER OF AL-WARSHEH",
+    "marquee_row_2": "15+ YEARS — 1000+ LECTURES — 5+ BOOKS — FOUNDER OF AL-WARSHEH"
   },
   "tapes": {
-    "cream": "1000+ ARTICLES PUBLISHED — OVER 10 PUBLISHERS",
-    "dark": "40+ YEARS — CONTRIBUTING TO POLITICS"
+    "cream": "1000+ LECTURES & WORKSHOPS — ACROSS THE ARAB WORLD AND BEYOND",
+    "dark": "15+ YEARS — IN CELL BIOLOGY AND HUMAN BEHAVIOR"
   },
   "stats": {
-    "bio": "Dr. Khaled Ghattass has contributed to Arab intellectual and cultural life for four decades — as a writer, philosopher, and psychoanalyst, and as a university professor with a lasting presence in international media through more than five years of dedicated programming on thought and society.",
-    "media": "HE HAS APPEARED ON BBC ARABIC, AL JAZEERA, SKY NEWS ARABIA, LBC, MTV, OTV, AL ARABIYA.",
+    "bio": "Cell biologist and expert in human behavior — author, speaker, and founder of Al-Warsheh. Dr. Ghattass works to restore balance to individuals, institutions, and communities through a message that speaks to the human at their core. He weaves behavioral science, philosophy, cultural understanding, and art into a singular voice — translating complex academic concepts into deeply human stories. With more than two million followers across digital platforms, he has delivered hundreds of lectures and workshops across the Arab world.",
+    "media": "Trained at Harvard, Cornell, Stanford, and the American University of Beirut. Published across major regional and international platforms.",
     "cta": "Learn more"
   },
   "about": {
@@ -71,18 +85,18 @@
     "hero": {
       "italic": "About",
       "sans": "Dr. Khaled Ghattass",
-      "description": "Four decades in thought, psychoanalysis, philosophy, public writing, and dialogue."
+      "description": "Cell biologist and expert in human behavior. Author, speaker, and founder of the Al-Warsheh social initiative."
     },
-    "entry_1": "Dr. Khaled Ghattass is a prominent Arab intellectual, psychotherapist, and philosopher",
-    "entry_2": "An author of books on psychology, philosophy, and society",
-    "entry_3": "A prominent public speaker across the Arab world",
-    "entry_4": "A specialist in psychotherapy and mental health",
-    "bio_paragraph": "For over four decades Dr. Khaled Ghattass has contributed to Arab intellectual and cultural life through a practice that bridges clinical psychotherapy, philosophical inquiry, journalistic writing, and media presence. He has authored hundreds of articles in the Arab and international press, published five books in psychology, philosophy, and society, and participated in hundreds of television and podcast conversations.",
+    "entry_1": "Cell biologist and expert in human behavior",
+    "entry_2": "Author and speaker — weaving science, art, and philosophy",
+    "entry_3": "Founder of the Al-Warsheh social initiative in Lebanon (2020)",
+    "entry_4": "Trained at Harvard, Cornell, and Stanford — followed by 2M+ across digital platforms",
+    "bio_paragraph": "Dr. Khaled Ghattass is a cell biologist and expert in human behavior who has woven science and art together over a 15-year journey of observing human behavior and influencing communities. As an executive storyteller and poet, Dr. Ghattass works to restore balance to our societies by confronting the misconceptions that negatively shape individuals, families, and communities across the Arab world. Through a distinctive narrative approach, he weaves together science, art, and philosophy to deliver content that fosters critical thinking and calls for positive change. As the founder of the social initiative \"Al-Warsheh\" in Lebanon, Dr. Ghattass empowers balanced young leaders through art, culture, and science.",
     "stats": {
-      "articles": "Articles",
+      "articles": "Lectures",
       "interviews": "Interviews",
       "books": "Books",
-      "decades": "Decades"
+      "decades": "Years"
     }
   },
   "articles": {
@@ -140,24 +154,33 @@
   },
   "books": {
     "heading": {
-      "part_1": "Discover Books",
-      "part_2": "That Define the Intellectual Discourse"
+      "part_1": "Explore the Store",
+      "part_2": "Books & Sessions That Make a Difference"
     },
     "bridge": {
-      "row_1": "VIEW ALL BOOKS - ",
-      "row_2": "VIEW ALL BOOKS - "
+      "row_1": "BROWSE STORE - ",
+      "row_2": "BROWSE STORE - "
+    },
+    "filters": {
+      "all": "All",
+      "books": "Books",
+      "sessions": "Sessions"
+    },
+    "type": {
+      "book": "BOOK",
+      "session": "SESSION"
     },
     "meta": {
-      "title": "Books",
-      "description": "Books by Dr. Khaled Ghattass on psychology, philosophy, and society"
+      "title": "Store",
+      "description": "The store of Dr. Khaled Ghattass — digital books and consulting sessions"
     },
     "page": {
-      "eyebrow": "Library",
+      "eyebrow": "Store",
       "hero": {
-        "italic": "Insights and Interventions",
-        "sans": "Into Contemporary Thought"
+        "italic": "Books and Sessions",
+        "sans": "For Reading & Consultation"
       },
-      "description": "A complete set of Dr. Khaled Ghattass's books on psychology, philosophy, and society — tracing questions of the Arab self in contemporary life."
+      "description": "A digital store of books and consultation sessions by Dr. Khaled Ghattass — every product is delivered digitally after purchase."
     }
   },
   "book": {
@@ -217,12 +240,13 @@
     },
     "info": {
       "heading": "Contact information",
-      "description": "Reach us by email or through the channels below:",
-      "email": "contact@drkhaledghattass.com",
-      "location": "Beirut, Lebanon",
+      "description": "Reach us by email, by phone, or in person at the Khaled Ghattass Library in Burja, Lebanon:",
+      "email": "Team@drkhaledghattass.com",
+      "phone": "009613579666",
+      "location": "Khaled Ghattass Library — Burja, Lebanon",
       "social": "Follow:",
       "speaking_label": "Speaking engagements",
-      "speaking_text": "For speaking invitations, please use the form above and include the full event details."
+      "speaking_text": "For speaking invitations, workshops, and corporate programs, please use the form above and include full event details."
     }
   },
   "events": {
@@ -255,7 +279,7 @@
   "footer": {
     "brand": "Dr. Khaled Ghattass",
     "end_of_page": "End of page",
-    "description": "A curated archive of Dr. Khaled Ghattass's essays, books, and interviews — tracing his inquiry into the self, society, and the Arab intellectual tradition.",
+    "description": "A curated archive of Dr. Khaled Ghattass's thought between science, art, and philosophy — books, lectures, and the Al-Warsheh social initiative.",
     "go_to_next_page": "Go to next page",
     "next_page_label": "About",
     "copyright": "All rights reserved"

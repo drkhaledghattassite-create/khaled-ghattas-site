@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { Logo } from '@/components/shared/Logo'
 
 const SESSION_KEY = 'kg_intro_seen'
 const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
@@ -49,6 +50,16 @@ export function PageLoader() {
         <BobbingDot />
         <IntroMarqueeTrack direction="right" text={t('marquee_row_2')} isRtl={isRtl} />
       </div>
+
+      <motion.div
+        className="absolute inset-0 z-[5] flex items-center justify-center"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0.92, 1, 1, 0.96] }}
+        transition={{ duration: 2.4, times: [0, 0.18, 0.7, 1], ease: 'easeOut' }}
+        aria-hidden
+      >
+        <Logo height={80} alt={t('intro')} priority />
+      </motion.div>
 
       <motion.div
         className="absolute inset-x-0 top-0 z-10 bg-cream"

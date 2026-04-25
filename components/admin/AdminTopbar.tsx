@@ -1,12 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { Bell, ChevronRight, Plus, Search } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
+import { Bell, ChevronRight, Menu, Plus, Search } from 'lucide-react'
 import { Link } from '@/lib/i18n/navigation'
 import type { MockUser } from '@/lib/auth/mock'
 import { stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
+import { AdminSidebarContent } from './AdminSidebar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 
 const QUICK_ACTIONS = [
   { href: '/admin/articles/new', key: 'new_article' },
@@ -24,10 +33,14 @@ const QUICK_ACTIONS = [
 
 export function AdminTopbar({ user }: { user: MockUser }) {
   const pathname = usePathname()
+  const locale = useLocale()
   const tNav = useTranslations('admin.nav')
   const tCommon = useTranslations('admin.topbar')
   const tForms = useTranslations('admin.forms')
+  const tUser = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerSide = locale === 'ar' ? 'right' : 'left'
 
   const segments = path.split('/').filter(Boolean) // ['admin', ...]
   const crumbs: { href: string; label: string }[] = []
@@ -47,8 +60,23 @@ export function AdminTopbar({ user }: { user: MockUser }) {
   const lastCrumb = crumbs[crumbs.length - 1]
 
   return (
-    <header className="sticky top-0 z-30 flex h-[64px] items-center justify-between gap-4 border-b border-ink/10 bg-cream/90 px-6 backdrop-blur-sm">
-      <div className="flex min-w-0 flex-col gap-0.5">
+    <header className="sticky top-0 z-30 flex h-[64px] items-center justify-between gap-3 border-b border-ink/10 bg-cream/90 px-4 backdrop-blur-sm md:gap-4 md:px-6">
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetTrigger
+          aria-label={tCommon('quick_actions')}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded text-ink hover:bg-cream-warm/60 md:hidden"
+        >
+          <Menu className="h-5 w-5" aria-hidden />
+        </SheetTrigger>
+        <SheetContent side={drawerSide} className="flex w-[260px] flex-col bg-cream-soft p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{tUser('panel')}</SheetTitle>
+          </SheetHeader>
+          <AdminSidebarContent user={user} onNavigate={() => setDrawerOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <ol className="font-label flex items-center gap-1.5 text-[11px] text-ink-muted">
           {crumbs.map((crumb, i) => {
             const isLast = i === crumbs.length - 1

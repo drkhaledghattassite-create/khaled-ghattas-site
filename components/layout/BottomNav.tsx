@@ -1,21 +1,22 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import { MobileMenu } from './MobileMenu'
+import { LogoLink } from '@/components/shared/Logo'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { n: '01', key: 'home', href: '/' },
   { n: '02', key: 'about', href: '/about' },
   { n: '03', key: 'articles', href: '/articles' },
-  { n: '04', key: 'books', href: '/books' },
+  { n: '04', key: 'store', href: '/books' },
   { n: '05', key: 'gallery', href: '/gallery' },
 ] as const
 
-export function BottomNav() {
+export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
   const locale = useLocale()
   const t = useTranslations('nav')
   const tCta = useTranslations('cta')
@@ -62,19 +63,21 @@ export function BottomNav() {
         dir={locale === 'ar' ? 'rtl' : 'ltr'}
         animate={{ y: visible ? '0%' : '100%', opacity: visible ? 1 : 0 }}
         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed inset-x-0 bottom-0 z-50 h-[41.7px] border-t border-ink/20 bg-cream"
+        style={{
+          borderTop: '1px solid color-mix(in oklab, var(--color-ink) 20%, transparent)',
+          boxShadow: '0 -8px 24px -12px rgba(37, 35, 33, 0.18)',
+        }}
+        className="fixed inset-x-0 bottom-0 z-50 h-[60px] bg-[color:color-mix(in_oklab,var(--color-cream)_95%,transparent)] backdrop-blur-md md:h-[56px]"
       >
         <div className="container flex h-full items-center justify-between text-ink">
-          <Link href="/" className="font-label text-[13px] leading-none">
-            {t('brand')}
-          </Link>
+          <LogoLink href="/" alt={t('brand')} height={36} />
 
           <ul className="hidden items-center gap-4 md:flex">
             {NAV_ITEMS.map((item, i) => (
               <li key={item.key} className="flex items-center gap-4">
                 <Link
                   href={item.href}
-                  className="group inline-flex items-baseline gap-1.5"
+                  className="group inline-flex items-baseline gap-1.5 px-1 py-2"
                 >
                   <span className="font-label text-[11px] text-ink-muted transition-colors group-hover:text-ink">
                     {item.n}.
@@ -96,7 +99,7 @@ export function BottomNav() {
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
             className={cn(
-              'inline-flex h-7 w-7 flex-col items-center justify-center gap-[5px] md:hidden',
+              '-me-2 inline-flex h-11 w-11 flex-col items-center justify-center gap-[5px] md:hidden',
             )}
           >
             <span className="block h-px w-5 bg-ink" />
@@ -106,7 +109,7 @@ export function BottomNav() {
         </div>
       </motion.nav>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} authSlot={mobileAuthSlot} />
     </>
   )
 }

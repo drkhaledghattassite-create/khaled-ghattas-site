@@ -9,6 +9,15 @@ Visual spec folder: ../dayanjayatillekaWEBSITE/docs/research/
 Assets folder: ../dayanjayatillekaWEBSITE/public/images/
 Clone repo (DO NOT EDIT): ../dayanjayatillekaWEBSITE/
 
+## Real content sources
+- Live reference site: https://drkhaledghattass.com/
+- Extracted content folder: docs/content-extracted/
+- Real assets: public/dr khaled photo.jpeg (hero portrait), public/drphoto.JPG, public/DSC06608.JPG, public/Paid books/, public/Paid sessions/, public/logo-black.png
+- Identity: عالم بيولوجيا الخلايا وخبير في السلوك البشري — كاتب ومحاضر — مؤسس مبادرة «الورشة»
+- Al-Warsheh founded 2020-07-11 in Burja, Lebanon; Khaled Ghattass Library opened 2023
+- Tour 2025-2026 theme: "بين الغريب والسائد.. لقاء عن الحب والحياة"
+- Real contact: Team@drkhaledghattass.com / 009613579666 / مكتبة خالد غطاس — برجا، لبنان
+
 ## Stack
 Next.js 15 App Router, TypeScript strict, Tailwind v4,
 Drizzle ORM + Neon PostgreSQL, Better Auth, next-intl,
@@ -49,4 +58,6 @@ Latin sans: Oswald (next/font/google)
 - Three roles: USER, ADMIN, CLIENT
 
 ## Current phase
-Phase 1: Foundation scaffold
+Phase 5 complete — admin panel UI with mocked auth.
+Step 1 (real content + assets) wired into placeholder-data.ts and components.
+Next: Phase 4B (real Better Auth wiring) or Phase 6 (media upload pipeline).

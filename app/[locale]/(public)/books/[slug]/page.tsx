@@ -49,7 +49,7 @@ export default async function BookPage({ params }: Props) {
         <Breadcrumbs
           crumbs={[
             { href: '/', label: tNav('home') },
-            { href: '/books', label: tNav('books') },
+            { href: '/books', label: tNav('store') },
             { href: `/books/${book.slug}`, label: title },
           ]}
         />

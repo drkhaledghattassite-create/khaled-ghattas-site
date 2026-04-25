@@ -59,6 +59,8 @@ export const articleCategory = pgEnum('article_category', [
   'OTHER',
 ])
 
+export const productType = pgEnum('product_type', ['BOOK', 'SESSION'])
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Auth (Better Auth + role)
  * ──────────────────────────────────────────────────────────────────────── */
@@ -179,7 +181,8 @@ export const books = pgTable(
     descriptionAr: text('description_ar').notNull(),
     descriptionEn: text('description_en').notNull(),
     coverImage: text('cover_image').notNull(),
-    price: numeric('price', { precision: 10, scale: 2 }),
+    productType: productType('product_type').notNull().default('BOOK'),
+    price: numeric('price', { precision: 10, scale: 2 }).notNull(),
     currency: text('currency').notNull().default('USD'),
     digitalFile: text('digital_file'),
     externalUrl: text('external_url'),
@@ -459,3 +462,4 @@ export type MessageStatus = (typeof messageStatus.enumValues)[number]
 export type SubscriberStatus = (typeof subscriberStatus.enumValues)[number]
 export type EventStatus = (typeof eventStatus.enumValues)[number]
 export type ArticleCategory = (typeof articleCategory.enumValues)[number]
+export type ProductType = (typeof productType.enumValues)[number]

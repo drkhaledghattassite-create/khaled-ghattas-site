@@ -38,12 +38,19 @@ export const mockUsers: MockUser[] = [
   },
 ]
 
+/**
+ * Toggle to simulate signed-out state during dev (test the public auth pills).
+ * Flip to `false` to render Sign In / Sign Up; leave `true` for the avatar dropdown.
+ */
+export const MOCK_AUTH_ENABLED = true
+
 /** ID of the user that getMockSession will return. Toggle for testing. */
 export const MOCK_ACTIVE_USER_ID = '1'
 
 export type MockSession = { user: MockUser }
 
-export async function getMockSession(): Promise<MockSession> {
+export async function getMockSession(): Promise<MockSession | null> {
+  if (!MOCK_AUTH_ENABLED) return null
   const user = mockUsers.find((u) => u.id === MOCK_ACTIVE_USER_ID)
   if (!user) {
     throw new Error(`Mock user ${MOCK_ACTIVE_USER_ID} not found`)
@@ -57,6 +64,7 @@ export async function getMockSession(): Promise<MockSession> {
  */
 export async function requireRole(role: 'ADMIN' | 'CLIENT'): Promise<MockUser> {
   const session = await getMockSession()
+  if (!session) throw new Error('UNAUTHORIZED')
   if (session.user.role !== role && session.user.role !== 'ADMIN') {
     throw new Error('UNAUTHORIZED')
   }

@@ -140,7 +140,7 @@ export default async function ArticlePage({ params }: Props) {
           <div className="flex items-center gap-3">
             <span className="relative block h-10 w-10 overflow-hidden rounded-full border border-dashed border-ink bg-cream-soft">
               <Image
-                src="/placeholder/hero/portrait-bw.jpg"
+                src="/dr khaled photo.jpeg"
                 alt=""
                 fill
                 sizes="40px"

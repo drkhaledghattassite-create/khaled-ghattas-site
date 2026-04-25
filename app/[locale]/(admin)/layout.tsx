@@ -26,7 +26,7 @@ export default async function AdminLayout({ children, params }: Props) {
       <AdminSidebar user={user} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar user={user} />
-        <main className="flex-1 overflow-x-hidden p-6 md:p-8">{children}</main>
+        <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
       </div>
     </div>
   )

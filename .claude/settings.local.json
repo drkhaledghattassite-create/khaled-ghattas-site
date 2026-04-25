@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
       "Bash(npx --yes create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --skip-install --yes)",
       "Bash(npm install *)",
       "Bash(npx next *)",
@@ -19,7 +20,26 @@
       "Bash(curl -sS -o /dev/null -w \"ar -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/)",
       "Bash(curl -sS -o /dev/null -w \"en -> %{http_code} \\(time %{time_total}s\\)\\\\n\" http://localhost:3001/en)",
       "PowerShell(npx drizzle-kit generate 2>&1 | Select-Object -Last 30)",
-      "PowerShell(npx --yes shadcn@latest add tabs switch alert-dialog checkbox popover avatar scroll-area tooltip --yes --overwrite 2>&1)"
+      "PowerShell(npx --yes shadcn@latest add tabs switch alert-dialog checkbox popover avatar scroll-area tooltip --yes --overwrite 2>&1)",
+      "mcp__glance__session_end",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"/ → %{http_code}\\\\n\" http://localhost:3004/)",
+      "Bash(curl -s -o /dev/null -w \"/en → %{http_code}\\\\n\" http://localhost:3004/en)",
+      "Bash(curl -s -o /dev/null -w \"/about → %{http_code}\\\\n\" http://localhost:3004/about)",
+      "Bash(curl -s -o /dev/null -w \"/books → %{http_code}\\\\n\" http://localhost:3004/books)",
+      "Bash(curl -s -o /dev/null -w \"/articles → %{http_code}\\\\n\" http://localhost:3004/articles)",
+      "Bash(curl -s -o /dev/null -w \"port 3004 status: %{http_code}\\\\n\" --max-time 3 http://localhost:3004/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 2 http://localhost:3004/)",
+      "Bash(pkill -f \"until curl\")",
+      "Bash(curl -s \"http://localhost:3005/\" -o /tmp/home_ar.html -w \"GET / -> %{http_code} \\(%{size_download} bytes\\)\\\\n\" --max-time 60)",
+      "Bash(curl -s \"http://localhost:3005/en\" -o /tmp/home_en.html -w \"GET /en -> %{http_code} \\(%{size_download} bytes\\)\\\\n\" --max-time 60)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"http://localhost:3005/about\" -o /tmp/about_ar.html -w \"GET /about -> %{http_code}\\\\n\" --max-time 60)",
+      "Bash(curl -s \"http://localhost:3005/interviews\" -o /tmp/interviews_ar.html -w \"GET /interviews -> %{http_code}\\\\n\" --max-time 60)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"next-server\")",
+      "mcp__playwright__playwright_navigate",
+      "mcp__playwright__playwright_resize"
     ]
   }
 }

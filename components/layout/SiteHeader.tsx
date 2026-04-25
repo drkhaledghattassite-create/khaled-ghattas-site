@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname } from 'next/navigation'
 import { resolvePageLabel, stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { LocaleSwitcher } from './LocaleSwitcher'
 
 const SECTION_COUNT = 6
 
-export function SiteHeader() {
+export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
   const locale = useLocale()
   const t = useTranslations('nav')
   const pathname = usePathname()
@@ -41,10 +42,10 @@ export function SiteHeader() {
   return (
     <header
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
-      className="fixed inset-x-0 top-0 z-50 h-[43px] bg-cream/85 backdrop-blur-sm"
+      className="fixed inset-x-0 top-0 z-50 h-[48px] bg-cream/85 backdrop-blur-sm"
     >
-      <div className="container flex h-full items-center justify-between">
-        <ul className="flex items-center gap-2" aria-label={t('progress')}>
+      <div className="container flex h-full items-center justify-between gap-3">
+        <ul className="hidden items-center gap-2 md:flex" aria-label={t('progress')}>
           {Array.from({ length: SECTION_COUNT }).map((_, i) => {
             const isFilled = i < scrollActive
             const isActive = i === scrollActive
@@ -66,9 +67,13 @@ export function SiteHeader() {
           })}
         </ul>
 
-        <div className="font-label inline-flex items-center gap-2 rounded-full border border-ink px-4 py-1 text-ink transition-colors duration-200 hover:bg-ink hover:text-cream-soft">
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink" />
-          {pillLabel}
+        <div className="flex items-center gap-2">
+          <div className="font-label hidden items-center gap-2 rounded-full border border-ink px-4 py-1 text-ink transition-colors duration-200 hover:bg-ink hover:text-cream-soft md:inline-flex">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink" />
+            {pillLabel}
+          </div>
+          <LocaleSwitcher />
+          {authSlot && <div className="hidden md:flex">{authSlot}</div>}
         </div>
       </div>
     </header>

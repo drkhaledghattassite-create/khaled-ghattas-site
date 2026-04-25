@@ -55,7 +55,7 @@ function CtaPill({
       <Link
         href={href}
         className={cn(
-          'group relative inline-flex items-center gap-2 rounded-full border border-dashed px-4 py-2 text-[13px] transition-colors duration-300',
+          'group relative inline-flex min-h-[44px] items-center gap-2 rounded-full border border-dashed px-5 py-2.5 text-[13px] transition-colors duration-300',
           variant === 'outline'
             ? 'border-ink text-ink hover:bg-ink hover:text-cream-soft'
             : 'border-ink bg-ink text-cream-soft hover:bg-transparent hover:text-ink',
@@ -180,7 +180,7 @@ export function Hero() {
         >
           <div className="dotted-outline absolute inset-0 overflow-hidden bg-cream-warm">
             <Image
-              src="/placeholder/hero/portrait-bw.jpg"
+              src="/dr khaled photo.jpeg"
               alt=""
               fill
               priority

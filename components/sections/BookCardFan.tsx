@@ -10,7 +10,7 @@ import type { Book } from '@/lib/db/queries'
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 const REST_ROTATIONS = [-6, -2, 1, 5]
 const REST_ROTATIONS_MOBILE = [-5, 5, -5, 5]
-const BOOKS_BG = '/placeholder/hero/portrait-bw.jpg'
+const BOOKS_BG = '/dr khaled photo.jpeg'
 
 export function BookCardFan({ books }: { books: Book[] }) {
   const locale = useLocale()
@@ -127,11 +127,11 @@ export function BookCardFan({ books }: { books: Book[] }) {
                       {title}
                     </h3>
                     <span
-                      className="font-label inline-flex w-max items-center gap-2 rounded-full border border-dashed border-ink px-3 py-1 text-[11px] text-ink"
+                      className="font-label inline-flex w-max items-center gap-2 rounded-full border border-dashed border-ink bg-ink px-3 py-1 text-[11px] text-cream"
                       style={{ letterSpacing: '0.1em' }}
                     >
-                      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink" />
-                      {tCta('read_book')}
+                      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cream" />
+                      {tCta('buy_now')}
                     </span>
                   </div>
                 </Link>
