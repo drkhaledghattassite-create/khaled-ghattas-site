@@ -53,14 +53,7 @@ export function InterviewsGallery({ interviews }: { interviews: Interview[] }) {
                         className="object-cover duotone-warm transition-transform duration-700 group-hover:scale-[1.04]"
                       />
                       <span
-                        className="absolute start-3 top-3 inline-flex translate-y-1 items-center gap-2 rounded-full bg-ink/85 px-3 py-1.5 text-[11px] text-paper-soft opacity-0 transition-all duration-400 group-hover:translate-y-0 group-hover:opacity-100"
-                        style={{
-                          fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                          fontWeight: 500,
-                          letterSpacing: isRtl ? 0 : '0.14em',
-                          textTransform: isRtl ? 'none' : 'uppercase',
-                          fontSize: isRtl ? 12 : 10.5,
-                        }}
+                        className="absolute start-3 top-3 inline-flex translate-y-1 items-center gap-2 rounded-full bg-ink/85 px-3 py-1.5 font-display font-medium text-[10.5px] tracking-[0.14em] uppercase text-paper-soft opacity-0 transition-all duration-400 group-hover:translate-y-0 group-hover:opacity-100 [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
                       >
                         <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-brass" />
                         {tCta('view_interview')}
@@ -73,49 +66,24 @@ export function InterviewsGallery({ interviews }: { interviews: Interview[] }) {
                   </div>
                   <div className="mt-3.5 flex flex-col gap-2">
                     <h3
-                      className="text-balance text-ink"
-                      style={{
-                        fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-                        fontWeight: isRtl ? 500 : 500,
-                        fontSize: 18,
-                        lineHeight: 1.2,
-                        letterSpacing: isRtl ? 0 : '-0.014em',
-                      }}
+                      className="text-balance text-ink font-display font-medium text-[18px] leading-[1.2] tracking-[-0.014em] [dir=rtl]:font-arabic-display [dir=rtl]:tracking-normal"
                     >
                       {title}
                     </h3>
                     <p
-                      className="line-clamp-2 text-pretty text-ink-soft"
-                      style={{
-                        fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-                        fontStyle: isRtl ? 'normal' : 'italic',
-                        fontSize: 14,
-                        lineHeight: 1.5,
-                      }}
+                      className="line-clamp-2 text-pretty text-ink-soft font-serif italic text-[14px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
                     >
                       {excerpt}
                     </p>
                     <div className="flex items-center justify-between text-[11px] text-ink-muted">
                       <span
-                        style={{
-                          fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                          fontStyle: isRtl ? 'normal' : 'italic',
-                          fontSize: isRtl ? 12.5 : 12,
-                          fontWeight: 400,
-                        }}
+                        className="font-display italic font-normal text-[12px] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12.5px]"
                       >
                         {sourceLabel}
                       </span>
                       {interview.year !== null && (
                         <span
-                          className="tabular-nums"
-                          style={{
-                            fontFamily: 'var(--font-display)',
-                            fontStyle: 'italic',
-                            fontWeight: 400,
-                            fontSize: 12,
-                            color: 'var(--color-brass-deep)',
-                          }}
+                          className="tabular-nums font-display italic font-normal text-[12px] text-brass-deep"
                         >
                           {interview.year}
                         </span>

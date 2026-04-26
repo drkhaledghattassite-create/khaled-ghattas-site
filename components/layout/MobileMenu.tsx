@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
 import { Ornament } from '@/components/shared/Ornament'
 import { LocaleSwitcher } from './LocaleSwitcher'
+import { ThemeToggle } from './ThemeToggle'
 
 const NAV_ITEMS = [
   { n: '01', key: 'about', href: '/about', image: '/placeholder/nav/nav-1.jpg' },
@@ -23,9 +24,7 @@ type Props = {
 }
 
 export function MobileMenu({ open, onClose, authSlot }: Props) {
-  const locale = useLocale()
   const t = useTranslations('nav')
-  const isRtl = locale === 'ar'
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
@@ -77,6 +76,7 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
             <LogoLink href="/" onClick={onClose} alt={t('brand')} height={36} />
             <div className="flex items-center gap-2">
               <LocaleSwitcher />
+              <ThemeToggle />
               <button
                 ref={closeButtonRef}
                 type="button"
@@ -116,26 +116,12 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
                 >
                   <div className="flex items-baseline gap-3">
                     <span
-                      className="text-brass"
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontStyle: 'italic',
-                        fontWeight: 400,
-                        fontSize: 14,
-                      }}
+                      className="text-brass font-display italic font-normal text-[14px]"
                     >
                       .{item.n}
                     </span>
                     <span
-                      className="text-ink transition-colors group-hover:text-brass-deep"
-                      style={{
-                        fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-                        fontStyle: isRtl ? 'normal' : 'normal',
-                        fontWeight: isRtl ? 500 : 400,
-                        fontSize: isRtl ? 36 : 38,
-                        lineHeight: 1.05,
-                        letterSpacing: isRtl ? 0 : '-0.01em',
-                      }}
+                      className="text-ink transition-colors group-hover:text-brass-deep font-display font-normal text-[38px] leading-[1.05] tracking-[-0.01em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:text-[36px] [dir=rtl]:tracking-normal"
                     >
                       {t(item.key)}
                     </span>

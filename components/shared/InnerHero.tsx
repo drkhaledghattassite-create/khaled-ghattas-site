@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { useLocale } from 'next-intl'
 import { motion } from 'motion/react'
 import { Ornament } from '@/components/shared/Ornament'
 
@@ -31,8 +30,6 @@ export function InnerHero({
   align = 'start',
   chapterNumber,
 }: Props) {
-  const locale = useLocale()
-  const isRtl = locale === 'ar'
   const alignClass = align === 'center' ? 'items-center text-center' : 'items-start text-start'
 
   return (
@@ -60,15 +57,7 @@ export function InnerHero({
             >
               <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
               <span
-                className="text-[11px] tracking-[0.2em] uppercase"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  fontStyle: isRtl ? 'normal' : 'italic',
-                  fontWeight: 500,
-                  letterSpacing: isRtl ? 0 : '0.18em',
-                  textTransform: isRtl ? 'none' : 'uppercase',
-                  fontSize: isRtl ? 13 : 11,
-                }}
+                className="font-display italic font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
               >
                 {chapterNumber ? `${chapterNumber} — ${eyebrow}` : eyebrow}
               </span>
@@ -78,15 +67,7 @@ export function InnerHero({
             {headingItalic && (
               <MaskedLine delay={0}>
                 <span
-                  className="text-garnet"
-                  style={{
-                    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-                    fontStyle: isRtl ? 'normal' : 'italic',
-                    fontWeight: isRtl ? 600 : 400,
-                    fontSize: 'clamp(32px, 5.6vw, 72px)',
-                    lineHeight: 1.05,
-                    letterSpacing: isRtl ? 0 : '-0.005em',
-                  }}
+                  className="text-garnet font-serif italic font-normal text-[clamp(32px,5.6vw,72px)] leading-[1.05] tracking-[-0.005em] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal"
                 >
                   {headingItalic}
                 </span>
@@ -94,14 +75,7 @@ export function InnerHero({
             )}
             <MaskedLine delay={headingItalic ? 0.18 : 0}>
               <span
-                className="text-ink"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-                  fontWeight: isRtl ? 500 : 400,
-                  fontSize: 'clamp(40px, 7vw, 96px)',
-                  lineHeight: 0.96,
-                  letterSpacing: isRtl ? 0 : '-0.024em',
-                }}
+                className="text-ink font-display font-normal text-[clamp(40px,7vw,96px)] leading-[0.96] tracking-[-0.024em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
               >
                 {headingSans}
               </span>
@@ -114,12 +88,7 @@ export function InnerHero({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
-              className={`max-w-[58ch] text-pretty text-ink-soft ${align === 'center' ? 'mx-auto' : ''}`}
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontSize: isRtl ? 17 : 17,
-                lineHeight: isRtl ? 1.95 : 1.6,
-              }}
+              className={`max-w-[58ch] text-pretty text-ink-soft font-display text-[17px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.95] ${align === 'center' ? 'mx-auto' : ''}`}
             >
               {description}
             </motion.p>

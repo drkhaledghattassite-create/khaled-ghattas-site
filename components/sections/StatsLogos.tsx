@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import { ChapterMark, Ornament } from '@/components/shared/Ornament'
+import { cn } from '@/lib/utils'
 
 const EASE_OUT_QUART: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
 const EASE_BACK_OUT: [number, number, number, number] = [0.34, 1.56, 0.64, 1]
@@ -60,33 +61,16 @@ export function StatsLogos() {
           <ChapterMark number=".02" label={isRtl ? 'الصوت والمنبر' : 'A Voice in Print'} />
 
           <p
-            className="text-pretty text-ink"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-              fontSize: isRtl ? 22 : 26,
-              lineHeight: isRtl ? 1.95 : 1.5,
-              fontWeight: 400,
-              fontStyle: isRtl ? 'normal' : 'normal',
-            }}
+            className="text-pretty text-ink font-display font-normal text-[26px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:text-[22px] [dir=rtl]:leading-[1.95]"
           >
             <span
-              className="text-brass me-2 align-baseline"
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontStyle: 'italic',
-                fontSize: '1.15em',
-              }}
+              className="text-brass me-2 align-baseline font-serif italic text-[1.15em]"
             >
               {isRtl ? '«' : '"'}
             </span>
             {t('bio')}
             <span
-              className="text-brass ms-1 align-baseline"
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontStyle: 'italic',
-                fontSize: '1.15em',
-              }}
+              className="text-brass ms-1 align-baseline font-serif italic text-[1.15em]"
             >
               {isRtl ? '»' : '"'}
             </span>
@@ -95,20 +79,13 @@ export function StatsLogos() {
           <div className="rule-ornament my-2" />
 
           <p
-            className="text-ink-soft"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              fontWeight: isRtl ? 500 : 400,
-              fontSize: isRtl ? 16 : 18,
-              lineHeight: isRtl ? 1.85 : 1.55,
-            }}
+            className="text-ink-soft font-serif italic font-normal text-[18px] leading-[1.55] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:font-medium [dir=rtl]:text-[16px] [dir=rtl]:leading-[1.85]"
           >
             {t('media')}
           </p>
 
           <div className="pt-2">
-            <Link href="/about" className="pill pill-solid">
+            <Link href="/about" className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]">
               <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
               <span>{t('cta')}</span>
             </Link>
@@ -133,15 +110,7 @@ export function StatsLogos() {
             <span aria-hidden className="block h-px flex-1 bg-current" />
           </div>
           <p
-            className="mt-3 text-center text-[11px] tracking-[0.18em] text-ink-muted uppercase"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              letterSpacing: isRtl ? 0 : '0.18em',
-              textTransform: isRtl ? 'none' : 'uppercase',
-              fontWeight: 500,
-              fontSize: isRtl ? 12 : 11,
-            }}
+            className="mt-3 text-center font-display italic font-medium text-[11px] tracking-[0.18em] text-ink-muted uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
           >
             {isRtl ? 'منشور في:' : 'As featured in'}
           </p>
@@ -176,15 +145,10 @@ function PressCard({ card, index }: { card: MediaCard; index: number }) {
       className="flex h-[72px] items-center justify-center px-5"
     >
       <span
-        className="select-none tracking-[0.16em]"
-        style={{
-          fontFamily: display === 'serif' ? 'var(--font-serif)' : 'var(--font-display)',
-          fontWeight: display === 'serif' ? 400 : 500,
-          fontStyle: display === 'serif' ? 'italic' : 'normal',
-          fontSize: 'clamp(11px, 1.6vw, 14px)',
-          textAlign: 'center',
-          textTransform: 'uppercase',
-        }}
+        className={cn(
+          'select-none tracking-[0.16em] text-[clamp(11px,1.6vw,14px)] text-center uppercase',
+          display === 'serif' ? 'font-serif italic font-normal' : 'font-display font-medium',
+        )}
       >
         {label}
       </span>

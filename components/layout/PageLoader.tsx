@@ -81,15 +81,7 @@ export function PageLoader() {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE_OUT_EXPO, delay: 0.2 }}
-          className="text-[11px] tracking-[0.32em] text-ink-muted uppercase"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-            fontStyle: isRtl ? 'normal' : 'italic',
-            letterSpacing: isRtl ? 0 : '0.32em',
-            textTransform: isRtl ? 'none' : 'uppercase',
-            fontWeight: 500,
-            fontSize: isRtl ? 13 : 11,
-          }}
+          className="font-display italic font-medium text-[11px] tracking-[0.32em] text-ink-muted uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
         >
           {isRtl ? 'موقد' : 'Mawqid'}
         </motion.span>

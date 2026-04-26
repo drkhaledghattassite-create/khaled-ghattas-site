@@ -24,7 +24,6 @@ export default async function ContactPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations('contact')
-  const isRtl = locale === 'ar'
 
   const socialLinks = [
     { label: 'Twitter', href: 'https://twitter.com', Icon: TwitterIcon },
@@ -32,8 +31,6 @@ export default async function ContactPage({ params }: Props) {
     { label: 'YouTube', href: 'https://youtube.com', Icon: YouTubeIcon },
     { label: 'Instagram', href: 'https://instagram.com', Icon: InstagramIcon },
   ] as const
-
-  const headingFont = isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)'
 
   return (
     <>
@@ -56,26 +53,13 @@ export default async function ContactPage({ params }: Props) {
               <div className="flex items-baseline gap-3 text-ink-muted">
                 <Ornament glyph="fleuron" size={13} className="text-brass" />
                 <span
-                  className="text-[11px] tracking-[0.18em] uppercase"
-                  style={{
-                    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                    fontStyle: isRtl ? 'normal' : 'italic',
-                    letterSpacing: isRtl ? 0 : '0.18em',
-                    textTransform: isRtl ? 'none' : 'uppercase',
-                    fontWeight: 500,
-                    fontSize: isRtl ? 12 : 11,
-                  }}
+                  className="font-display italic font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
                 >
                   {t('info.heading')}
                 </span>
               </div>
               <p
-                className="text-ink-soft"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  fontSize: 15,
-                  lineHeight: isRtl ? 1.85 : 1.55,
-                }}
+                className="text-ink-soft font-display text-[15px] leading-[1.55] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.85]"
               >
                 {t('info.description')}
               </p>
@@ -88,11 +72,7 @@ export default async function ContactPage({ params }: Props) {
                 </span>
                 <a
                   href={`mailto:${t('info.email')}`}
-                  className="text-ink editorial-link"
-                  style={{
-                    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                    fontSize: 14,
-                  }}
+                  className="text-ink editorial-link font-display text-[14px] [dir=rtl]:font-arabic"
                 >
                   {t('info.email')}
                 </a>
@@ -102,12 +82,7 @@ export default async function ContactPage({ params }: Props) {
                   <Phone className="h-4 w-4" aria-hidden />
                 </span>
                 <span
-                  className="text-ink"
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontStyle: 'italic',
-                    fontSize: 14,
-                  }}
+                  className="text-ink font-display italic text-[14px]"
                 >
                   {t('info.phone')}
                 </span>
@@ -117,11 +92,7 @@ export default async function ContactPage({ params }: Props) {
                   <MapPin className="h-4 w-4" aria-hidden />
                 </span>
                 <span
-                  className="text-ink"
-                  style={{
-                    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                    fontSize: 14,
-                  }}
+                  className="text-ink font-display text-[14px] [dir=rtl]:font-arabic"
                 >
                   {t('info.location')}
                 </span>
@@ -132,14 +103,7 @@ export default async function ContactPage({ params }: Props) {
 
             <div>
               <h3
-                className="mb-3 text-[10.5px] tracking-[0.18em] text-ink-muted uppercase"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  letterSpacing: isRtl ? 0 : '0.18em',
-                  textTransform: isRtl ? 'none' : 'uppercase',
-                  fontWeight: 500,
-                  fontSize: isRtl ? 12 : 10.5,
-                }}
+                className="mb-3 font-display font-medium text-[10.5px] tracking-[0.18em] text-ink-muted uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
               >
                 {t('info.social')}
               </h3>
@@ -160,34 +124,20 @@ export default async function ContactPage({ params }: Props) {
               </ul>
             </div>
 
-            <div className="paper-card-warm mt-2 p-5" style={{ borderRadius: '4px' }}>
+            <div className="paper-card-warm mt-2 rounded p-5">
               <div className="flex items-baseline gap-2">
                 <Ornament glyph="asterism" size={11} className="text-garnet" />
                 <p
-                  className="text-[10.5px] tracking-[0.16em] text-garnet uppercase"
-                  style={{
-                    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                    letterSpacing: isRtl ? 0 : '0.16em',
-                    textTransform: isRtl ? 'none' : 'uppercase',
-                    fontWeight: 600,
-                    fontSize: isRtl ? 12 : 10.5,
-                  }}
+                  className="font-display font-semibold text-[10.5px] tracking-[0.16em] text-garnet uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
                 >
                   {t('info.speaking_label')}
                 </p>
               </div>
               <p
-                className="mt-2 text-ink-soft"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  fontSize: 14,
-                  lineHeight: isRtl ? 1.85 : 1.5,
-                  fontStyle: isRtl ? 'normal' : 'normal',
-                }}
+                className="mt-2 text-ink-soft font-display text-[14px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.85]"
               >
                 {t('info.speaking_text')}
               </p>
-              <span aria-hidden style={{ fontFamily: headingFont }} />
             </div>
           </aside>
         </div>

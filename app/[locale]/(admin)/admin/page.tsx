@@ -73,8 +73,7 @@ export default async function AdminHomePage({ params }: Props) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className="text-ink"
-                      style={{ fontFamily: 'var(--font-oswald)', fontWeight: 500, fontSize: 13 }}
+                      className="text-ink font-display font-medium text-[13px]"
                     >
                       ${o.totalAmount}
                     </span>
@@ -121,14 +120,7 @@ function Panel({ heading, children }: { heading: string; children: React.ReactNo
   return (
     <section className="rounded-md border border-dashed border-ink/30 bg-cream-soft p-5">
       <h2
-        className="mb-3 text-ink"
-        style={{
-          fontFamily: 'var(--font-oswald)',
-          fontWeight: 600,
-          fontSize: 14,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-        }}
+        className="mb-3 text-ink font-display font-semibold text-[14px] tracking-[0.04em] uppercase"
       >
         {heading}
       </h2>
@@ -141,14 +133,7 @@ function ChartPanel({ heading, children }: { heading: string; children: React.Re
   return (
     <section className="rounded-md border border-dashed border-ink/30 bg-cream-soft p-5">
       <h2
-        className="mb-3 text-ink"
-        style={{
-          fontFamily: 'var(--font-oswald)',
-          fontWeight: 600,
-          fontSize: 14,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-        }}
+        className="mb-3 text-ink font-display font-semibold text-[14px] tracking-[0.04em] uppercase"
       >
         {heading}
       </h2>

@@ -95,8 +95,7 @@ export function AdminSidebarContent({
         <div className="flex flex-col leading-tight">
           <span className="font-label text-[10px] text-ink-muted">{tCommon('panel')}</span>
           <span
-            className="text-ink"
-            style={{ fontFamily: 'var(--font-oswald)', fontWeight: 600, fontSize: 14, letterSpacing: '0.04em' }}
+            className="text-ink font-display font-semibold text-[14px] tracking-[0.04em]"
           >
             {tCommon('brand')}
           </span>
@@ -147,8 +146,7 @@ export function AdminSidebarContent({
           <span aria-hidden className="block h-8 w-8 shrink-0 rounded-full bg-ink/80" />
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
             <span
-              className="truncate text-[13px] text-ink"
-              style={{ fontFamily: 'var(--font-oswald)', fontWeight: 500 }}
+              className="truncate text-[13px] text-ink font-display font-medium"
             >
               {user.name}
             </span>

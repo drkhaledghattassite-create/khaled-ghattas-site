@@ -1,6 +1,6 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { motion, useReducedMotion } from 'motion/react'
 import { Ornament } from '@/components/shared/Ornament'
 
@@ -76,10 +76,8 @@ function Tape({
   direction: 'left' | 'right'
   translationKey: 'tapes.cream' | 'tapes.dark'
 }) {
-  const locale = useLocale()
   const t = useTranslations()
   const reduce = useReducedMotion() ?? false
-  const isRtl = locale === 'ar'
   const text = t(translationKey)
   const items = new Array(8).fill(text)
   const bg = theme === 'paper' ? 'var(--color-paper-warm)' : 'var(--color-ink)'
@@ -105,15 +103,8 @@ function Tape({
         {[...items, ...items].map((line, i) => (
           <span key={i} className="flex items-center pe-md">
             <span
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-serif)',
-                fontStyle: isRtl ? 'normal' : 'italic',
-                fontWeight: isRtl ? 500 : 400,
-                fontSize: 'clamp(22px, 3.2vw, 36px)',
-                lineHeight: 1,
-                color,
-                letterSpacing: isRtl ? 0 : '-0.005em',
-              }}
+              className="font-serif italic font-normal text-[clamp(22px,3.2vw,36px)] leading-none tracking-[-0.005em] [dir=rtl]:font-arabic-display [dir=rtl]:not-italic [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
+              style={{ color }}
             >
               {line}
             </span>

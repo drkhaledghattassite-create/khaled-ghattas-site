@@ -32,7 +32,7 @@ export function ShareButtons({ url, title }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="font-label me-xs text-[12px] text-ink-muted">{t('label')}</span>
+      <span className="font-label me-2 text-[12px] text-ink-muted">{t('label')}</span>
       {links.map(({ label, href, Icon }) => (
         <a
           key={label}

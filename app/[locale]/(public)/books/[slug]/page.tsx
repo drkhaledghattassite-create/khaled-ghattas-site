@@ -37,7 +37,6 @@ export default async function BookPage({ params }: Props) {
   const t = await getTranslations('book')
   const tNav = await getTranslations('nav')
   const related = await getRelatedBooks(slug, 3)
-  const isRtl = locale === 'ar'
 
   const title = locale === 'ar' ? book.titleAr : book.titleEn
   const subtitle = locale === 'ar' ? book.subtitleAr : book.subtitleEn
@@ -68,39 +67,21 @@ export default async function BookPage({ params }: Props) {
 
           <div className="flex flex-col gap-[var(--spacing-md)]">
             <h1
-              className="uppercase text-ink"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-                fontWeight: isRtl ? 700 : 600,
-                fontSize: 'clamp(32px, 6vw, 60px)',
-                lineHeight: 1.1,
-                letterSpacing: isRtl ? 'normal' : '-1.5px',
-              }}
+              className="uppercase text-ink font-display font-semibold text-[clamp(32px,6vw,60px)] leading-[1.1] tracking-[-1.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
             >
               {title}
             </h1>
 
             {subtitle && (
               <p
-                className="text-ink-muted"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-                  fontStyle: isRtl ? 'normal' : 'italic',
-                  fontSize: 22,
-                  lineHeight: 1.5,
-                }}
+                className="text-ink-muted font-serif italic text-[22px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
               >
                 {subtitle}
               </p>
             )}
 
             <p
-              className="text-ink"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-                fontSize: 16,
-                lineHeight: 1.7,
-              }}
+              className="text-ink font-serif text-[16px] leading-[1.7] [dir=rtl]:font-arabic"
             >
               {description}
             </p>
@@ -108,12 +89,7 @@ export default async function BookPage({ params }: Props) {
             {book.price && (
               <div className="flex items-baseline gap-2">
                 <span
-                  className="text-ink"
-                  style={{
-                    fontFamily: 'var(--font-oswald)',
-                    fontWeight: 600,
-                    fontSize: 34,
-                  }}
+                  className="text-ink font-display font-semibold text-[34px]"
                 >
                   ${book.price}
                 </span>
@@ -124,8 +100,7 @@ export default async function BookPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                className="font-label inline-flex items-center gap-2 rounded-full border border-dashed border-ink bg-ink px-5 py-2.5 text-[12px] text-cream-soft transition-colors duration-300 hover:bg-transparent hover:text-ink"
-                style={{ letterSpacing: '0.08em' }}
+                className="font-label inline-flex items-center gap-2 rounded-full border border-dashed border-ink bg-ink px-5 py-2.5 text-[12px] tracking-[0.08em] text-cream-soft transition-colors duration-300 hover:bg-transparent hover:text-ink"
               >
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cream-soft" />
                 {t('buy')}
@@ -165,13 +140,7 @@ export default async function BookPage({ params }: Props) {
 
         <section className="mt-[var(--spacing-xl)]">
           <h2
-            className="mb-8 uppercase text-ink"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-              fontWeight: isRtl ? 700 : 600,
-              fontSize: 'clamp(24px, 4vw, 36px)',
-              letterSpacing: isRtl ? 'normal' : '-0.5px',
-            }}
+            className="mb-8 uppercase text-ink font-display font-semibold text-[clamp(24px,4vw,36px)] tracking-[-0.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
           >
             {t('related')}
           </h2>
@@ -189,14 +158,7 @@ export default async function BookPage({ params }: Props) {
                     />
                   </div>
                   <p
-                    className="mt-2 uppercase text-ink"
-                    style={{
-                      fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-                      fontWeight: isRtl ? 700 : 600,
-                      fontSize: 14,
-                      lineHeight: 1.3,
-                      letterSpacing: isRtl ? 'normal' : '-0.3px',
-                    }}
+                    className="mt-2 uppercase text-ink font-display font-semibold text-[14px] leading-[1.3] tracking-[-0.3px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
                   >
                     {locale === 'ar' ? r.titleAr : r.titleEn}
                   </p>

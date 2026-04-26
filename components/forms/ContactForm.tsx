@@ -131,7 +131,7 @@ export function ContactForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="pill pill-solid disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]"
           >
             <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
             {submitting ? t('submitting') : t('submit')}

@@ -44,11 +44,8 @@ export function ArticlesBridgeMarquee() {
         {CLIPPINGS.map((c, i) => (
           <motion.div
             key={i}
-            className="frame-print relative h-32 w-24 md:h-40 md:w-28"
-            style={{
-              background: 'var(--color-paper-soft)',
-              willChange: 'transform, opacity',
-            }}
+            className="frame-print relative h-32 w-24 bg-paper-soft md:h-40 md:w-28"
+            style={{ willChange: 'transform, opacity' }}
             initial={{ y: '120%', opacity: 0, rotate: c.rotate }}
             whileInView={{ y: 0, opacity: 1, rotate: c.rotate }}
             viewport={{ once: true, amount: 0.3 }}
@@ -60,8 +57,7 @@ export function ArticlesBridgeMarquee() {
             {/* "Pin" — small brass dot up top */}
             <span
               aria-hidden
-              className="absolute -top-1.5 left-1/2 block h-2 w-2 -translate-x-1/2 rounded-full bg-brass"
-              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.35)' }}
+              className="absolute -top-1.5 left-1/2 block h-2 w-2 -translate-x-1/2 rounded-full bg-brass shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
             />
           </motion.div>
         ))}
@@ -69,15 +65,7 @@ export function ArticlesBridgeMarquee() {
 
       <div className="mt-10 flex justify-center">
         <span
-          className="text-[11px] tracking-[0.22em] uppercase text-paper-soft/55"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-            fontStyle: isRtl ? 'normal' : 'italic',
-            letterSpacing: isRtl ? 0 : '0.22em',
-            textTransform: isRtl ? 'none' : 'uppercase',
-            fontWeight: 500,
-            fontSize: isRtl ? 12 : 11,
-          }}
+          className="font-display italic font-medium text-[11px] tracking-[0.22em] uppercase text-paper-soft/55 [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
         >
           {isRtl ? 'مختارات من المطبوعات' : 'Press clippings & cuttings'}
         </span>
@@ -95,9 +83,7 @@ function GiantRow({
   direction: 'left' | 'right'
   tone: 'ghost' | 'bright'
 }) {
-  const locale = useLocale()
   const reduce = useReducedMotion() ?? false
-  const isRtl = locale === 'ar'
   const copies = new Array(8).fill(text)
   const color = tone === 'ghost' ? 'rgba(240, 230, 216, 0.14)' : 'rgba(240, 230, 216, 0.95)'
   const fromX = direction === 'left' ? '0%' : '-50%'
@@ -120,15 +106,8 @@ function GiantRow({
         {[...copies, ...copies].map((line, i) => (
           <span key={i} className="flex items-center pe-md md:pe-lg">
             <span
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-serif)',
-                fontStyle: isRtl ? 'normal' : 'italic',
-                fontWeight: isRtl ? 500 : 400,
-                fontSize: 'clamp(48px, 11vw, 142px)',
-                lineHeight: 0.98,
-                color,
-                letterSpacing: isRtl ? 0 : '-0.015em',
-              }}
+              className="font-serif italic font-normal text-[clamp(48px,11vw,142px)] leading-[0.98] tracking-[-0.015em] [dir=rtl]:font-arabic-display [dir=rtl]:not-italic [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
+              style={{ color }}
             >
               {line}
             </span>

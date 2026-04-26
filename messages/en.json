@@ -277,14 +277,15 @@
     "register": "Register"
   },
   "newsletter": {
-    "heading": "Newsletter",
-    "description": "Subscribe to receive new articles and releases.",
+    "heading": "STAY CONNECTED",
+    "description": "Get the latest articles and releases in your inbox",
     "email_label": "Email",
     "email_placeholder": "name@example.com",
     "subscribe": "Subscribe",
     "submitting": "Subscribing...",
     "subscribed": "Subscribed successfully",
-    "invalid_email": "Please enter a valid email address"
+    "invalid_email": "Please enter a valid email address",
+    "success_message": "We'll be in touch soon"
   },
   "footer": {
     "brand": "Dr. Khaled Ghattass",
@@ -578,5 +579,39 @@
       "coming_soon_title": "Products",
       "coming_soon_text": "Configure non-book products here once the catalog is ready."
     }
+  },
+  "about_teaser": {
+    "eyebrow": "ABOUT",
+    "stats": {
+      "years_label": "Years of Experience",
+      "lectures_label": "Lectures",
+      "books_label": "Books"
+    },
+    "featured_on": {
+      "heading": "FEATURED ON"
+    }
+  },
+  "store_showcase": {
+    "eyebrow": "EXPLORE THE WORK",
+    "heading": "STORE",
+    "description": "Philosophical books and consultation sessions that make a difference",
+    "type": {
+      "book": "BOOK",
+      "session": "SESSION"
+    },
+    "cta_buy": "BUY NOW",
+    "cta_browse_all": "BROWSE FULL STORE"
+  },
+  "articles_section": {
+    "eyebrow": "RECENT WRITING",
+    "heading": "ARTICLES",
+    "featured_label": "Featured",
+    "view_all": "VIEW ALL ARTICLES"
+  },
+  "interviews_section": {
+    "eyebrow": "VOICES OF VISION",
+    "heading": "INTERVIEWS",
+    "watch": "WATCH THIS INTERVIEW",
+    "view_all": "VIEW ALL INTERVIEWS"
   }
 }

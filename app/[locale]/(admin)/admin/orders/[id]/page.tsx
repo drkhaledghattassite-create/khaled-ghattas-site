@@ -40,8 +40,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             <div>
               <dt className="font-label text-[10px] text-ink-muted">{t('total')}</dt>
               <dd
-                className="text-ink"
-                style={{ fontFamily: 'var(--font-oswald)', fontWeight: 600, fontSize: 24 }}
+                className="text-ink font-display font-semibold text-[24px]"
               >
                 ${order.totalAmount} {order.currency}
               </dd>
@@ -67,14 +66,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
 
         <aside className="space-y-4 rounded-md border border-dashed border-ink/30 bg-cream-soft p-6">
           <h2
-            className="text-ink"
-            style={{
-              fontFamily: 'var(--font-oswald)',
-              fontWeight: 600,
-              fontSize: 14,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-            }}
+            className="text-ink font-display font-semibold text-[14px] uppercase tracking-[0.04em]"
           >
             {t('customer')}
           </h2>

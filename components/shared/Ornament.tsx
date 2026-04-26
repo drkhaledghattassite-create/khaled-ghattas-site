@@ -100,25 +100,14 @@ export function ChapterMark({ number, label, className, align = 'start' }: Chapt
     >
       <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
       <span
-        className="text-[12px] tracking-[0.18em] uppercase"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 500,
-          fontFeatureSettings: '"smcp", "ss01"',
-        }}
+        className="font-display font-medium text-[12px] tracking-[0.18em] uppercase"
+        style={{ fontFeatureSettings: '"smcp", "ss01"' }}
       >
         {number}
       </span>
       <span aria-hidden className="block h-px w-8 bg-ink-muted/50" />
       <span
-        className="text-[12px] tracking-[0.16em] uppercase text-ink-soft"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontWeight: 400,
-          letterSpacing: '0.04em',
-          textTransform: 'none',
-        }}
+        className="font-display italic font-normal text-[12px] tracking-[0.04em] normal-case text-ink-soft"
       >
         {label}
       </span>

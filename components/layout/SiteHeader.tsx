@@ -8,6 +8,7 @@ import { LOCALES } from '@/lib/constants'
 import { Ornament } from '@/components/shared/Ornament'
 import { cn } from '@/lib/utils'
 import { LocaleSwitcher } from './LocaleSwitcher'
+import { ThemeToggle } from './ThemeToggle'
 
 const SECTION_COUNT = 6
 
@@ -75,21 +76,13 @@ export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
 
         <div className="flex items-center gap-2">
           <div
-            className={cn(
-              'hidden items-center gap-2 rounded-full border border-ink px-3.5 py-1 transition-colors duration-200 hover:bg-ink hover:text-paper-soft md:inline-flex',
-            )}
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              fontWeight: isRtl ? 600 : 400,
-              fontSize: 12,
-              letterSpacing: isRtl ? 0 : '0.04em',
-            }}
+            className="hidden items-center gap-2 rounded-full border border-ink px-3.5 py-1 transition-colors duration-200 hover:bg-ink hover:text-paper-soft md:inline-flex font-display italic font-normal text-[12px] tracking-[0.04em] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal"
           >
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brass" />
             {pillLabel}
           </div>
           <LocaleSwitcher />
+          <ThemeToggle />
           {authSlot && <div className="hidden md:flex">{authSlot}</div>}
         </div>
       </div>

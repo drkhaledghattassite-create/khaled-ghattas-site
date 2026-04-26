@@ -17,90 +17,92 @@
    ========================================================================== */
 @theme inline {
   /* ---------- Core palette: warm cream library (from skin highlights) ---- */
-  --color-paper:        #F0E6D8;  /* warm cream — primary surface */
-  --color-paper-soft:   #F7EFE3;  /* lightest tier */
-  --color-paper-warm:   #E5D5BE;  /* warm sand block */
-  --color-paper-deep:   #D2BFA1;  /* deeper sand divider */
+  --color-paper:        #F5EFE3;  /* warm cream — primary surface */
+  --color-paper-soft:   #FBF6EA;  /* lightest tier */
+  --color-paper-warm:   #EBE2D0;  /* warm sand block */
+  --color-paper-deep:   #D8CDB7;  /* deeper sand divider */
   --color-paper-shadow: #BFA98A;  /* edge tone */
 
-  /* Aliases preserved so existing components keep working — values warmed. */
-  --color-cream:        #F0E6D8;
-  --color-cream-soft:   #F7EFE3;
-  --color-cream-warm:   #E5D5BE;
-  --color-beige:        #D2BFA1;
+  /* Aliases preserved so existing components keep working */
+  --color-cream:        #F5EFE3;
+  --color-cream-soft:   #FBF6EA;
+  --color-cream-warm:   #EBE2D0;
+  --color-beige:        #D8CDB7;
 
   --color-ink:          #2A2528;  /* warm charcoal (beard tone) */
   --color-ink-muted:    #6E6066;  /* mauve-tinted taupe */
   --color-ink-soft:     #4A4045;  /* mid-warm */
 
   /* ---------- Canonical NEW palette (portrait-derived) ------------------- */
-  --color-mauve:        #5A4A55;  /* portrait background — depth/secondary surface */
-  --color-mauve-soft:   #7B6E78;  /* hover states, subtle borders, neutral cards */
-  --color-skin:         #C9A586;  /* warm midtone — soft tags, accent cards */
-  --color-skin-soft:    #DCC0A6;  /* tinted skin */
-  --color-sky:          #A8C4D6;  /* shirt tone — CTAs, links, active states */
-  --color-sky-deep:     #6B8FA8;  /* CTA hover, deeper accent */
-  --color-sky-soft:     #CADBE7;  /* light sky tint */
-  --color-silver:       #9B9B9B;  /* hair tone — neutral borders, dividers */
-  --color-brand-black:  #1A1818;  /* logo-derived deep near-black for high-contrast bands */
+  --color-mauve:        #5A4A55;
+  --color-mauve-soft:   #7B6E78;
+  --color-skin:         #C9A586;
+  --color-skin-soft:    #DCC0A6;
+  --color-sky:          #A8C4D6;
+  --color-sky-deep:     #6B8FA8;
+  --color-sky-soft:     #CADBE7;
+  --color-silver:       #9B9B9B;
+  --color-brand-black:  #1A1818;
 
   /* ---------- Backwards-compat token remap ------------------------------- */
-  /* Existing components reference brass/garnet/rose. Values now point to the
-     new palette so visual outcome matches the portrait while existing
-     classNames keep working. New code should prefer --color-sky / --color-mauve
-     / --color-skin directly. */
-  --color-brass:        #A8C4D6;  /* → sky — primary accent */
-  --color-brass-deep:   #6B8FA8;  /* → sky-deep — hover accent */
-  --color-brass-soft:   #CADBE7;  /* → sky-soft */
-  --color-amber:        #A8C4D6;  /* → sky (alias kept) */
+  --color-brass:        #A8C4D6;
+  --color-brass-deep:   #6B8FA8;
+  --color-brass-soft:   #CADBE7;
+  --color-amber:        #A8C4D6;
+  --color-garnet:       #5A4A55;
+  --color-garnet-soft:  #7B6E78;
+  --color-olive:        #6E6066;
+  --color-olive-soft:   #8A7E84;
+  --color-rose:         #C9A586;
+  --color-rose-soft:    #DCC0A6;
+  --color-navy:         #2A3344;
+  --color-success:      #5E8A6C;
 
-  --color-garnet:       #5A4A55;  /* → mauve — emphasis */
-  --color-garnet-soft:  #7B6E78;  /* → mauve-soft */
-  --color-olive:        #6E6066;  /* → ink-muted — secondary accent (de-emphasized) */
-  --color-olive-soft:   #8A7E84;  /* → mauve-soft tint */
-  --color-rose:         #C9A586;  /* → skin — soft tag */
-  --color-rose-soft:    #DCC0A6;  /* → skin-soft */
-  --color-navy:         #2A3344;  /* very rare, only for trust marks */
-  --color-success:      #5E8A6C;  /* real green — kept distinct from olive remap */
-
-  /* Semantic aliases — short names for new code */
-  --color-bg:           var(--color-paper);
-  --color-fg:           var(--color-ink);
-  --color-accent-deep:  var(--color-sky-deep);
-  /* Note: --color-accent already defined above as brass→sky.
-     --color-muted is intentionally kept as shadcn's "muted surface" token
-     (paper-warm). For text-muted-equivalent neutrals, use ink-muted or
-     mauve-soft directly. */
+  /* ---------- Semantic layer (new names aliasing existing tokens) --------- */
+  --color-bg:             var(--color-paper);
+  --color-bg-elevated:    var(--color-paper-soft);
+  --color-bg-deep:        var(--color-paper-deep);
+  --color-fg:             var(--color-ink);
+  --color-text:           var(--color-ink);
+  --color-text-secondary: var(--color-ink-soft);
+  --color-text-muted:     var(--color-ink-muted);
+  --color-accent-deep:    var(--color-sky-deep);
+  --color-border-strong:  var(--color-ink);
+  --color-inverse-bg:     var(--color-brand-black);
+  --color-inverse-text:   var(--color-paper-soft);
 
   /* shadcn mapping → warm palette */
-  --color-background:        var(--color-paper);
-  --color-foreground:        var(--color-ink);
-  --color-card:              var(--color-paper-soft);
-  --color-card-foreground:   var(--color-ink);
-  --color-popover:           var(--color-paper-soft);
-  --color-popover-foreground:var(--color-ink);
-  --color-primary:           var(--color-ink);
-  --color-primary-foreground:var(--color-paper-soft);
-  --color-secondary:         var(--color-paper-warm);
+  --color-background:          var(--color-paper);
+  --color-foreground:          var(--color-ink);
+  --color-card:                var(--color-paper-soft);
+  --color-card-foreground:     var(--color-ink);
+  --color-popover:             var(--color-paper-soft);
+  --color-popover-foreground:  var(--color-ink);
+  --color-primary:             var(--color-ink);
+  --color-primary-foreground:  var(--color-paper-soft);
+  --color-secondary:           var(--color-paper-warm);
   --color-secondary-foreground:var(--color-ink);
-  --color-muted:             var(--color-paper-warm);
-  --color-muted-foreground:  var(--color-ink-muted);
-  --color-accent:            var(--color-sky);
-  --color-accent-foreground: var(--color-ink);
-  --color-destructive:       #8B2F2A;
-  --color-border:            var(--color-ink-soft);
-  --color-input:             var(--color-paper-deep);
-  --color-ring:              var(--color-sky);
+  --color-muted:               var(--color-paper-warm);
+  --color-muted-foreground:    var(--color-ink-muted);
+  --color-accent:              var(--color-sky);
+  --color-accent-foreground:   var(--color-ink);
+  --color-destructive:         #8B2F2A;
+  --color-border:              var(--color-ink-soft);
+  --color-input:               var(--color-paper-deep);
+  --color-ring:                var(--color-sky);
 
   /* ---------- Typography stack ---------- */
   /* All font CSS variables are wired in app/[locale]/layout.tsx via next/font */
-  --font-arabic:        var(--font-arabic);          /* Noto Naskh Arabic */
-  --font-arabic-display:var(--font-arabic-display);  /* Reem Kufi */
-  --font-display:       var(--font-display);         /* Fraunces — humanist serif */
-  --font-serif:         var(--font-serif);           /* Instrument Serif italic */
-  --font-mono:          var(--font-display);         /* Fraunces small caps */
-  --font-sans:          var(--font-arabic);          /* default body Arabic */
-  --font-heading:       var(--font-display);         /* default heading display */
+  --font-arabic:         var(--font-arabic);         /* IBM Plex Sans Arabic */
+  --font-arabic-display: var(--font-arabic-display); /* Tajawal */
+  --font-arabic-body:    var(--font-arabic);         /* alias */
+  --font-display:        var(--font-display);        /* Inter — clean neutral sans */
+  --font-latin-display:  var(--font-display);        /* alias */
+  --font-latin-body:     var(--font-display);        /* alias */
+  --font-serif:          var(--font-serif);          /* Instrument Serif italic */
+  --font-mono:           var(--font-display);        /* Inter */
+  --font-sans:           var(--font-arabic);         /* default body Arabic */
+  --font-heading:        var(--font-display);        /* default heading display */
 
   /* Typography scale — refined for journal rhythm */
   --text-display:   clamp(64px, 9vw, 124px);
@@ -112,30 +114,30 @@
   --text-small:     14px;
   --text-label:     11px;
 
-  --leading-display:   0.92;
-  --leading-heading:   1.05;
-  --leading-body:      1.65;
+  --leading-display:     0.92;
+  --leading-heading:     1.05;
+  --leading-body:        1.65;
   --leading-arabic-body: 1.95;
-  --tracking-display: -0.025em;
-  --tracking-label:    0.18em;
+  --tracking-display:   -0.025em;
+  --tracking-label:      0.18em;
 
   /* Spacing rhythm — generous editorial */
-  --spacing-xs: 8px;
-  --spacing-sm: 16px;
-  --spacing-md: 28px;
-  --spacing-lg: 56px;
-  --spacing-xl: 112px;
+  --spacing-xs:  8px;
+  --spacing-sm:  16px;
+  --spacing-md:  28px;
+  --spacing-lg:  56px;
+  --spacing-xl:  112px;
   --spacing-2xl: 168px;
 
   --section-pad-y: clamp(64px, 10vw, 168px);
   --section-pad-x: clamp(20px, 4vw, 56px);
 
   /* Radii — most surfaces stay sharp; pills + soft cards rounded */
-  --radius:    0;
-  --radius-sm: 0;
-  --radius-md: 2px;
-  --radius-lg: 4px;
-  --radius-xl: 8px;
+  --radius:      0;
+  --radius-sm:   0;
+  --radius-md:   2px;
+  --radius-lg:   4px;
+  --radius-xl:   8px;
   --radius-pill: 999px;
 
   /* Easing curves */
@@ -145,8 +147,8 @@
   --ease-out-expo:     cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Shadows — soft printed feel, no harsh drop shadows */
-  --shadow-page:  0 1px 0 0 rgba(31, 24, 18, 0.04), 0 12px 40px -28px rgba(31, 24, 18, 0.18);
-  --shadow-lift:  0 2px 0 0 rgba(31, 24, 18, 0.05), 0 18px 48px -32px rgba(31, 24, 18, 0.28);
+  --shadow-page: 0 1px 0 0 rgba(31, 24, 18, 0.04), 0 12px 40px -28px rgba(31, 24, 18, 0.18);
+  --shadow-lift: 0 2px 0 0 rgba(31, 24, 18, 0.05), 0 18px 48px -32px rgba(31, 24, 18, 0.28);
 }
 
 /* ==========================================================================
@@ -158,13 +160,9 @@
   --muted-foreground: var(--color-ink-muted);
   --accent:           var(--color-sky);
   --border:           var(--color-ink-soft);
-  /* Backwards-compat: every legacy `var(--font-oswald)` reference now
-     resolves to Fraunces. Lets us migrate components incrementally. */
-  --font-oswald: var(--font-display);
+  --font-oswald:      var(--font-display);
 
-  /* Force-emit new palette tokens so they're available via var() at runtime
-     even before any Tailwind utility consumes them. (Tailwind v4 tree-shakes
-     @theme tokens that aren't referenced by a generated class.) */
+  /* Force-emit tokens not consumed by any utility class */
   --color-mauve:        #5A4A55;
   --color-mauve-soft:   #7B6E78;
   --color-skin:         #C9A586;
@@ -172,6 +170,43 @@
   --color-sky-soft:     #CADBE7;
   --color-silver:       #9B9B9B;
   --color-paper-shadow: #BFA98A;
+}
+
+/* ==========================================================================
+   Dark mode — overrides applied when .dark class is on <html>
+   Managed by next-themes (attribute="class")
+   ========================================================================== */
+.dark {
+  --color-paper:         #1C1B19;
+  --color-paper-soft:    #242220;
+  --color-paper-warm:    #2A2825;
+  --color-paper-deep:    #332F2B;
+  --color-paper-shadow:  #141310;
+  --color-cream:         #1C1B19;
+  --color-cream-soft:    #242220;
+  --color-cream-warm:    #2A2825;
+  --color-beige:         #332F2B;
+  --color-ink:           #E8E0D4;
+  --color-ink-soft:      #C4BAB0;
+  --color-ink-muted:     #8E867C;
+  --color-sky:           #7AABCA;
+  --color-sky-deep:      #5A8EAC;
+  --color-sky-soft:      #2D5A72;
+  --color-mauve:         #7A6577;
+  --color-mauve-soft:    #9A8895;
+  --color-brand-black:   #E8E0D4;
+  --color-brass:         #7AABCA;
+  --color-brass-deep:    #5A8EAC;
+  --color-brass-soft:    #2D5A72;
+  --color-garnet:        #7A6577;
+  /* Semantic layer dark overrides */
+  --color-bg:             #1C1B19;
+  --color-bg-elevated:    #242220;
+  --color-bg-deep:        #332F2B;
+  --color-text:           #E8E0D4;
+  --color-text-secondary: #C4BAB0;
+  --color-text-muted:     #8E867C;
+  --color-border-strong:  #E8E0D4;
 }
 
 @layer base {
@@ -189,7 +224,7 @@
   }
 
   html[dir="ltr"] {
-    font-family: var(--font-display), "Iowan Old Style", Georgia, serif;
+    font-family: var(--font-display), system-ui, sans-serif;
   }
 
   html[lang="ar"] body {
@@ -209,28 +244,23 @@
     font-weight: 600;
   }
 
-  /* Arabic body — Latin numbers stay in latn for legibility against Naskh */
   html[lang="ar"] {
     font-feature-settings: "lnum", "kern", "liga";
   }
-  /* Number-only spans render as tabular Latin lining figures */
   .num-latn {
     font-feature-settings: "lnum", "tnum";
     font-variant-numeric: tabular-nums lining-nums;
   }
 
-  /* Long-form prose helpers */
   h1, h2, h3 { text-wrap: balance; }
   p          { text-wrap: pretty; }
 
-  /* Brass focus ring — works against parchment */
   :focus-visible {
     outline: 2px solid var(--color-brass);
     outline-offset: 3px;
     border-radius: 1px;
   }
 
-  /* Reduced-motion: kill always-on animations + ramp transitions to instant */
   @media (prefers-reduced-motion: reduce) {
     .animate-marquee-left,
     .animate-marquee-right,
@@ -249,7 +279,6 @@
     }
   }
 
-  /* Skip link */
   .skip-link {
     position: absolute;
     inset-inline-start: 1rem;
@@ -258,7 +287,7 @@
     padding: 0.65rem 1rem;
     background: var(--color-ink);
     color: var(--color-paper-soft);
-    font-family: var(--font-display), serif;
+    font-family: var(--font-display), system-ui, sans-serif;
     font-size: 13px;
     font-weight: 500;
     letter-spacing: 0.06em;
@@ -274,7 +303,6 @@
     position: relative;
   }
 
-  /* Subtle paper grain overlay — site-wide, behind all content */
   body::before {
     content: "";
     position: fixed;
@@ -294,44 +322,14 @@
 }
 
 /* ==========================================================================
-   Logical-property safety fallbacks
-   ========================================================================== */
-.text-start { text-align: start; }
-.text-end   { text-align: end; }
-
-.ms-xs { margin-inline-start: var(--spacing-xs); }
-.ms-sm { margin-inline-start: var(--spacing-sm); }
-.ms-md { margin-inline-start: var(--spacing-md); }
-.ms-lg { margin-inline-start: var(--spacing-lg); }
-.ms-xl { margin-inline-start: var(--spacing-xl); }
-
-.me-xs { margin-inline-end: var(--spacing-xs); }
-.me-sm { margin-inline-end: var(--spacing-sm); }
-.me-md { margin-inline-end: var(--spacing-md); }
-.me-lg { margin-inline-end: var(--spacing-lg); }
-.me-xl { margin-inline-end: var(--spacing-xl); }
-
-.ps-xs { padding-inline-start: var(--spacing-xs); }
-.ps-sm { padding-inline-start: var(--spacing-sm); }
-.ps-md { padding-inline-start: var(--spacing-md); }
-.ps-lg { padding-inline-start: var(--spacing-lg); }
-.ps-xl { padding-inline-start: var(--spacing-xl); }
-
-.pe-xs { padding-inline-end: var(--spacing-xs); }
-.pe-sm { padding-inline-end: var(--spacing-sm); }
-.pe-md { padding-inline-end: var(--spacing-md); }
-.pe-lg { padding-inline-end: var(--spacing-lg); }
-.pe-xl { padding-inline-end: var(--spacing-xl); }
-
-/* ==========================================================================
    Typography helpers — editorial system
    ========================================================================== */
 .font-display {
-  font-family: var(--font-display), "Iowan Old Style", Georgia, serif;
-  font-feature-settings: "ss01", "ss02", "kern", "liga";
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-feature-settings: "kern", "liga";
 }
 .font-display-italic {
-  font-family: var(--font-serif), "Iowan Old Style", Georgia, serif;
+  font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
 }
 .font-arabic-display {
@@ -340,9 +338,8 @@
   letter-spacing: 0;
 }
 
-/* Hero scale */
 .font-hero {
-  font-family: var(--font-display), serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: var(--text-display);
   line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
@@ -350,7 +347,7 @@
   font-style: normal;
 }
 .font-hero-italic {
-  font-family: var(--font-serif), serif;
+  font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: var(--text-display);
   line-height: var(--leading-display);
@@ -358,30 +355,27 @@
   font-weight: 400;
 }
 .font-hero-arabic {
-  font-family: var(--font-arabic-display), var(--font-arabic), serif;
+  font-family: var(--font-arabic-display), var(--font-arabic), sans-serif;
   font-size: var(--text-display);
   line-height: 1.1;
   font-weight: 500;
   letter-spacing: 0;
 }
-
-/* Hero sans alias kept for backwards-compat — points to the new display font */
 .font-hero-sans {
-  font-family: var(--font-display), serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: var(--text-display);
   line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
   font-weight: 400;
 }
 
-/* Editorial labels — small caps Latin, regular Arabic */
 .font-label {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: var(--text-label);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   font-weight: 500;
-  font-feature-settings: "ss01", "kern";
+  font-feature-settings: "kern";
 }
 [dir="rtl"] .font-label {
   font-family: var(--font-arabic), sans-serif;
@@ -391,10 +385,9 @@
   font-size: 12px;
 }
 
-/* Drop cap — first letter of paragraph in brass display serif */
 .dropcap::first-letter {
-  font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
   font-size: 5.6em;
   line-height: 0.85;
   float: inline-start;
@@ -402,18 +395,17 @@
   margin-block-start: 0.06em;
   margin-block-end: -0.05em;
   color: var(--color-brass);
-  font-feature-settings: "ss01";
+  font-feature-settings: "kern";
 }
 [dir="rtl"] .dropcap::first-letter {
-  font-family: var(--font-arabic-display), var(--font-arabic), serif;
+  font-family: var(--font-arabic-display), var(--font-arabic), sans-serif;
   font-size: 4.4em;
   font-weight: 600;
   margin-inline-end: 0.08em;
 }
 
-/* Pull quote — garnet display serif, oversized */
 .pull-quote {
-  font-family: var(--font-serif), serif;
+  font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
   font-size: clamp(28px, 3.6vw, 44px);
   line-height: 1.25;
@@ -421,20 +413,15 @@
   letter-spacing: -0.005em;
 }
 [dir="rtl"] .pull-quote {
-  font-family: var(--font-arabic), serif;
+  font-family: var(--font-arabic), sans-serif;
   font-style: normal;
   font-weight: 600;
   letter-spacing: 0;
 }
 
 /* ==========================================================================
-   Surface treatments — paper grain by intensity
+   Surface treatments
    ========================================================================== */
-.paper-warm { background-color: var(--color-paper-warm); }
-.paper-soft { background-color: var(--color-paper-soft); }
-.paper-deep { background-color: var(--color-paper-deep); }
-
-/* Hand-printed warm vignette inside cards */
 .paper-card {
   background: linear-gradient(180deg, var(--color-paper-soft) 0%, var(--color-paper) 100%);
   box-shadow: var(--shadow-page);
@@ -444,7 +431,6 @@
   box-shadow: var(--shadow-page);
 }
 
-/* Brass-edged hairline frame for photographs */
 .frame-print {
   background: var(--color-paper-soft);
   padding: 8px;
@@ -454,20 +440,17 @@
     0 18px 36px -28px rgba(31, 24, 18, 0.32);
 }
 
-/* Duotone — sepia/brass photograph treatment */
 .duotone-warm img,
 .duotone-warm {
   filter: sepia(0.32) saturate(1.05) hue-rotate(-8deg) contrast(1.02);
 }
 
-/* Backwards-compat — dotted-outline now reads as a printed frame */
 .dotted-outline       { border: 1px solid color-mix(in oklab, var(--color-ink) 22%, transparent); }
 .dotted-outline-muted { border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent); }
 
 /* ==========================================================================
    Dividers — printer's rule + ornamental flourish
    ========================================================================== */
-/* Solid hairline divider with center ornament */
 .rule-ornament {
   position: relative;
   height: 1px;
@@ -498,18 +481,16 @@
   line-height: 1;
 }
 
-/* Printed hairline used for borders */
 .hairline-b { border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
-.hairline-t { border-top: 1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
-.hairline   { border:    1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.hairline-t { border-top:    1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
+.hairline   { border:        1px solid color-mix(in oklab, var(--color-ink) 18%, transparent); }
 
-/* Chapter mark — used at top of every major section */
 .chapter-mark {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  font-family: var(--font-display), serif;
-  font-style: italic;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-style: normal;
   font-weight: 400;
   font-size: 14px;
   color: var(--color-ink-muted);
@@ -528,7 +509,7 @@
 .editorial-link {
   position: relative;
   color: var(--color-ink);
-  font-family: var(--font-display), serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   border-block-end: 1px solid color-mix(in oklab, var(--color-ink) 30%, transparent);
   padding-block-end: 1px;
   transition: color 220ms var(--ease-out-quart), border-color 220ms var(--ease-out-quart);
@@ -536,66 +517,6 @@
 .editorial-link:hover {
   color: var(--color-brass-deep);
   border-block-end-color: var(--color-brass);
-}
-
-/* Pill button — softened, ink+parchment hover swap */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: 1px solid var(--color-ink);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--color-ink);
-  font-family: var(--font-display), sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transition:
-    background-color 180ms var(--ease-out-quart),
-    color 180ms var(--ease-out-quart),
-    border-color 180ms var(--ease-out-quart),
-    transform 160ms var(--ease-out-quart);
-  min-height: 42px;
-  user-select: none;
-}
-.pill:hover {
-  background: var(--color-ink);
-  color: var(--color-paper-soft);
-}
-.pill:active {
-  transform: translateY(1px);
-}
-.pill:disabled,
-.pill[aria-disabled="true"] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.pill-solid {
-  background: var(--color-ink);
-  color: var(--color-paper-soft);
-}
-.pill-solid:hover {
-  background: var(--color-brass-deep);
-  border-color: var(--color-brass-deep);
-}
-.pill-brass {
-  background: var(--color-brass);
-  color: var(--color-paper-soft);
-  border-color: var(--color-brass);
-}
-.pill-brass:hover {
-  background: var(--color-brass-deep);
-  border-color: var(--color-brass-deep);
-}
-[dir="rtl"] .pill {
-  font-family: var(--font-arabic), sans-serif;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 600;
-  font-size: 13.5px;
 }
 
 /* ==========================================================================
@@ -613,8 +534,8 @@
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(6px); }
 }
-@keyframes spin-cw  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes spin-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@keyframes spin-cw  { from { transform: rotate(0deg); }  to { transform: rotate(360deg); }  }
+@keyframes spin-ccw { from { transform: rotate(0deg); }  to { transform: rotate(-360deg); } }
 @keyframes flourish-pulse {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50%      { opacity: 1;   transform: scale(1.06); }

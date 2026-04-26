@@ -34,13 +34,7 @@ export function NumberedEntries({ entries }: { entries: NumberedEntry[] }) {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, amount: 0.6 }}
                     transition={{ duration: 0.7, delay: base, ease: 'easeOut' }}
-                    className="block text-brass"
-                    style={{
-                      fontFamily: 'var(--font-serif)',
-                      fontStyle: 'italic',
-                      fontSize: 'clamp(40px, 7vw, 92px)',
-                      lineHeight: 0.85,
-                    }}
+                    className="block text-brass font-serif italic text-[clamp(40px,7vw,92px)] leading-[0.85]"
                   >
                     .{entry.number}
                   </motion.span>
@@ -50,14 +44,7 @@ export function NumberedEntries({ entries }: { entries: NumberedEntry[] }) {
                       whileInView={{ y: 0, opacity: 1 }}
                       viewport={{ once: true, amount: 0.6 }}
                       transition={{ duration: 0.85, delay: base, ease: EASE_IN_OUT_QUART }}
-                      className="text-balance text-ink"
-                      style={{
-                        fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-                        fontWeight: isRtl ? 500 : 400,
-                        fontSize: 'clamp(24px, 4.4vw, 52px)',
-                        lineHeight: 1.15,
-                        letterSpacing: isRtl ? 0 : '-0.018em',
-                      }}
+                      className="text-balance text-ink font-display font-normal text-[clamp(24px,4.4vw,52px)] leading-[1.15] tracking-[-0.018em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
                     >
                       {entry.text}
                     </motion.p>
@@ -65,7 +52,6 @@ export function NumberedEntries({ entries }: { entries: NumberedEntry[] }) {
                 </div>
                 <motion.div
                   className="flex items-center gap-3 text-ink-muted/35 origin-[inline-start]"
-                  style={{ transformOrigin: isRtl ? 'right center' : 'left center' }}
                   initial={{ scaleX: 0, opacity: 0 }}
                   whileInView={{ scaleX: 1, opacity: 1 }}
                   viewport={{ once: true, amount: 0.6 }}

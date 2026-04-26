@@ -50,13 +50,7 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
             className="fixed inset-x-0 top-[56px] z-40 mx-auto w-max"
           >
             <div
-              className="rounded-full border border-ink/30 bg-paper-soft px-4 py-1.5 text-ink shadow-[0_4px_20px_-12px_rgba(31,24,18,0.25)]"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontStyle: isRtl ? 'normal' : 'italic',
-                fontSize: isRtl ? 13 : 11.5,
-                letterSpacing: isRtl ? 0 : '0.04em',
-              }}
+              className="rounded-full border border-ink/30 bg-paper-soft px-4 py-1.5 text-ink shadow-[0_4px_20px_-12px_rgba(31,24,18,0.25)] font-display italic text-[11.5px] tracking-[0.04em] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal"
             >
               <Ornament glyph="fleuron" size={11} className="text-brass me-2 align-baseline" />
               {tCta('scroll_up_to_reveal_nav')}
@@ -70,11 +64,8 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
         dir={isRtl ? 'rtl' : 'ltr'}
         animate={{ y: visible ? '0%' : '100%', opacity: visible ? 1 : 0 }}
         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed inset-x-0 bottom-0 z-50 h-[64px] border-t border-ink/15 bg-paper/92 backdrop-blur-md md:h-[58px]"
-        style={{
-          boxShadow: '0 -10px 30px -16px rgba(31, 24, 18, 0.20)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0)',
-        }}
+        className="fixed inset-x-0 bottom-0 z-50 h-[64px] border-t border-ink/15 bg-paper/92 backdrop-blur-md shadow-[0_-10px_30px_-16px_rgba(31,24,18,0.20)] md:h-[58px]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
       >
         <div className="container flex h-full items-center justify-between text-ink">
           <LogoLink href="/" alt={t('brand')} height={36} />
@@ -87,25 +78,12 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
                   className="group inline-flex items-baseline gap-2 px-4 py-2"
                 >
                   <span
-                    className="text-ink-muted transition-colors group-hover:text-brass"
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontStyle: 'italic',
-                      fontWeight: 400,
-                      fontSize: 12,
-                      letterSpacing: '0.04em',
-                    }}
+                    className="text-ink-muted transition-colors group-hover:text-brass font-display italic font-normal text-[12px] tracking-[0.04em]"
                   >
                     .{item.n}
                   </span>
                   <span
-                    className="text-ink transition-colors group-hover:text-brass"
-                    style={{
-                      fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                      fontWeight: isRtl ? 600 : 500,
-                      fontSize: isRtl ? 16 : 14.5,
-                      letterSpacing: isRtl ? 0 : 0,
-                    }}
+                    className="text-ink transition-colors group-hover:text-brass font-display font-medium text-[14.5px] [dir=rtl]:font-arabic [dir=rtl]:font-semibold [dir=rtl]:text-[16px]"
                   >
                     {t(item.key)}
                   </span>

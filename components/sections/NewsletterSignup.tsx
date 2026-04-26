@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { Ornament } from '@/components/shared/Ornament'
@@ -10,8 +10,6 @@ const schema = z.object({ email: z.string().email() })
 
 export function NewsletterSignup() {
   const t = useTranslations('newsletter')
-  const locale = useLocale()
-  const isRtl = locale === 'ar'
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -32,8 +30,7 @@ export function NewsletterSignup() {
   return (
     <form
       onSubmit={onSubmit}
-      className="paper-card-warm relative flex w-full flex-col gap-4 p-7 sm:flex-row sm:items-end sm:gap-6 md:p-9"
-      style={{ borderRadius: '4px' }}
+      className="paper-card-warm relative flex w-full flex-col gap-4 rounded p-7 sm:flex-row sm:items-end sm:gap-6 md:p-9"
     >
       <span aria-hidden className="absolute -top-3 inset-inline-start-7 bg-paper px-2 text-brass">
         <Ornament glyph="fleuron" size={18} />
@@ -41,24 +38,12 @@ export function NewsletterSignup() {
 
       <div className="flex-1">
         <h3
-          className="text-ink"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-            fontWeight: isRtl ? 500 : 400,
-            fontSize: 'clamp(22px, 3vw, 32px)',
-            lineHeight: 1.1,
-            letterSpacing: isRtl ? 0 : '-0.018em',
-          }}
+          className="text-ink font-display font-normal text-[clamp(22px,3vw,32px)] leading-[1.1] tracking-[-0.018em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
         >
           {t('heading')}
         </h3>
         <p
-          className="mt-1.5 text-ink-soft"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-            fontStyle: isRtl ? 'normal' : 'italic',
-            fontSize: isRtl ? 14 : 14.5,
-          }}
+          className="mt-1.5 text-ink-soft font-serif italic text-[14.5px] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[14px]"
         >
           {t('description')}
         </p>
@@ -80,7 +65,7 @@ export function NewsletterSignup() {
         <button
           type="submit"
           disabled={submitting}
-          className="pill pill-solid disabled:opacity-60"
+          className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]"
         >
           <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
           {submitting ? t('submitting') : t('subscribe')}

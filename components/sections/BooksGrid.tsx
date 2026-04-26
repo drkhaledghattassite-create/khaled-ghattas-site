@@ -23,7 +23,6 @@ export function BooksGrid({ books }: { books: Book[] }) {
   const tCta = useTranslations('cta')
   const tFilters = useTranslations('books.filters')
   const tType = useTranslations('books.type')
-  const isRtl = locale === 'ar'
   const [filter, setFilter] = useState<Filter>('all')
 
   const visible = useMemo(
@@ -49,18 +48,11 @@ export function BooksGrid({ books }: { books: Book[] }) {
                 aria-selected={active}
                 onClick={() => setFilter(f.id)}
                 className={cn(
-                  'rounded-full border px-4 py-1.5 text-[12px] transition-colors duration-200',
+                  'rounded-full border px-4 py-1.5 font-display font-medium text-[11px] tracking-[0.16em] uppercase transition-colors duration-200 [dir=rtl]:font-arabic [dir=rtl]:font-semibold [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case',
                   active
                     ? 'border-ink bg-ink text-paper-soft'
                     : 'border-ink/40 bg-paper-soft text-ink-muted hover:border-ink hover:text-ink',
                 )}
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  fontWeight: isRtl ? 600 : 500,
-                  letterSpacing: isRtl ? 0 : '0.16em',
-                  textTransform: isRtl ? 'none' : 'uppercase',
-                  fontSize: isRtl ? 13 : 11,
-                }}
               >
                 {tFilters(f.key)}
               </button>
@@ -103,14 +95,7 @@ export function BooksGrid({ books }: { books: Book[] }) {
                         }}
                       />
                       <span
-                        className="absolute end-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-paper-soft/95 px-2.5 py-1 text-[10px] text-ink backdrop-blur-sm"
-                        style={{
-                          fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                          fontWeight: 500,
-                          letterSpacing: isRtl ? 0 : '0.16em',
-                          textTransform: isRtl ? 'none' : 'uppercase',
-                          fontSize: isRtl ? 11 : 10,
-                        }}
+                        className="absolute end-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-paper-soft/95 px-2.5 py-1 font-display font-medium text-[10px] tracking-[0.16em] uppercase text-ink backdrop-blur-sm [dir=rtl]:font-arabic [dir=rtl]:text-[11px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
                       >
                         <span
                           aria-hidden
@@ -125,43 +110,24 @@ export function BooksGrid({ books }: { books: Book[] }) {
                   </motion.div>
                   <div className="mt-3 flex flex-col gap-2">
                     <h3
-                      className="text-balance text-ink"
-                      style={{
-                        fontFamily: isRtl ? 'var(--font-arabic-display)' : 'var(--font-display)',
-                        fontWeight: isRtl ? 500 : 500,
-                        fontSize: 17,
-                        lineHeight: 1.2,
-                        letterSpacing: isRtl ? 0 : '-0.012em',
-                      }}
+                      className="text-balance text-ink font-display font-medium text-[17px] leading-[1.2] tracking-[-0.012em] [dir=rtl]:font-arabic-display [dir=rtl]:tracking-normal"
                     >
                       {title}
                     </h3>
                     <div className="flex items-baseline gap-1.5">
                       <span
-                        className="tabular-nums text-ink"
-                        style={{
-                          fontFamily: 'var(--font-serif)',
-                          fontStyle: 'italic',
-                          fontWeight: 400,
-                          fontSize: 22,
-                        }}
+                        className="tabular-nums text-ink font-serif italic font-normal text-[22px]"
                       >
                         ${product.price}
                       </span>
                       <span
-                        className="text-[10px] tracking-[0.16em] text-ink-muted uppercase"
-                        style={{
-                          fontFamily: 'var(--font-display)',
-                          letterSpacing: '0.16em',
-                          fontWeight: 500,
-                        }}
+                        className="font-display font-medium text-[10px] tracking-[0.16em] text-ink-muted uppercase"
                       >
                         {product.currency}
                       </span>
                     </div>
                     <span
-                      className="pill pill-solid w-max"
-                      style={{ fontSize: 11, padding: '7px 16px', minHeight: 0 }}
+                      className="inline-flex items-center gap-2 px-4 py-[7px] min-h-0 w-max rounded-full border border-ink bg-ink text-paper-soft text-[11px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold"
                     >
                       <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-current" />
                       {tCta('buy_now')}

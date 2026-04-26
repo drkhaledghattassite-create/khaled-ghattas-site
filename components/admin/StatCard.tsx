@@ -18,13 +18,7 @@ export function StatCard({ label, value, delta, icon: Icon }: Props) {
       </div>
       <div className="mt-3 flex items-baseline justify-between gap-3">
         <span
-          className="text-ink"
-          style={{
-            fontFamily: 'var(--font-oswald)',
-            fontWeight: 600,
-            fontSize: 32,
-            letterSpacing: '-0.02em',
-          }}
+          className="text-ink font-display font-semibold text-[32px] tracking-[-0.02em]"
         >
           {value}
         </span>

@@ -277,14 +277,15 @@
     "register": "سجّل الآن"
   },
   "newsletter": {
-    "heading": "النشرة البريدية",
-    "description": "اشترك في النشرة لتلقي المقالات والإصدارات الجديدة.",
+    "heading": "ابقَ على تواصل",
+    "description": "احصل على أحدث المقالات والإصدارات في بريدك",
     "email_label": "البريد الإلكتروني",
     "email_placeholder": "name@example.com",
     "subscribe": "اشترك",
     "submitting": "جاري الاشتراك...",
     "subscribed": "تم الاشتراك بنجاح",
-    "invalid_email": "يرجى إدخال بريد إلكتروني صالح"
+    "invalid_email": "يرجى إدخال بريد إلكتروني صالح",
+    "success_message": "سنكون على تواصل قريبًا"
   },
   "footer": {
     "brand": "د. خالد غطاس",
@@ -578,5 +579,39 @@
       "coming_soon_title": "المنتجات",
       "coming_soon_text": "اضبط المنتجات غير الكتب هنا عندما يكون الفهرس جاهزًا."
     }
+  },
+  "about_teaser": {
+    "eyebrow": "عن الدكتور",
+    "stats": {
+      "years_label": "سنة خبرة",
+      "lectures_label": "محاضرة",
+      "books_label": "كتاب"
+    },
+    "featured_on": {
+      "heading": "حاضر في"
+    }
+  },
+  "store_showcase": {
+    "eyebrow": "اكتشف الأعمال",
+    "heading": "المتجر",
+    "description": "كتب فلسفية وجلسات استشارية تصنع الفرق",
+    "type": {
+      "book": "كتاب",
+      "session": "جلسة"
+    },
+    "cta_buy": "اشترِ الآن",
+    "cta_browse_all": "تصفح المتجر بالكامل"
+  },
+  "articles_section": {
+    "eyebrow": "أحدث الكتابات",
+    "heading": "المقالات",
+    "featured_label": "مميز",
+    "view_all": "عرض كل المقالات"
+  },
+  "interviews_section": {
+    "eyebrow": "أصوات الرؤية",
+    "heading": "المقابلات",
+    "watch": "شاهد المقابلة",
+    "view_all": "كل المقابلات"
   }
 }

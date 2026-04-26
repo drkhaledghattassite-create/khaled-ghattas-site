@@ -84,25 +84,12 @@ export default async function ArticlePage({ params }: Props) {
             </time>
           </div>
           <h1
-            className="uppercase text-ink"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-              fontWeight: isRtl ? 700 : 600,
-              fontSize: 'clamp(32px, 6vw, 60px)',
-              lineHeight: 1.1,
-              letterSpacing: isRtl ? 'normal' : '-1.5px',
-            }}
+            className="uppercase text-ink font-display font-semibold text-[clamp(32px,6vw,60px)] leading-[1.1] tracking-[-1.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
           >
             {title}
           </h1>
           <p
-            className="text-ink-muted"
-            style={{
-              fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-              fontStyle: isRtl ? 'normal' : 'italic',
-              fontSize: 20,
-              lineHeight: 1.6,
-            }}
+            className="text-ink-muted font-serif italic text-[20px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
           >
             {excerpt}
           </p>
@@ -122,12 +109,7 @@ export default async function ArticlePage({ params }: Props) {
         )}
 
         <div
-          className="text-ink"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-serif)',
-            fontSize: 18,
-            lineHeight: 1.8,
-          }}
+          className="text-ink font-serif text-[18px] leading-[1.8] [dir=rtl]:font-arabic"
         >
           {content.split('\n').map((p, i) => (
             <p key={i} className="mb-5">
@@ -150,12 +132,7 @@ export default async function ArticlePage({ params }: Props) {
             <div className="flex flex-col">
               <span className="font-label text-[11px] text-ink-muted">{t('author')}</span>
               <span
-                className="text-ink"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-                  fontWeight: isRtl ? 700 : 600,
-                  letterSpacing: isRtl ? 'normal' : '0.02em',
-                }}
+                className="text-ink font-display font-semibold tracking-[0.02em] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
               >
                 {tNav('brand')}
               </span>
@@ -167,13 +144,7 @@ export default async function ArticlePage({ params }: Props) {
 
       <section className="mx-auto mt-[var(--spacing-xl)] max-w-[1200px] px-[var(--spacing-md)]">
         <h2
-          className="mb-8 uppercase text-ink"
-          style={{
-            fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-            fontWeight: isRtl ? 700 : 600,
-            fontSize: 'clamp(24px, 4vw, 36px)',
-            letterSpacing: isRtl ? 'normal' : '-0.5px',
-          }}
+          className="mb-8 uppercase text-ink font-display font-semibold text-[clamp(24px,4vw,36px)] tracking-[-0.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
         >
           {t('related')}
         </h2>
@@ -197,14 +168,7 @@ export default async function ArticlePage({ params }: Props) {
                     {(r.publishedAt ?? r.createdAt).toISOString().slice(0, 10)}
                   </span>
                   <p
-                    className="uppercase text-ink"
-                    style={{
-                      fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-oswald)',
-                      fontWeight: isRtl ? 700 : 600,
-                      fontSize: 18,
-                      lineHeight: 1.25,
-                      letterSpacing: isRtl ? 'normal' : '-0.5px',
-                    }}
+                    className="uppercase text-ink font-display font-semibold text-[18px] leading-[1.25] tracking-[-0.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
                   >
                     {locale === 'ar' ? r.titleAr : r.titleEn}
                   </p>

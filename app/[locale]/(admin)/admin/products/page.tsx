@@ -10,8 +10,7 @@ export default async function AdminProductsPage({ params }: Props) {
   return (
     <div className="rounded-md border border-dashed border-ink/30 bg-cream-soft p-12 text-center">
       <h2
-        className="text-ink"
-        style={{ fontFamily: 'var(--font-oswald)', fontWeight: 600, fontSize: 22, textTransform: 'uppercase' }}
+        className="text-ink font-display font-semibold text-[22px] uppercase"
       >
         {t('coming_soon_title')}
       </h2>

@@ -64,28 +64,14 @@ export default async function AboutPage({ params }: Props) {
             <div className="flex items-baseline gap-3 text-ink-muted">
               <Ornament glyph="fleuron" size={13} className="text-brass" />
               <span
-                className="text-[11px] tracking-[0.18em] uppercase"
-                style={{
-                  fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                  fontStyle: isRtl ? 'normal' : 'italic',
-                  letterSpacing: isRtl ? 0 : '0.18em',
-                  textTransform: isRtl ? 'none' : 'uppercase',
-                  fontWeight: 500,
-                  fontSize: isRtl ? 12 : 11,
-                }}
+                className="font-display italic font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
               >
                 {isRtl ? 'سيرة ومسار' : 'Biographical Note'}
               </span>
             </div>
 
             <p
-              className="dropcap text-pretty text-ink"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontSize: isRtl ? 19 : 19,
-                lineHeight: isRtl ? 1.95 : 1.65,
-                fontWeight: 400,
-              }}
+              className="dropcap text-pretty text-ink font-display font-normal text-[19px] leading-[1.65] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.95]"
             >
               {t('bio_paragraph')}
             </p>
@@ -96,26 +82,12 @@ export default async function AboutPage({ params }: Props) {
               {stats.map((s) => (
                 <li key={s.label} className="flex flex-col gap-1">
                   <span
-                    className="tabular-nums text-brass"
-                    style={{
-                      fontFamily: 'var(--font-serif)',
-                      fontStyle: 'italic',
-                      fontSize: 'clamp(36px, 5.5vw, 60px)',
-                      lineHeight: 1,
-                      letterSpacing: '-0.005em',
-                    }}
+                    className="tabular-nums text-brass font-serif italic text-[clamp(36px,5.5vw,60px)] leading-none tracking-[-0.005em]"
                   >
                     {s.value}
                   </span>
                   <span
-                    className="mt-1 text-[10.5px] tracking-[0.18em] text-ink-muted uppercase"
-                    style={{
-                      fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                      letterSpacing: isRtl ? 0 : '0.18em',
-                      textTransform: isRtl ? 'none' : 'uppercase',
-                      fontWeight: 500,
-                      fontSize: isRtl ? 12 : 10.5,
-                    }}
+                    className="mt-1 font-display font-medium text-[10.5px] tracking-[0.18em] text-ink-muted uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
                   >
                     {s.label}
                   </span>

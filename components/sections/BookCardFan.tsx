@@ -153,7 +153,7 @@ export function BookCardFan({ books }: { books: Book[] }) {
                     >
                       {title}
                     </h3>
-                    <span className="pill pill-brass w-max" style={{ fontSize: 11, padding: '7px 16px', minHeight: 0 }}>
+                    <span className="inline-flex items-center gap-2 px-4 py-[7px] min-h-0 w-max rounded-full border border-brass bg-brass text-paper-soft text-[11px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold">
                       <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-current" />
                       {tCta('buy_now')}
                     </span>

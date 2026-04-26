@@ -22,7 +22,7 @@ export function Logo({ height, alt, className, priority }: LogoProps) {
       height={height}
       priority={priority}
       className={cn('h-auto w-auto select-none', className)}
-      style={{ height, width: 'auto' }}
+      style={{ height }}
     />
   )
 }

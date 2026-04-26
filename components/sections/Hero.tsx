@@ -54,8 +54,10 @@ function CtaPill({
       <Link
         href={href}
         className={cn(
-          'pill',
-          variant === 'solid' && 'pill-solid',
+          'inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]',
+          variant === 'solid'
+            ? 'bg-ink text-paper-soft hover:bg-brass-deep hover:border-brass-deep'
+            : 'bg-transparent text-ink hover:bg-ink hover:text-paper-soft',
         )}
       >
         <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
@@ -106,14 +108,7 @@ export function Hero() {
           >
             <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
             <span
-              className="text-[11px] tracking-[0.18em] uppercase"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontWeight: 500,
-                letterSpacing: isRtl ? 0 : '0.18em',
-                textTransform: isRtl ? 'none' : 'uppercase',
-                fontSize: isRtl ? 13 : 11,
-              }}
+              className="font-display font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
             >
               .01 — {t('eyebrow')}
             </span>
@@ -135,16 +130,14 @@ export function Hero() {
                   )}
                 >
                   <span
-                    style={{
-                      fontFamily: isRtl
-                        ? 'var(--font-arabic-display)'
+                    className={cn(
+                      'font-normal',
+                      isRtl
+                        ? 'font-arabic-display font-medium text-ink'
                         : isItalic
-                          ? 'var(--font-serif)'
-                          : 'var(--font-display)',
-                      fontStyle: isItalic ? 'italic' : 'normal',
-                      fontWeight: isRtl ? 500 : isItalic ? 400 : 400,
-                      color: isItalic ? 'var(--color-garnet)' : 'var(--color-ink)',
-                    }}
+                          ? 'font-serif italic text-garnet'
+                          : 'font-display text-ink',
+                    )}
                   >
                     {line.text}
                   </span>
@@ -160,13 +153,7 @@ export function Hero() {
             className="mt-[var(--spacing-md)] max-w-[58ch]"
           >
             <p
-              className="text-pretty text-ink-soft"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontSize: isRtl ? 17 : 17,
-                lineHeight: isRtl ? 1.95 : 1.65,
-                fontWeight: 400,
-              }}
+              className="text-pretty text-ink-soft font-display font-normal text-[17px] leading-[1.65] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.95]"
             >
               {t('description')}
             </p>
@@ -197,8 +184,7 @@ export function Hero() {
                 fill
                 priority
                 sizes="(min-width: 768px) 520px, 100vw"
-                className="object-cover"
-                style={{ objectPosition: 'center top' }}
+                className="object-cover object-[center_top]"
               />
               {/* Soft cream + mauve wash on the inner edge — bleeds the portrait into the paper */}
               <div
@@ -222,15 +208,7 @@ export function Hero() {
           >
             <Ornament glyph="asterism" size={12} className="text-brass" />
             <span
-              className="text-[10px] tracking-[0.16em] uppercase"
-              style={{
-                fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-                fontStyle: isRtl ? 'normal' : 'italic',
-                fontWeight: 500,
-                letterSpacing: isRtl ? 0 : '0.14em',
-                textTransform: isRtl ? 'none' : 'uppercase',
-                fontSize: isRtl ? 11 : 10,
-              }}
+              className="font-display italic font-medium text-[10px] tracking-[0.14em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[11px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
             >
               {isRtl ? 'صورة بورتريه — ٢٠٢٤' : 'Portrait — Beirut, 2024'}
             </span>

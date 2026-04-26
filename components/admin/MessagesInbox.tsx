@@ -102,13 +102,7 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 p-5">
                 <div>
                   <h2
-                    className="text-ink"
-                    style={{
-                      fontFamily: 'var(--font-oswald)',
-                      fontWeight: 600,
-                      fontSize: 18,
-                      letterSpacing: '-0.02em',
-                    }}
+                    className="text-ink font-display font-semibold text-[18px] tracking-[-0.02em]"
                   >
                     {active.subject}
                   </h2>

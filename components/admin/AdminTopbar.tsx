@@ -97,8 +97,7 @@ export function AdminTopbar({ user }: { user: MockUser }) {
           })}
         </ol>
         <h1
-          className="truncate text-ink"
-          style={{ fontFamily: 'var(--font-oswald)', fontWeight: 600, fontSize: 22, letterSpacing: '-0.02em' }}
+          className="truncate text-ink font-display font-semibold text-[22px] tracking-[-0.02em]"
         >
           {lastCrumb?.label}
         </h1>

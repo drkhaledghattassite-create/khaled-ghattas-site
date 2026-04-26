@@ -47,18 +47,12 @@ export function LocaleSwitcher({
         onClick={() => switchTo('ar')}
         aria-pressed={locale === 'ar'}
         className={cn(
-          'rounded-full transition-all duration-300 uppercase tracking-[0.16em]',
+          'rounded-full transition-all duration-300 font-display font-medium uppercase tracking-[0.16em] [dir=rtl]:font-arabic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal [dir=rtl]:normal-case',
           sizeClasses,
           locale === 'ar'
             ? 'bg-ink text-paper-soft shadow-[inset_0_0_0_1px_rgba(168,196,214,0.7)]'
             : 'text-ink-muted hover:text-ink',
         )}
-        style={{
-          fontFamily: locale === 'ar' ? 'var(--font-arabic)' : 'var(--font-display)',
-          fontWeight: locale === 'ar' ? 600 : 500,
-          letterSpacing: locale === 'ar' ? 0 : '0.16em',
-          textTransform: locale === 'ar' ? 'none' : 'uppercase',
-        }}
       >
         {t('ar')}
       </button>
@@ -67,17 +61,12 @@ export function LocaleSwitcher({
         onClick={() => switchTo('en')}
         aria-pressed={locale === 'en'}
         className={cn(
-          'rounded-full transition-all duration-300 uppercase tracking-[0.16em]',
+          'rounded-full transition-all duration-300 font-display font-medium uppercase tracking-[0.16em]',
           sizeClasses,
           locale === 'en'
             ? 'bg-ink text-paper-soft shadow-[inset_0_0_0_1px_rgba(168,196,214,0.7)]'
             : 'text-ink-muted hover:text-ink',
         )}
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 500,
-          letterSpacing: '0.16em',
-        }}
       >
         {t('en')}
       </button>
