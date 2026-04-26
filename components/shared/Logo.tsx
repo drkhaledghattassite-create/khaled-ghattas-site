@@ -21,7 +21,7 @@ export function Logo({ height, alt, className, priority }: LogoProps) {
       width={width}
       height={height}
       priority={priority}
-      className={cn('h-auto w-auto select-none', className)}
+      className={cn('h-auto w-auto select-none dark:invert', className)}
       style={{ height }}
     />
   )

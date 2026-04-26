@@ -4,68 +4,8 @@ import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
-import { Ornament } from '@/components/shared/Ornament'
-import { cn } from '@/lib/utils'
 
-const EASE_OUT_QUART: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
-const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
-
-function LineReveal({
-  children,
-  delay,
-  className,
-}: {
-  children: React.ReactNode
-  delay: number
-  className?: string
-}) {
-  return (
-    <span className="block overflow-hidden">
-      <motion.span
-        className={cn('block', className)}
-        initial={{ y: '102%', opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.95, ease: EASE_IN_OUT_QUART, delay }}
-      >
-        {children}
-      </motion.span>
-    </span>
-  )
-}
-
-function CtaPill({
-  href,
-  children,
-  delay,
-  variant = 'outline',
-}: {
-  href: string
-  children: React.ReactNode
-  delay: number
-  variant?: 'outline' | 'solid'
-}) {
-  return (
-    <motion.span
-      initial={{ y: 14, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: EASE_OUT_QUART, delay }}
-      className="inline-block"
-    >
-      <Link
-        href={href}
-        className={cn(
-          'inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]',
-          variant === 'solid'
-            ? 'bg-ink text-paper-soft hover:bg-brass-deep hover:border-brass-deep'
-            : 'bg-transparent text-ink hover:bg-ink hover:text-paper-soft',
-        )}
-      >
-        <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
-        <span>{children}</span>
-      </Link>
-    </motion.span>
-  )
-}
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 export function Hero() {
   const locale = useLocale()
@@ -73,160 +13,121 @@ export function Hero() {
   const tCta = useTranslations('cta')
   const isRtl = locale === 'ar'
 
-  // Pair the headline as: Italic line / Display line / Italic line / Display line.
-  // Latin uses Fraunces + Instrument Serif italic; Arabic uses Reem Kufi.
-  const lines = [
-    { text: t('line_1'), style: 'display' as const },
-    { text: t('line_2'), style: 'italic' as const },
-    { text: t('line_3'), style: 'display' as const },
-    { text: t('line_4'), style: 'italic' as const },
-    { text: t('line_5'), style: 'display' as const },
-  ]
+  const firstName = isRtl ? 'خالد' : 'Khaled'
+  const lastName = isRtl ? 'غطاس' : 'Ghattass'
+  const established = isRtl ? 'منذ ٢٠١٠' : 'Since 2010'
+  const roles = isRtl
+    ? [t('line_2'), t('line_4'), t('line_5')]
+    : ['Cell Biologist', 'Human Behavior Expert', 'Author & Speaker']
 
   return (
     <section
+      id="top"
       aria-label={t('section_label')}
-      className="relative isolate overflow-hidden bg-paper pt-[88px] pb-[var(--spacing-xl)]"
+      className="relative bg-[var(--color-bg)] border-b border-[var(--color-border)]"
+      dir={isRtl ? 'rtl' : 'ltr'}
     >
-      {/* Sky/mauve vignette in upper-end corner so the portrait melts into paper */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 opacity-80"
-        style={{
-          background:
-            'radial-gradient(60% 50% at 80% 20%, rgba(168, 196, 214, 0.14) 0%, transparent 70%), radial-gradient(50% 40% at 10% 80%, rgba(90, 74, 85, 0.07) 0%, transparent 70%)',
-        }}
-      />
-
-      <div className="container relative grid items-center gap-[var(--spacing-lg)] md:grid-cols-[1.18fr_1fr] md:gap-[var(--spacing-xl)]">
-        <div className="text-start">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE_OUT_QUART, delay: 0.15 }}
-            className="mb-7 flex items-baseline gap-3 text-ink-muted"
-          >
-            <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
-            <span
-              className="font-display font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
-            >
-              .01 — {t('eyebrow')}
-            </span>
-          </motion.div>
-
-          <h1 className={cn('flex flex-col text-balance', isRtl ? 'gap-1.5' : 'gap-0')}>
-            {lines.map((line, i) => {
-              const isItalic = line.style === 'italic' && !isRtl
-              return (
-                <LineReveal
-                  key={i}
-                  delay={0.32 + i * 0.11}
-                  className={cn(
-                    isRtl
-                      ? 'text-[clamp(40px,7vw,84px)] leading-[1.08]'
-                      : isItalic
-                        ? 'text-[clamp(40px,6.6vw,96px)] leading-[1.0] italic'
-                        : 'text-[clamp(44px,6.8vw,100px)] leading-[0.96] tracking-[-0.022em]',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'font-normal',
-                      isRtl
-                        ? 'font-arabic-display font-medium text-ink'
-                        : isItalic
-                          ? 'font-serif italic text-garnet'
-                          : 'font-display text-ink',
-                    )}
-                  >
-                    {line.text}
-                  </span>
-                </LineReveal>
-              )
-            })}
-          </h1>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE_OUT_QUART, delay: 1.0 }}
-            className="mt-[var(--spacing-md)] max-w-[58ch]"
-          >
-            <p
-              className="text-pretty text-ink-soft font-display font-normal text-[17px] leading-[1.65] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.95]"
-            >
-              {t('description')}
-            </p>
-          </motion.div>
-
-          <div className="mt-[var(--spacing-lg)] flex flex-wrap items-center gap-3">
-            <CtaPill href="/articles" delay={1.45} variant="outline">
-              {tCta('articles')}
-            </CtaPill>
-            <CtaPill href="/books" delay={1.55} variant="solid">
-              {tCta('books')}
-            </CtaPill>
-          </div>
-        </div>
-
-        {/* Portrait — printed frame with warm sepia duotone */}
+      <div className="relative mx-auto max-w-[var(--container-max)] [padding:clamp(72px,8vw,120px)_clamp(20px,5vw,56px)_clamp(96px,9vw,140px)]">
+        {/* Eyebrow */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.1, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
-          className="relative mx-auto w-full max-w-[520px]"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.05 }}
+          className="eyebrow-accent mb-6"
         >
-          <div className="relative aspect-[3/4] frame-print">
-            <div className="relative h-full w-full overflow-hidden">
-              <Image
-                src="/dr-khaled-portrait.jpg"
-                alt={isRtl ? 'د. خالد غطاس' : 'Dr. Khaled Ghattass'}
-                fill
-                priority
-                sizes="(min-width: 768px) 520px, 100vw"
-                className="object-cover object-[center_top]"
-              />
-              {/* Soft cream + mauve wash on the inner edge — bleeds the portrait into the paper */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(115deg, rgba(240, 230, 216, 0.45) 0%, transparent 35%, transparent 70%, rgba(42, 37, 40, 0.15) 100%)',
-                  mixBlendMode: 'multiply',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Marginalia: handwritten-style attribution under the portrait */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 0.6 }}
-            className="absolute -bottom-3 inset-inline-end-3 flex items-baseline gap-2 bg-paper px-2.5 py-1 text-ink-muted"
-          >
-            <Ornament glyph="asterism" size={12} className="text-brass" />
-            <span
-              className="font-display italic font-medium text-[10px] tracking-[0.14em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[11px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
-            >
-              {isRtl ? 'صورة بورتريه — ٢٠٢٤' : 'Portrait — Beirut, 2024'}
-            </span>
-          </motion.div>
+          {t('eyebrow')}
         </motion.div>
-      </div>
 
-      {/* Bottom rule with a centered fleuron — bridges into the next section */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.7, duration: 0.6 }}
-        className="container mt-[var(--spacing-xl)] flex items-center justify-center gap-4 text-ink-muted/40"
-      >
-        <span aria-hidden className="block h-px flex-1 bg-current" />
-        <Ornament glyph="fleuron" size={18} className="text-brass animate-bob" />
-        <span aria-hidden className="block h-px flex-1 bg-current" />
-      </motion.div>
+        {/* Monumental name */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
+          className="font-arabic-display flex flex-col text-[clamp(72px,16vw,220px)] leading-[0.88] tracking-[-0.04em] font-black text-[var(--color-fg1)]"
+        >
+          <span>{firstName}</span>
+          <span>{lastName}</span>
+        </motion.h1>
+
+        {/* Accent rule under name */}
+        <motion.span
+          aria-hidden
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 0.6, ease: EASE, delay: 0.5 }}
+          className="block mt-6 w-[clamp(40px,5vw,56px)] h-[clamp(3px,0.4vw,4px)] bg-[var(--color-accent)]"
+          style={{ transformOrigin: isRtl ? 'right' : 'left' }}
+        />
+
+        {/* Statement */}
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, ease: EASE, delay: 0.35 }}
+          className="font-arabic-body mt-8 max-w-[720px] text-[clamp(18px,2.4vw,28px)] leading-[1.5] font-normal text-[var(--color-fg2)]"
+        >
+          {t('description')}
+        </motion.p>
+
+        {/* Bottom row: roles + CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: EASE, delay: 0.5 }}
+          className="mt-12 flex flex-wrap items-center justify-between gap-x-8 gap-y-6"
+        >
+          <ul className="flex flex-wrap gap-x-7 gap-y-3 list-none m-0 p-0">
+            {roles.map((role) => (
+              <li
+                key={role}
+                className="relative ps-4 text-[14px] font-medium text-[var(--color-fg2)] font-arabic-body"
+              >
+                <span
+                  aria-hidden
+                  className="absolute top-1/2 -translate-y-1/2 [inset-inline-start:0] w-[6px] h-[6px] rounded-full bg-[var(--color-fg3)]"
+                />
+                {role}
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-wrap gap-3">
+            <Link href="/articles" className="btn-pill btn-pill-primary">
+              {tCta('articles')}
+            </Link>
+            <Link href="/books" className="btn-pill btn-pill-secondary">
+              {tCta('books')}
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Established stamp — desktop only */}
+        <span
+          className={`hidden md:block absolute bottom-7 [inset-inline-start:clamp(20px,5vw,56px)] text-[11px] font-medium text-[var(--color-fg3)] ${
+            isRtl ? 'font-arabic-body' : 'font-display uppercase tracking-[0.18em]'
+          }`}
+        >
+          {established}
+        </span>
+
+        {/* Portrait medallion — top opposite corner */}
+        <motion.figure
+          aria-hidden
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: EASE, delay: 0.25 }}
+          className="absolute m-0 overflow-hidden rounded-full bg-[var(--color-bg-deep)] [inset-inline-end:clamp(20px,5vw,56px)] top-[clamp(72px,8vw,120px)] w-[clamp(72px,11vw,144px)] aspect-square"
+        >
+          <Image
+            src="/dr-khaled-portrait.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 1024px) 144px, 96px"
+            className="object-cover object-[center_18%] [filter:grayscale(0.15)]"
+          />
+        </motion.figure>
+      </div>
     </section>
   )
 }

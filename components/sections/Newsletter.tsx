@@ -1,82 +1,135 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 
-const EASE_OUT_QUART: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 export function Newsletter() {
   const t = useTranslations('newsletter')
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.includes('@')) return
-    setStatus('submitting')
-    // TODO Phase 8: wire real Resend API subscription
-    console.log('[Newsletter] Subscribe:', email)
-    setTimeout(() => setStatus('done'), 800)
+    setLoading(true)
+    await new Promise((r) => setTimeout(r, 600))
+    toast.success(t('success_message'))
+    setEmail('')
+    setLoading(false)
+    setDone(true)
   }
+
+  const kicker = isRtl ? 'دعوة شخصية' : 'A personal invitation'
+  const statement = isRtl
+    ? 'لا أكتب نشرةً للترويج. أكتبها لأنّني أحبّ أن أُكمل حديثي معك في الأسبوع، حتى لو لم نلتقِ. مقالةٌ واحدة، رسالةٌ صغيرة، وكثير من المعنى.'
+    : 'I do not write a newsletter to market. I write it because I want our conversation to continue through the week, even when we do not meet. One essay, a small letter, plenty of meaning.'
+  const sign = isRtl ? '— خالد' : '— Khaled'
+  const placeholder = isRtl ? 'بريدك الإلكتروني' : 'your@email.com'
+  const cta = isRtl ? 'انضمّ إليّ' : 'Join me'
+  const priv = isRtl
+    ? 'لا إعلانات. لن أُشارك بريدك. ألغِ في أيّ وقت.'
+    : 'No ads. I will never share your address. Unsubscribe any time.'
+  const readers = isRtl ? 'يقرؤها أكثر من مليون متابع' : 'Read by a million across platforms'
+  const successCopy = isRtl
+    ? 'وصل بريدك. شكراً — أراك الأسبوع القادم.'
+    : "I have your address. Thank you — I'll see you next week."
 
   return (
     <section
-      className="relative z-[2] bg-paper-deep px-[var(--section-pad-x)] py-20 md:py-[120px] lg:py-40"
+      id="newsletter"
+      className="border-b border-[var(--color-border)] [padding:clamp(96px,12vw,160px)_clamp(20px,5vw,56px)]"
+      dir={isRtl ? 'rtl' : 'ltr'}
     >
-      <div className="mx-auto max-w-[640px] text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+      <div className="mx-auto max-w-[760px] text-start">
+        <motion.span
+          initial={{ opacity: 0, y: 6 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.8, ease: EASE_OUT_QUART }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="eyebrow-invitation block mb-[18px]"
         >
-          <h2
-            className="text-balance text-ink font-display font-semibold text-[clamp(32px,6vw,56px)] leading-none tracking-[-0.022em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-          >
-            {t('heading')}
-          </h2>
+          {kicker}
+        </motion.span>
 
-          <p
-            className="mt-4 text-ink-soft font-serif italic text-[18px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
-          >
-            {t('description')}
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.65, ease: EASE, delay: 0.05 }}
+          className={`m-0 mb-3.5 text-[clamp(22px,3vw,32px)] leading-[1.55] font-medium text-[var(--color-fg1)] tracking-[-0.005em] [text-wrap:pretty] ${
+            isRtl ? 'font-arabic-display' : 'font-arabic-display !leading-[1.4] tracking-[-0.015em]'
+          }`}
+        >
+          {statement}
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.18 }}
+          className={`m-0 mb-9 text-[16px] font-medium text-[var(--color-fg2)] ${
+            isRtl ? 'font-arabic-display italic' : 'font-arabic-display italic'
+          }`}
+          style={{ fontStyle: 'italic' }}
+        >
+          {sign}
+        </motion.p>
+
+        {done ? (
+          <p className="py-4 m-0 border-b border-[var(--color-border)] text-[18px] font-semibold text-[var(--color-accent)]">
+            {successCopy}
           </p>
+        ) : (
+          <motion.form
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
+            onSubmit={handleSubmit}
+            noValidate
+            className="grid grid-cols-[1fr_auto] items-stretch pb-3 border-b border-[var(--color-fg1)]"
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={placeholder}
+              required
+              disabled={loading}
+              aria-label={t('email_label')}
+              className={`bg-transparent border-0 outline-none text-[18px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] py-3 px-0 w-full ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            />
+            <button
+              type="submit"
+              disabled={loading || !email}
+              className={`bg-transparent border-0 inline-flex items-center gap-2 py-3 px-0 text-[14px] font-semibold text-[var(--color-fg1)] hover:text-[var(--color-accent)] cursor-pointer whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                isRtl ? 'font-arabic-body !text-[15px]' : 'font-display'
+              }`}
+            >
+              {loading ? '…' : cta}
+              <span aria-hidden>{isRtl ? '←' : '→'}</span>
+            </button>
+          </motion.form>
+        )}
 
-          {status === 'done' ? (
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE_OUT_QUART }}
-              className="mt-8 font-serif italic text-[18px] text-sky-deep [dir=rtl]:font-arabic [dir=rtl]:not-italic"
-            >
-              {t('success_message')}
-            </motion.p>
-          ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
-              noValidate
-            >
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('email_placeholder')}
-                required
-                className="min-w-0 flex-1 bg-transparent border border-ink/30 rounded-full px-5 py-[10px] text-ink text-[15px] outline-none min-h-11 font-display [dir=rtl]:font-arabic"
-              />
-              <button
-                type="submit"
-                disabled={status === 'submitting'}
-                className="shrink-0 inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]"
-              >
-                <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-current" />
-                {status === 'submitting' ? t('submitting') : t('subscribe')}
-              </button>
-            </form>
-          )}
-        </motion.div>
+        <div
+          className={`mt-[18px] flex flex-wrap items-center gap-2.5 text-[12px] text-[var(--color-fg3)] tracking-[0.02em] ${
+            isRtl ? 'font-arabic-body !text-[13px]' : 'font-display'
+          }`}
+        >
+          <span>{readers}</span>
+          <span aria-hidden>·</span>
+          <span>{priv}</span>
+        </div>
       </div>
     </section>
   )

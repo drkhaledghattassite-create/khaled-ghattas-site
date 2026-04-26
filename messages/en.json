@@ -129,7 +129,8 @@
         "sans": "600+ Articles"
       },
       "description": "A unique repository of articles by Dr. Khaled Ghattass, accessible thematically and chronologically, reflecting contemporary concerns of self, society, and thought."
-    }
+    },
+    "read_article": "Read article"
   },
   "article": {
     "author": "Author",
@@ -285,7 +286,8 @@
     "submitting": "Subscribing...",
     "subscribed": "Subscribed successfully",
     "invalid_email": "Please enter a valid email address",
-    "success_message": "We'll be in touch soon"
+    "success_message": "We'll be in touch soon",
+    "submit": "Subscribe"
   },
   "footer": {
     "brand": "Dr. Khaled Ghattass",
@@ -303,7 +305,11 @@
     "newsletter_placeholder": "Newsletter — coming in next phase"
   },
   "admin": {
-    "user": { "panel": "Admin panel", "brand": "Dr. Khaled Ghattass", "logout": "Sign out" },
+    "user": {
+      "panel": "Admin panel",
+      "brand": "Dr. Khaled Ghattass",
+      "logout": "Sign out"
+    },
     "groups": {
       "content": "Content",
       "commerce": "Commerce",
@@ -352,7 +358,9 @@
       "copy_url": "Copy URL",
       "selected": "selected"
     },
-    "empty": { "title": "No items yet" },
+    "empty": {
+      "title": "No items yet"
+    },
     "actions": {
       "confirm_delete": "Delete this item?",
       "no_undo": "This action cannot be undone.",
@@ -589,7 +597,10 @@
     },
     "featured_on": {
       "heading": "FEATURED ON"
-    }
+    },
+    "heading": "A life in print and memory",
+    "bio_preview_fallback": "Cell biologist, behavioral expert, author, lecturer, and founder of Al-Warsheh. For over fifteen years he has built a bridge between science and society, delivering more than a thousand lectures across Lebanon and the Arab world.",
+    "cta_more": "Read more"
   },
   "store_showcase": {
     "eyebrow": "EXPLORE THE WORK",

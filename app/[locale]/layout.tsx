@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
-import { IBM_Plex_Sans_Arabic, Tajawal, Instrument_Serif, Inter } from 'next/font/google'
+import { IBM_Plex_Sans_Arabic, Readex_Pro, Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
 import { RouteLoader } from '@/components/layout/RouteLoader'
@@ -13,23 +13,15 @@ import '../globals.css'
 
 const arabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-arabic',
   display: 'swap',
 })
 
-const arabicDisplay = Tajawal({
+const arabicDisplay = Readex_Pro({
   subsets: ['arabic', 'latin'],
-  weight: ['400', '500', '700'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-arabic-display',
-  display: 'swap',
-})
-
-const serif = Instrument_Serif({
-  subsets: ['latin'],
-  weight: '400',
-  style: ['normal', 'italic'],
-  variable: '--font-serif',
   display: 'swap',
 })
 
@@ -48,7 +40,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#F5EFE3',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
+    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },
+  ],
   width: 'device-width',
   initialScale: 1,
   colorScheme: 'light dark',
@@ -79,7 +74,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html
       lang={locale}
       dir={dir}
-      className={`${arabic.variable} ${arabicDisplay.variable} ${serif.variable} ${display.variable}`}
+      className={`${arabic.variable} ${arabicDisplay.variable} ${display.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>

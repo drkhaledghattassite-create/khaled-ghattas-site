@@ -1,20 +1,21 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
-import { Ornament } from '@/components/shared/Ornament'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { ThemeToggle } from './ThemeToggle'
 
 const NAV_ITEMS = [
-  { n: '01', key: 'about', href: '/about', image: '/placeholder/nav/nav-1.jpg' },
-  { n: '02', key: 'articles', href: '/articles', image: '/placeholder/nav/nav-2.jpg' },
-  { n: '03', key: 'interviews', href: '/interviews', image: '/placeholder/nav/nav-3.jpg' },
-  { n: '04', key: 'store', href: '/books', image: '/placeholder/nav/nav-4.jpg' },
-  { n: '05', key: 'gallery', href: '/gallery', image: '/placeholder/nav/nav-5.jpg' },
+  { key: 'home', href: '/' },
+  { key: 'about', href: '/about' },
+  { key: 'articles', href: '/articles' },
+  { key: 'interviews', href: '/interviews' },
+  { key: 'store', href: '/books' },
+  { key: 'gallery', href: '/gallery' },
+  { key: 'contact', href: '/contact' },
 ] as const
 
 type Props = {
@@ -25,6 +26,8 @@ type Props = {
 
 export function MobileMenu({ open, onClose, authSlot }: Props) {
   const t = useTranslations('nav')
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
@@ -32,7 +35,6 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
     if (!open) return
     previouslyFocused.current = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
-    // Initial focus on close button — predictable for AT users
     const id = window.setTimeout(() => closeButtonRef.current?.focus(), 50)
     return () => {
       window.clearTimeout(id)
@@ -54,26 +56,19 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ duration: 0.55, ease: [0.77, 0, 0.175, 1] }}
-          className="fixed inset-0 z-[60] flex flex-col bg-paper"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          className="fixed inset-0 z-[60] bg-[var(--color-bg)]"
           role="dialog"
           aria-modal="true"
           aria-label={t('menu')}
+          dir={isRtl ? 'rtl' : 'ltr'}
         >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(60% 50% at 80% 10%, rgba(168, 196, 214, 0.14) 0%, transparent 70%)',
-            }}
-          />
-
-          <div className="relative flex items-center justify-between gap-3 px-6 py-5">
-            <LogoLink href="/" onClick={onClose} alt={t('brand')} height={36} />
+          {/* Header strip */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--color-border)]">
+            <LogoLink href="/" onClick={onClose} alt={t('brand')} height={28} />
             <div className="flex items-center gap-2">
               <LocaleSwitcher />
               <ThemeToggle />
@@ -82,63 +77,55 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
                 type="button"
                 onClick={onClose}
                 aria-label={t('close')}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-ink/5 focus-visible:bg-ink/5"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-fg2)] hover:text-[var(--color-fg1)]"
               >
-                <span aria-hidden className="relative block h-5 w-5">
-                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 rotate-45 bg-ink" />
-                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 -rotate-45 bg-ink" />
+                <span aria-hidden className="relative block h-4 w-4">
+                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 rotate-45 bg-current" />
+                  <span className="absolute inset-x-0 top-1/2 block h-px -translate-y-1/2 -rotate-45 bg-current" />
                 </span>
               </button>
             </div>
           </div>
 
-          <div className="relative px-6 pb-2 text-brass">
-            <Ornament glyph="fleuron" size={16} />
-          </div>
-
-          <ul className="relative flex flex-1 flex-col justify-center gap-2 px-6">
+          {/* Nav items */}
+          <ul className="flex flex-col px-5 pt-4 list-none m-0">
             {NAV_ITEMS.map((item, i) => (
               <motion.li
                 key={item.key}
-                initial={{ y: 30, opacity: 0 }}
+                initial={{ y: 16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{
-                  duration: 0.55,
-                  ease: [0.34, 1.56, 0.64, 1],
-                  delay: 0.2 + i * 0.07,
-                }}
-                className="relative"
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.04 + i * 0.04 }}
               >
                 <Link
                   href={item.href}
                   onClick={onClose}
-                  className="group flex items-baseline justify-between gap-4 border-b border-ink/15 py-4"
+                  className="flex items-center justify-between border-b border-[var(--color-border)] py-5 group"
                 >
-                  <div className="flex items-baseline gap-3">
-                    <span
-                      className="text-brass font-display italic font-normal text-[14px]"
-                    >
-                      .{item.n}
-                    </span>
-                    <span
-                      className="text-ink transition-colors group-hover:text-brass-deep font-display font-normal text-[38px] leading-[1.05] tracking-[-0.01em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:text-[36px] [dir=rtl]:tracking-normal"
-                    >
-                      {t(item.key)}
-                    </span>
-                  </div>
-                  <span aria-hidden className="text-ink-muted/50 transition-colors group-hover:text-brass">
-                    <Ornament glyph="arabesque" size={20} />
+                  <span
+                    className={`text-[28px] leading-tight font-bold tracking-tight text-[var(--color-fg1)] group-hover:text-[var(--color-accent)] transition-colors ${
+                      isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.02em]'
+                    }`}
+                  >
+                    {t(item.key)}
                   </span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden
+                    className="text-[var(--color-fg3)] group-hover:text-[var(--color-accent)] transition-colors flex-shrink-0"
+                    style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}
+                  >
+                    <path d="M4 10h12M10 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </Link>
               </motion.li>
             ))}
           </ul>
 
           {authSlot && (
-            <div
-              className="relative flex items-center justify-center gap-2 px-6 pt-6 pb-12"
-              onClick={onClose}
-            >
+            <div className="flex items-center justify-center gap-2 px-5 pt-8" onClick={onClose}>
               {authSlot}
             </div>
           )}

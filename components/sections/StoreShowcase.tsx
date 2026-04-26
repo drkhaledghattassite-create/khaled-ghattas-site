@@ -4,164 +4,305 @@ import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
-import { cn } from '@/lib/utils'
-import { ChapterMark } from '@/components/shared/Ornament'
 import type { Book } from '@/lib/db/queries'
 
-const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
-
-// Desktop 12-col spans per grid position
-const COL_SPANS = [
-  'md:col-span-4',
-  'md:col-span-4',
-  'md:col-span-4',
-  'md:col-span-3',
-  'md:col-span-3',
-  'md:col-span-6',
-  'md:col-span-4',
-  'md:col-span-8',
-] as const
-
-function sortForGrid(books: Book[]): Book[] {
-  const nonSessions = books.filter((b) => b.productType !== 'SESSION')
-  const sessions = books.filter((b) => b.productType === 'SESSION')
-  const grid: Book[] = []
-  let bookIdx = 0
-  let sessionIdx = 0
-  for (let i = 0; i < 8; i++) {
-    if ((i === 5 || i === 7) && sessionIdx < sessions.length) {
-      grid.push(sessions[sessionIdx++])
-    } else if (bookIdx < nonSessions.length) {
-      grid.push(nonSessions[bookIdx++])
-    } else if (sessionIdx < sessions.length) {
-      grid.push(sessions[sessionIdx++])
-    }
-  }
-  return grid
-}
-
-function ProductCard({ book, index }: { book: Book; index: number }) {
-  const locale = useLocale()
-  const t = useTranslations('store_showcase')
-  const isSession = book.productType === 'SESSION'
-  const title = locale === 'ar' ? book.titleAr : book.titleEn
-  const priceNum = Math.round(Number(book.price))
-  const href = book.externalUrl ?? `/books/${book.slug}`
-
-  return (
-    <motion.div
-      className="group relative flex flex-col"
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.7, delay: index * 0.07, ease: EASE_OUT_EXPO }}
-    >
-      <a
-        href={href}
-        target={book.externalUrl ? '_blank' : undefined}
-        rel={book.externalUrl ? 'noopener noreferrer' : undefined}
-        className="block flex-1"
-      >
-        {/* Cover with type badge */}
-        <div className="relative aspect-[3/4] overflow-hidden">
-          <Image
-            src={book.coverImage}
-            alt={title}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-          />
-          <span
-            className={cn(
-              'absolute end-3 top-3 rounded-sm px-2 py-1 font-display font-medium text-[10px] tracking-[0.12em] uppercase [dir=rtl]:font-arabic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal [dir=rtl]:normal-case',
-              isSession ? 'bg-sky text-ink' : 'bg-ink text-paper-soft',
-            )}
-          >
-            {isSession ? t('type.session') : t('type.book')}
-          </span>
-        </div>
-
-        {/* Title + price */}
-        <div className="p-3 pb-2">
-          <h3
-            className="text-balance text-ink font-display font-normal text-[clamp(16px,2vw,22px)] leading-[1.15] tracking-[-0.016em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-          >
-            {title}
-          </h3>
-          <p
-            className="mt-2 num-latn font-display font-normal text-[26px] leading-none tracking-[-0.01em] text-ink"
-          >
-            ${priceNum}
-          </p>
-        </div>
-
-        {/* Buy CTA */}
-        <div className="px-3 pb-4">
-          <span
-            className="inline-flex items-center gap-2 px-4 py-[7px] min-h-9 rounded-full border border-brass bg-brass text-paper-soft text-[11px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold"
-          >
-            <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-current" />
-            {t('cta_buy')}
-          </span>
-        </div>
-      </a>
-    </motion.div>
-  )
-}
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 type StoreShowcaseProps = {
   books: Book[]
 }
 
 export function StoreShowcase({ books }: StoreShowcaseProps) {
-  const locale = useLocale()
   const t = useTranslations('store_showcase')
+  const locale = useLocale()
   const isRtl = locale === 'ar'
 
-  const grid = sortForGrid(books)
+  const allBooks = books.filter((b) => b.productType === 'BOOK')
+  const sessions = books.filter((b) => b.productType === 'SESSION')
+
+  const heroBook = allBooks[0] ?? books[0]
+  const shelfBooks = allBooks.slice(1, 6).length > 0 ? allBooks.slice(1, 6) : books.slice(1, 6)
+
+  if (!heroBook) return null
+
+  const heroTitle = isRtl ? heroBook.titleAr : heroBook.titleEn
+  const heroPrice = Math.round(Number(heroBook.price))
+  const heroHref = heroBook.externalUrl ?? `/books/${heroBook.slug}`
+
+  const kickerHero = isRtl ? 'الإصدار الأحدث' : 'Latest title'
+  const kickerOther = isRtl ? 'مجلّدات أخرى' : 'Other volumes'
+  const kickerLectures = isRtl ? 'محاضرات مدفوعة' : 'Recorded lectures'
+  const lecturesHeading = isRtl ? 'محاضرات مسجّلة' : 'Recorded Lectures'
+  const lecturesIntro = isRtl
+    ? 'محاضرات بصوت الدكتور خالد، تُشترى مرة وتُشاهد متى شئت.'
+    : "Lectures in Dr. Khaled's own voice. Bought once, watched any time."
+  const instant = isRtl ? 'وصول فوري' : 'Instant access'
 
   return (
-    <section className="relative z-[2] px-[var(--section-pad-x)] py-20 md:py-[120px] lg:py-40 bg-paper-soft">
-      <div className="mx-auto max-w-[1200px]">
-        {/* Header */}
-        <header className="mb-[var(--spacing-lg)]">
-          <ChapterMark number=".03" label={isRtl ? 'الأعمال والمتجر' : 'Works & Store'} />
-
-          <p
-            className="mt-4 font-display font-medium text-[11px] tracking-[0.18em] uppercase text-sky-deep [dir=rtl]:font-arabic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
+    <section
+      id="store"
+      className="bg-[var(--color-bg)] border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
+      dir={isRtl ? 'rtl' : 'ltr'}
+    >
+      <div className="mx-auto max-w-[var(--container-max)]">
+        {/* Section head */}
+        <header className="grid items-end gap-6 pb-14 md:grid-cols-[1fr_auto] md:pb-14">
+          <div>
+            <span className="section-eyebrow">{t('eyebrow')}</span>
+            <h2 className="section-title mt-3.5">{t('heading')}</h2>
+          </div>
+          <Link
+            href="/books"
+            className={`inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-accent)] transition-colors ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
           >
-            {t('eyebrow')}
-          </p>
-
-          <h2
-            className="mt-1 text-balance text-ink font-display font-normal text-[clamp(40px,7vw,88px)] leading-[0.95] tracking-[-0.024em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-          >
-            {t('heading')}
-          </h2>
-
-          <p
-            className="mt-4 text-ink-muted font-serif italic text-[18px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
-          >
-            {t('description')}
-          </p>
+            {t('cta_browse_all')}
+            <span aria-hidden>{isRtl ? '←' : '→'}</span>
+          </Link>
         </header>
 
-        {/* Editorial asymmetric grid */}
-        <div className="grid grid-cols-12 gap-4 md:gap-5">
-          {grid.map((book, i) => (
-            <div key={book.id} className={cn('col-span-12', COL_SPANS[i])}>
-              <ProductCard book={book} index={i} />
+        {/* Books — asymmetric: hero featured + shelf list */}
+        <div className="grid items-start gap-[clamp(32px,5vw,80px)] lg:grid-cols-[1.05fr_1fr]">
+          {/* Hero book */}
+          <motion.article
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="grid grid-cols-1 gap-7"
+          >
+            <Link
+              href={heroHref}
+              className="relative block aspect-[4/5] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:var(--shadow-lift)]"
+              {...(heroBook.externalUrl
+                ? { target: '_blank', rel: 'noopener noreferrer' }
+                : {})}
+            >
+              <span
+                className={`absolute z-10 [inset-block-start:14px] [inset-inline-start:14px] inline-flex items-center px-2.5 py-[5px] rounded-full text-[10px] font-bold uppercase tracking-[0.14em] bg-white/95 text-[var(--color-fg1)] backdrop-blur-md ${
+                  isRtl
+                    ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case !px-3 !py-1'
+                    : 'font-display'
+                }`}
+              >
+                {t('type.book')}
+              </span>
+              <Image
+                src={heroBook.coverImage}
+                alt={heroTitle}
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+              />
+            </Link>
+
+            <div className="flex flex-col gap-3.5">
+              <span
+                className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
+                  isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+                }`}
+              >
+                {kickerHero}
+              </span>
+              <h3
+                className={`text-[clamp(28px,3.5vw,44px)] leading-[1.05] font-bold tracking-[-0.01em] text-[var(--color-fg1)] ${
+                  isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.02em]'
+                }`}
+              >
+                {heroTitle}
+              </h3>
+              <p className="text-[17px] leading-[1.6] text-[var(--color-fg2)]">
+                {isRtl ? heroBook.descriptionAr ?? '' : heroBook.descriptionEn ?? ''}
+              </p>
+              <div className="flex items-center gap-5 mt-2">
+                <span
+                  className={`text-[24px] font-semibold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
+                    isRtl ? 'font-arabic-body' : 'font-display'
+                  }`}
+                >
+                  ${heroPrice}{' '}
+                  <span className="text-[11px] font-medium tracking-[0.12em] text-[var(--color-fg3)] ms-1.5">
+                    USD
+                  </span>
+                </span>
+                <Link
+                  href={heroHref}
+                  className="btn-pill btn-pill-primary"
+                  {...(heroBook.externalUrl
+                    ? { target: '_blank', rel: 'noopener noreferrer' }
+                    : {})}
+                >
+                  {t('cta_buy')}
+                </Link>
+              </div>
+              <span
+                className={`inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-fg3)] before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-[var(--color-accent)] before:inline-block ${
+                  isRtl
+                    ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold'
+                    : 'font-display'
+                }`}
+              >
+                {instant}
+              </span>
             </div>
-          ))}
+          </motion.article>
+
+          {/* Shelf */}
+          <motion.aside
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.05 }}
+            transition={{ duration: 0.65, ease: EASE, delay: 0.1 }}
+            className="flex flex-col gap-5 pt-6 border-t border-[var(--color-border)]"
+          >
+            <span
+              className={`mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
+                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+              }`}
+            >
+              {kickerOther}
+            </span>
+            <ul className="grid grid-cols-1 m-0 p-0 list-none">
+              {shelfBooks.map((b) => {
+                const title = isRtl ? b.titleAr : b.titleEn
+                const type = isRtl ? b.descriptionAr ?? '' : b.descriptionEn ?? ''
+                const price = Math.round(Number(b.price))
+                const lang = b.titleEn === b.titleAr ? 'EN' : 'AR'
+                const href = b.externalUrl ?? `/books/${b.slug}`
+
+                return (
+                  <li key={b.id} className="border-b border-[var(--color-border)]">
+                    <Link
+                      href={href}
+                      className="hover-shift grid items-center gap-[18px] py-[18px] grid-cols-[56px_1fr_auto]"
+                      {...(b.externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    >
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-[2px] bg-[var(--color-bg-deep)] [box-shadow:0_2px_8px_rgba(0,0,0,0.08)]">
+                        <Image
+                          src={b.coverImage}
+                          alt=""
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span
+                          className={`self-start text-[10px] font-bold tracking-[0.12em] text-[var(--color-fg3)] ${
+                            isRtl ? 'font-arabic-body' : 'font-display'
+                          }`}
+                        >
+                          {lang}
+                        </span>
+                        <h4
+                          className={`m-0 text-[16px] font-bold leading-[1.3] text-[var(--color-fg1)] [text-wrap:balance] ${
+                            isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.01em]'
+                          }`}
+                        >
+                          {title}
+                        </h4>
+                        {type && (
+                          <span className="text-[12px] leading-[1.4] text-[var(--color-fg3)]">
+                            {type}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`text-[14px] font-semibold text-[var(--color-fg2)] [font-feature-settings:'tnum'] whitespace-nowrap ${
+                          isRtl ? 'font-arabic-body' : 'font-display'
+                        }`}
+                      >
+                        ${price}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </motion.aside>
         </div>
 
-        {/* Browse all CTA */}
-        <div className="mt-[var(--spacing-lg)] flex justify-center">
-          <Link href="/books" className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]">
-            <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
-            {t('cta_browse_all')}
-          </Link>
-        </div>
+        {/* Lectures sub-section */}
+        {sessions.length > 0 && (
+          <div className="mt-[clamp(64px,8vw,112px)] pt-[clamp(48px,6vw,72px)] border-t border-[var(--color-border)]">
+            <header className="grid grid-cols-1 gap-3 mb-[clamp(28px,4vw,48px)] max-w-[720px]">
+              <span className="section-eyebrow">{kickerLectures}</span>
+              <h3
+                className={`text-[clamp(26px,3.4vw,36px)] leading-[1.1] font-bold tracking-[-0.005em] text-[var(--color-fg1)] m-0 ${
+                  isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.02em]'
+                }`}
+              >
+                {lecturesHeading}
+              </h3>
+              <p className="text-[16px] leading-[1.6] text-[var(--color-fg2)] m-0 max-w-[540px]">
+                {lecturesIntro}
+              </p>
+            </header>
+
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-[clamp(16px,2.5vw,28px)] list-none m-0 p-0">
+              {sessions.slice(0, 2).map((l) => {
+                const title = isRtl ? l.titleAr : l.titleEn
+                const price = Math.round(Number(l.price))
+                const href = l.externalUrl ?? `/books/${l.slug}`
+
+                return (
+                  <li key={l.id}>
+                    <Link
+                      href={href}
+                      className="grid grid-cols-1 gap-[18px] items-stretch h-full group"
+                      {...(l.externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    >
+                      <div className="relative aspect-[16/10] overflow-hidden rounded-[4px] bg-[var(--color-fg1)]">
+                        <Image
+                          src={l.coverImage}
+                          alt=""
+                          fill
+                          sizes="(min-width: 768px) 50vw, 100vw"
+                          className="object-cover [filter:brightness(0.78)_contrast(1.04)] group-hover:scale-[1.03] group-hover:[filter:brightness(0.85)] transition-[transform,filter] duration-[400ms] ease-[var(--ease-out)]"
+                        />
+                        <div className="absolute inset-0 [background:linear-gradient(180deg,rgba(0,0,0,0)_50%,rgba(0,0,0,0.45))]" aria-hidden />
+                        <span
+                          aria-hidden
+                          className="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-14 h-14 rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 group-hover:scale-105 transition-transform duration-200"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </span>
+                        <span
+                          className={`absolute z-20 [inset-block-start:14px] [inset-inline-start:14px] inline-flex items-center px-2.5 py-[5px] rounded-full text-[10px] font-bold uppercase tracking-[0.14em] bg-black/80 text-white backdrop-blur-md ${
+                            isRtl ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case !px-3 !py-1' : 'font-display'
+                          }`}
+                        >
+                          {t('type.session')}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-2.5">
+                        <h4
+                          className={`m-0 text-[20px] leading-[1.3] font-bold text-[var(--color-fg1)] [text-wrap:balance] ${
+                            isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.015em]'
+                          }`}
+                        >
+                          {title}
+                        </h4>
+                        <div className="flex items-center gap-3.5 flex-wrap">
+                          <span
+                            className={`text-[18px] font-semibold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ms-auto ${
+                              isRtl ? 'font-arabic-body' : 'font-display'
+                            }`}
+                          >
+                            ${price}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
       </div>
     </section>
   )

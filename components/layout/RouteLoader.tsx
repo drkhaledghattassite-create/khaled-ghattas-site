@@ -27,7 +27,7 @@ export function RouteLoader() {
         <motion.div
           dir="ltr"
           aria-hidden
-          className="fixed inset-x-0 top-0 z-[99999] h-[2px] origin-left bg-sky"
+          className="fixed inset-x-0 top-0 z-[99999] h-[2px] origin-left bg-[var(--color-accent)]"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 0.8 }}
           exit={{ scaleX: 1, opacity: 0 }}

@@ -1,37 +1,21 @@
 'use client'
 
 import Image from 'next/image'
-import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
-import { ChapterMark, Ornament, FlourishRule } from '@/components/shared/Ornament'
 import type { Article } from '@/lib/db/queries'
-import { cn } from '@/lib/utils'
 
-const FALLBACK_THUMBNAIL_FEATURED = '/dr khaled photo.jpeg'
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const FALLBACK = '/dr khaled photo.jpeg'
 
-function EmptyArticles({ isRtl, viewAllLabel }: { isRtl: boolean; viewAllLabel: string }) {
-  return (
-    <div className="paper-card flex flex-col items-center gap-4 px-8 py-14 text-center">
-      <span className="text-brass">
-        <Ornament glyph="fleuron" size={28} />
-      </span>
-      <p
-        className="text-ink font-display italic font-normal text-[22px] leading-[1.3] [dir=rtl]:font-arabic-display [dir=rtl]:not-italic [dir=rtl]:font-medium"
-      >
-        {isRtl ? 'لا توجد مقالات في الأرشيف بعد' : 'The archive is still in galley.'}
-      </p>
-      <Link href="/articles" className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-ink text-paper-soft text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]">
-        <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
-        {viewAllLabel}
-      </Link>
-      <FlourishRule className="mt-2 w-full max-w-[260px]" />
-    </div>
-  )
+function formatDate(date: Date, isRtl: boolean): string {
+  const opts: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' }
+  if (isRtl) {
+    return new Intl.DateTimeFormat('ar-EG', opts).format(date)
+  }
+  return new Intl.DateTimeFormat('en-US', opts).format(date)
 }
-
-const FALLBACK_THUMBNAIL = '/dr khaled photo.jpeg'
 
 function estimateReadMinutes(article: Article, locale: string): number {
   const text = (locale === 'ar' ? article.contentAr : article.contentEn) ?? ''
@@ -41,9 +25,6 @@ function estimateReadMinutes(article: Article, locale: string): number {
   return Math.max(1, Math.round(words / wpm))
 }
 
-const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
-const EASE_OUT_QUART: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
-
 type ArticlesListProps = {
   articles: Article[]
   showHeader?: boolean
@@ -52,315 +33,191 @@ type ArticlesListProps = {
 export function ArticlesList({ articles, showHeader = true }: ArticlesListProps) {
   const locale = useLocale()
   const tSection = useTranslations('articles_section')
+  const tArticles = useTranslations('articles')
   const isRtl = locale === 'ar'
 
-  return (
-    <section className="relative z-[2] bg-paper px-[var(--section-pad-x)] py-20 md:py-[120px] lg:py-40">
-      <div className="mx-auto max-w-[1200px]">
-        {showHeader && (
-          <header className="mb-[var(--spacing-lg)] space-y-3">
-            <ChapterMark number=".04" label={isRtl ? 'أحدث الكتابات' : 'Recent Writing'} />
+  if (articles.length === 0) {
+    return (
+      <section className="border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]">
+        <div className="mx-auto max-w-[var(--container-max)] text-center">
+          <Link href="/articles" className="link-underline">
+            {tSection('view_all')}
+          </Link>
+        </div>
+      </section>
+    )
+  }
 
-            <h2 className="m-0 text-balance">
-              <MaskedLine delay={0}>
-                <span
-                  className="text-ink font-display font-normal text-[clamp(40px,7vw,92px)] leading-[0.96] tracking-[-0.024em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-                >
-                  {tSection('heading')}
-                </span>
-              </MaskedLine>
-            </h2>
+  const featured = articles[0]
+  if (!featured) return null
+  const rest = articles.slice(1)
+
+  const featuredTitle = isRtl ? featured.titleAr : featured.titleEn
+  const featuredExcerpt = isRtl ? featured.excerptAr : featured.excerptEn
+  const featuredCat = featured.category
+    ? tArticles(`categories.${featured.category}`)
+    : null
+  const featuredDate = formatDate(featured.publishedAt ?? featured.createdAt, isRtl)
+  const featuredMinutes = estimateReadMinutes(featured, locale)
+  const featuredCover = featured.coverImage ?? FALLBACK
+
+  const featuredKicker = isRtl ? 'الأحدث' : 'Most recent'
+  const minRead = isRtl ? 'دقائق قراءة' : 'min read'
+  const readArticleLabel = tArticles('read_article')
+
+  return (
+    <section
+      id="articles"
+      className="border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
+      dir={isRtl ? 'rtl' : 'ltr'}
+    >
+      <div className="mx-auto max-w-[var(--container-max)]">
+        {showHeader && (
+          <header className="grid items-end gap-6 pb-14 md:grid-cols-[1fr_auto]">
+            <div>
+              <span className="section-eyebrow">{tSection('eyebrow')}</span>
+              <h2 className="section-title mt-3.5">{tSection('heading')}</h2>
+            </div>
+            <Link
+              href="/articles"
+              className={`inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-accent)] transition-colors ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              {tSection('view_all')}
+              <span aria-hidden>{isRtl ? '←' : '→'}</span>
+            </Link>
           </header>
         )}
 
-        {articles.length === 0 ? (
-          <EmptyArticles isRtl={isRtl} viewAllLabel={tSection('view_all')} />
-        ) : (
-          <ul>
-            {articles.map((article, i) =>
-              i === 0 ? (
-                <FeaturedArticleRow
-                  key={article.id}
-                  article={article}
-                  isRtl={isRtl}
-                  locale={locale}
-                />
-              ) : (
-                <ArticleRow
-                  key={article.id}
-                  article={article}
-                  index={i}
-                  isRtl={isRtl}
-                  locale={locale}
-                />
-              ),
-            )}
-          </ul>
-        )}
-
-        {/* View all CTA at section bottom */}
-        <div className="pt-10 flex items-center gap-4">
-          <Link href="/articles" className="inline-flex items-center gap-2 px-5 py-[10px] min-h-[42px] rounded-full border border-ink bg-transparent text-ink text-[13px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-ink hover:text-paper-soft active:translate-y-px [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold [dir=rtl]:text-[13.5px]">
-            <span aria-hidden className="block h-[7px] w-[7px] rounded-full bg-current" />
-            {tSection('view_all')}
-          </Link>
-          <span aria-hidden className="text-ink-muted/60 hidden sm:inline">
-            <Ornament glyph="asterism" size={14} />
-          </span>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function FeaturedArticleRow({
-  article,
-  isRtl,
-  locale,
-}: {
-  article: Article
-  isRtl: boolean
-  locale: string
-}) {
-  const [hovered, setHovered] = useState(false)
-  const tSection = useTranslations('articles_section')
-  const tArticles = useTranslations('articles')
-  const dateLabel = (article.publishedAt ?? article.createdAt).toISOString().slice(0, 10)
-  const title = locale === 'ar' ? article.titleAr : article.titleEn
-  const excerpt = locale === 'ar' ? article.excerptAr : article.excerptEn
-  const thumbnail = article.coverImage ?? FALLBACK_THUMBNAIL_FEATURED
-  const categoryLabel = tArticles(`categories.${article.category}`)
-
-  return (
-    <motion.li
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-      initial={{ y: 26, opacity: 0 }}
-      whileInView={{ y: 0, opacity: 1 }}
-      viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.7, ease: EASE_OUT_QUART }}
-      className="group relative isolate hairline-b py-8 md:py-12"
-    >
-      <Link
-        href={`/articles/${article.slug}`}
-        className="absolute inset-0 z-10"
-        aria-label={title}
-      />
-
-      {/* Hover wash */}
-      <motion.span
-        aria-hidden
-        className="absolute inset-x-[-12px] inset-y-0 -z-10"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(232,217,190,0) 0%, rgba(232,217,190,0.55) 100%)',
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: hovered ? 1 : 0 }}
-        transition={{ duration: 0.5, ease: EASE_IN_OUT_QUART }}
-      />
-
-      <div className="grid gap-6 md:grid-cols-[1fr_300px] md:gap-8 md:items-start">
-        {/* Content */}
-        <div>
-          {/* Meta row */}
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-ink-muted">
-            <span
-              className="text-brass-deep font-display font-semibold text-[10px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
-            >
-              {categoryLabel}
-            </span>
-            <span aria-hidden className="text-ink-muted/40">·</span>
-            <span
-              className="font-display italic text-[10.5px] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px]"
-            >
-              {dateLabel}
-            </span>
-            <span
-              className="rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] bg-sky text-ink"
-            >
-              {tSection('featured_label')}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h3
-            className="text-balance text-ink font-display font-normal text-[clamp(26px,4vw,44px)] leading-[1.1] tracking-[-0.018em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-          >
-            {title}
-          </h3>
-
-          {/* Excerpt — 3 lines */}
-          <p
-            className="mt-3 line-clamp-3 text-pretty text-ink-soft font-serif italic text-[16px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[15.5px] [dir=rtl]:leading-[1.9]"
-          >
-            {excerpt}
-          </p>
-
-          {/* Read article pill */}
-          <div className="relative z-20 mt-5">
-            <span className="inline-flex items-center gap-2 px-4 py-[7px] min-h-9 rounded-full border border-ink bg-ink text-paper-soft text-[11px] font-medium tracking-[0.08em] uppercase select-none transition-[background-color,color,border-color,transform] hover:bg-brass-deep hover:border-brass-deep active:translate-y-px [dir=rtl]:normal-case [dir=rtl]:tracking-normal [dir=rtl]:font-semibold">
-              <span aria-hidden className="block h-[6px] w-[6px] rounded-full bg-current" />
-              {isRtl ? 'اقرأ المقال' : 'READ ARTICLE'}
-            </span>
-          </div>
-        </div>
-
-        {/* Large thumbnail */}
-        <div className="relative h-[200px] w-full overflow-hidden md:h-[240px]">
-          <Image
-            src={thumbnail}
-            alt=""
-            fill
-            sizes="(min-width: 768px) 300px, 100vw"
-            className={cn(
-              'object-cover transition-transform duration-700 duotone-warm',
-              hovered && 'scale-105',
-            )}
-          />
-        </div>
-      </div>
-    </motion.li>
-  )
-}
-
-function ArticleRow({
-  article,
-  index,
-  isRtl,
-  locale,
-}: {
-  article: Article
-  index: number
-  isRtl: boolean
-  locale: string
-}) {
-  const [hovered, setHovered] = useState(false)
-  const t = useTranslations('articles')
-  const dateLabel = (article.publishedAt ?? article.createdAt)
-    .toISOString()
-    .slice(0, 10)
-  const title = locale === 'ar' ? article.titleAr : article.titleEn
-  const excerpt = locale === 'ar' ? article.excerptAr : article.excerptEn
-  const minutes = estimateReadMinutes(article, locale)
-  const readLabel = minutes === 1 ? t('meta.read_time_one') : t('meta.read_time', { minutes })
-  const categoryLabel = t(`categories.${article.category}`)
-  const thumbnail = article.coverImage ?? FALLBACK_THUMBNAIL
-  const shift = isRtl ? -16 : 16
-
-  return (
-    <motion.li
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-      initial={{ y: 26, opacity: 0 }}
-      whileInView={{ y: 0, opacity: 1 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: 0.7, delay: index * 0.06, ease: EASE_OUT_QUART }}
-      className={cn(
-        'group relative isolate hairline-b py-7 md:py-8',
-        'grid grid-cols-[auto_1fr_72px] items-center gap-5 md:grid-cols-[110px_1fr_96px] md:gap-7',
-      )}
-    >
-      <Link
-        href={`/articles/${article.slug}`}
-        className="absolute inset-0 z-10"
-        aria-label={title}
-      />
-
-      {/* Soft warm wash on hover — paper-warm bleed instead of hard wipe */}
-      <motion.span
-        aria-hidden
-        className="absolute inset-x-[-12px] inset-y-0 -z-10 paper-warm/0"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(232, 217, 190, 0) 0%, rgba(232, 217, 190, 0.55) 100%)',
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: hovered ? 1 : 0 }}
-        transition={{ duration: 0.5, ease: EASE_IN_OUT_QUART }}
-      />
-
-      {/* Date column with brass dot */}
-      <div className="relative flex items-center gap-2 text-ink-muted">
-        <motion.span
-          aria-hidden
-          className="block h-1.5 w-1.5 rounded-full bg-brass"
-          animate={{ scale: hovered ? 1.4 : 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-        />
-        <span
-          className="text-[11.5px] tracking-[0.06em] tabular-nums font-display italic font-normal"
+        {/* Featured */}
+        <motion.article
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.1 }}
+          transition={{ duration: 0.7, ease: EASE }}
+          className="group grid items-stretch gap-[clamp(32px,5vw,72px)] pb-14 mb-0 border-b border-[var(--color-border)] md:grid-cols-[1.1fr_1fr]"
         >
-          {dateLabel}
-        </span>
-      </div>
-
-      {/* Headline + meta */}
-      <motion.div
-        className="min-w-0"
-        animate={{ x: hovered ? shift : 0 }}
-        transition={{ duration: 0.5, ease: EASE_OUT_QUART }}
-      >
-        <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-ink-muted">
-          <span
-            className="font-display font-semibold text-[10px] tracking-[0.18em] uppercase text-brass-deep [dir=rtl]:font-arabic [dir=rtl]:text-[12px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
-          >
-            {categoryLabel}
-          </span>
-          <span aria-hidden className="text-ink-muted/40">·</span>
-          <span
-            className="font-display italic font-normal text-[10.5px] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[12px]"
-          >
-            {readLabel}
-          </span>
-        </div>
-        <h3
-          className="text-balance text-ink font-display font-normal text-[clamp(22px,3.3vw,36px)] leading-[1.15] tracking-[-0.018em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
-        >
-          {title}
-        </h3>
-        <p
-          className="mt-2 line-clamp-1 text-pretty text-ink-soft font-serif italic text-[15px] leading-[1.5] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[14.5px]"
-        >
-          {excerpt}
-        </p>
-      </motion.div>
-
-      {/* Thumbnail with printed frame */}
-      <div className="relative">
-        <div className="frame-print h-[68px] w-[68px] md:h-[92px] md:w-[92px]">
-          <div className="relative h-full w-full overflow-hidden">
+          <div className="aspect-[5/6] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
             <Image
-              src={thumbnail}
+              src={featuredCover}
               alt=""
-              fill
-              sizes="(min-width: 768px) 92px, 68px"
-              className="object-cover transition-transform duration-700 group-hover:scale-105 duotone-warm"
+              width={720}
+              height={864}
+              className="w-full h-full object-cover [filter:grayscale(0.1)] transition-transform duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.02]"
+              sizes="(min-width: 768px) 600px, 100vw"
             />
           </div>
-        </div>
-      </div>
-    </motion.li>
-  )
-}
+          <div className="flex flex-col justify-center gap-[18px] py-6">
+            <span
+              className={`inline-flex items-center gap-2 w-max text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent)] before:content-[''] before:w-2.5 before:h-px before:bg-[var(--color-accent)] ${
+                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case' : 'font-display'
+              }`}
+            >
+              {featuredKicker}
+            </span>
+            {featuredCat && (
+              <span
+                className={`text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--color-fg2)] ${
+                  isRtl ? '!tracking-normal !normal-case !font-bold' : 'font-display'
+                }`}
+              >
+                {featuredCat}
+              </span>
+            )}
+            <h3
+              className={`m-0 text-[clamp(28px,3.6vw,46px)] leading-[1.15] font-bold tracking-[-0.01em] text-[var(--color-fg1)] [text-wrap:balance] ${
+                isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.025em]'
+              }`}
+            >
+              <Link href={`/articles/${featured.slug}`} className="hover:text-[var(--color-accent)] transition-colors">
+                {featuredTitle}
+              </Link>
+            </h3>
+            {featuredExcerpt && (
+              <p className="m-0 max-w-[520px] text-[17px] leading-[1.6] text-[var(--color-fg2)]">
+                {featuredExcerpt}
+              </p>
+            )}
+            <div
+              className={`flex items-center flex-wrap gap-3 mt-1.5 text-[13px] text-[var(--color-fg3)] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              <span>{featuredDate}</span>
+              <span aria-hidden>·</span>
+              <span>
+                {featuredMinutes} {minRead}
+              </span>
+              <Link
+                href={`/articles/${featured.slug}`}
+                className="link-underline ms-auto"
+              >
+                {readArticleLabel}
+                <span aria-hidden>{isRtl ? '←' : '→'}</span>
+              </Link>
+            </div>
+          </div>
+        </motion.article>
 
-function MaskedLine({ children, delay }: { children: React.ReactNode; delay: number }) {
-  return (
-    <span className="relative block overflow-hidden">
-      <motion.span
-        className="relative inline-block"
-        initial={{ y: '102%', opacity: 0 }}
-        whileInView={{ y: '0%', opacity: 1 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.95, delay, ease: EASE_IN_OUT_QUART }}
-        style={{ willChange: 'transform, opacity' }}
-      >
-        {children}
-      </motion.span>
-    </span>
+        {/* Dense numbered list */}
+        {rest.length > 0 && (
+          <ol className="grid grid-cols-1 m-0 p-0 list-none gap-x-[clamp(32px,5vw,72px)] md:grid-cols-2">
+            {rest.map((article, i) => {
+              const title = isRtl ? article.titleAr : article.titleEn
+              const cat = article.category ? tArticles(`categories.${article.category}`) : null
+              const date = formatDate(article.publishedAt ?? article.createdAt, isRtl)
+
+              return (
+                <motion.li
+                  key={article.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.05 }}
+                  transition={{ duration: 0.55, delay: i * 0.04, ease: EASE }}
+                  className="border-b border-[var(--color-border)]"
+                >
+                  <Link
+                    href={`/articles/${article.slug}`}
+                    className="hover-shift grid grid-cols-[auto_1fr_auto] grid-rows-[auto_auto] gap-x-4 gap-y-1 items-baseline py-[22px]"
+                  >
+                    <span
+                      className={`row-span-2 self-start pt-1 text-[12px] font-semibold tracking-[0.04em] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${
+                        isRtl ? 'font-arabic-body' : 'font-display'
+                      }`}
+                    >
+                      {String(i + 2).padStart(2, '0')}
+                    </span>
+                    {cat && (
+                      <span
+                        className={`text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)] ${
+                          isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+                        }`}
+                      >
+                        {cat}
+                      </span>
+                    )}
+                    <h4
+                      className={`col-start-2 m-0 text-[19px] leading-[1.3] font-bold text-[var(--color-fg1)] ${
+                        isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.01em]'
+                      }`}
+                    >
+                      {title}
+                    </h4>
+                    <span
+                      className={`row-span-2 self-start pt-1 whitespace-nowrap text-[12px] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${
+                        isRtl ? 'font-arabic-body' : 'font-display'
+                      }`}
+                    >
+                      {date}
+                    </span>
+                  </Link>
+                </motion.li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
+    </section>
   )
 }

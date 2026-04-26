@@ -44,7 +44,13 @@
       "Read(//c/Users/OATech/.claude/**)",
       "mcp__playwright__playwright_evaluate",
       "mcp__playwright__playwright_screenshot",
-      "mcp__playwright__playwright_close"
+      "mcp__playwright__playwright_close",
+      "WebFetch(domain:api.anthropic.com)",
+      "PowerShell(gh auth status)",
+      "PowerShell(gh repo view drkhaledghattassite-create/khaled-ghattas-site 2>&1)",
+      "PowerShell(cmdkey /list:git:https://github.com 2>&1)",
+      "PowerShell(cmdkey /delete:git:https://github.com 2>&1)",
+      "PowerShell(cmdkey /list:LegacyGeneric:target=git:https://github.com 2>&1)"
     ]
   }
 }

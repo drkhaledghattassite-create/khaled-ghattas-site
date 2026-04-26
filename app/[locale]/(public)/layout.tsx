@@ -16,7 +16,7 @@ export default async function PublicLayout({ children, params }: Props) {
   return (
     <>
       <SiteHeader authSlot={<AuthMenu variant="compact" />} />
-      <main id="main-content" className="min-h-dvh pb-[72px] md:pb-[68px]">{children}</main>
+      <main id="main-content" className="min-h-dvh pb-[60px] md:pb-0">{children}</main>
       <SiteFooter />
       <BottomNav mobileAuthSlot={<AuthMenu variant="stacked" />} />
     </>
