@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils'
 
 type Variant = 'compact' | 'stacked'
 
-const PILL_BASE =
-  'inline-flex items-center gap-2 rounded-full border transition-all duration-300'
-
 export async function AuthMenu({
   variant = 'compact',
   className,
@@ -29,39 +26,43 @@ export async function AuthMenu({
     )
   }
 
-  const sizeClasses =
-    variant === 'stacked' ? 'px-4 py-2 text-[12px]' : 'px-3.5 py-1.5 text-[10.5px]'
-
-  const fontStyleProps: React.CSSProperties = {
-    fontFamily: isRtl ? 'var(--font-arabic)' : 'var(--font-display)',
-    fontWeight: isRtl ? 600 : 500,
-    letterSpacing: isRtl ? 0 : '0.16em',
-    textTransform: isRtl ? 'none' : 'uppercase',
-  }
+  const fontClass = isRtl ? 'font-arabic-body font-bold' : 'font-display font-semibold'
 
   return (
     <div
       className={cn(
-        variant === 'stacked' ? 'flex flex-row items-center gap-2' : 'inline-flex items-center gap-2',
+        variant === 'stacked'
+          ? 'flex flex-col items-stretch gap-2'
+          : 'inline-flex items-center gap-3',
         className,
       )}
     >
+      {/* Sign in — plain text link, secondary tone */}
       <Link
         href="/login"
-        className={cn(PILL_BASE, sizeClasses, 'border-ink/40 text-ink hover:border-ink hover:bg-ink hover:text-paper-soft')}
-        style={fontStyleProps}
+        className={cn(
+          'inline-flex items-center justify-center whitespace-nowrap transition-colors duration-200',
+          variant === 'stacked'
+            ? 'py-2 text-[14px] text-[var(--color-fg2)] hover:text-[var(--color-fg1)] order-2 text-center'
+            : 'px-1 py-1.5 text-[13.5px] text-[var(--color-fg2)] hover:text-[var(--color-fg1)]',
+          fontClass,
+          isRtl ? '!text-[14px]' : '!text-[13.5px]',
+        )}
       >
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brass" />
         {t('signin')}
       </Link>
+
+      {/* Sign up — accent-filled pill */}
       <Link
         href="/register"
         className={cn(
-          PILL_BASE,
-          sizeClasses,
-          'border-ink bg-ink text-paper-soft hover:bg-brass-deep hover:border-brass-deep',
+          'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-0 bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-[background-color,transform] duration-200 hover:bg-[var(--color-accent-hover)] active:translate-y-px',
+          variant === 'stacked'
+            ? 'px-4 py-2.5 text-[14px] order-1'
+            : 'px-4 py-2 text-[13px]',
+          fontClass,
+          isRtl ? '!text-[14px] !font-bold' : '!text-[13px]',
         )}
-        style={fontStyleProps}
       >
         {t('signup')}
       </Link>

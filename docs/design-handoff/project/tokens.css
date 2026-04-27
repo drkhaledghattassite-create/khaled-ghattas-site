@@ -1,0 +1,315 @@
+/* ==========================================================================
+   Qalem (قلم) — Dr. Khaled Ghattass Design System
+   Modern Arab cultural authority. Pure neutral, single-accent.
+   Bilingual: Arabic RTL primary, English LTR secondary.
+   ========================================================================== */
+
+/* Type system
+   - Readex Pro: bilingual display family (Arabic + Latin), low-contrast,
+     geometric, designed as a peer-grade bilingual system. Used for headings
+     and large editorial type in both scripts.
+   - IBM Plex Sans Arabic: Arabic body — exceptional reading texture, wide
+     weight range, clear ligatures.
+   - Inter: Latin body / UI — neutral, modern, peer to Plex Arabic. */
+@import url('https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ---------- Core palette — LIGHT (default) ---------------------------- */
+  --bg:                   #FAFAFA;   /* pure neutral, ZERO warmth */
+  --bg-elevated:          #FFFFFF;   /* surface raised */
+  --bg-deep:              #F4F4F4;   /* inputs, dividers */
+
+  --fg1:                  #0A0A0A;   /* text primary */
+  --fg2:                  #404040;   /* text secondary */
+  --fg3:                  #737373;   /* text muted */
+
+  --border:               #E5E5E5;
+  --border-strong:        #D4D4D4;
+
+  --accent:               #B85440;   /* Sienna Ink — warm, Levantine, literary */
+  --accent-hover:         #9A4534;
+  --accent-soft:          #F4E5DF;
+  --accent-fg:            #FFFFFF;
+
+  /* ---------- Typography ---------------------------------------------- */
+  --font-arabic-display:  'Readex Pro', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-arabic-body:     'IBM Plex Sans Arabic', 'Readex Pro', system-ui, sans-serif;
+  --font-latin:           'Inter', system-ui, sans-serif;
+  --font-display:         'Readex Pro', 'Inter', system-ui, sans-serif;
+
+  /* Type scale */
+  --text-hero:            clamp(40px, 7vw, 72px);
+  --text-h1:              clamp(32px, 5vw, 56px);
+  --text-h2:              clamp(28px, 4vw, 44px);
+  --text-h3:              clamp(20px, 2.5vw, 28px);
+  --text-stat:            clamp(64px, 9vw, 88px);
+  --text-lead:            18px;
+  --text-body-ar:         17px;
+  --text-body:            16px;
+  --text-small:           14px;
+  --text-eyebrow:         13px;
+
+  /* Line heights */
+  --lh-display:           1.1;
+  --lh-heading:           1.15;
+  --lh-body:              1.6;
+  --lh-arabic-body:       1.85;
+
+  /* Tracking */
+  --track-eyebrow:        0.08em;
+  --track-display:        -0.02em;
+
+  /* ---------- Spacing scale ------------------------------------------- */
+  --space-1:              4px;
+  --space-2:              8px;
+  --space-3:              12px;
+  --space-4:              16px;
+  --space-6:              24px;
+  --space-8:              32px;
+  --space-12:             48px;
+  --space-16:             64px;
+  --space-20:             80px;
+  --space-24:             96px;
+  --space-32:             128px;
+
+  --section-pad-y:        clamp(80px, 10vw, 128px);
+  --section-pad-x:        clamp(20px, 4vw, 48px);
+  --container-max:        1280px;
+
+  /* ---------- Radii --------------------------------------------------- */
+  --radius-sm:            4px;
+  --radius-md:            8px;     /* default card */
+  --radius-lg:            12px;
+  --radius-pill:          9999px;
+
+  /* ---------- Shadows ------------------------------------------------- */
+  --shadow-card:          0 1px 2px rgba(0,0,0,0.04), 0 4px 16px -4px rgba(0,0,0,0.06);
+  --shadow-lift:          0 2px 4px rgba(0,0,0,0.05), 0 16px 40px -12px rgba(0,0,0,0.14);
+  --shadow-focus:         0 0 0 3px rgba(184,84,64,0.20);
+
+  /* ---------- Motion -------------------------------------------------- */
+  --ease-out:             cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart:       cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out:          cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-fast:             180ms;
+  --dur-base:             240ms;
+  --dur-slow:             400ms;
+}
+
+/* ---------- Dark mode ------------------------------------------------- */
+.dark, [data-theme="dark"] {
+  --bg:                   #0A0A0A;
+  --bg-elevated:          #171717;
+  --bg-deep:              #1F1F1F;
+
+  --fg1:                  #FAFAFA;
+  --fg2:                  #A3A3A3;
+  --fg3:                  #737373;
+
+  --border:               #262626;
+  --border-strong:        #404040;
+
+  --accent:               #D97560;   /* Sienna — lifted for dark surfaces */
+  --accent-hover:         #E89281;
+  --accent-soft:          rgba(217,117,96,0.16);
+  --accent-fg:            #0A0A0A;
+
+  --shadow-card:          0 1px 2px rgba(0,0,0,0.3), 0 4px 16px -4px rgba(0,0,0,0.4);
+  --shadow-lift:          0 2px 4px rgba(0,0,0,0.4), 0 16px 40px -12px rgba(0,0,0,0.6);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--fg1);
+  font-family: var(--font-arabic-body);
+  font-size: var(--text-body-ar);
+  line-height: var(--lh-arabic-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html[dir="ltr"] body, html[lang="en"] body {
+  font-family: var(--font-latin);
+  line-height: var(--lh-body);
+  font-size: var(--text-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-arabic-display);
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0;
+}
+html[lang="en"] h1, html[lang="en"] h2, html[lang="en"] h3, html[lang="en"] h4 {
+  font-family: var(--font-latin);
+  letter-spacing: var(--track-display);
+  font-weight: 700;
+}
+
+p { margin: 0; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a:hover { color: var(--accent); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   Semantic type classes
+   ========================================================================== */
+.t-hero {
+  font-size: var(--text-hero);
+  line-height: var(--lh-display);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.t-h1   { font-size: var(--text-h1); line-height: var(--lh-display); font-weight: 700; }
+.t-h2   { font-size: var(--text-h2); line-height: var(--lh-heading); font-weight: 700; }
+.t-h3   { font-size: var(--text-h3); line-height: var(--lh-heading); font-weight: 700; }
+.t-stat { font-size: var(--text-stat); line-height: 0.9; font-weight: 900; font-family: var(--font-arabic-display); letter-spacing: -0.03em; }
+.t-lead { font-size: var(--text-lead); line-height: 1.6; color: var(--fg2); }
+.t-body { font-size: var(--text-body-ar); line-height: var(--lh-arabic-body); }
+.t-small{ font-size: var(--text-small); line-height: 1.55; color: var(--fg2); }
+
+.t-eyebrow {
+  display: inline-block;
+  font-family: var(--font-latin);
+  font-size: var(--text-eyebrow);
+  font-weight: 600;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+[dir="rtl"] .t-eyebrow,
+html[lang="ar"] .t-eyebrow {
+  font-family: var(--font-arabic-body);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Components — buttons (3 variants, all pill)
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Primary filled — text-primary bg, hover accent */
+.btn-primary {
+  background: var(--fg1);
+  color: var(--bg);
+}
+.btn-primary:hover { background: var(--accent); color: #fff; }
+
+/* Secondary outlined — text-primary border 30% */
+.btn-secondary {
+  background: transparent;
+  color: var(--fg1);
+  border-color: color-mix(in oklch, var(--fg1) 30%, transparent);
+}
+.btn-secondary:hover {
+  border-color: var(--fg1);
+  background: var(--fg1);
+  color: var(--bg);
+}
+
+/* Accent CTA — accent bg, white text */
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.btn-accent:hover { background: var(--accent-hover); }
+
+.btn-sm { padding: 8px 16px; font-size: 13px; }
+.btn-lg { padding: 14px 28px; font-size: 15px; }
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* ==========================================================================
+   Inputs
+   ========================================================================== */
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--fg1);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.input::placeholder { color: var(--fg3); }
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ==========================================================================
+   Section heading pattern
+   ========================================================================== */
+.section { padding: var(--section-pad-y) var(--section-pad-x); }
+.section-inner { max-width: var(--container-max); margin-inline: auto; }
+.section-rule {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-6) 0 var(--space-8);
+  border: 0;
+}
+
+/* ==========================================================================
+   Utility
+   ========================================================================== */
+.hairline-t { border-top: 1px solid var(--border); }
+.hairline-b { border-bottom: 1px solid var(--border); }
+.muted { color: var(--fg3); }
+.subtle { color: var(--fg2); }

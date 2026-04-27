@@ -11,10 +11,9 @@ import { ThemeToggle } from './ThemeToggle'
 const NAV_ITEMS = [
   { key: 'home', href: '/' },
   { key: 'about', href: '/about' },
+  { key: 'store', href: '/books' },
   { key: 'articles', href: '/articles' },
   { key: 'interviews', href: '/interviews' },
-  { key: 'store', href: '/books' },
-  { key: 'gallery', href: '/gallery' },
   { key: 'contact', href: '/contact' },
 ] as const
 

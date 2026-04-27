@@ -3,15 +3,16 @@
 import type { ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/lib/i18n/navigation'
-import { LogoLink } from '@/components/shared/Logo'
+import { Logo } from '@/components/shared/Logo'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { ThemeToggle } from './ThemeToggle'
 
 const NAV_ITEMS = [
+  { key: 'home', href: '/' },
   { key: 'about', href: '/about' },
   { key: 'store', href: '/books' },
   { key: 'articles', href: '/articles' },
-  { key: 'gallery', href: '/gallery' },
+  { key: 'interviews', href: '/interviews' },
   { key: 'contact', href: '/contact' },
 ] as const
 
@@ -26,14 +27,15 @@ export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
       className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/[0.92] backdrop-blur-md backdrop-saturate-[1.2]"
     >
       <div className="mx-auto max-w-[var(--container-max)] grid grid-cols-[auto_1fr_auto] items-center gap-6 [padding:14px_clamp(20px,5vw,56px)]">
-        {/* Mark */}
+        {/* Mark — single Link wraps Logo image + brand name */}
         <Link
           href="/"
-          className={`inline-flex items-center gap-2.5 text-[15px] font-bold text-[var(--color-fg1)] ${
+          aria-label={t('brand')}
+          className={`inline-flex items-center gap-2.5 text-[15px] font-bold text-[var(--color-fg1)] transition-opacity hover:opacity-80 ${
             isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.01em]'
           }`}
         >
-          <LogoLink href="/" alt={t('brand')} height={22} />
+          <Logo height={22} alt="" />
           <span className="whitespace-nowrap hidden sm:inline">{t('brand')}</span>
         </Link>
 

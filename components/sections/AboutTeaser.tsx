@@ -39,8 +39,8 @@ export function AboutTeaser() {
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       <div className="mx-auto max-w-[1080px] grid gap-[clamp(40px,6vw,72px)]">
-        {/* Header */}
-        <header>
+        {/* Header — design qh-about-head: pulled toward quote with negative margin */}
+        <header className="-mb-4">
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -52,24 +52,24 @@ export function AboutTeaser() {
           </motion.span>
         </header>
 
-        {/* Featured pull-quote bio */}
+        {/* Featured pull-quote bio — editorial weight, accent border-start, restrained typography */}
         <motion.blockquote
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.15 }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="m-0 ps-[clamp(24px,4vw,40px)] border-s-2 border-[var(--color-accent)]"
+          className="m-0 relative ps-[clamp(28px,5vw,48px)] py-1 border-s-[3px] border-[var(--color-accent)]"
         >
           <p
-            className={`m-0 text-[clamp(22px,3.2vw,34px)] font-medium text-[var(--color-fg1)] ${
-              isRtl ? 'font-arabic-display leading-[1.5]' : 'font-arabic-display leading-[1.4] tracking-[-0.015em]'
+            className={`m-0 text-[clamp(24px,3.4vw,38px)] font-medium text-[var(--color-fg1)] [text-wrap:pretty] ${
+              isRtl ? 'font-arabic-display leading-[1.45]' : 'font-arabic-display leading-[1.35] tracking-[-0.018em]'
             }`}
           >
             {t('bio_preview_fallback')}
           </p>
           <footer
-            className={`mt-[18px] text-[14px] font-medium text-[var(--color-fg3)] ${
-              isRtl ? 'font-arabic-body' : 'font-display tracking-[0.02em]'
+            className={`mt-[22px] inline-flex items-center gap-2.5 text-[13px] font-semibold uppercase tracking-[0.12em] text-[var(--color-fg3)] before:content-[''] before:w-6 before:h-px before:bg-[var(--color-border-strong)] before:inline-block ${
+              isRtl ? 'font-arabic-body !tracking-normal !normal-case !text-[14px] !font-bold' : 'font-display'
             }`}
           >
             {affiliation}

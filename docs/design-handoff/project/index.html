@@ -1,0 +1,2090 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>د. خالد غطاس — Dr. Khaled Ghattass</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ============================================================
+   Site chrome, sections, motion, loaders.
+   Forks the Qalem website UI kit; tightened for production.
+   ============================================================ */
+
+/* ---------- Top route loader (1px accent fill) ---------- */
+.qh-routebar {
+  position: fixed; top: 0; inset-inline: 0;
+  height: 2px; background: transparent;
+  z-index: 200; pointer-events: none;
+}
+.qh-routebar > i {
+  display: block; height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transform-origin: var(--rb-origin, left);
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1), opacity 400ms ease;
+}
+[dir="rtl"] .qh-routebar { --rb-origin: right; }
+.qh-routebar.loading > i { width: 80%; }
+.qh-routebar.done    > i { width: 100%; opacity: 0; }
+
+/* ---------- Reveal-on-scroll ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* ---------- Hero stagger ---------- */
+.qh-hero .stagger { opacity: 0; transform: translateY(14px); }
+.qh-hero.is-loaded .stagger {
+  animation: heroIn 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.qh-hero.is-loaded .stagger.s1 { animation-delay: 80ms;  }
+.qh-hero.is-loaded .stagger.s2 { animation-delay: 240ms; }
+.qh-hero.is-loaded .stagger.s3 { animation-delay: 560ms; }
+.qh-hero.is-loaded .stagger.s4 { animation-delay: 800ms; }
+.qh-hero.is-loaded .stagger.s5 { animation-delay: 1040ms; }
+.qh-hero.is-loaded .stagger.s6 { animation-delay: 1240ms; }
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Skeleton shimmer ---------- */
+.skel {
+  background: linear-gradient(90deg,
+    var(--bg-deep) 0%, var(--bg-elevated) 40%,
+    var(--bg-deep) 80%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s linear infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes skelShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* play icon pulse */
+.qh-iv-play, .qh-lecture-play { animation: playPulse 2.4s ease-in-out infinite; }
+@keyframes playPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.0); }
+  50%     { box-shadow: 0 0 0 8px rgba(255,255,255,0.0); transform: translate(-50%,-50%) scale(1.04); }
+}
+
+/* form spinner */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Mobile drawer ---------- */
+.qh-burger {
+  display: none;
+  width: 36px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  align-items: center; justify-content: center;
+  cursor: pointer; color: var(--fg1);
+}
+.qh-burger:hover { border-color: var(--border-strong); }
+@media (max-width: 720px) { .qh-burger { display: inline-flex; } }
+.qh-drawer {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: flex; flex-direction: column;
+  padding: 24px clamp(24px, 6vw, 56px);
+  transform: translateY(-100%);
+  transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+.qh-drawer.open { transform: translateY(0); }
+.qh-drawer-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 32px; border-bottom: 1px solid var(--border);
+}
+.qh-drawer-nav {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  padding-block: 32px;
+  flex: 1;
+}
+.qh-drawer-nav a {
+  font-family: var(--font-arabic-display);
+  font-size: 28px; font-weight: 700; line-height: 1.4;
+  color: var(--fg1);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qh-drawer-nav a:hover { color: var(--accent); }
+[dir="ltr"] .qh-drawer-nav a { font-family: var(--font-latin); letter-spacing: -0.02em; }
+.qh-drawer-foot {
+  display: flex; gap: 8px; align-items: center;
+  padding-top: 16px;
+}
+
+/* ---------- Hero — keep portrait but make it more prominent than the kit's medallion ---------- */
+.qh-hero { position: relative; }
+
+/* Honor reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .qh-hero .stagger { opacity: 1 !important; transform: none !important; animation: none !important; }
+  .qh-iv-play, .qh-lecture-play, .spinner, .skel { animation: none !important; }
+  * { transition-duration: 0.001ms !important; }
+}
+</style>
+
+<!-- Pin the homepage CSS from the design system and a couple of small adjustments -->
+<style id="qh-styles">
+/* Pulled from the Qalem website UI kit, with minor adjustments. Inlined to avoid path issues. */
+.qh-home { background: var(--bg); color: var(--fg1); min-height: 100vh; }
+
+/* CHROME */
+.qh-chrome { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: saturate(120%) blur(14px); border-bottom: 1px solid var(--border); }
+.qh-chrome-inner { max-width: var(--container-max); margin-inline: auto; padding: 14px clamp(20px, 5vw, 56px); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; }
+.qh-mark { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-arabic-display); font-weight: 700; font-size: 15px; color: var(--fg1); }
+[dir="ltr"] .qh-mark { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-mark img { height: 22px; width: auto; }
+[data-theme="dark"] .qh-mark img { filter: invert(1); }
+.qh-mark-name { white-space: nowrap; }
+.qh-nav { justify-self: center; display: flex; gap: clamp(16px, 2.4vw, 32px); }
+.qh-nav a { font-size: 13.5px; color: var(--fg2); font-weight: 500; }
+.qh-nav a:hover { color: var(--fg1); }
+.qh-chrome-end { display: flex; gap: 6px; align-items: center; }
+.qh-toggle { width: 36px; height: 32px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-pill); font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--fg2); cursor: pointer; transition: all var(--dur-fast) var(--ease-out); }
+.qh-toggle:hover { color: var(--fg1); border-color: var(--border-strong); }
+.qh-icon { width: 32px; height: 32px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; color: var(--fg2); cursor: pointer; }
+.qh-icon:hover { color: var(--fg1); border-color: var(--border-strong); }
+.qh-avatar { width: 32px; height: 32px; border-radius: 9999px; background: var(--fg1); color: var(--bg); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-latin); font-weight: 700; font-size: 13px; cursor: pointer; }
+@media (max-width: 720px) { .qh-nav { display: none; } .qh-chrome-inner { grid-template-columns: 1fr auto; } .qh-chrome-end .qh-icon, .qh-chrome-end .qh-avatar { display: none; } }
+
+/* Section labels */
+.qh-section-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg3); }
+[dir="rtl"] .qh-section-label { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-section-label::before { content: ""; width: 24px; height: 1px; background: var(--border-strong); display: inline-block; }
+.qh-section-title { font-family: var(--font-arabic-display); font-size: clamp(32px, 4.5vw, 52px); line-height: 1.05; font-weight: 700; letter-spacing: -0.01em; color: var(--fg1); margin-top: 14px; }
+[dir="ltr"] .qh-section-title { font-family: var(--font-latin); letter-spacing: -0.025em; }
+.qh-section-sub { font-size: 17px; line-height: 1.6; color: var(--fg2); margin-top: 12px; max-width: 560px; }
+
+.qh-store-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; padding-bottom: 56px; }
+.qh-store-allbtn { font-family: var(--font-latin); font-size: 13px; font-weight: 600; color: var(--fg2); display: inline-flex; align-items: center; gap: 6px; align-self: end; padding-bottom: 6px; }
+[dir="rtl"] .qh-store-allbtn { font-family: var(--font-arabic-body); font-size: 14px; }
+.qh-store-allbtn:hover { color: var(--accent); }
+@media (max-width: 720px) { .qh-store-head { grid-template-columns: 1fr; align-items: start; padding-bottom: 32px; } }
+
+/* ==========================================================
+   HERO — Option A: Editorial split, full-bleed portrait
+   ========================================================== */
+.qh-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: calc(100vh - 57px);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Portrait panel — full-bleed, no padding */
+.qh-hero-photo {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+/* RTL: portrait on left (order 1), content on right (order 2) */
+[dir="rtl"] .qh-hero-photo { order: 1; }
+[dir="rtl"] .qh-hero-content { order: 2; }
+/* LTR: content on left (order 1), portrait on right (order 2) */
+[dir="ltr"] .qh-hero-photo { order: 2; }
+[dir="ltr"] .qh-hero-content { order: 1; }
+
+.qh-hero-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  display: block;
+  filter: saturate(0.78) contrast(1.05);
+  transition: filter var(--dur-slow) var(--ease-out);
+}
+[data-theme="dark"] .qh-hero-photo img { filter: saturate(0.62) contrast(1.08) brightness(0.88); }
+/* Editorial vignette + warm wash */
+.qh-hero-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 28%, transparent 38%, rgba(20,15,10,0.22) 100%),
+    linear-gradient(180deg, transparent 55%, rgba(20,15,10,0.40) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Hairline divider */
+.qh-hero-photo::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 1px;
+  background: var(--border);
+  z-index: 2;
+}
+[dir="ltr"] .qh-hero-photo::before { inset-inline-start: 0; inset-inline-end: auto; }
+
+/* Content panel */
+.qh-hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(48px, 6vw, 96px) clamp(32px, 5vw, 72px);
+  gap: 0;
+}
+
+/* Eyebrow */
+.qh-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-latin);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-bottom: 28px;
+}
+[dir="rtl"] .qh-hero-kicker { font-family: var(--font-arabic-body); letter-spacing: 0.04em; text-transform: none; font-weight: 700; font-size: 12.5px; }
+.qh-tick { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* Name — large, tight, stacked */
+.qh-hero-name {
+  font-family: var(--font-arabic-display);
+  font-weight: 800;
+  font-size: clamp(52px, 7.5vw, 112px);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--fg1);
+  margin: 0 0 28px;
+  display: block;
+}
+[dir="ltr"] .qh-hero-name { font-family: var(--font-latin); letter-spacing: -0.04em; }
+.qh-hero-name-accent { color: var(--accent); }
+
+/* Accent rule */
+.qh-hero-rule {
+  width: 48px;
+  height: 3px;
+  background: var(--accent);
+  border: 0;
+  margin: 0 0 28px;
+  display: block;
+}
+
+/* Statement */
+.qh-hero-statement {
+  font-family: var(--font-arabic-body);
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.75;
+  color: var(--fg2);
+  font-weight: 400;
+  margin: 0 0 40px;
+  max-width: 480px;
+}
+[dir="ltr"] .qh-hero-statement { font-family: var(--font-latin); }
+
+/* Stats trust band */
+.qh-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 36px;
+}
+.qh-hero-stat {
+  padding: 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-inline-end: 1px solid var(--border);
+}
+.qh-hero-stat:last-child { border-inline-end: 0; }
+.qh-hero-stat-num {
+  font-family: var(--font-arabic-display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.5vw, 32px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--fg1);
+  font-feature-settings: "tnum";
+}
+[dir="ltr"] .qh-hero-stat-num { font-family: var(--font-latin); }
+.qh-hero-stat-label {
+  font-family: var(--font-arabic-body);
+  font-size: 11px;
+  color: var(--fg3);
+  line-height: 1.4;
+}
+[dir="ltr"] .qh-hero-stat-label { font-family: var(--font-latin); font-size: 11px; letter-spacing: 0.02em; }
+
+/* CTAs */
+.qh-hero-cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Est stamp on photo */
+.qh-hero-est {
+  position: absolute;
+  inset-block-end: 20px;
+  inset-inline-start: 20px;
+  z-index: 3;
+  font-family: var(--font-latin);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+}
+[dir="rtl"] .qh-hero-est { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 11px; }
+
+/* Mobile */
+@media (max-width: 800px) {
+  .qh-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .qh-hero-photo { order: 1 !important; aspect-ratio: 4/3; position: relative; min-height: unset; }
+  .qh-hero-content { order: 2 !important; padding: 36px 24px 48px; }
+  .qh-hero-photo::before { display: none; }
+  .qh-hero-name { font-size: clamp(48px, 12vw, 72px); margin-bottom: 20px; }
+  .qh-hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .qh-hero-stat { padding: 14px 0; }
+  .qh-hero-stat:nth-child(2) { border-inline-end: 0; }
+  .qh-hero-est { font-size: 9px; }
+}
+
+/* ABOUT */
+.qh-about { padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--border); }
+.qh-about-inner { max-width: 1080px; margin-inline: auto; display: grid; grid-template-columns: 1fr; gap: clamp(40px, 6vw, 72px); }
+.qh-about-head { margin-bottom: -16px; }
+.qh-about-quote { margin: 0; position: relative; padding-inline-start: clamp(24px, 4vw, 40px); border-inline-start: 2px solid var(--accent); text-wrap: pretty; }
+.qh-about-quote p { font-family: var(--font-arabic-display); font-size: clamp(22px, 3.2vw, 34px); line-height: 1.5; font-weight: 500; color: var(--fg1); margin: 0; }
+[dir="ltr"] .qh-about-quote p { font-family: var(--font-latin); letter-spacing: -0.015em; line-height: 1.4; }
+.qh-about-affil { margin-top: 18px; font-family: var(--font-arabic-body); font-size: 14px; font-weight: 500; color: var(--fg3); letter-spacing: 0.02em; }
+[dir="ltr"] .qh-about-affil { font-family: var(--font-latin); }
+.qh-about-rows { display: grid; grid-template-columns: 1fr; gap: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.qh-about-row { display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: start; }
+[dir="rtl"] .qh-about-row { grid-template-columns: 160px 1fr; }
+.qh-about-rowlabel { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg3); padding-top: 4px; }
+[dir="rtl"] .qh-about-rowlabel { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-about-venues, .qh-about-outlets-ul { display: flex; flex-wrap: wrap; gap: 6px 22px; list-style: none; margin: 0; padding: 0; }
+.qh-about-venues li { font-family: var(--font-latin); font-size: 16px; font-weight: 600; color: var(--fg1); }
+.qh-about-outlets-ul li { font-family: var(--font-latin); font-size: 15px; font-weight: 500; color: var(--fg2); position: relative; }
+.qh-about-outlets-ul li:not(:last-child)::after { content: ""; position: absolute; inset-inline-end: -13px; top: 50%; transform: translateY(-50%); width: 3px; height: 3px; background: var(--border-strong); border-radius: 50%; }
+[dir="rtl"] .qh-about-venues li, [dir="rtl"] .qh-about-outlets-ul li { font-family: var(--font-arabic-body); }
+@media (max-width: 720px) { .qh-about-row, [dir="rtl"] .qh-about-row { grid-template-columns: 1fr; gap: 8px; } }
+.qh-about-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin: 0; padding-top: 32px; border-top: 1px solid var(--border); }
+.qh-about-stat dt { font-family: var(--font-arabic-display); font-weight: 800; font-size: clamp(40px, 5vw, 64px); line-height: 0.95; letter-spacing: -0.03em; color: var(--fg1); font-feature-settings: "tnum"; }
+[dir="ltr"] .qh-about-stat dt { font-family: var(--font-latin); }
+.qh-about-stat dd { margin: 12px 0 0; font-size: 13px; color: var(--fg3); letter-spacing: 0.02em; }
+.qh-about-foot { display: flex; justify-content: flex-start; padding-top: 8px; }
+.qh-about-link { font-family: var(--font-latin); font-size: 14px; font-weight: 600; color: var(--fg1); display: inline-flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--fg1); padding-bottom: 2px; }
+[dir="rtl"] .qh-about-link { font-family: var(--font-arabic-body); }
+.qh-about-link:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 720px) { .qh-about-stats { grid-template-columns: repeat(2, 1fr); gap: 28px; } }
+
+/* STORE */
+.qh-store { padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--border); background: var(--bg); }
+.qh-store-inner { max-width: var(--container-max); margin-inline: auto; }
+.qh-store-grid { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: clamp(40px, 5vw, 80px); align-items: start; padding-bottom: clamp(48px, 6vw, 80px); border-bottom: 1px solid var(--border); margin-bottom: clamp(48px, 6vw, 80px); }
+.qh-store-kicker { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg3); display: inline-block; }
+[dir="rtl"] .qh-store-kicker { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-store-hero { display: grid; grid-template-columns: 1fr; gap: 28px; }
+.qh-store-hero-cover { aspect-ratio: 4/5; background: var(--bg-deep); border-radius: 4px; overflow: hidden; box-shadow: var(--shadow-lift); position: relative; }
+.qh-store-hero-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qh-store-hero-meta { display: flex; flex-direction: column; gap: 14px; }
+.qh-store-hero-meta h3 { font-family: var(--font-arabic-display); font-size: clamp(28px, 3.5vw, 44px); line-height: 1.05; font-weight: 700; letter-spacing: -0.01em; color: var(--fg1); }
+[dir="ltr"] .qh-store-hero-meta h3 { font-family: var(--font-latin); letter-spacing: -0.02em; }
+.qh-store-hero-meta p { font-size: 17px; line-height: 1.6; color: var(--fg2); margin: 0; }
+.qh-store-hero-buy { display: flex; align-items: center; gap: 20px; margin-top: 8px; flex-wrap: wrap; }
+.qh-price { font-family: var(--font-latin); font-size: 24px; font-weight: 600; color: var(--fg1); font-feature-settings: "tnum"; }
+.qh-price span { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; color: var(--fg3); margin-inline-start: 6px; }
+.qh-store-shelf-section { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.qh-store-shelf { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qh-shelf-cover { aspect-ratio: 2/3; background: var(--bg-deep); border-radius: 2px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.qh-shelf-cover img { width: 100%; height: 100%; object-fit: cover; }
+.qh-store-shelf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.qh-store-shelf-kicker { margin-bottom: 0; }
+.qh-shelf-count { font-family: var(--font-latin); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg3); }
+[dir="rtl"] .qh-shelf-count { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 12px; }
+
+.qh-shelf-rail { list-style: none; margin: 0; padding: 8px 0 16px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 240px); gap: 28px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 8px; }-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; -webkit-overflow-scrolling: touch; }
+.qh-shelf-rail::-webkit-scrollbar { height: 4px; }
+.qh-shelf-rail::-webkit-scrollbar-track { background: transparent; }
+.qh-shelf-rail::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+.qh-shelf-rail li { scroll-snap-align: start; min-width: 0; }
+.qh-shelf-rail li a { display: flex; flex-direction: column; gap: 14px; padding: 0; transition: transform var(--dur-base) var(--ease-out); }
+.qh-shelf-rail li a:hover { transform: translateY(-3px); }
+.qh-shelf-rail .qh-shelf-cover { aspect-ratio: 2/3; width: 100%; box-shadow: 0 6px 20px rgba(0,0,0,0.10); transition: box-shadow var(--dur-base) var(--ease-out); }
+.qh-shelf-rail li a:hover .qh-shelf-cover { box-shadow: 0 12px 32px rgba(0,0,0,0.18); }
+.qh-shelf-rail .qh-shelf-meta { display: flex; flex-direction: column; gap: 4px; padding: 0 2px; }
+.qh-shelf-rail .qh-shelf-meta h4 { margin: 2px 0 0; }
+.qh-shelf-rail .qh-shelf-price { align-self: flex-start; margin-top: 6px; padding: 3px 0; font-family: var(--font-latin); font-size: 13px; font-weight: 700; color: var(--fg1); font-feature-settings: "tnum"; }
+[dir="rtl"] .qh-shelf-rail .qh-shelf-price { font-family: var(--font-latin); }
+.qh-shelf-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.qh-shelf-lang { font-family: var(--font-latin); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--fg3); align-self: flex-start; }
+.qh-shelf-meta h4 { font-family: var(--font-arabic-display); font-size: 16px; font-weight: 700; color: var(--fg1); margin: 0; line-height: 1.3; text-wrap: balance; }
+[dir="ltr"] .qh-shelf-meta h4 { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-shelf-type { font-size: 12px; color: var(--fg3); line-height: 1.4; }
+.qh-shelf-price { font-family: var(--font-latin); font-size: 14px; font-weight: 600; color: var(--fg2); font-feature-settings: "tnum"; white-space: nowrap; }
+
+.qh-pill { display: inline-flex; align-items: center; font-family: var(--font-latin); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 5px 10px; border-radius: 9999px; background: rgba(255,255,255,0.92); color: var(--fg1); backdrop-filter: blur(6px); }
+[dir="rtl"] .qh-pill { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 12px; padding: 4px 12px; }
+.qh-pill-on-cover { position: absolute; inset-block-start: 14px; inset-inline-start: 14px; z-index: 2; }
+.qh-pill-accent { background: var(--accent); color: var(--accent-fg); }
+
+.qh-store-microline { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg3); display: inline-flex; align-items: center; gap: 8px; }
+[dir="rtl"] .qh-store-microline { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-store-microline::before { content: ""; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; }
+
+/* LECTURES */
+.qh-lectures { margin-top: clamp(64px, 8vw, 112px); padding-top: clamp(48px, 6vw, 72px); border-top: 1px solid var(--border); }
+.qh-lectures-head { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: clamp(28px, 4vw, 48px); max-width: 720px; }
+.qh-lectures-title { font-family: var(--font-arabic-display); font-size: clamp(26px, 3.4vw, 36px); line-height: 1.1; font-weight: 700; letter-spacing: -0.005em; color: var(--fg1); margin: 0; }
+[dir="ltr"] .qh-lectures-title { font-family: var(--font-latin); letter-spacing: -0.02em; }
+.qh-lectures-intro { font-size: 16px; line-height: 1.6; color: var(--fg2); margin: 0; max-width: 540px; }
+.qh-lecture-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 2.5vw, 28px); }
+.qh-lecture-link { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: stretch; height: 100%; }
+.qh-lecture-thumb { position: relative; aspect-ratio: 16/10; background: var(--fg1); border-radius: 4px; overflow: hidden; }
+.qh-lecture-thumb img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.78) contrast(1.04); transition: transform var(--dur-slow) var(--ease-out), filter var(--dur-base); }
+.qh-lecture-thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.45)); }
+.qh-lecture-link:hover .qh-lecture-thumb img { transform: scale(1.03); filter: brightness(0.85); }
+.qh-lecture-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; z-index: 2; padding-inline-start: 4px; transition: transform var(--dur-fast) var(--ease-out); }
+.qh-lecture-link:hover .qh-lecture-play { transform: translate(-50%, -50%) scale(1.06); }
+.qh-lecture-meta { display: flex; flex-direction: column; gap: 10px; }
+.qh-lecture-meta h4 { font-family: var(--font-arabic-display); font-size: 20px; line-height: 1.3; font-weight: 700; color: var(--fg1); margin: 0; text-wrap: balance; }
+[dir="ltr"] .qh-lecture-meta h4 { font-family: var(--font-latin); letter-spacing: -0.015em; }
+.qh-lecture-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.qh-lecture-dur { font-family: var(--font-latin); font-size: 13px; font-weight: 500; letter-spacing: 0.04em; color: var(--fg3); font-feature-settings: "tnum"; display: inline-flex; align-items: center; gap: 6px; }
+[dir="rtl"] .qh-lecture-dur { font-family: var(--font-arabic-body); letter-spacing: 0; }
+.qh-lecture-premium { font-family: var(--font-latin); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); padding: 4px 9px; background: var(--accent-soft); border-radius: 9999px; }
+[dir="rtl"] .qh-lecture-premium { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 12px; }
+.qh-price-sm { font-size: 18px; margin-inline-start: auto; }
+@media (max-width: 900px) { .qh-store-grid { grid-template-columns: 1fr; } .qh-lecture-list { grid-template-columns: 1fr; } }
+
+/* ARTICLES */
+.qh-articles { padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--border); }
+.qh-articles-inner { max-width: var(--container-max); margin-inline: auto; }
+.qh-feature { position: relative; display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(32px, 5vw, 72px); align-items: stretch; padding: clamp(40px, 5vw, 72px) 0 clamp(56px, 6vw, 80px); border-bottom: 1px solid var(--border); }
+.qh-feature::before { content: "Nº 01"; position: absolute; top: clamp(40px, 5vw, 72px); inset-inline-end: 0; font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.18em; color: var(--fg3); font-feature-settings: "tnum"; }
+[dir="rtl"] .qh-feature::before { content: "العدد ٠١"; font-family: var(--font-arabic-body); letter-spacing: 0; font-size: 13px; font-weight: 700; }
+.qh-feature-img { position: relative; aspect-ratio: 5/6; background: var(--bg-deep); overflow: hidden; border-radius: 4px; }
+.qh-feature-img img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--dur-slow) var(--ease-out); }
+.qh-feature:hover .qh-feature-img img { transform: scale(1.02); }
+.qh-feature-img::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04); pointer-events: none; }
+.qh-feature-imgcap { position: absolute; bottom: 16px; inset-inline-start: 16px; font-family: var(--font-latin); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.42); backdrop-filter: blur(6px); padding: 6px 10px; border-radius: 2px; }
+[dir="rtl"] .qh-feature-imgcap { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 12px; }
+.qh-feature-meta { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-block: clamp(8px, 2vw, 24px); }
+.qh-feature-eyebrow { display: flex; align-items: center; gap: 14px; font-family: var(--font-latin); font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg3); }
+[dir="rtl"] .qh-feature-eyebrow { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 13px; font-weight: 700; }
+.qh-feature-eyebrow .qh-fe-tag { color: var(--accent); display: inline-flex; align-items: center; gap: 8px; }
+.qh-feature-eyebrow .qh-fe-tag::before { content: ""; width: 14px; height: 1px; background: var(--accent); }
+.qh-feature-eyebrow .qh-fe-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--fg3); }
+.qh-feature-title { font-family: var(--font-arabic-display); font-size: clamp(30px, 4vw, 52px); line-height: 1.08; font-weight: 700; letter-spacing: -0.015em; color: var(--fg1); margin: 0; text-wrap: balance; }
+[dir="ltr"] .qh-feature-title { font-family: var(--font-latin); letter-spacing: -0.03em; }
+.qh-feature-title em { font-style: italic; font-weight: 500; color: var(--accent); }
+.qh-feature-dek { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.55; color: var(--fg2); max-width: 540px; margin: 0; text-wrap: pretty; }
+.qh-feature-pull { margin: 4px 0 0; padding-inline-start: 18px; border-inline-start: 2px solid var(--accent); font-family: var(--font-arabic-display); font-size: clamp(15px, 1.3vw, 17px); line-height: 1.55; color: var(--fg1); font-style: italic; font-weight: 500; }
+[dir="ltr"] .qh-feature-pull { font-family: var(--font-latin); letter-spacing: -0.005em; }
+.qh-feature-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-family: var(--font-latin); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg3); margin-top: 12px; padding-top: 22px; border-top: 1px solid var(--border); }
+[dir="rtl"] .qh-feature-foot { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 13px; }
+.qh-feature-foot .qh-fe-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--fg3); }
+.qh-feature-link { margin-inline-start: auto; color: var(--fg1); font-weight: 700; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--fg1); padding-bottom: 3px; transition: color var(--dur-fast), border-color var(--dur-fast), gap var(--dur-base); }
+.qh-feature-link:hover { color: var(--accent); border-color: var(--accent); gap: 12px; }
+
+.qh-article-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 clamp(32px, 5vw, 72px); }
+.qh-article-list li { border-bottom: 1px solid var(--border); }
+.qh-article-list li a { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 16px; row-gap: 4px; align-items: baseline; padding: 22px 0; transition: padding-inline-start var(--dur-base) var(--ease-out); }
+.qh-article-list li a:hover { padding-inline-start: 8px; }
+.qh-article-num { grid-row: span 2; font-family: var(--font-latin); font-size: 12px; font-weight: 600; color: var(--fg3); letter-spacing: 0.04em; font-feature-settings: "tnum"; align-self: start; padding-top: 4px; }
+.qh-article-list .qh-article-cat { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+[dir="rtl"] .qh-article-list .qh-article-cat { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-article-list .qh-article-title { font-family: var(--font-arabic-display); font-size: 19px; line-height: 1.3; font-weight: 700; color: var(--fg1); margin: 0; grid-column: 2; }
+[dir="ltr"] .qh-article-list .qh-article-title { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-article-list .qh-article-date { grid-row: span 2; font-family: var(--font-latin); font-size: 12px; color: var(--fg3); font-feature-settings: "tnum"; align-self: start; padding-top: 4px; white-space: nowrap; }
+[dir="rtl"] .qh-article-list .qh-article-date { font-family: var(--font-arabic-body); }
+@media (max-width: 800px) { .qh-feature { grid-template-columns: 1fr; } .qh-feature-img { aspect-ratio: 16/10; } .qh-article-list { grid-template-columns: 1fr; } }
+
+/* INTERVIEW */
+.qh-interview { padding: clamp(80px, 10vw, 140px) clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
+.qh-interview-inner { max-width: var(--container-max); margin-inline: auto; }
+.qh-iv { display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: center; }
+.qh-iv-frame { position: relative; aspect-ratio: 16/9; background: var(--fg1); overflow: hidden; border-radius: 4px; }
+.qh-iv-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; filter: brightness(0.78) contrast(1.05); transition: transform var(--dur-slow) var(--ease-out), filter var(--dur-base); }
+.qh-iv-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55)); pointer-events: none; }
+.qh-iv-frame:hover img { transform: scale(1.02); filter: brightness(0.85) contrast(1.05); }
+.qh-iv-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; background: var(--accent); color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; padding-inline-start: 5px; transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast); }
+.qh-iv-play:hover { transform: translate(-50%, -50%) scale(1.06); background: var(--accent-hover); }
+.qh-iv-runtime { position: absolute; inset-block-end: 16px; inset-inline-end: 16px; z-index: 2; font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: rgba(255,255,255,0.92); background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 9999px; backdrop-filter: blur(6px); }
+[dir="rtl"] .qh-iv-runtime { font-family: var(--font-arabic-body); letter-spacing: 0; }
+.qh-iv-source-overlay { position: absolute; inset-block-start: 16px; inset-inline-start: 16px; display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; background: rgba(255,255,255,0.94); border-radius: 9999px; font-family: var(--font-latin); font-size: 12px; font-weight: 600; color: var(--fg1); z-index: 2; backdrop-filter: blur(8px); }
+[dir="rtl"] .qh-iv-source-overlay { font-family: var(--font-arabic-body); }
+.qh-iv-meta { display: flex; flex-direction: column; gap: 22px; }
+.qh-iv-quote { margin: 0; padding: 0; }
+.qh-iv-quote p { font-family: var(--font-arabic-display); font-size: clamp(20px, 2.4vw, 28px); line-height: 1.55; font-weight: 500; color: var(--fg1); margin: 0; text-wrap: pretty; }
+[dir="ltr"] .qh-iv-quote p { font-family: var(--font-latin); letter-spacing: -0.01em; line-height: 1.45; }
+.qh-iv-title { font-family: var(--font-arabic-display); font-size: clamp(18px, 2vw, 22px); font-weight: 700; color: var(--fg1); margin: 0; line-height: 1.35; text-wrap: balance; padding-top: 20px; border-top: 1px solid var(--border); }
+[dir="ltr"] .qh-iv-title { font-family: var(--font-latin); letter-spacing: -0.015em; }
+.qh-iv-desc { font-size: 14px; color: var(--fg2); margin: 0; line-height: 1.6; }
+.qh-iv-cta { display: flex; gap: 16px; align-items: center; margin-top: 4px; }
+.qh-iv-link { font-family: var(--font-latin); font-size: 13px; font-weight: 600; color: var(--fg1); display: inline-flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--fg1); padding-bottom: 2px; }
+[dir="rtl"] .qh-iv-link { font-family: var(--font-arabic-body); }
+.qh-iv-link:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 800px) { .qh-iv { grid-template-columns: 1fr; } .qh-iv-play { width: 60px; height: 60px; } }
+
+/* NEWSLETTER */
+.qh-news { padding: clamp(96px, 12vw, 160px) clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--border); background: var(--bg); }
+.qh-news-inner { max-width: 760px; margin-inline: auto; text-align: start; }
+.qh-news-statement { font-family: var(--font-arabic-display); font-size: clamp(22px, 3vw, 32px); line-height: 1.55; font-weight: 500; color: var(--fg1); letter-spacing: -0.005em; margin: 0 0 14px; text-wrap: pretty; font-style: italic; }
+[dir="ltr"] .qh-news-statement { font-family: var(--font-latin); letter-spacing: -0.015em; line-height: 1.45; }
+.qh-news-sign { font-family: var(--font-arabic-display); font-size: 16px; font-style: italic; color: var(--fg2); margin: 0 0 36px; font-weight: 500; }
+[dir="ltr"] .qh-news-sign { font-family: var(--font-latin); }
+.qh-news-form { display: grid; grid-template-columns: 1fr auto; align-items: stretch; gap: 0; border-bottom: 1px solid var(--fg1); padding-bottom: 12px; }
+.qh-news-input { background: transparent; border: 0; font: inherit; font-size: 18px; font-family: inherit; color: var(--fg1); padding: 12px 0; outline: none; width: 100%; }
+[dir="ltr"] .qh-news-input { font-family: var(--font-latin); }
+.qh-news-input::placeholder { color: var(--fg3); }
+.qh-news-cta { background: var(--accent); border: 0; font-family: var(--font-latin); font-size: 14px; font-weight: 600; color: var(--accent-fg); border-radius: 9999px; padding: 10px 22px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; transition: background var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-news-cta { font-family: var(--font-arabic-body); font-size: 15px; }
+.qh-news-cta:hover { background: var(--accent-hover); }
+.qh-news-cta:disabled { opacity: 0.7; cursor: progress; }
+.qh-news-success { font-size: 18px; font-weight: 600; color: var(--accent); padding: 16px 0; border-bottom: 1px solid var(--border); }
+.qh-news-foot { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: var(--font-latin); font-size: 12px; color: var(--fg3); }
+[dir="rtl"] .qh-news-foot { font-family: var(--font-arabic-body); font-size: 13px; }
+
+/* FOOTER */
+.qh-footer { padding-top: clamp(80px, 10vw, 128px); background: var(--bg); }
+.qh-footer-quote { max-width: var(--container-max); margin-inline: auto; padding: 0 clamp(20px, 5vw, 56px) clamp(48px, 6vw, 80px); }
+.qh-footer-quote p { font-family: var(--font-arabic-display); font-size: clamp(28px, 4vw, 48px); line-height: 1.3; font-weight: 600; color: var(--fg1); letter-spacing: -0.015em; margin: 0; max-width: 800px; text-wrap: balance; }
+[dir="ltr"] .qh-footer-quote p { font-family: var(--font-latin); letter-spacing: -0.025em; }
+.qh-footer-quote-attrib { display: block; margin-top: 16px; font-family: var(--font-latin); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg3); }
+[dir="rtl"] .qh-footer-quote-attrib { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 600; font-size: 14px; }
+.qh-footer-rule { height: 1px; background: var(--border); margin: 0 clamp(20px, 5vw, 56px); max-width: var(--container-max); margin-inline: auto; }
+.qh-footer-grid { max-width: var(--container-max); margin-inline: auto; padding: clamp(48px, 6vw, 80px) clamp(20px, 5vw, 56px); display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(32px, 5vw, 64px); }
+.qh-footer-coltitle { display: block; font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg3); margin-bottom: 16px; }
+[dir="rtl"] .qh-footer-coltitle { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 13px; }
+.qh-footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.qh-footer-col a { font-size: 14px; color: var(--fg2); transition: color var(--dur-fast) var(--ease-out); }
+.qh-footer-col a:hover { color: var(--fg1); }
+.qh-footer-bottom { max-width: var(--container-max); margin-inline: auto; padding: 24px clamp(20px, 5vw, 56px) 32px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; font-family: var(--font-latin); font-size: 12px; color: var(--fg3); border-top: 1px solid var(--border); }
+[dir="rtl"] .qh-footer-bottom { font-family: var(--font-arabic-body); font-size: 13px; }
+.qh-footer-social { list-style: none; margin: 0; padding: 0; display: flex; gap: 18px; justify-self: center; }
+.qh-footer-social a { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg2); transition: all var(--dur-fast) var(--ease-out); }
+.qh-footer-social a:hover { color: var(--fg1); border-color: var(--fg1); }
+@media (max-width: 800px) {
+  .qh-footer-grid { grid-template-columns: 1fr 1fr; }
+  .qh-footer-bottom { grid-template-columns: 1fr; gap: 12px; text-align: start; }
+  .qh-footer-social { justify-self: start; flex-wrap: wrap; }
+}
+
+/* ============================================================
+   AUTH — chrome additions, dropdown, login/signup/account pages
+   ============================================================ */
+.qh-auth-link { font-family: var(--font-latin); font-size: 13.5px; font-weight: 500; color: var(--fg2); padding: 6px 4px; cursor: pointer; background: none; border: 0; white-space: nowrap; transition: color var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-auth-link { font-family: var(--font-arabic-body); font-weight: 600; font-size: 14px; }
+.qh-auth-link:hover { color: var(--fg1); }
+.qh-auth-cta { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-fg); border: 0; border-radius: var(--radius-pill); padding: 8px 16px; font-family: var(--font-latin); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-auth-cta { font-family: var(--font-arabic-body); font-size: 14px; font-weight: 700; }
+.qh-auth-cta:hover { background: var(--accent-hover); }
+.qh-auth-cta:active { transform: translateY(1px); }
+.qh-avatar-trigger { width: 32px; height: 32px; border-radius: 9999px; background: var(--accent); color: var(--accent-fg); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-latin); font-weight: 700; font-size: 13px; cursor: pointer; border: 0; padding: 0; overflow: hidden; transition: box-shadow var(--dur-fast) var(--ease-out); position: relative; }
+.qh-avatar-trigger:hover { box-shadow: 0 0 0 3px var(--accent-soft); }
+.qh-avatar-trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.qh-menu-wrap { position: relative; }
+.qh-menu { position: absolute; top: calc(100% + 12px); inset-inline-end: 0; min-width: 260px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lift); overflow: hidden; z-index: 60; opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+.qh-menu.open { opacity: 1; transform: none; pointer-events: auto; }
+.qh-menu-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.qh-menu-avatar { width: 38px; height: 38px; border-radius: 9999px; background: var(--accent); color: var(--accent-fg); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-latin); font-weight: 700; font-size: 15px; flex-shrink: 0; overflow: hidden; }
+.qh-menu-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.qh-menu-name { font-family: var(--font-arabic-display); font-size: 14px; font-weight: 700; color: var(--fg1); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[dir="ltr"] .qh-menu-name { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-menu-email { font-family: var(--font-latin); font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-feature-settings: "tnum"; }
+.qh-menu ul { list-style: none; margin: 0; padding: 6px 0; }
+.qh-menu li button, .qh-menu li a { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 18px; background: transparent; border: 0; color: var(--fg1); font-family: var(--font-arabic-body); font-size: 14px; font-weight: 500; cursor: pointer; text-align: start; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+[dir="ltr"] .qh-menu li button, [dir="ltr"] .qh-menu li a { font-family: var(--font-latin); }
+.qh-menu li button:hover, .qh-menu li a:hover { background: var(--accent-soft); color: var(--accent); }
+.qh-menu li button svg, .qh-menu li a svg { color: var(--fg3); flex-shrink: 0; transition: color var(--dur-fast) var(--ease-out); }
+.qh-menu li button:hover svg, .qh-menu li a:hover svg { color: var(--accent); }
+.qh-menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+.qh-drawer-auth-out { display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.qh-drawer-auth-in { display: flex; align-items: center; gap: 14px; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.qh-drawer-auth-in .qh-menu-avatar { width: 44px; height: 44px; font-size: 16px; }
+.qh-drawer-auth-in .qh-menu-name { font-size: 16px; }
+.qh-drawer-auth-in .qh-menu-email { font-size: 13px; }
+.qh-mobile-avatar { display: none; }
+@media (max-width: 720px) {
+  .qh-chrome-end .qh-auth-link, .qh-chrome-end .qh-auth-cta, .qh-chrome-end .qh-menu-wrap { display: none; }
+  .qh-mobile-avatar { display: inline-flex; }
+}
+
+/* Auth pages — editorial 2-column */
+.qh-auth-page { min-height: calc(100vh - 64px); display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); }
+@media (max-width: 920px) { .qh-auth-page { grid-template-columns: 1fr; } }
+
+.qh-auth-aside { position: relative; padding: clamp(48px, 6vw, 88px) clamp(36px, 5vw, 72px); display: flex; flex-direction: column; justify-content: space-between; gap: 48px; background: var(--bg-deep); border-inline-end: 1px solid var(--border); overflow: hidden; min-height: 100%; }
+@media (max-width: 920px) { .qh-auth-aside { display: none; } }
+.qh-auth-aside-mark { font-family: var(--font-arabic-display); font-size: 22px; font-weight: 700; color: var(--fg1); letter-spacing: -0.005em; }
+[dir="ltr"] .qh-auth-aside-mark { font-family: var(--font-latin); letter-spacing: -0.025em; }
+.qh-auth-quote { display: flex; flex-direction: column; gap: 32px; max-width: 480px; position: relative; z-index: 1; }
+.qh-auth-quote-glyph { font-family: var(--font-arabic-display); font-size: 88px; line-height: 1; color: var(--accent); opacity: 0.35; user-select: none; }
+[dir="ltr"] .qh-auth-quote-glyph { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 96px; }
+.qh-auth-quote-text { font-family: var(--font-arabic-display); font-size: clamp(24px, 2.6vw, 32px); line-height: 1.5; font-weight: 400; color: var(--fg1); margin: 0; letter-spacing: -0.005em; }
+[dir="ltr"] .qh-auth-quote-text { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-size: clamp(26px, 2.6vw, 34px); line-height: 1.45; }
+.qh-auth-quote-attr { display: flex; align-items: center; gap: 14px; font-family: var(--font-latin); font-size: 12px; font-weight: 500; color: var(--fg3); letter-spacing: 0.04em; text-transform: uppercase; }
+[dir="rtl"] .qh-auth-quote-attr { font-family: var(--font-arabic-body); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.qh-auth-quote-attr::before { content: ""; width: 28px; height: 1px; background: var(--border-strong); flex-shrink: 0; }
+.qh-auth-aside-foot { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-latin); font-size: 11px; color: var(--fg3); letter-spacing: 0.06em; text-transform: uppercase; }
+[dir="rtl"] .qh-auth-aside-foot { font-family: var(--font-arabic-body); font-size: 13px; letter-spacing: 0; text-transform: none; }
+.qh-auth-aside-ornament { position: absolute; pointer-events: none; }
+.qh-auth-aside-ornament-1 { top: -120px; inset-inline-end: -120px; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle at center, var(--accent-soft), transparent 70%); opacity: 0.6; }
+.qh-auth-aside-ornament-2 { bottom: -100px; inset-inline-start: -80px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle at center, var(--accent-soft), transparent 65%); opacity: 0.4; }
+
+.qh-auth-main { display: grid; place-items: center; padding: clamp(48px, 6vw, 88px) clamp(20px, 5vw, 56px); }
+.qh-auth-card { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 32px; }
+.qh-auth-head { display: flex; flex-direction: column; gap: 8px; }
+.qh-auth-eyebrow { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+[dir="rtl"] .qh-auth-eyebrow { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 14px; }
+.qh-auth-title { font-family: var(--font-arabic-display); font-size: clamp(32px, 4vw, 44px); line-height: 1.1; font-weight: 700; letter-spacing: -0.01em; color: var(--fg1); margin: 0; }
+[dir="ltr"] .qh-auth-title { font-family: var(--font-latin); letter-spacing: -0.025em; }
+.qh-auth-sub { font-size: 16px; color: var(--fg2); line-height: 1.55; margin: 0; }
+.qh-form { display: flex; flex-direction: column; gap: 18px; }
+.qh-field { display: flex; flex-direction: column; gap: 8px; }
+.qh-label { font-family: var(--font-latin); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--fg2); }
+[dir="rtl"] .qh-label { font-family: var(--font-arabic-body); font-weight: 700; font-size: 13px; letter-spacing: 0; }
+.qh-input { width: 100%; padding: 13px 16px; background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius-md); color: var(--fg1); font-family: inherit; font-size: 15px; transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.qh-input::placeholder { color: var(--fg3); }
+.qh-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--shadow-focus); }
+.qh-field-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.qh-field-row a { color: var(--fg2); font-family: var(--font-latin); font-weight: 500; cursor: pointer; }
+[dir="rtl"] .qh-field-row a { font-family: var(--font-arabic-body); }
+.qh-field-row a:hover { color: var(--accent); }
+.qh-form-submit { margin-top: 8px; width: 100%; background: var(--fg1); color: var(--bg); border: 0; border-radius: var(--radius-pill); padding: 14px 24px; font-family: var(--font-latin); font-size: 14px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+[dir="rtl"] .qh-form-submit { font-family: var(--font-arabic-body); font-size: 15px; font-weight: 700; }
+.qh-form-submit:hover { background: var(--accent); color: #fff; }
+.qh-form-submit:active { transform: translateY(1px); }
+.qh-form-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.qh-auth-foot { text-align: center; font-size: 14px; color: var(--fg2); }
+.qh-auth-foot a { color: var(--fg1); font-weight: 600; border-bottom: 1px solid var(--fg1); padding-bottom: 1px; cursor: pointer; }
+.qh-auth-foot a:hover { color: var(--accent); border-color: var(--accent); }
+.qh-auth-back { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-latin); font-size: 13px; font-weight: 500; color: var(--fg3); margin-bottom: 8px; cursor: pointer; background: none; border: 0; }
+[dir="rtl"] .qh-auth-back { font-family: var(--font-arabic-body); font-size: 14px; }
+.qh-auth-back:hover { color: var(--fg1); }
+[dir="rtl"] .qh-auth-back svg { transform: scaleX(-1); }
+
+/* Account dashboard */
+.qh-account { padding: clamp(48px, 6vw, 80px) clamp(20px, 5vw, 56px) clamp(80px, 10vw, 128px); background: var(--bg); min-height: calc(100vh - 64px); }
+.qh-account-inner { max-width: var(--container-max); margin-inline: auto; }
+.qh-account-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; padding-bottom: 32px; margin-bottom: 48px; border-bottom: 1px solid var(--border); }
+.qh-account-avatar { width: 72px; height: 72px; border-radius: 9999px; background: var(--accent); color: var(--accent-fg); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-latin); font-weight: 700; font-size: 28px; overflow: hidden; flex-shrink: 0; }
+.qh-account-id h1 { font-family: var(--font-arabic-display); font-size: clamp(24px, 3vw, 32px); font-weight: 700; letter-spacing: -0.005em; color: var(--fg1); margin: 0 0 6px; line-height: 1.2; }
+[dir="ltr"] .qh-account-id h1 { font-family: var(--font-latin); letter-spacing: -0.02em; }
+.qh-account-id p { font-family: var(--font-latin); font-size: 14px; color: var(--fg3); margin: 0; }
+[dir="rtl"] .qh-account-id p { font-family: var(--font-arabic-body); }
+.qh-account-since { font-family: var(--font-latin); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg3); text-align: end; }
+[dir="rtl"] .qh-account-since { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-weight: 600; font-size: 13px; }
+@media (max-width: 720px) { .qh-account-head { grid-template-columns: auto 1fr; } .qh-account-since { display: none; } }
+
+.qh-account-tabs { display: flex; gap: clamp(4px, 1vw, 12px); margin-bottom: clamp(32px, 5vw, 56px); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.qh-account-tabs::-webkit-scrollbar { display: none; }
+.qh-account-tab { background: transparent; border: 0; padding: 12px 16px; font-family: var(--font-arabic-body); font-size: 14px; font-weight: 600; color: var(--fg3); cursor: pointer; position: relative; white-space: nowrap; transition: color var(--dur-fast) var(--ease-out); }
+[dir="ltr"] .qh-account-tab { font-family: var(--font-latin); font-size: 13px; letter-spacing: 0.02em; }
+.qh-account-tab:hover { color: var(--fg1); }
+.qh-account-tab.is-active { color: var(--fg1); }
+.qh-account-tab.is-active::after { content: ""; position: absolute; inset-inline: 12px; bottom: -1px; height: 2px; background: var(--accent); }
+
+.qh-account-secthead { margin-bottom: 28px; }
+.qh-account-secthead h2 { font-family: var(--font-arabic-display); font-size: clamp(22px, 2.5vw, 28px); font-weight: 700; letter-spacing: -0.005em; color: var(--fg1); margin: 0; line-height: 1.2; }
+[dir="ltr"] .qh-account-secthead h2 { font-family: var(--font-latin); letter-spacing: -0.015em; }
+.qh-account-secthead p { font-size: 14px; color: var(--fg3); margin: 6px 0 0; line-height: 1.5; }
+
+.qh-profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 720px; }
+@media (max-width: 720px) { .qh-profile-grid { grid-template-columns: 1fr; } }
+.qh-profile-grid .qh-field-full { grid-column: 1 / -1; }
+.qh-profile-actions { display: flex; gap: 12px; margin-top: 8px; grid-column: 1 / -1; }
+
+.qh-purch-section { margin-bottom: clamp(48px, 6vw, 72px); }
+.qh-purch-section:last-child { margin-bottom: 0; }
+.qh-purch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: clamp(20px, 3vw, 32px) clamp(16px, 2vw, 24px); }
+.qh-purch-card { display: flex; flex-direction: column; gap: 14px; }
+.qh-purch-cover { aspect-ratio: 2/3; background: var(--bg-deep); border-radius: 4px; overflow: hidden; box-shadow: var(--shadow-card); position: relative; transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out); }
+.qh-purch-card:hover .qh-purch-cover { transform: translateY(-4px); box-shadow: var(--shadow-lift); }
+.qh-purch-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qh-purch-cover-pill { position: absolute; inset-block-start: 12px; inset-inline-start: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-radius: 9999px; font-family: var(--font-latin); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg1); }
+[dir="rtl"] .qh-purch-cover-pill { font-family: var(--font-arabic-body); letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 700; }
+.qh-purch-cover-pill::before { content: ""; width: 5px; height: 5px; background: #2A8C3A; border-radius: 50%; }
+.qh-purch-meta { display: flex; flex-direction: column; gap: 6px; }
+.qh-purch-meta h4 { font-family: var(--font-arabic-display); font-size: 16px; line-height: 1.3; font-weight: 700; color: var(--fg1); margin: 0; }
+[dir="ltr"] .qh-purch-meta h4 { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-purch-meta-sub { font-size: 12px; color: var(--fg3); font-family: var(--font-latin); font-feature-settings: "tnum"; }
+[dir="rtl"] .qh-purch-meta-sub { font-family: var(--font-arabic-body); font-size: 13px; }
+.qh-purch-action { margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--fg1); color: var(--bg); border: 0; border-radius: var(--radius-pill); padding: 9px 14px; font-family: var(--font-latin); font-size: 12px; font-weight: 600; cursor: pointer; align-self: stretch; text-decoration: none; transition: background var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-purch-action { font-family: var(--font-arabic-body); font-size: 13px; font-weight: 700; }
+.qh-purch-action:hover { background: var(--accent); color: #fff; }
+
+.qh-purch-lect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.qh-purch-lect { display: grid; grid-template-columns: 120px 1fr; gap: 16px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; padding: 14px; align-items: center; transition: border-color var(--dur-fast) var(--ease-out); }
+.qh-purch-lect:hover { border-color: var(--border-strong); }
+.qh-purch-lect-thumb { aspect-ratio: 16/10; background: var(--fg1); border-radius: var(--radius-sm); overflow: hidden; position: relative; }
+.qh-purch-lect-thumb img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.85); }
+.qh-purch-lect-thumb::after { content: "▶"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 14px; background: rgba(0,0,0,0.25); transition: background var(--dur-fast) var(--ease-out); }
+.qh-purch-lect:hover .qh-purch-lect-thumb::after { background: rgba(0,0,0,0.1); }
+.qh-purch-lect-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.qh-purch-lect-meta h4 { font-family: var(--font-arabic-display); font-size: 15px; font-weight: 700; color: var(--fg1); margin: 0 0 2px; line-height: 1.3; text-wrap: balance; }
+[dir="ltr"] .qh-purch-lect-meta h4 { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-purch-lect-action { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-latin); font-size: 12px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; align-self: flex-start; border-bottom: 1px solid transparent; transition: border-color var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-purch-lect-action { font-family: var(--font-arabic-body); font-size: 13px; font-weight: 700; }
+.qh-purch-lect-action:hover { border-bottom-color: var(--accent); }
+.qh-purch-lect-time { font-size: 12px; color: var(--fg3); font-family: var(--font-latin); }
+[dir="rtl"] .qh-purch-lect-time { font-family: var(--font-arabic-body); font-size: 13px; }
+
+.qh-settings { display: flex; flex-direction: column; gap: clamp(40px, 5vw, 64px); max-width: 760px; }
+.qh-settings-group { display: flex; flex-direction: column; gap: 6px; padding-bottom: clamp(40px, 5vw, 64px); border-bottom: 1px solid var(--border); }
+.qh-settings-group:last-child { border-bottom: 0; padding-bottom: 0; }
+.qh-settings-group h3 { font-family: var(--font-arabic-display); font-size: 22px; font-weight: 700; color: var(--fg1); margin: 0; line-height: 1.25; letter-spacing: -0.005em; }
+[dir="ltr"] .qh-settings-group h3 { font-family: var(--font-latin); letter-spacing: -0.02em; }
+.qh-settings-desc { font-size: 14px; color: var(--fg3); margin: 0 0 20px; line-height: 1.55; max-width: 56ch; }
+[dir="rtl"] .qh-settings-desc { font-family: var(--font-arabic-body); font-size: 15px; line-height: 1.7; }
+
+.qh-segment { display: inline-flex; background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
+.qh-segment button { padding: 7px 16px; background: transparent; border: 0; border-radius: var(--radius-pill); font-family: var(--font-latin); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--fg2); cursor: pointer; transition: all var(--dur-fast) var(--ease-out); }
+[dir="rtl"] .qh-segment button { font-family: var(--font-arabic-body); font-size: 13px; font-weight: 700; }
+.qh-segment button:hover { color: var(--fg1); }
+.qh-segment button.is-active { background: var(--bg-elevated); color: var(--fg1); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+.qh-theme-radio { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 540px; }
+@media (max-width: 560px) { .qh-theme-radio { grid-template-columns: 1fr; } }
+.qh-theme-card { display: grid; grid-template-columns: 80px 1fr auto; gap: 16px; align-items: center; padding: 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; text-align: start; transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); font: inherit; color: inherit; }
+.qh-theme-card:hover { border-color: var(--border-strong); }
+.qh-theme-card.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.qh-theme-preview { aspect-ratio: 4/3; border-radius: 6px; overflow: hidden; padding: 10px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); }
+.qh-theme-preview-light { background: #FAF7F2; border-color: #E8E1D6; }
+.qh-theme-preview-light .qh-theme-preview-bar { background: #2B1F12; }
+.qh-theme-preview-light .qh-theme-preview-line { background: #C9C1B3; }
+.qh-theme-preview-dark { background: #1A1612; border-color: #2C261F; }
+.qh-theme-preview-dark .qh-theme-preview-bar { background: #F2EBDD; }
+.qh-theme-preview-dark .qh-theme-preview-line { background: #3A3128; }
+.qh-theme-preview-bar { width: 28%; height: 4px; border-radius: 2px; }
+.qh-theme-preview-line { width: 100%; height: 3px; border-radius: 2px; }
+.qh-theme-preview-line.short { width: 65%; }
+.qh-theme-card-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.qh-theme-card-meta strong { font-family: var(--font-arabic-display); font-size: 16px; font-weight: 700; color: var(--fg1); }
+[dir="ltr"] .qh-theme-card-meta strong { font-family: var(--font-latin); letter-spacing: -0.01em; }
+.qh-theme-card-meta span { font-size: 12.5px; color: var(--fg3); line-height: 1.4; }
+[dir="rtl"] .qh-theme-card-meta span { font-family: var(--font-arabic-body); font-size: 13px; }
+.qh-theme-card-mark { width: 22px; height: 22px; border-radius: 50%; background: transparent; border: 1.5px solid var(--border-strong); display: grid; place-items: center; color: transparent; transition: all var(--dur-fast) var(--ease-out); flex-shrink: 0; }
+.qh-theme-card.is-active .qh-theme-card-mark { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.qh-toggle-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.qh-toggle-row:last-child { border-bottom: 0; }
+.qh-toggle-row-label { display: flex; flex-direction: column; gap: 2px; }
+.qh-toggle-row-label strong { font-family: var(--font-arabic-display); font-size: 14px; font-weight: 600; color: var(--fg1); }
+[dir="ltr"] .qh-toggle-row-label strong { font-family: var(--font-latin); }
+.qh-toggle-row-label span { font-size: 12px; color: var(--fg3); line-height: 1.4; }
+
+.qh-switch { position: relative; width: 38px; height: 22px; background: var(--border-strong); border: 0; padding: 0; border-radius: 9999px; cursor: pointer; transition: background var(--dur-fast) var(--ease-out); flex-shrink: 0; }
+.qh-switch::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; background: #fff; border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: inset-inline-start var(--dur-fast) var(--ease-out); }
+.qh-switch.is-on { background: var(--accent); }
+.qh-switch.is-on::after { inset-inline-start: 18px; }
+
+.qh-logout-zone { margin-top: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+.qh-logout-btn { background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: 10px 18px; font-family: var(--font-arabic-body); font-size: 14px; font-weight: 600; color: var(--fg2); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all var(--dur-fast) var(--ease-out); }
+[dir="ltr"] .qh-logout-btn { font-family: var(--font-latin); }
+.qh-logout-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.qh-toast { position: fixed; inset-block-end: 24px; inset-inline-end: 24px; background: var(--fg1); color: var(--bg); padding: 14px 20px; border-radius: var(--radius-pill); font-family: var(--font-arabic-body); font-size: 14px; font-weight: 600; z-index: 250; box-shadow: var(--shadow-lift); display: inline-flex; align-items: center; gap: 10px; animation: toastIn 320ms var(--ease-out); }
+[dir="ltr"] .qh-toast { font-family: var(--font-latin); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+/* ============================================================
+   Reveal-on-scroll wrapper
+   ============================================================ */
+function Reveal({ children, delay = 0, className = '', as: Tag = 'div', ...rest }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setTimeout(() => el.classList.add('is-visible'), delay); io.disconnect(); }
+    }, { threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [delay]);
+  return <Tag ref={ref} className={`reveal ${className}`} {...rest}>{children}</Tag>;
+}
+
+/* ============================================================
+   Stat count-up
+   ============================================================ */
+function CountUp({ to, prefix = '', suffix = '', duration = 1400, locale = 'ar' }) {
+  const [v, setV] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true;
+        const start = performance.now();
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / duration);
+          // ease-out-expo
+          const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+          setV(Math.round(to * eased));
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [to, duration]);
+  const display = locale === 'ar'
+    ? v.toLocaleString('ar-EG')
+    : v.toLocaleString('en-US');
+  return <span ref={ref}>{prefix}{display}{suffix}</span>;
+}
+
+/* ============================================================
+   CHROME — sticky header w/ mobile drawer
+   ============================================================ */
+const NAV_AR = [['الرئيسية','top'],['عن الدكتور','about'],['المتجر','store'],['المقالات','articles'],['المقابلات','interview'],['تواصل','newsletter']];
+const NAV_EN = [['Home','top'],['About','about'],['Store','store'],['Articles','articles'],['Interviews','interview'],['Contact','newsletter']];
+
+/* Tiny SVG icon set for menu */
+const Icon = {
+  user: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>,
+  bag: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 8h14l-1 13H6L5 8z"/><path d="M9 8V5a3 3 0 0 1 6 0v3"/></svg>,
+  gear: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>,
+  logout: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+};
+
+function AvatarTrigger({ user, onClick }) {
+  const initial = (user?.name || 'U').trim().charAt(0).toUpperCase();
+  return (
+    <button className="qh-avatar-trigger" onClick={onClick} aria-label="Account menu">
+      {user?.avatar ? <img src={user.avatar} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : initial}
+    </button>
+  );
+}
+
+function UserMenu({ user, locale, open, onClose, navigate, logout }) {
+  const isRtl = locale === 'ar';
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onClick = (e) => {
+      if (!e.target.closest('.qh-menu-wrap')) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    setTimeout(() => document.addEventListener('mousedown', onClick), 0);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onClick); };
+  }, [open, onClose]);
+
+  const t = isRtl
+    ? { account: 'حسابي', purchases: 'مشترياتي', settings: 'الإعدادات', logout: 'تسجيل الخروج' }
+    : { account: 'My account', purchases: 'My purchases', settings: 'Settings', logout: 'Log out' };
+
+  const initial = (user?.name || 'U').trim().charAt(0).toUpperCase();
+  return (
+    <div className={`qh-menu ${open ? 'open' : ''}`} role="menu">
+      <div className="qh-menu-head">
+        <span className="qh-menu-avatar">{initial}</span>
+        <div className="qh-menu-id">
+          <span className="qh-menu-name">{user.name}</span>
+          <span className="qh-menu-email">{user.email}</span>
+        </div>
+      </div>
+      <ul>
+        <li><button onClick={() => { onClose(); navigate('account', 'profile'); }}>{Icon.user}<span>{t.account}</span></button></li>
+        <li><div className="qh-menu-divider" /></li>
+        <li><button onClick={() => { onClose(); logout(); }}>{Icon.logout}<span>{t.logout}</span></button></li>
+      </ul>
+    </div>
+  );
+}
+
+function HomeChrome({ locale, setLocale, theme, setTheme, drawerOpen, setDrawerOpen, user, navigate, logout }) {
+  const isRtl = locale === 'ar';
+  const nav = isRtl ? NAV_AR : NAV_EN;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const t = isRtl
+    ? { login: 'تسجيل الدخول', signup: 'إنشاء حساب' }
+    : { login: 'Login', signup: 'Sign up' };
+
+  return (
+    <header className="qh-chrome">
+      <div className="qh-chrome-inner">
+        <a className="qh-mark" href="#/" onClick={(e) => { e.preventDefault(); navigate('home'); }}>
+          <img src="assets/logo-black.png" alt="" />
+          <span className="qh-mark-name">{isRtl ? 'خالد غطاس' : 'Khaled Ghattass'}</span>
+        </a>
+        <nav className="qh-nav">
+          {nav.map(([label, href]) => <a key={href} href={`#${href}`}>{label}</a>)}
+        </nav>
+        <div className="qh-chrome-end">
+          <button className="qh-toggle" onClick={() => setLocale(isRtl ? 'en' : 'ar')} aria-label="Toggle language">
+            {isRtl ? 'EN' : 'عربي'}
+          </button>
+          <button className="qh-icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+            {theme === 'dark'
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+          </button>
+          {user ? (
+            <div className="qh-menu-wrap">
+              <AvatarTrigger user={user} onClick={() => setMenuOpen(o => !o)} />
+              <UserMenu user={user} locale={locale} open={menuOpen} onClose={() => setMenuOpen(false)} navigate={navigate} logout={logout} />
+            </div>
+          ) : (
+            <>
+              <button className="qh-auth-link" onClick={() => navigate('login')}>{t.login}</button>
+              <button className="qh-auth-cta" onClick={() => navigate('signup')}>{t.signup}</button>
+            </>
+          )}
+          {user && <span className="qh-mobile-avatar"><AvatarTrigger user={user} onClick={() => navigate('account')} /></span>}
+          <button className="qh-burger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MobileDrawer({ open, onClose, locale, setLocale, theme, setTheme, user, navigate, logout }) {
+  const isRtl = locale === 'ar';
+  const nav = isRtl ? NAV_AR : NAV_EN;
+  const t = isRtl
+    ? { login: 'تسجيل الدخول', signup: 'إنشاء حساب', account: 'حسابي', logout: 'تسجيل الخروج' }
+    : { login: 'Login', signup: 'Sign up', account: 'My account', logout: 'Log out' };
+  const initial = (user?.name || 'U').trim().charAt(0).toUpperCase();
+  const go = (route, tab) => { onClose(); navigate(route, tab); };
+  return (
+    <div className={`qh-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
+      <div className="qh-drawer-top">
+        <a className="qh-mark" href="#/" onClick={(e) => { e.preventDefault(); go('home'); }}>
+          <img src="assets/logo-black.png" alt="" />
+          <span className="qh-mark-name">{isRtl ? 'خالد غطاس' : 'Khaled Ghattass'}</span>
+        </a>
+        <button className="qh-icon" onClick={onClose} aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      {user ? (
+        <div className="qh-drawer-auth-in">
+          <span className="qh-menu-avatar">{initial}</span>
+          <div className="qh-menu-id">
+            <span className="qh-menu-name">{user.name}</span>
+            <span className="qh-menu-email">{user.email}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="qh-drawer-auth-out">
+          <button className="qh-form-submit" onClick={() => go('signup')}>{t.signup}</button>
+          <button className="qh-auth-link" style={{ textAlign: 'center', padding: '8px 0' }} onClick={() => go('login')}>{t.login}</button>
+        </div>
+      )}
+      <nav className="qh-drawer-nav">
+        {nav.map(([label, href]) => <a key={href} href={`#${href}`} onClick={onClose}>{label}</a>)}
+        {user && <a href="#account" onClick={(e) => { e.preventDefault(); go('account'); }}>{t.account}</a>}
+        {user && <a href="#logout" style={{ color: 'var(--fg3)' }} onClick={(e) => { e.preventDefault(); onClose(); logout(); }}>{t.logout}</a>}
+      </nav>
+      <div className="qh-drawer-foot">
+        <button className="qh-toggle" onClick={() => setLocale(isRtl ? 'en' : 'ar')}>{isRtl ? 'EN' : 'عربي'}</button>
+        <button className="qh-icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+          {theme === 'dark'
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+function HomeHero({ locale, loaded }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? {
+        kicker: 'فكر ومعنى',
+        name: 'د. خالد غطاس',
+        statement: 'عالم بيولوجيا الخلايا وخبير في السلوك البشري — كاتب ومحاضر ومؤسس مبادرة «الورشة» الاجتماعية في لبنان.',
+        stats: [
+          { num: '+١٠', label: 'سنوات' },
+          { num: '+٧٨٨', label: 'محاضرة' },
+          { num: '+٣', label: 'كتب' },
+          { num: '٤', label: 'مؤلفات' },
+        ],
+        cta: 'تصفّح المتجر',
+        ctaSecondary: 'اقرأ المقالات',
+        established: 'بيروت — منذ ٢٠١٠',
+      }
+    : {
+        kicker: 'Thought & Meaning',
+        name: 'Dr. Khaled Ghattass',
+        statement: 'Cell biologist and human behavior expert — author, lecturer, and founder of the Al‑Warsheh social initiative in Lebanon.',
+        stats: [
+          { num: '10+', label: 'Years' },
+          { num: '788+', label: 'Lectures' },
+          { num: '3+', label: 'Books' },
+          { num: '4', label: 'Publications' },
+        ],
+        cta: 'Visit store',
+        ctaSecondary: 'Read articles',
+        established: 'Beirut — Est. 2010',
+      };
+
+  return (
+    <section id="top" className={`qh-hero ${loaded ? 'is-loaded' : ''}`}>
+      {/* Portrait panel — full-bleed */}
+      <div className="qh-hero-photo">
+        <img src="assets/dr-khaled-portrait.jpg" alt="د. خالد غطاس" />
+        <span className="qh-hero-est stagger s6">{t.established}</span>
+      </div>
+
+      {/* Content panel */}
+      <div className="qh-hero-content">
+        {/* Eyebrow */}
+        <div className="qh-hero-kicker stagger s1">
+          <span className="qh-tick" aria-hidden="true" />
+          {t.kicker}
+        </div>
+
+        {/* Name */}
+        <h1 className="qh-hero-name stagger s2">{t.name}</h1>
+        <hr className="qh-hero-rule stagger s3" aria-hidden="true" />
+
+        {/* Statement */}
+        <p className="qh-hero-statement stagger s4">{t.statement}</p>
+
+        {/* Stats trust band */}
+        <div className="qh-hero-stats stagger s5">
+          {t.stats.map((s, i) => (
+            <div key={i} className="qh-hero-stat">
+              <span className="qh-hero-stat-num">{s.num}</span>
+              <span className="qh-hero-stat-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTAs */}
+        <div className="qh-hero-cta stagger s6">
+          <a className="btn btn-accent" href="#store">{t.cta}</a>
+          <a className="btn btn-secondary" href="#articles">{t.ctaSecondary}</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   ABOUT
+   ============================================================ */
+function HomeAbout({ locale }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { section: 'عن الدكتور', heading: 'علم وفنّ وفلسفة',
+        bio: 'عالم أحياء وخبير في السلوك البشري، كاتب ومحاضر يسعى إلى إعادة التوازن إلى حياة الأفراد والمؤسسات والمجتمعات من خلال طرح ورسالة تمسّ الإنسان في جوهره. يجمع في طرحه بين العلوم السلوكية والفكر الفلسفي والفهم الثقافي والفني.',
+        affiliation: 'مؤسس مبادرة «الورشة» الاجتماعية في لبنان.',
+        stats: [
+          { num: 10, prefix: '+', label: 'سنوات' },
+          { num: 788, prefix: '+', label: 'محاضرة' },
+          { num: 3, prefix: '+', label: 'كتب' },
+          { num: 4, prefix: '', label: 'مؤلفات' },
+        ],
+        venuesLabel: 'حاضر في',
+        venues: ['Harvard', 'Cornell', 'Stanford', 'AUB Beirut'],
+        seenOn: 'ظهر على',
+        outlets: ['BBC Arabic', 'Al Jazeera', 'Sky News Arabia', 'LBC', 'MTV Lebanon', 'Al Arabiya', 'OTV'],
+        link: 'اقرأ السيرة الكاملة' }
+    : { section: 'About', heading: 'Science, Art, Philosophy',
+        bio: 'Biologist and human behavior expert, author and lecturer seeking to restore balance to the lives of individuals, institutions, and communities through messages that touch humanity at its core. Combines behavioral sciences, philosophical thought, and cultural and artistic understanding.',
+        affiliation: 'Founder of Al‑Warsheh, a social initiative in Lebanon.',
+        stats: [
+          { num: 10, prefix: '+', label: 'Years' },
+          { num: 788, prefix: '+', label: 'Lectures' },
+          { num: 3, prefix: '+', label: 'Books' },
+          { num: 4, prefix: '', label: 'Publications' },
+        ],
+        venuesLabel: 'Spoken at',
+        venues: ['Harvard', 'Cornell', 'Stanford', 'AUB Beirut'],
+        seenOn: 'Featured on',
+        outlets: ['BBC Arabic', 'Al Jazeera', 'Sky News Arabia', 'LBC', 'MTV Lebanon', 'Al Arabiya', 'OTV'],
+        link: 'Read full biography' };
+
+  return (
+    <section id="about" className="qh-about">
+      <div className="qh-about-inner">
+        <Reveal as="header" className="qh-about-head">
+          <span className="qh-section-label">{t.section}</span>
+          <h2 className="qh-section-title">{t.heading}</h2>
+        </Reveal>
+        <Reveal as="blockquote" className="qh-about-quote">
+          <p>{t.bio}</p>
+          <footer className="qh-about-affil">{t.affiliation}</footer>
+        </Reveal>
+        <Reveal as="dl" className="qh-about-stats">
+          {t.stats.map((s, i) => (
+            <div key={i} className="qh-about-stat">
+              <dt><CountUp to={s.num} prefix={s.prefix} locale={locale} /></dt>
+              <dd>{s.label}</dd>
+            </div>
+          ))}
+        </Reveal>
+        <Reveal className="qh-about-rows">
+          <div className="qh-about-row">
+            <span className="qh-about-rowlabel">{t.venuesLabel}</span>
+            <ul className="qh-about-venues">
+              {t.venues.map((v, i) => <li key={i}>{v}</li>)}
+            </ul>
+          </div>
+          <div className="qh-about-row">
+            <span className="qh-about-rowlabel">{t.seenOn}</span>
+            <ul className="qh-about-outlets-ul">
+              {t.outlets.map((o, i) => <li key={i}>{o}</li>)}
+            </ul>
+          </div>
+        </Reveal>
+        <Reveal className="qh-about-foot">
+          <a className="qh-about-link" href="#bio">
+            {t.link} <span aria-hidden="true">{isRtl ? '←' : '→'}</span>
+          </a>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   STORE — books + recorded lectures
+   ============================================================ */
+const STORE_BOOKS = [
+  { id: 1, img: 'assets/books/book-1.jpg',  titleAr: 'ليس هذا ما كتبت', titleEn: 'This Is Not What I Wrote',
+    typeAr: 'قصص فلسفية قصيرة', typeEn: 'Philosophical short stories', price: 20, year: 2024, hero: true, lang: 'ar' },
+  { id: 2, img: 'assets/books/book-2.jpg',  titleAr: 'وكان النفاق جميلًا', titleEn: 'Hypocrisy Was Once Beautiful',
+    typeAr: 'روايات فلسفية قصيرة', typeEn: 'Philosophical novellas', price: 20, year: 2023, lang: 'ar' },
+  { id: 3, img: 'assets/books/book-3.jpg',  titleAr: 'القصة ما قبل الأخيرة', titleEn: 'The Story Before the End',
+    typeAr: 'رواية فلسفية', typeEn: 'Philosophical novel', price: 20, year: 2022, lang: 'ar' },
+  { id: 4, img: 'assets/books/book-4.jpg',  titleAr: 'ليس هذا ما كتبت — نسخة إنجليزية', titleEn: 'This Is Not What I Wrote — EN',
+    typeAr: 'الترجمة الإنجليزية', typeEn: 'English translation', price: 20, year: 2024, lang: 'en' },
+  { id: 5, img: 'assets/books/book-5.jpg',  titleAr: 'وكان النفاق جميلًا — نسخة إنجليزية', titleEn: 'Hypocrisy Was Once Beautiful — EN',
+    typeAr: 'الترجمة الإنجليزية', typeEn: 'English translation', price: 20, year: 2023, lang: 'en' },
+  { id: 6, img: 'assets/books/book-6.jpg',  titleAr: 'Hypocrisy Was Once Beautiful', titleEn: 'Hypocrisy Was Once Beautiful',
+    typeAr: 'النسخة الإنجليزية الأصلية', typeEn: 'English original edition', price: 20, year: 2024, lang: 'en' },
+];
+const STORE_LECTURES = [
+  { id: 'l1', img: 'assets/sessions/session-1.png', titleAr: 'تجربة خطرة', titleEn: 'A Dangerous Experience',
+    durAr: '٥٨ دقيقة', durEn: '58 minutes', price: 29 },
+  { id: 'l2', img: 'assets/sessions/session-2.png', titleAr: 'القصة ما قبل الأخيرة', titleEn: 'The Story Before the End',
+    durAr: '١ ساعة و٣٤ دقيقة', durEn: '1h 34m', price: 49, premium: true },
+];
+
+function HomeStore({ locale }) {
+  const isRtl = locale === 'ar';
+  const hero = STORE_BOOKS.find(b => b.hero);
+  const rest = STORE_BOOKS.filter(b => !b.hero);
+  const t = isRtl
+    ? { section: 'اكتشف الأعمال', heading: 'المتجر',
+        sub: 'كتب فلسفية ومحاضرات تصنع الفرق.',
+        kickerHero: 'الإصدار الأحدث', kickerOther: 'مجلّدات أخرى',
+        kickerLectures: 'محاضرات مدفوعة',
+        lecturesHeading: 'محاضرات مسجّلة',
+        lecturesIntro: 'محاضرات بصوت الدكتور خالد، تُشترى مرة وتُشاهد متى شئت.',
+        viewAll: 'تصفح المتجر بالكامل', buy: 'اقتنِ النسخة',
+        bookBadge: 'كتاب', lectureBadge: 'محاضرة',
+        instant: 'وصول فوري بعد الشراء', premium: 'محاضرة موسّعة' }
+    : { section: 'Discover the Work', heading: 'Store',
+        sub: 'Philosophical books and lectures that make a difference.',
+        kickerHero: 'Latest title', kickerOther: 'Other volumes',
+        kickerLectures: 'Paid lectures',
+        lecturesHeading: 'Recorded Lectures',
+        lecturesIntro: "Lectures in Dr. Khaled's own voice. Bought once, watched any time.",
+        viewAll: 'Browse full store', buy: 'Get a copy',
+        bookBadge: 'BOOK', lectureBadge: 'LECTURE',
+        instant: 'Instant access after purchase', premium: 'Extended lecture' };
+
+  return (
+    <section id="store" className="qh-store">
+      <div className="qh-store-inner">
+        <Reveal as="header" className="qh-store-head">
+          <div>
+            <span className="qh-section-label">{t.section}</span>
+            <h2 className="qh-section-title">{t.heading}</h2>
+            <p className="qh-section-sub">{t.sub}</p>
+          </div>
+          <a className="qh-store-allbtn" href="#all">{t.viewAll}<span aria-hidden="true">{isRtl ? '←' : '→'}</span></a>
+        </Reveal>
+
+        <Reveal className="qh-store-grid">
+          <article className="qh-store-hero card" style={{padding: 0, border: 0, background: 'transparent', boxShadow: 'none'}}>
+            <div className="qh-store-hero-cover">
+              <span className="qh-pill qh-pill-on-cover">{t.bookBadge}</span>
+              <img src={hero.img} alt="" />
+            </div>
+            <div className="qh-store-hero-meta">
+              <span className="qh-store-kicker">{t.kickerHero} · {hero.year}</span>
+              <h3>{isRtl ? hero.titleAr : hero.titleEn}</h3>
+              <p>{isRtl ? hero.typeAr : hero.typeEn}</p>
+              <div className="qh-store-hero-buy">
+                <span className="qh-price">${hero.price} <span>USD</span></span>
+                <a className="btn btn-primary" href="#">{t.buy}</a>
+              </div>
+              <span className="qh-store-microline">{t.instant}</span>
+            </div>
+          </article>
+
+          <aside className="qh-store-shelf">
+            <header className="qh-store-shelf-head">
+              <span className="qh-store-kicker qh-store-shelf-kicker">{t.kickerOther}</span>
+              <span className="qh-shelf-count">{rest.length} {isRtl ? 'عناوين' : 'titles'}</span>
+            </header>
+            <ul className="qh-shelf-rail">
+              {rest.map(b => (
+                <li key={b.id}>
+                  <a href="#">
+                    <div className="qh-shelf-cover"><img src={b.img} alt="" /></div>
+                    <div className="qh-shelf-meta">
+                      <span className="qh-shelf-lang">{b.lang === 'en' ? 'EN' : 'AR'} · {b.year}</span>
+                      <h4>{isRtl ? b.titleAr : b.titleEn}</h4>
+                      <span className="qh-shelf-type">{isRtl ? b.typeAr : b.typeEn}</span>
+                      <span className="qh-shelf-price">${b.price}</span>
+                    </div>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        </Reveal>
+
+        <div className="qh-lectures">
+          <Reveal as="header" className="qh-lectures-head">
+            <span className="qh-section-label">{t.kickerLectures}</span>
+            <h3 className="qh-lectures-title">{t.lecturesHeading}</h3>
+            <p className="qh-lectures-intro">{t.lecturesIntro}</p>
+          </Reveal>
+          <Reveal as="ul" className="qh-lecture-list">
+            {STORE_LECTURES.map(l => (
+              <li key={l.id}>
+                <a href="#" className="qh-lecture-link">
+                  <div className="qh-lecture-thumb">
+                    <img src={l.img} alt="" />
+                    <span className="qh-lecture-play" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    </span>
+                    <span className="qh-pill qh-pill-on-cover qh-pill-accent" style={{color:'#fff'}}>{t.lectureBadge}</span>
+                  </div>
+                  <div className="qh-lecture-meta">
+                    <h4>{isRtl ? l.titleAr : l.titleEn}</h4>
+                    <div className="qh-lecture-foot">
+                      <span className="qh-lecture-dur">{isRtl ? l.durAr : l.durEn}</span>
+                      {l.premium && <span className="qh-lecture-premium">{t.premium}</span>}
+                      <span className="qh-price qh-price-sm">${l.price}</span>
+                    </div>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   ARTICLES
+   ============================================================ */
+const FEATURED_ARTICLE = {
+  catAr: 'مجتمع', catEn: 'Society',
+  titleAr: 'محاور الورشة: كيف يُبنى الإنسان المتوازن؟',
+  titleEn: "The Workshop's Pillars: How Is the Balanced Human Built?",
+  dekAr: 'الفكر، الفن، الرياضة — وقاعدة القيم. قراءة في الأركان الأربع التي تقوم عليها الورشة، وكيف تتشابك معًا لتصنع إنسانًا متوازنًا.',
+  dekEn: 'Thought, art, sport — and a foundation of values. A reading of the four pillars on which Al‑Warsheh stands.',
+  read: 9, date: 'Jan 29, 2026', dateAr: '٢٩ يناير ٢٠٢٦',
+  cover: 'assets/books/book-3.jpg',
+};
+const ARTICLE_LIST = [
+  { catAr: 'مجتمع', catEn: 'Society',
+    titleAr: 'الورشة: نموذج اجتماعي يبدأ من الإنسان', titleEn: 'The Workshop: A Social Model That Begins With the Human',
+    dekAr: 'كيف بدأت الورشة في حديقة منزل الدكتور خالد غطاس في برجا، ولماذا اختير هذا الاسم.',
+    dekEn: 'How Al‑Warsheh began in the garden of Dr. Khaled\'s house in Barja.',
+    date: 'Nov 9, 2025', dateAr: '٩ نوفمبر ٢٠٢٥' },
+  { catAr: 'علم نفس', catEn: 'Psychology',
+    titleAr: 'السلوك البشري واتخاذ القرار', titleEn: 'Human Behavior and Decision Making',
+    dekAr: 'مدخل إلى الاقتصاد السلوكي وكيفية تأثيره في القرارات اليومية.',
+    dekEn: 'An introduction to behavioral economics and its everyday effect.',
+    date: 'Sep 15, 2025', dateAr: '١٥ سبتمبر ٢٠٢٥' },
+  { catAr: 'فلسفة', catEn: 'Philosophy',
+    titleAr: 'التفكير النقدي في السياق العربي', titleEn: 'Critical Thinking in the Arab Context',
+    dekAr: 'دعوة لإعادة قراءة المسلّمات والاشتباك معها بفضول علمي.',
+    dekEn: 'An invitation to re‑read assumptions with scientific curiosity.',
+    date: 'Jul 22, 2025', dateAr: '٢٢ يوليو ٢٠٢٥' },
+  { catAr: 'مجتمع', catEn: 'Society',
+    titleAr: 'القيادة الأصيلة في بيئات معقّدة', titleEn: 'Authentic Leadership in Complex Environments',
+    dekAr: 'كيف توأم بين قيمك الشخصية ودورك المهني، من تجربة هارفارد وستانفورد.',
+    dekEn: 'Pairing personal values with professional role — from Harvard and Stanford.',
+    date: 'May 10, 2025', dateAr: '١٠ مايو ٢٠٢٥' },
+  { catAr: 'ثقافة', catEn: 'Culture',
+    titleAr: 'الفن مساحة للارتقاء الإنساني', titleEn: 'Art as a Space for Human Elevation',
+    dekAr: 'الفن ليس ترفًا — هو طريق لاستشعار الجمال والعمق في زمن السرعة.',
+    dekEn: 'Art is not a luxury — it is a path to depth in a hurried time.',
+    date: 'Mar 18, 2025', dateAr: '١٨ مارس ٢٠٢٥' },
+];
+
+function HomeArticles({ locale }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { section: 'أحدث الكتابات', heading: 'المقالات', featured: 'الأحدث', readArticle: 'اقرأ المقال', minRead: 'دقائق قراءة', viewAll: 'عرض كل المقالات' }
+    : { section: 'Latest Writing', heading: 'Articles', featured: 'Most recent', readArticle: 'Read article', minRead: 'min read', viewAll: 'View all articles' };
+  const a = FEATURED_ARTICLE;
+  return (
+    <section id="articles" className="qh-articles">
+      <div className="qh-articles-inner">
+        <Reveal as="header" className="qh-store-head">
+          <div>
+            <span className="qh-section-label">{t.section}</span>
+            <h2 className="qh-section-title">{t.heading}</h2>
+          </div>
+          <a className="qh-store-allbtn" href="#all">{t.viewAll}<span aria-hidden="true">{isRtl ? '←' : '→'}</span></a>
+        </Reveal>
+
+        <Reveal as="article" className="qh-feature">
+          <div className="qh-feature-img"><img src={a.cover} alt="" /></div>
+          <div className="qh-feature-meta">
+            <span className="qh-feature-tag">{t.featured}</span>
+            <span className="qh-feature-cat">{isRtl ? a.catAr : a.catEn}</span>
+            <h3 className="qh-feature-title">{isRtl ? a.titleAr : a.titleEn}</h3>
+            <p className="qh-feature-dek">{isRtl ? a.dekAr : a.dekEn}</p>
+            <div className="qh-feature-foot">
+              <span>{isRtl ? a.dateAr : a.date}</span>
+              <span aria-hidden="true">·</span>
+              <span>{a.read} {t.minRead}</span>
+              <a className="qh-feature-link" href="#">{t.readArticle} <span aria-hidden="true">{isRtl ? '←' : '→'}</span></a>
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal as="ol" className="qh-article-list">
+          {ARTICLE_LIST.map((item, i) => (
+            <li key={i}>
+              <a href="#">
+                <span className="qh-article-num">{String(i + 2).padStart(2, '0')}</span>
+                <span className="qh-article-cat">{isRtl ? item.catAr : item.catEn}</span>
+                <h4 className="qh-article-title">{isRtl ? item.titleAr : item.titleEn}</h4>
+                <span className="qh-article-date">{isRtl ? item.dateAr : item.date}</span>
+              </a>
+            </li>
+          ))}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   INTERVIEW
+   ============================================================ */
+function HomeInterview({ locale }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { section: 'أصوات الرؤية', heading: 'المقابلات',
+        quote: '«حين نسأل: من أنا؟ — نحن لا نبحث عن إجابة، نحن نتعلّم كيف نُصاغ. الهوية ليست شيئًا نملكه، بل ما نحن في طور أن نكونه.»',
+        title: 'مقابلة مع الجزيرة: الهوية والمعنى',
+        descrip: 'حوار مطوّل حول أسئلة الهوية والمعنى في العالم العربي.',
+        source: 'Al Jazeera', date: '٢٠٢٤',
+        watch: 'شاهد المقابلة', allInterviews: 'كل المقابلات',
+        runtime: '٤٢ دقيقة' }
+    : { section: 'Voices of Insight', heading: 'Interviews',
+        quote: '"When we ask — who am I? — we are not looking for an answer, we are learning how we are formed. Identity is not something we possess, but what we are in the process of becoming."',
+        title: 'Al Jazeera Interview: Identity and Meaning',
+        descrip: 'A long‑form conversation on questions of identity and meaning in the Arab world.',
+        source: 'Al Jazeera', date: '2024',
+        watch: 'Watch the interview', allInterviews: 'All interviews',
+        runtime: '42 minutes' };
+  return (
+    <section id="interview" className="qh-interview">
+      <div className="qh-interview-inner">
+        <Reveal as="header" className="qh-store-head">
+          <div>
+            <span className="qh-section-label">{t.section}</span>
+            <h2 className="qh-section-title">{t.heading}</h2>
+          </div>
+        </Reveal>
+        <Reveal as="article" className="qh-iv">
+          <div className="qh-iv-frame">
+            <img src="assets/dr-khaled-portrait.jpg" alt="" />
+            <button className="qh-iv-play" aria-label={t.watch}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <span className="qh-iv-runtime">{t.runtime}</span>
+            <div className="qh-iv-source-overlay">
+              <span style={{width:6,height:6,borderRadius:'50%',background:'var(--accent)'}}></span>
+              <span>{t.source}</span>
+              <span aria-hidden="true">·</span>
+              <span>{t.date}</span>
+            </div>
+          </div>
+          <div className="qh-iv-meta">
+            <blockquote className="qh-iv-quote"><p>{t.quote}</p></blockquote>
+            <h3 className="qh-iv-title">{t.title}</h3>
+            <p className="qh-iv-desc">{t.descrip}</p>
+            <div className="qh-iv-cta">
+              <a className="btn btn-accent" href="#">{t.watch}</a>
+              <a className="qh-iv-link" href="#">{t.allInterviews} <span aria-hidden="true">{isRtl ? '←' : '→'}</span></a>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   NEWSLETTER
+   ============================================================ */
+function HomeNewsletter({ locale }) {
+  const isRtl = locale === 'ar';
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState('idle'); // idle | submitting | done
+  const t = isRtl
+    ? { statement: 'لا أكتب نشرة للترويج. أكتبها لأنّني أحبّ أن أكمل حديثي معك في الأسبوع، حتى لو لم نلتقِ. مقالةٌ واحدة، رسالةٌ صغيرة، وكثير من المعنى.',
+        sign: '— د. خالد',
+        placeholder: 'بريدك الإلكتروني',
+        cta: 'اشترك',
+        priv: 'لن أُشارك بريدك. ألغِ في أيّ وقت.',
+        success: 'وصل بريدك. شكراً — أراك الأسبوع القادم.' }
+    : { statement: 'I do not write a newsletter to market. I write it because I want our conversation to continue through the week, even when we do not meet. One essay, a small letter, plenty of meaning.',
+        sign: '— Dr. Khaled',
+        placeholder: 'your@email.com',
+        cta: 'Subscribe',
+        priv: "I will never share your address. Unsubscribe any time.",
+        success: "I have your address. Thank you — I'll see you next week." };
+
+  const submit = (e) => {
+    e.preventDefault();
+    setState('submitting');
+    setTimeout(() => setState('done'), 900);
+  };
+  return (
+    <section id="newsletter" className="qh-news">
+      <div className="qh-news-inner">
+        <Reveal>
+          <p className="qh-news-statement">{t.statement}</p>
+          <p className="qh-news-sign">{t.sign}</p>
+          {state === 'done' ? (
+            <p className="qh-news-success">{t.success}</p>
+          ) : (
+            <form className="qh-news-form" onSubmit={submit}>
+              <input type="email" className="qh-news-input" placeholder={t.placeholder}
+                     value={email} onChange={(e) => setEmail(e.target.value)} required aria-label={t.placeholder}/>
+              <button type="submit" className="qh-news-cta" disabled={state === 'submitting'}>
+                {state === 'submitting' ? <span className="spinner" aria-hidden="true"></span> : <>{t.cta} <span aria-hidden="true">{isRtl ? '←' : '→'}</span></>}
+              </button>
+            </form>
+          )}
+          <div className="qh-news-foot"><span>{t.priv}</span></div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+function SocialIcon({ name }) {
+  const icons = {
+    Instagram: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>,
+    YouTube: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2c-.2-1-.9-1.7-1.9-2C18 5 12 5 12 5s-6 0-7.7.2c-1 .3-1.7 1-1.9 2C2.2 9 2.2 12 2.2 12s0 3 .2 4.8c.2 1 .9 1.7 1.9 2C6 19 12 19 12 19s6 0 7.7-.2c1-.3 1.7-1 1.9-2 .2-1.8.2-4.8.2-4.8s0-3-.2-4.8zM10 15V9l5 3-5 3z"/></svg>,
+    LinkedIn: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.3 18H5.7v-8h2.6v8zm-1.3-9.1a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm11.3 9.1h-2.6v-4c0-1-.4-1.6-1.2-1.6s-1.4.6-1.4 1.6v4h-2.6v-8h2.5v1.1c.4-.7 1.2-1.3 2.4-1.3 1.7 0 2.9 1.1 2.9 3.4V18z"/></svg>,
+    X: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 3h3.4l-7.4 8.5L22 21h-6.8l-5.3-6.9L3.7 21H.3l7.9-9L0 3h7l4.8 6.4L17.5 3zm-1.2 16h1.9L7.8 5H5.7l10.6 14z"/></svg>,
+  };
+  return icons[name] || null;
+}
+
+function HomeFooter({ locale }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { quote: '«كل ما يستحق أن يُقرأ، يستحق أن يُكتب بصدق.»', attrib: '— د. خالد غطاس',
+        cols: [
+          { title: 'الموقع', items: ['الرئيسية','المتجر','المقالات','المقابلات','عن الدكتور'] },
+          { title: 'الكتب', items: ['كتب فلسفية','محاضرات مدفوعة','جميع الأعمال'] },
+          { title: 'تواصل', items: ['نشرة بريدية','Instagram','YouTube','LinkedIn','X'] },
+        ],
+        social: ['Instagram','YouTube','LinkedIn','X'],
+        legal: 'جميع الحقوق محفوظة', name: 'د. خالد غطاس' }
+    : { quote: '"Anything worth reading is worth writing honestly."', attrib: '— Dr. Khaled Ghattass',
+        cols: [
+          { title: 'Site', items: ['Home','Store','Articles','Interviews','About'] },
+          { title: 'Books', items: ['Philosophical books','Paid lectures','All works'] },
+          { title: 'Contact', items: ['Newsletter','Instagram','YouTube','LinkedIn','X'] },
+        ],
+        social: ['Instagram','YouTube','LinkedIn','X'],
+        legal: 'All rights reserved', name: 'Dr. Khaled Ghattass' };
+
+  return (
+    <footer className="qh-footer">
+      <Reveal as="div" className="qh-footer-quote">
+        <p>{t.quote}</p>
+        <span className="qh-footer-quote-attrib">{t.attrib}</span>
+      </Reveal>
+      <div className="qh-footer-rule" />
+      <div className="qh-footer-grid">
+        {t.cols.map((c, i) => (
+          <div key={i} className="qh-footer-col">
+            <span className="qh-footer-coltitle">{c.title}</span>
+            <ul>{c.items.map((it, j) => <li key={j}><a href="#">{it}</a></li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <div className="qh-footer-bottom">
+        <span>© {new Date().getFullYear()} {t.name}</span>
+        <ul className="qh-footer-social">
+          {t.social.map((s, i) => <li key={i}><a href="#" aria-label={s}><SocialIcon name={s}/></a></li>)}
+        </ul>
+        <span>{t.legal}</span>
+      </div>
+    </footer>
+  );
+}
+
+/* ============================================================
+   AUTH PAGES — login, signup, account
+   ============================================================ */
+const PURCHASED_BOOKS = [
+  { id: 1, img: 'assets/books/book-1.jpg', titleAr: 'ليس هذا ما كتبت', titleEn: 'This Is Not What I Wrote', dateAr: '١٢ مارس ٢٠٢٥', dateEn: 'Mar 12, 2025', progress: 100, statusAr: 'اكتملت القراءة', statusEn: 'Finished' },
+  { id: 3, img: 'assets/books/book-3.jpg', titleAr: 'القصة ما قبل الأخيرة', titleEn: 'The Story Before the End', dateAr: '٤ نوفمبر ٢٠٢٤', dateEn: 'Nov 4, 2024', progress: 64, statusAr: 'صفحة ١٢٤ من ١٨٨', statusEn: 'Page 124 of 188' },
+  { id: 6, img: 'assets/books/book-6.jpg', titleAr: 'Hypocrisy Was Once Beautiful', titleEn: 'Hypocrisy Was Once Beautiful', dateAr: '٢ ديسمبر ٢٠٢٤', dateEn: 'Dec 2, 2024', progress: 0, statusAr: 'لم تبدأ بعد', statusEn: 'Not started' },
+];
+const PURCHASED_LECTURES = [
+  { id: 1, img: 'assets/books/book-2.jpg', titleAr: 'فلسفة الأخلاق في الحياة اليومية', titleEn: 'The Ethics of Everyday Life', durationAr: '٤٢ دقيقة', durationEn: '42 min' },
+  { id: 2, img: 'assets/books/book-4.jpg', titleAr: 'الكتابة كممارسة فلسفية', titleEn: 'Writing as Philosophical Practice', durationAr: '٥٨ دقيقة', durationEn: '58 min' },
+];
+
+function AuthAside({ locale, variant }) {
+  const isRtl = locale === 'ar';
+  const quotes = {
+    login: {
+      ar: { glyph: '‟', text: 'الكتاب جليس لا يملّ، وصديق لا يخون، وواعظ لا يملّق.', attr: 'إبراهيم أبو الفتوح · 2003' },
+      en: { glyph: '“', text: 'A book is a companion that does not bore you, a friend that does not betray you, and a counselor that does not flatter.', attr: 'Ibrahim Abu Al-Futooh · 2003' }
+    },
+    signup: {
+      ar: { glyph: '‟', text: 'الفلسفة ليست إجابات، بل طريقة في طرح الأسئلة.', attr: 'من درس ألقاه في جامعة دمشق' },
+      en: { glyph: '“', text: 'Philosophy is not a set of answers, but a way of asking questions.', attr: 'From a lecture at Damascus University' }
+    }
+  };
+  const q = quotes[variant][isRtl ? 'ar' : 'en'];
+  const foot = isRtl
+    ? ['عشرة أعوام في خدمة القراء', 'أربعة عشر إصدارًا']
+    : ['Ten years in service of readers', 'Fourteen titles in print'];
+  return (
+    <aside className="qh-auth-aside">
+      <div className="qh-auth-aside-ornament qh-auth-aside-ornament-1" aria-hidden="true" />
+      <div className="qh-auth-aside-ornament qh-auth-aside-ornament-2" aria-hidden="true" />
+      <span className="qh-auth-aside-mark">{isRtl ? 'د. إبراهيم أبو الفتوح' : 'Dr. Ibrahim Abu Al-Futooh'}</span>
+      <figure className="qh-auth-quote">
+        <span className="qh-auth-quote-glyph" aria-hidden="true">{q.glyph}</span>
+        <blockquote className="qh-auth-quote-text">{q.text}</blockquote>
+        <figcaption className="qh-auth-quote-attr">{q.attr}</figcaption>
+      </figure>
+      <div className="qh-auth-aside-foot">
+        <span>{foot[0]}</span>
+        <span>{foot[1]}</span>
+      </div>
+    </aside>
+  );
+}
+
+function AuthBack({ onClick, locale }) {
+  const isRtl = locale === 'ar';
+  return (
+    <button className="qh-auth-back" onClick={onClick}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      {isRtl ? 'العودة إلى الموقع' : 'Back to site'}
+    </button>
+  );
+}
+
+function LoginPage({ locale, navigate, login }) {
+  const isRtl = locale === 'ar';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const t = isRtl
+    ? { eyebrow: 'مرحبًا بعودتك', title: 'تسجيل الدخول', sub: 'أدخل بريدك الإلكتروني للمتابعة إلى مكتبتك.', email: 'البريد الإلكتروني', password: 'كلمة المرور', forgot: 'نسيت كلمة المرور؟', submit: 'دخول', alt: 'ليس لديك حساب؟', altLink: 'إنشاء حساب جديد' }
+    : { eyebrow: 'Welcome back', title: 'Sign in', sub: 'Enter your email to continue to your library.', email: 'Email', password: 'Password', forgot: 'Forgot password?', submit: 'Sign in', alt: "Don't have an account?", altLink: 'Create one' };
+  const onSubmit = (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setTimeout(() => {
+      const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || (isRtl ? 'مستخدم' : 'Reader');
+      login({ name: isRtl ? 'سارة المنصور' : (name || 'Sarah Mansour'), email });
+      setBusy(false);
+      navigate('account', 'profile');
+    }, 700);
+  };
+  return (
+    <div className="qh-auth-page">
+      <AuthAside locale={locale} variant="login" />
+      <div className="qh-auth-main">
+      <div className="qh-auth-card">
+        <AuthBack locale={locale} onClick={() => navigate('home')} />
+        <div className="qh-auth-head">
+          <span className="qh-auth-eyebrow">{t.eyebrow}</span>
+          <h1 className="qh-auth-title">{t.title}</h1>
+          <p className="qh-auth-sub">{t.sub}</p>
+        </div>
+        <form className="qh-form" onSubmit={onSubmit}>
+          <div className="qh-field">
+            <label className="qh-label">{t.email}</label>
+            <input className="qh-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          </div>
+          <div className="qh-field">
+            <label className="qh-label">{t.password}</label>
+            <input className="qh-input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            <div className="qh-field-row" style={{ justifyContent: 'flex-end' }}>
+              <a onClick={(e) => e.preventDefault()}>{t.forgot}</a>
+            </div>
+          </div>
+          <button className="qh-form-submit" type="submit" disabled={busy}>{busy ? '…' : t.submit}</button>
+        </form>
+        <div className="qh-auth-foot">
+          {t.alt} <a onClick={() => navigate('signup')}>{t.altLink}</a>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function SignupPage({ locale, navigate, login }) {
+  const isRtl = locale === 'ar';
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const t = isRtl
+    ? { eyebrow: 'انضم إلى المجتمع', title: 'إنشاء حساب جديد', sub: 'احصل على مكتبة شخصية ووصول للمحاضرات الحصرية.', name: 'الاسم الكامل', email: 'البريد الإلكتروني', password: 'كلمة المرور', confirm: 'تأكيد كلمة المرور', submit: 'إنشاء الحساب', alt: 'لديك حساب بالفعل؟', altLink: 'تسجيل الدخول', mismatch: 'كلمتا المرور غير متطابقتين.' }
+    : { eyebrow: 'Join the community', title: 'Create account', sub: 'Get a personal library and access to exclusive lectures.', name: 'Full name', email: 'Email', password: 'Password', confirm: 'Confirm password', submit: 'Create account', alt: 'Already have an account?', altLink: 'Sign in', mismatch: 'Passwords do not match.' };
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if (password !== confirm) { setErr(t.mismatch); return; }
+    setErr(''); setBusy(true);
+    setTimeout(() => {
+      login({ name, email });
+      setBusy(false);
+      navigate('account', 'profile');
+    }, 700);
+  };
+  return (
+    <div className="qh-auth-page">
+      <AuthAside locale={locale} variant="signup" />
+      <div className="qh-auth-main">
+      <div className="qh-auth-card">
+        <AuthBack locale={locale} onClick={() => navigate('home')} />
+        <div className="qh-auth-head">
+          <span className="qh-auth-eyebrow">{t.eyebrow}</span>
+          <h1 className="qh-auth-title">{t.title}</h1>
+          <p className="qh-auth-sub">{t.sub}</p>
+        </div>
+        <form className="qh-form" onSubmit={onSubmit}>
+          <div className="qh-field">
+            <label className="qh-label">{t.name}</label>
+            <input className="qh-input" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder={isRtl ? 'سارة المنصور' : 'Sarah Mansour'} />
+          </div>
+          <div className="qh-field">
+            <label className="qh-label">{t.email}</label>
+            <input className="qh-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          </div>
+          <div className="qh-field">
+            <label className="qh-label">{t.password}</label>
+            <input className="qh-input" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          </div>
+          <div className="qh-field">
+            <label className="qh-label">{t.confirm}</label>
+            <input className="qh-input" type="password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
+            {err && <span style={{ color: '#B6422A', fontSize: 12, marginTop: 4 }}>{err}</span>}
+          </div>
+          <button className="qh-form-submit" type="submit" disabled={busy}>{busy ? '…' : t.submit}</button>
+        </form>
+        <div className="qh-auth-foot">
+          {t.alt} <a onClick={() => navigate('login')}>{t.altLink}</a>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountProfile({ locale, user, updateUser, toast }) {
+  const isRtl = locale === 'ar';
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [bio, setBio] = useState(user.bio || (isRtl ? 'قارئ شغوف بالفلسفة والأدب.' : 'A reader passionate about philosophy and literature.'));
+  const t = isRtl
+    ? { title: 'الملف الشخصي', sub: 'إدارة معلوماتك الشخصية المرئية في حسابك.', name: 'الاسم', email: 'البريد الإلكتروني', bio: 'نبذة قصيرة', save: 'حفظ التغييرات', cancel: 'إلغاء', saved: 'تم حفظ التغييرات.' }
+    : { title: 'My profile', sub: 'Manage personal information visible on your account.', name: 'Name', email: 'Email', bio: 'Short bio', save: 'Save changes', cancel: 'Cancel', saved: 'Changes saved.' };
+  const onSave = (e) => { e.preventDefault(); updateUser({ name, email, bio }); toast(t.saved); };
+  return (
+    <section>
+      <div className="qh-account-secthead">
+        <h2>{t.title}</h2>
+        <p>{t.sub}</p>
+      </div>
+      <form className="qh-profile-grid" onSubmit={onSave}>
+        <div className="qh-field">
+          <label className="qh-label">{t.name}</label>
+          <input className="qh-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="qh-field">
+          <label className="qh-label">{t.email}</label>
+          <input className="qh-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="qh-field qh-field-full">
+          <label className="qh-label">{t.bio}</label>
+          <textarea className="qh-input" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
+        </div>
+        <div className="qh-profile-actions">
+          <button className="qh-form-submit" type="submit" style={{ width: 'auto', padding: '12px 28px' }}>{t.save}</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function AccountPurchases({ locale }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { title: 'مشترياتي', sub: 'مكتبتك الكاملة من الكتب والمحاضرات.', books: 'الكتب', lectures: 'المحاضرات', read: 'اقرأ', resume: 'تابع', start: 'ابدأ القراءة', watch: 'شاهد', resumeWatch: 'تابع المشاهدة', download: 'تحميل PDF', notes: 'ملاحظاتي', purchased: 'تم الشراء', progressLabel: 'تقدّم' }
+    : { title: 'My library', sub: 'Your complete collection of books and lectures.', books: 'Books', lectures: 'Lectures', read: 'Read', resume: 'Resume', start: 'Start reading', watch: 'Watch', resumeWatch: 'Resume', download: 'Download PDF', notes: 'My notes', purchased: 'Purchased', progressLabel: 'Progress' };
+  const primary = (b) => b.progress === 100 ? t.read : b.progress > 0 ? t.resume : t.start;
+  return (
+    <section>
+      <div className="qh-account-secthead">
+        <h2>{t.title}</h2>
+        <p>{t.sub}</p>
+      </div>
+      <div className="qh-purch-section">
+        <h3 className="qh-purch-grouphead">{t.books}</h3>
+        <div className="qh-purch-grid">
+          {PURCHASED_BOOKS.map(b => (
+            <a className="qh-purch-card" key={b.id} href="#" onClick={(e) => e.preventDefault()}>
+              <div className="qh-purch-cover">
+                <img src={b.img} alt="" />
+              </div>
+              <div className="qh-purch-meta">
+                <h4>{isRtl ? b.titleAr : b.titleEn}</h4>
+                <span className="qh-purch-meta-sub">{isRtl ? b.statusAr : b.statusEn}</span>
+                <div className="qh-progress" aria-label={t.progressLabel}>
+                  <span className="qh-progress-bar" style={{ width: `${b.progress}%` }} />
+                </div>
+              </div>
+              <div className="qh-purch-actions">
+                <button className="qh-purch-action qh-purch-action-primary" onClick={(e) => e.preventDefault()}>{primary(b)}</button>
+                <button className="qh-purch-action qh-purch-action-ghost" onClick={(e) => e.preventDefault()}>{t.notes}</button>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+      <div className="qh-purch-section">
+        <h3 className="qh-purch-grouphead">{t.lectures}</h3>
+        <div className="qh-purch-lect-grid">
+          {PURCHASED_LECTURES.map(l => (
+            <a className="qh-purch-lect" key={l.id} href="#" onClick={(e) => e.preventDefault()}>
+              <div className="qh-purch-lect-thumb">
+                <img src={l.img} alt="" />
+                <span className="qh-purch-lect-play" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </span>
+              </div>
+              <div className="qh-purch-lect-meta">
+                <h4>{isRtl ? l.titleAr : l.titleEn}</h4>
+                <span className="qh-purch-lect-time">{isRtl ? l.durationAr : l.durationEn}</span>
+                <div className="qh-purch-lect-actions">
+                  <button className="qh-purch-action qh-purch-action-primary" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{t.watch} →</button>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AccountSettings({ locale, setLocale, theme, setTheme, prefs, setPrefs, toast, logout }) {
+  const isRtl = locale === 'ar';
+  const t = isRtl
+    ? { title: 'الإعدادات', sub: 'تخصيص حسابك وتفضيلات الإشعارات.', pwd: 'كلمة المرور', pwdDesc: 'تحديث كلمة المرور لحماية حسابك.', current: 'كلمة المرور الحالية', newp: 'كلمة المرور الجديدة', confirm: 'التأكيد', updatePwd: 'تحديث كلمة المرور', lang: 'اللغة', langDesc: 'اختر لغة العرض الافتراضية.', themeT: 'المظهر', themeDesc: 'تجربة القراءة تختلف بين الوضعين. اختر ما يريح عينيك.', notif: 'الإشعارات', notifDesc: 'اختر الرسائل التي تود استقبالها.', email: 'إشعارات البريد الإلكتروني', emailDesc: 'إصدارات جديدة، مقالات، فعاليات.', newsletter: 'النشرة الشهرية', newsDesc: 'مقالة منتقاة وأحدث الإصدارات في بريدك.', updates: 'تحديثات الكتب', updDesc: 'إشعار فوري عند صدور كتاب أو محاضرة جديدة.', logout: 'تسجيل الخروج من جميع الأجهزة', logoutDesc: 'إنهاء الجلسة الحالية والعودة للرئيسية.', saved: 'تم حفظ الإعدادات.', light: 'فاتح', lightDesc: 'خلفية بيضاء، أفضل للنهار والإضاءة الساطعة.', dark: 'داكن', darkDesc: 'خلفية هادئة، أريح للعين في الأمسيات.' }
+    : { title: 'Settings', sub: 'Customize your account and notification preferences.', pwd: 'Password', pwdDesc: 'Update your password to keep your account secure.', current: 'Current password', newp: 'New password', confirm: 'Confirm', updatePwd: 'Update password', lang: 'Language', langDesc: 'Choose the default display language.', themeT: 'Appearance', themeDesc: 'Reading feels different in each. Pick whichever is easier on your eyes.', notif: 'Notifications', notifDesc: 'Choose what you want to hear about.', email: 'Email notifications', emailDesc: 'New releases, articles, events.', newsletter: 'Monthly newsletter', newsDesc: 'A curated essay and the latest releases in your inbox.', updates: 'Book updates', updDesc: 'Instant alert when a new book or lecture launches.', logout: 'Log out everywhere', logoutDesc: 'End current session and return home.', saved: 'Settings saved.', light: 'Light', lightDesc: 'White background — best for daytime and bright rooms.', dark: 'Dark', darkDesc: 'Calmer background — easier on the eyes at night.' };
+  const onPwd = (e) => { e.preventDefault(); toast(t.saved); e.target.reset(); };
+  return (
+    <section>
+      <div className="qh-account-secthead">
+        <h2>{t.title}</h2>
+        <p>{t.sub}</p>
+      </div>
+      <div className="qh-settings">
+        {/* Password */}
+        <div className="qh-settings-group">
+          <h3>{t.pwd}</h3>
+          <p className="qh-settings-desc">{t.pwdDesc}</p>
+          <form className="qh-form" onSubmit={onPwd} style={{ maxWidth: 440 }}>
+            <div className="qh-field"><label className="qh-label">{t.current}</label><input className="qh-input" type="password" required /></div>
+            <div className="qh-field"><label className="qh-label">{t.newp}</label><input className="qh-input" type="password" required minLength={6} /></div>
+            <div className="qh-field"><label className="qh-label">{t.confirm}</label><input className="qh-input" type="password" required minLength={6} /></div>
+            <button className="qh-form-submit" type="submit" style={{ width: 'auto', padding: '12px 28px', alignSelf: 'flex-start' }}>{t.updatePwd}</button>
+          </form>
+        </div>
+        {/* Language */}
+        <div className="qh-settings-group">
+          <h3>{t.lang}</h3>
+          <p className="qh-settings-desc">{t.langDesc}</p>
+          <div className="qh-segment" role="tablist">
+            <button className={locale === 'ar' ? 'is-active' : ''} onClick={() => setLocale('ar')}>العربية</button>
+            <button className={locale === 'en' ? 'is-active' : ''} onClick={() => setLocale('en')}>English</button>
+          </div>
+        </div>
+        {/* Theme */}
+        <div className="qh-settings-group">
+          <h3>{t.themeT}</h3>
+          <p className="qh-settings-desc">{t.themeDesc}</p>
+          <div className="qh-theme-radio" role="radiogroup" aria-label={t.themeT}>
+            <button className={`qh-theme-card ${theme === 'light' ? 'is-active' : ''}`} onClick={() => setTheme('light')} role="radio" aria-checked={theme === 'light'}>
+              <div className="qh-theme-preview qh-theme-preview-light" aria-hidden="true">
+                <span className="qh-theme-preview-bar" />
+                <span className="qh-theme-preview-line" />
+                <span className="qh-theme-preview-line short" />
+              </div>
+              <div className="qh-theme-card-meta">
+                <strong>{t.light}</strong>
+                <span>{t.lightDesc}</span>
+              </div>
+              <span className="qh-theme-card-mark" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+            </button>
+            <button className={`qh-theme-card ${theme === 'dark' ? 'is-active' : ''}`} onClick={() => setTheme('dark')} role="radio" aria-checked={theme === 'dark'}>
+              <div className="qh-theme-preview qh-theme-preview-dark" aria-hidden="true">
+                <span className="qh-theme-preview-bar" />
+                <span className="qh-theme-preview-line" />
+                <span className="qh-theme-preview-line short" />
+              </div>
+              <div className="qh-theme-card-meta">
+                <strong>{t.dark}</strong>
+                <span>{t.darkDesc}</span>
+              </div>
+              <span className="qh-theme-card-mark" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+            </button>
+          </div>
+        </div>
+        {/* Notifications */}
+        <div className="qh-settings-group">
+          <h3>{t.notif}</h3>
+          <p className="qh-settings-desc">{t.notifDesc}</p>
+          <div>
+            <div className="qh-toggle-row">
+              <div className="qh-toggle-row-label"><strong>{t.email}</strong><span>{t.emailDesc}</span></div>
+              <button className={`qh-switch ${prefs.email ? 'is-on' : ''}`} onClick={() => setPrefs({ ...prefs, email: !prefs.email })} aria-pressed={prefs.email}/>
+            </div>
+            <div className="qh-toggle-row">
+              <div className="qh-toggle-row-label"><strong>{t.newsletter}</strong><span>{t.newsDesc}</span></div>
+              <button className={`qh-switch ${prefs.newsletter ? 'is-on' : ''}`} onClick={() => setPrefs({ ...prefs, newsletter: !prefs.newsletter })} aria-pressed={prefs.newsletter}/>
+            </div>
+            <div className="qh-toggle-row">
+              <div className="qh-toggle-row-label"><strong>{t.updates}</strong><span>{t.updDesc}</span></div>
+              <button className={`qh-switch ${prefs.updates ? 'is-on' : ''}`} onClick={() => setPrefs({ ...prefs, updates: !prefs.updates })} aria-pressed={prefs.updates}/>
+            </div>
+          </div>
+        </div>
+        {/* Logout */}
+        <div className="qh-logout-zone">
+          <button className="qh-logout-btn" onClick={logout}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            {t.logout}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AccountPage({ locale, setLocale, theme, setTheme, user, updateUser, navigate, logout, accountTab, setAccountTab, prefs, setPrefs, toast }) {
+  const isRtl = locale === 'ar';
+  const initial = (user.name || 'U').trim().charAt(0).toUpperCase();
+  const since = user.since || (isRtl ? 'عضو منذ ٢٠٢٤' : 'Member since 2024');
+  const tabs = isRtl
+    ? [['profile', 'الملف الشخصي'], ['purchases', 'مشترياتي'], ['settings', 'الإعدادات']]
+    : [['profile', 'Profile'], ['purchases', 'My purchases'], ['settings', 'Settings']];
+  return (
+    <section className="qh-account">
+      <div className="qh-account-inner">
+        <div className="qh-account-head">
+          <span className="qh-account-avatar">{initial}</span>
+          <div className="qh-account-id">
+            <h1>{user.name}</h1>
+            <p>{user.email}</p>
+          </div>
+          <span className="qh-account-since">{since}</span>
+        </div>
+        <div className="qh-account-tabs" role="tablist">
+          {tabs.map(([id, label]) => (
+            <button key={id} className={`qh-account-tab ${accountTab === id ? 'is-active' : ''}`} onClick={() => setAccountTab(id)}>{label}</button>
+          ))}
+        </div>
+        {accountTab === 'profile' && <AccountProfile locale={locale} user={user} updateUser={updateUser} toast={toast} />}
+        {accountTab === 'purchases' && <AccountPurchases locale={locale} />}
+        {accountTab === 'settings' && <AccountSettings locale={locale} setLocale={setLocale} theme={theme} setTheme={setTheme} prefs={prefs} setPrefs={setPrefs} toast={toast} logout={logout} />}
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   APP — orchestrates locale, theme, route loader, drawer
+   ============================================================ */
+function App() {
+  const [locale, setLocale] = useState('ar');
+  const [theme, setTheme] = useState('light');
+  const [drawer, setDrawer] = useState(false);
+  const [routeState, setRouteState] = useState('done'); // idle | loading | done
+  const [heroLoaded, setHeroLoaded] = useState(false);
+  const [route, setRoute] = useState('home'); // home | login | signup | account
+  const [accountTab, setAccountTab] = useState('profile');
+  const [user, setUser] = useState(null); // null = logged out
+  const [toastMsg, setToastMsg] = useState(null);
+  const [prefs, setPrefs] = useState({ email: true, newsletter: true, updates: false });
+  const isRtl = locale === 'ar';
+
+  const navigate = (r, tab) => {
+    setRoute(r);
+    if (r === 'account' && tab) setAccountTab(tab);
+    setRouteState('loading');
+    setTimeout(() => setRouteState('done'), 600);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }));
+  };
+  const login = (u) => setUser({ ...u, since: isRtl ? 'عضو منذ ٢٠٢٤' : 'Member since 2024' });
+  const logout = () => { setUser(null); navigate('home'); showToast(isRtl ? 'تم تسجيل الخروج.' : 'Signed out.'); };
+  const updateUser = (patch) => setUser(u => ({ ...u, ...patch }));
+  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2400); };
+
+  // Apply locale + theme to <html>
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.documentElement.dataset.theme = theme;
+  }, [locale, theme, isRtl]);
+
+  // Trigger route bar on mount + on locale change
+  useEffect(() => {
+    setRouteState('loading');
+    const t1 = setTimeout(() => setRouteState('done'), 800);
+    return () => clearTimeout(t1);
+  }, [locale]);
+
+  // Hero entrance after first paint
+  useEffect(() => {
+    const t = setTimeout(() => setHeroLoaded(true), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Lock scroll when drawer is open
+  useEffect(() => {
+    document.body.style.overflow = drawer ? 'hidden' : '';
+  }, [drawer]);
+
+  return (
+    <div className="qh-home">
+      <div className={`qh-routebar ${routeState === 'loading' ? 'loading' : 'done'}`}><i></i></div>
+      <HomeChrome
+        locale={locale} setLocale={setLocale}
+        theme={theme} setTheme={setTheme}
+        drawerOpen={drawer} setDrawerOpen={setDrawer}
+        user={user} navigate={navigate} logout={logout}
+      />
+      <MobileDrawer
+        open={drawer} onClose={() => setDrawer(false)}
+        locale={locale} setLocale={setLocale}
+        theme={theme} setTheme={setTheme}
+        user={user} navigate={navigate} logout={logout}
+      />
+      <main>
+        {route === 'home' && (
+          <>
+            <HomeHero locale={locale} loaded={heroLoaded} />
+            <HomeAbout locale={locale} />
+            <HomeStore locale={locale} />
+            <HomeArticles locale={locale} />
+            <HomeInterview locale={locale} />
+            <HomeNewsletter locale={locale} />
+          </>
+        )}
+        {route === 'login' && <LoginPage locale={locale} navigate={navigate} login={login} />}
+        {route === 'signup' && <SignupPage locale={locale} navigate={navigate} login={login} />}
+        {route === 'account' && user && (
+          <AccountPage
+            locale={locale} setLocale={setLocale}
+            theme={theme} setTheme={setTheme}
+            user={user} updateUser={updateUser}
+            navigate={navigate} logout={logout}
+            accountTab={accountTab} setAccountTab={setAccountTab}
+            prefs={prefs} setPrefs={setPrefs}
+            toast={showToast}
+          />
+        )}
+        {route === 'account' && !user && <LoginPage locale={locale} navigate={navigate} login={login} />}
+      </main>
+      {route === 'home' && <HomeFooter locale={locale} />}
+      {toastMsg && <div className="qh-toast">{toastMsg}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

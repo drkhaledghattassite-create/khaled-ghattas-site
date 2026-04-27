@@ -90,68 +90,110 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
           </header>
         )}
 
-        {/* Featured */}
+        {/* Featured — editorial print-magazine treatment with folio number */}
         <motion.article
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.1 }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="group grid items-stretch gap-[clamp(32px,5vw,72px)] pb-14 mb-0 border-b border-[var(--color-border)] md:grid-cols-[1.1fr_1fr]"
+          className="group relative grid items-stretch gap-[clamp(32px,5vw,72px)] [padding:clamp(40px,5vw,72px)_0_clamp(56px,6vw,80px)] mb-0 border-b border-[var(--color-border)] md:grid-cols-[1.1fr_1fr]"
         >
-          <div className="aspect-[5/6] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
+          {/* Folio number — top corner */}
+          <span
+            aria-hidden
+            className={`absolute [top:clamp(40px,5vw,72px)] [inset-inline-end:0] text-[11px] font-semibold tracking-[0.18em] text-[var(--color-fg3)] [font-feature-settings:'tnum'] z-[1] ${
+              isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !font-bold' : 'font-display'
+            }`}
+          >
+            {isRtl ? 'العدد ٠١' : 'Nº 01'}
+          </span>
+
+          {/* Image with caption */}
+          <div className="relative aspect-[5/6] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
             <Image
               src={featuredCover}
               alt=""
-              width={720}
-              height={864}
-              className="w-full h-full object-cover [filter:grayscale(0.1)] transition-transform duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.02]"
+              fill
               sizes="(min-width: 768px) 600px, 100vw"
+              className="object-cover [filter:grayscale(0.08)] transition-transform duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.02]"
             />
-          </div>
-          <div className="flex flex-col justify-center gap-[18px] py-6">
+            {/* Inset shadow ring */}
             <span
-              className={`inline-flex items-center gap-2 w-max text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent)] before:content-[''] before:w-2.5 before:h-px before:bg-[var(--color-accent)] ${
-                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case' : 'font-display'
+              aria-hidden
+              className="absolute inset-0 pointer-events-none [box-shadow:inset_0_0_0_1px_rgba(0,0,0,0.04)]"
+            />
+            {/* Caption — bottom-left badge */}
+            <span
+              className={`absolute bottom-4 [inset-inline-start:16px] inline-flex items-center px-2.5 py-1.5 rounded-[2px] backdrop-blur-md text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 bg-black/40 ${
+                isRtl ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case' : 'font-display'
               }`}
             >
               {featuredKicker}
             </span>
-            {featuredCat && (
+          </div>
+
+          {/* Meta column */}
+          <div className="flex flex-col justify-center gap-5 [padding-block:clamp(8px,2vw,24px)]">
+            {/* Eyebrow row — tag + dot + category */}
+            <div
+              className={`flex items-center flex-wrap gap-3.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
+                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+              }`}
+            >
               <span
-                className={`text-[13px] font-semibold uppercase tracking-[0.1em] text-[var(--color-fg2)] ${
-                  isRtl ? '!tracking-normal !normal-case !font-bold' : 'font-display'
-                }`}
+                className={`inline-flex items-center gap-2 text-[var(--color-accent)] before:content-[''] before:w-3.5 before:h-px before:bg-[var(--color-accent)] before:inline-block`}
               >
-                {featuredCat}
+                {featuredKicker}
               </span>
-            )}
+              {featuredCat && (
+                <>
+                  <span aria-hidden className="inline-block w-[3px] h-[3px] rounded-full bg-[var(--color-fg3)]" />
+                  <span>{featuredCat}</span>
+                </>
+              )}
+            </div>
+
+            {/* Title */}
             <h3
-              className={`m-0 text-[clamp(28px,3.6vw,46px)] leading-[1.15] font-bold tracking-[-0.01em] text-[var(--color-fg1)] [text-wrap:balance] ${
+              className={`m-0 text-[clamp(30px,4vw,52px)] leading-[1.08] font-bold tracking-[-0.015em] text-[var(--color-fg1)] [text-wrap:balance] ${
                 isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.025em]'
               }`}
             >
-              <Link href={`/articles/${featured.slug}`} className="hover:text-[var(--color-accent)] transition-colors">
+              <Link
+                href={`/articles/${featured.slug}`}
+                className="transition-colors duration-200 hover:text-[var(--color-accent)]"
+              >
                 {featuredTitle}
               </Link>
             </h3>
+
+            {/* Dek */}
             {featuredExcerpt && (
-              <p className="m-0 max-w-[520px] text-[17px] leading-[1.6] text-[var(--color-fg2)]">
+              <p
+                className={`m-0 max-w-[540px] text-[clamp(16px,1.4vw,18px)] leading-[1.55] text-[var(--color-fg2)] [text-wrap:pretty] ${
+                  isRtl ? 'font-arabic-body' : 'font-display'
+                }`}
+              >
                 {featuredExcerpt}
               </p>
             )}
+
+            {/* Foot — uppercase metadata + auto-margined link */}
             <div
-              className={`flex items-center flex-wrap gap-3 mt-1.5 text-[13px] text-[var(--color-fg3)] ${
-                isRtl ? 'font-arabic-body' : 'font-display'
+              className={`flex items-center flex-wrap gap-3.5 mt-3 pt-[22px] border-t border-[var(--color-border)] text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--color-fg3)] ${
+                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
               }`}
             >
               <span>{featuredDate}</span>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="inline-block w-[3px] h-[3px] rounded-full bg-[var(--color-fg3)]" />
               <span>
                 {featuredMinutes} {minRead}
               </span>
               <Link
                 href={`/articles/${featured.slug}`}
-                className="link-underline ms-auto"
+                className={`ms-auto inline-flex items-center gap-2 text-[var(--color-fg1)] font-bold tracking-[0.04em] border-b border-[var(--color-fg1)] pb-[3px] transition-[color,border-color,gap] duration-200 hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] hover:gap-3 ${
+                  isRtl ? 'font-arabic-body !tracking-normal' : 'font-display'
+                }`}
               >
                 {readArticleLabel}
                 <span aria-hidden>{isRtl ? '←' : '→'}</span>

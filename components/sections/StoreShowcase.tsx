@@ -148,22 +148,33 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
             </div>
           </motion.article>
 
-          {/* Shelf */}
+          {/* Shelf — horizontal carousel */}
           <motion.aside
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05 }}
             transition={{ duration: 0.65, ease: EASE, delay: 0.1 }}
-            className="flex flex-col gap-5 pt-6 border-t border-[var(--color-border)]"
+            className="flex flex-col gap-7 min-w-0"
           >
-            <span
-              className={`mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
-                isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
-              }`}
+            <header className="flex items-baseline justify-between gap-4">
+              <span
+                className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
+                  isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+                }`}
+              >
+                {kickerOther}
+              </span>
+              <span
+                className={`text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-fg3)] ${
+                  isRtl ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case' : 'font-display'
+                }`}
+              >
+                {shelfBooks.length} {isRtl ? 'عناوين' : 'titles'}
+              </span>
+            </header>
+            <ul
+              className="m-0 p-0 list-none grid auto-cols-[minmax(220px,240px)] grid-flow-col gap-7 overflow-x-auto overflow-y-hidden snap-x snap-mandatory pb-4 pt-1 [scroll-padding:8px] [scrollbar-width:thin] [scrollbar-color:var(--color-border-strong)_transparent]"
             >
-              {kickerOther}
-            </span>
-            <ul className="grid grid-cols-1 m-0 p-0 list-none">
               {shelfBooks.map((b) => {
                 const title = isRtl ? b.titleAr : b.titleEn
                 const type = isRtl ? b.descriptionAr ?? '' : b.descriptionEn ?? ''
@@ -172,31 +183,31 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                 const href = b.externalUrl ?? `/books/${b.slug}`
 
                 return (
-                  <li key={b.id} className="border-b border-[var(--color-border)]">
+                  <li key={b.id} className="snap-start min-w-0">
                     <Link
                       href={href}
-                      className="hover-shift grid items-center gap-[18px] py-[18px] grid-cols-[56px_1fr_auto]"
+                      className="group flex flex-col gap-3.5 transition-transform duration-[240ms] ease-[var(--ease-out)] hover:-translate-y-[3px]"
                       {...(b.externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-[2px] bg-[var(--color-bg-deep)] [box-shadow:0_2px_8px_rgba(0,0,0,0.08)]">
+                      <div className="relative w-full aspect-[2/3] overflow-hidden rounded-[2px] bg-[var(--color-bg-deep)] [box-shadow:0_6px_20px_rgba(0,0,0,0.10)] group-hover:[box-shadow:0_12px_32px_rgba(0,0,0,0.18)] transition-shadow duration-[240ms]">
                         <Image
                           src={b.coverImage}
                           alt=""
                           fill
-                          sizes="56px"
+                          sizes="240px"
                           className="object-cover"
                         />
                       </div>
-                      <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex flex-col gap-1 px-0.5">
                         <span
                           className={`self-start text-[10px] font-bold tracking-[0.12em] text-[var(--color-fg3)] ${
                             isRtl ? 'font-arabic-body' : 'font-display'
                           }`}
                         >
-                          {lang}
+                          {lang}{b.publicationYear ? ` · ${b.publicationYear}` : ''}
                         </span>
                         <h4
-                          className={`m-0 text-[16px] font-bold leading-[1.3] text-[var(--color-fg1)] [text-wrap:balance] ${
+                          className={`m-0 mt-0.5 text-[16px] font-bold leading-[1.3] text-[var(--color-fg1)] [text-wrap:balance] ${
                             isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.01em]'
                           }`}
                         >
@@ -207,14 +218,14 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                             {type}
                           </span>
                         )}
+                        <span
+                          className={`self-start mt-1.5 text-[13px] font-bold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
+                            isRtl ? 'font-display' : 'font-display'
+                          }`}
+                        >
+                          ${price}
+                        </span>
                       </div>
-                      <span
-                        className={`text-[14px] font-semibold text-[var(--color-fg2)] [font-feature-settings:'tnum'] whitespace-nowrap ${
-                          isRtl ? 'font-arabic-body' : 'font-display'
-                        }`}
-                      >
-                        ${price}
-                      </span>
                     </Link>
                   </li>
                 )
@@ -286,9 +297,20 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                         >
                           {title}
                         </h4>
+                        {/* Lecture foot — design qh-lecture-foot: gap 14, with 1×12px vertical separator before each item except first */}
                         <div className="flex items-center gap-3.5 flex-wrap">
+                          {/* Duration placeholder — uses descriptionEn/Ar where present */}
+                          {(isRtl ? l.descriptionAr : l.descriptionEn) && (
+                            <span
+                              className={`text-[13px] font-medium text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${
+                                isRtl ? 'font-arabic-body' : 'font-display tracking-[0.04em]'
+                              }`}
+                            >
+                              {isRtl ? l.descriptionAr : l.descriptionEn}
+                            </span>
+                          )}
                           <span
-                            className={`text-[18px] font-semibold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ms-auto ${
+                            className={`relative text-[18px] font-semibold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ms-auto inline-flex items-center gap-3.5 before:content-[''] before:w-px before:h-3 before:bg-[var(--color-border-strong)] before:inline-block ${
                               isRtl ? 'font-arabic-body' : 'font-display'
                             }`}
                           >

@@ -44,7 +44,14 @@
     "line_3": "CELL BIOLOGIST",
     "line_4": "HUMAN BEHAVIOR",
     "line_5": "AUTHOR & SPEAKER",
-    "description": "The official site of Dr. Khaled Ghattass — cell biologist and expert in human behavior, author, speaker, and founder of Al-Warsheh. Weaving science, art, and philosophy to foster critical thinking and call for positive change."
+    "description": "The official site of Dr. Khaled Ghattass — cell biologist and expert in human behavior, author, speaker, and founder of Al-Warsheh. Weaving science, art, and philosophy to foster critical thinking and call for positive change.",
+    "stats": {
+      "years": "Years of experience",
+      "lectures": "Lectures",
+      "books": "Books",
+      "works": "Published works"
+    },
+    "portrait_alt": "Portrait of Dr. Khaled Ghattass"
   },
   "cta": {
     "articles": "View Articles",
@@ -624,5 +631,154 @@
     "heading": "INTERVIEWS",
     "watch": "WATCH THIS INTERVIEW",
     "view_all": "VIEW ALL INTERVIEWS"
+  },
+  "auth": {
+    "aside": {
+      "eyebrow": "The Official Site",
+      "quote": "Anything worth reading is worth writing honestly.",
+      "attribution": "Dr. Khaled Ghattass",
+      "subline": "Step into your digital library — the books and lectures you own, all in one place."
+    },
+    "login": {
+      "meta": {
+        "title": "Sign in",
+        "description": "Sign in to your Dr. Khaled Ghattass account"
+      },
+      "eyebrow": "Welcome back",
+      "heading": "Sign in",
+      "subheading": "Step back into your library and purchases.",
+      "email_label": "Email",
+      "email_placeholder": "name@example.com",
+      "password_label": "Password",
+      "password_placeholder": "••••••••",
+      "remember": "Remember me",
+      "forgot": "Forgot password?",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "no_account": "Don't have an account?",
+      "create_account": "Create one",
+      "or": "Or",
+      "google": "Continue with Google"
+    },
+    "signup": {
+      "meta": {
+        "title": "Create account",
+        "description": "Create an account on Dr. Khaled Ghattass"
+      },
+      "eyebrow": "Join us",
+      "heading": "Create your account",
+      "subheading": "Save your purchases, receive the weekly essay in your inbox.",
+      "name_label": "Full name",
+      "name_placeholder": "Your name",
+      "email_label": "Email",
+      "email_placeholder": "name@example.com",
+      "password_label": "Password",
+      "password_placeholder": "At least 8 characters",
+      "agree_terms": "I agree to the Terms of Service and Privacy Policy",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "have_account": "Already have an account?",
+      "sign_in": "Sign in"
+    }
+  },
+  "dashboard": {
+    "tabs": {
+      "account": "Account",
+      "library": "Library",
+      "settings": "Settings"
+    },
+    "account": {
+      "meta": {
+        "title": "My account",
+        "description": "Your details and activity"
+      },
+      "eyebrow": "Account",
+      "heading": "Welcome back, {name}",
+      "subheading": "A quick look at your activity.",
+      "section_title": "My profile",
+      "section_subtitle": "Manage personal information visible on your account.",
+      "summary": {
+        "library_count": "In your library",
+        "library_count_label": "books & lectures",
+        "since": "Member since",
+        "plan": "Account status",
+        "plan_value": "Active"
+      },
+      "info_heading": "Your details",
+      "name": "Name",
+      "email": "Email",
+      "bio": "Short bio",
+      "role": "Role",
+      "edit": "Edit details",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "logout": "Sign out"
+    },
+    "library": {
+      "meta": {
+        "title": "My library",
+        "description": "Your books and lectures"
+      },
+      "eyebrow": "Library",
+      "heading": "Everything you own",
+      "subheading": "Your books and lectures in one place.",
+      "filter": {
+        "all": "All",
+        "books": "Books",
+        "lectures": "Lectures"
+      },
+      "empty_title": "Your library is empty",
+      "empty_text": "You haven't bought a book or lecture yet. Browse the store to get started.",
+      "browse": "Browse the store"
+    },
+    "library_card": {
+      "open_book": "Read now",
+      "watch_lecture": "Watch now",
+      "download": "Download",
+      "details": "Details",
+      "progress_label": "Reading progress",
+      "progress_lecture": "Watch progress",
+      "type_book": "Book",
+      "type_lecture": "Lecture"
+    },
+    "settings": {
+      "meta": {
+        "title": "Settings",
+        "description": "Customize your account"
+      },
+      "eyebrow": "Settings",
+      "heading": "Customize your account",
+      "subheading": "Adjust appearance, language, and preferences.",
+      "theme": {
+        "heading": "Appearance",
+        "description": "Choose your preferred theme. System follows your device settings.",
+        "light_label": "Light",
+        "light_desc": "White background, dark text.",
+        "dark_label": "Dark",
+        "dark_desc": "Black background, light text.",
+        "system_label": "System",
+        "system_desc": "Follows your device preference."
+      },
+      "language": {
+        "heading": "Language",
+        "description": "Choose your preferred site language."
+      },
+      "notifications": {
+        "heading": "Notifications",
+        "newsletter_label": "Weekly newsletter",
+        "newsletter_desc": "One essay and a short note from Khaled, every week.",
+        "purchases_label": "Purchase notifications",
+        "purchases_desc": "Receipts and download links."
+      },
+      "danger": {
+        "heading": "Delete account",
+        "description": "This action cannot be undone. Your data and library will be deleted.",
+        "delete": "Delete account"
+      },
+      "logout_everywhere": "Log out everywhere",
+      "save": "Save changes",
+      "saved": "Saved"
+    }
   }
 }

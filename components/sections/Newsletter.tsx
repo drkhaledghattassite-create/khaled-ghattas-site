@@ -43,7 +43,7 @@ export function Newsletter() {
   return (
     <section
       id="newsletter"
-      className="border-b border-[var(--color-border)] [padding:clamp(96px,12vw,160px)_clamp(20px,5vw,56px)]"
+      className="bg-[var(--color-bg-elevated)] border-t border-[var(--color-border)] [padding:clamp(96px,12vw,160px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
       <div className="mx-auto max-w-[760px] text-start">
@@ -94,7 +94,7 @@ export function Newsletter() {
             transition={{ duration: 0.55, ease: EASE, delay: 0.25 }}
             onSubmit={handleSubmit}
             noValidate
-            className="grid grid-cols-[1fr_auto] items-stretch pb-3 border-b border-[var(--color-fg1)]"
+            className="grid grid-cols-[1fr_auto] items-center gap-3 pb-3 border-b border-[var(--color-fg1)]"
           >
             <input
               type="email"
@@ -111,12 +111,12 @@ export function Newsletter() {
             <button
               type="submit"
               disabled={loading || !email}
-              className={`bg-transparent border-0 inline-flex items-center gap-2 py-3 px-0 text-[14px] font-semibold text-[var(--color-fg1)] hover:text-[var(--color-accent)] cursor-pointer whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                isRtl ? 'font-arabic-body !text-[15px]' : 'font-display'
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)] text-[14px] font-semibold whitespace-nowrap transition-[background-color] duration-200 hover:bg-[var(--color-accent-hover)] disabled:opacity-70 disabled:cursor-progress ${
+                isRtl ? 'font-arabic-body !text-[15px] !font-bold' : 'font-display'
               }`}
             >
-              {loading ? '…' : cta}
-              <span aria-hidden>{isRtl ? '←' : '→'}</span>
+              {loading ? <span className="inline-block w-3.5 h-3.5 border-2 border-[var(--color-accent-fg)]/40 border-t-[var(--color-accent-fg)] rounded-full animate-spin" aria-hidden /> : cta}
+              {!loading && <span aria-hidden>{isRtl ? '←' : '→'}</span>}
             </button>
           </motion.form>
         )}

@@ -28,7 +28,7 @@ export function LocaleSwitcher({
       role="group"
       aria-label="Language"
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-raised)]/80 backdrop-blur-sm p-[3px]',
+        'inline-flex items-center gap-0.5 rounded-full border border-[var(--color-border)] bg-transparent p-[2px]',
         pending && 'opacity-50 pointer-events-none',
         className,
       )}
@@ -40,13 +40,13 @@ export function LocaleSwitcher({
           onClick={() => switchTo(lng)}
           aria-pressed={locale === lng}
           className={cn(
-            'rounded-full px-3 py-1.5 text-[12px] font-medium transition-all duration-200',
+            'rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors duration-200',
             locale === lng
-              ? 'bg-[var(--color-text)] text-[var(--color-surface)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+              ? 'bg-[var(--color-fg1)] text-[var(--color-bg)]'
+              : 'text-[var(--color-fg3)] hover:text-[var(--color-fg1)]',
             lng === 'ar'
-              ? '[dir=rtl]:font-arabic [dir=rtl]:font-semibold'
-              : 'font-display uppercase tracking-[0.12em]',
+              ? '[dir=rtl]:font-arabic'
+              : 'font-display uppercase tracking-[0.06em]',
           )}
         >
           {t(lng)}
