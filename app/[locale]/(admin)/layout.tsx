@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
-import { requireRole } from '@/lib/auth/mock'
+import { requireServerRole } from '@/lib/auth/server'
 
 type Props = {
   children: ReactNode
@@ -16,7 +16,7 @@ export default async function AdminLayout({ children, params }: Props) {
 
   let user
   try {
-    user = await requireRole('ADMIN')
+    user = await requireServerRole('ADMIN')
   } catch {
     redirect(`/${locale === 'ar' ? '' : `${locale}/`}login`)
   }

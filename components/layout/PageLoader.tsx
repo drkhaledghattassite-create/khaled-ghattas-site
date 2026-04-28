@@ -4,19 +4,11 @@ import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Logo } from '@/components/shared/Logo'
-import { Ornament } from '@/components/shared/Ornament'
 
 const SESSION_KEY = 'kg_intro_seen'
 const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-/**
- * Mawqid intro curtain.
- *
- * A quiet, parchment-warm reveal: the brand mark rises behind a fleuron
- * pulse, then the curtain wipes upward over 1100ms. No marquee chaos.
- * Reduced-motion users get the curtain hidden after 200ms.
- */
 export function PageLoader() {
   const locale = useLocale()
   const t = useTranslations('loading')
@@ -38,67 +30,46 @@ export function PageLoader() {
   if (!mounted || !visible) return null
 
   const isRtl = locale === 'ar'
-  const wipeDuration = reduceMotion ? 0.2 : 1.1
-  const wipeDelay = reduceMotion ? 0 : 1.0
+  const wipeDuration = reduceMotion ? 0.2 : 1.0
+  const wipeDelay = reduceMotion ? 0 : 0.95
 
   return (
     <div
       id="page-loader"
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden bg-paper"
+      className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden bg-[var(--color-bg)]"
     >
-      {/* Subtle radial wash so the centre feels lit */}
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(45% 35% at 50% 45%, rgba(168, 196, 214, 0.14) 0%, transparent 70%)',
-        }}
-      />
-
-      {/* Brand mark, brass fleuron above and below */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
-          className="text-brass"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: [0, 1, 1, 0], scale: [0.96, 1, 1, 0.98] }}
+          transition={{ duration: 2.0, times: [0, 0.18, 0.78, 1], ease: 'easeOut' }}
         >
-          <Ornament glyph="fleuron" size={28} />
+          <Logo height={64} alt={t('intro')} priority />
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: [0, 1, 1, 0], scale: [0.94, 1, 1, 0.97] }}
-          transition={{ duration: 2.2, times: [0, 0.18, 0.78, 1], ease: 'easeOut' }}
+        <motion.span
           aria-hidden
-        >
-          <Logo height={72} alt={t('intro')} priority />
-        </motion.div>
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 0.6, ease: EASE_OUT_EXPO, delay: 0.2 }}
+          className="block h-[2px] w-10 bg-[var(--color-accent)] origin-center"
+        />
 
         <motion.span
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE_OUT_EXPO, delay: 0.2 }}
-          className="font-display italic font-medium text-[11px] tracking-[0.32em] text-ink-muted uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
+          transition={{ duration: 0.6, ease: EASE_OUT_EXPO, delay: 0.3 }}
+          className={`text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-fg3)] ${
+            isRtl ? 'font-arabic-body !text-[12.5px] !tracking-[0.04em] !normal-case !font-bold' : 'font-display'
+          }`}
         >
-          {isRtl ? 'موقد' : 'Mawqid'}
+          {isRtl ? 'قَلَم' : 'Qalem'}
         </motion.span>
-
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE_OUT_EXPO, delay: 0.35 }}
-          className="text-brass"
-        >
-          <Ornament glyph="fleuron" size={20} />
-        </motion.div>
       </div>
 
-      {/* Upward curtain wipe */}
       <motion.div
-        className="absolute inset-x-0 top-0 z-10 bg-paper"
+        className="absolute inset-x-0 top-0 z-10 bg-[var(--color-bg)]"
         style={{ willChange: 'height' }}
         initial={{ height: '100%' }}
         animate={{ height: '0%' }}

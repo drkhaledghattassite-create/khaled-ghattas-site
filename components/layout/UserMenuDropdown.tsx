@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link } from '@/lib/i18n/navigation'
-import type { MockUser } from '@/lib/auth/mock'
+import { Link, useRouter } from '@/lib/i18n/navigation'
+import type { ServerSessionUser } from '@/lib/auth/server'
+import { authClient } from '@/lib/auth/client'
 import { cn } from '@/lib/utils'
 
 const initialOf = (name: string) =>
@@ -60,12 +61,23 @@ const Icon = {
   ),
 }
 
-export function UserMenuDropdown({ user }: { user: MockUser }) {
+export function UserMenuDropdown({ user }: { user: ServerSessionUser }) {
   const t = useTranslations('nav')
   const locale = useLocale()
+  const router = useRouter()
   const isRtl = locale === 'ar'
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  async function handleSignOut() {
+    setOpen(false)
+    try {
+      await authClient.signOut()
+    } catch (err) {
+      console.error('[UserMenu signOut]', err)
+    }
+    router.push('/login')
+  }
 
   useEffect(() => {
     if (!open) return
@@ -163,14 +175,24 @@ export function UserMenuDropdown({ user }: { user: MockUser }) {
               </MenuItem>
             )}
             <li className="my-1.5 h-px bg-[var(--color-border)]" />
-            <MenuItem
-              href="/login"
-              onSelect={() => setOpen(false)}
-              icon={Icon.logout}
-              isRtl={isRtl}
-            >
-              {t('signout')}
-            </MenuItem>
+            <li>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleSignOut}
+                className={cn(
+                  'group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-[14px] text-[var(--color-fg1)] text-start',
+                  'transition-colors duration-150',
+                  'hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]',
+                  isRtl ? 'font-arabic-body !text-[14px]' : 'font-display',
+                )}
+              >
+                <span className="text-[var(--color-fg3)] group-hover:text-[var(--color-accent)] transition-colors">
+                  {Icon.logout}
+                </span>
+                <span>{t('signout')}</span>
+              </button>
+            </li>
           </ul>
         </div>
       )}

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { redirect } from '@/lib/i18n/navigation'
-import { getMockSession } from '@/lib/auth/mock'
+import { getServerSession } from '@/lib/auth/server'
+import { getUserById } from '@/lib/db/queries'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { AccountView } from '@/components/dashboard/AccountView'
 
@@ -17,14 +18,16 @@ export default async function DashboardAccountPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const session = await getMockSession()
+  const session = await getServerSession()
   if (!session) {
     redirect({ href: '/login', locale })
   }
 
+  const dbUser = await getUserById(session!.user.id).catch(() => null)
+
   return (
     <DashboardLayout activeTab="account" user={session!.user}>
-      <AccountView user={session!.user} />
+      <AccountView user={session!.user} initialBio={dbUser?.bio ?? null} />
     </DashboardLayout>
   )
 }

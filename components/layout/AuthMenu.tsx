@@ -1,6 +1,7 @@
 import { getTranslations, getLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
-import { getMockSession } from '@/lib/auth/mock'
+import { getServerSession } from '@/lib/auth/server'
+import { AUTH_ENABLED } from '@/lib/constants'
 import { UserMenuDropdown } from './UserMenuDropdown'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +14,9 @@ export async function AuthMenu({
   variant?: Variant
   className?: string
 }) {
-  const session = await getMockSession()
+  if (!AUTH_ENABLED) return null
+
+  const session = await getServerSession()
   const t = await getTranslations('nav')
   const locale = await getLocale()
   const isRtl = locale === 'ar'

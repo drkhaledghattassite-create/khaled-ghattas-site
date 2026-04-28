@@ -17,28 +17,41 @@ export function Newsletter() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!email) return
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    toast.success(t('success_message'))
-    setEmail('')
-    setLoading(false)
-    setDone(true)
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, locale, source: 'newsletter-section' }),
+      })
+      if (res.ok) {
+        toast.success(t('success_message'))
+        setEmail('')
+        setDone(true)
+        return
+      }
+      if (res.status === 429) {
+        toast.error(t('rate_limited'))
+        return
+      }
+      toast.error(t('invalid_email'))
+    } catch (err) {
+      console.error('[Newsletter]', err)
+      toast.error(t('invalid_email'))
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const kicker = isRtl ? 'دعوة شخصية' : 'A personal invitation'
-  const statement = isRtl
-    ? 'لا أكتب نشرةً للترويج. أكتبها لأنّني أحبّ أن أُكمل حديثي معك في الأسبوع، حتى لو لم نلتقِ. مقالةٌ واحدة، رسالةٌ صغيرة، وكثير من المعنى.'
-    : 'I do not write a newsletter to market. I write it because I want our conversation to continue through the week, even when we do not meet. One essay, a small letter, plenty of meaning.'
-  const sign = isRtl ? '— خالد' : '— Khaled'
-  const placeholder = isRtl ? 'بريدك الإلكتروني' : 'your@email.com'
-  const cta = isRtl ? 'انضمّ إليّ' : 'Join me'
-  const priv = isRtl
-    ? 'لا إعلانات. لن أُشارك بريدك. ألغِ في أيّ وقت.'
-    : 'No ads. I will never share your address. Unsubscribe any time.'
-  const readers = isRtl ? 'يقرؤها أكثر من مليون متابع' : 'Read by a million across platforms'
-  const successCopy = isRtl
-    ? 'وصل بريدك. شكراً — أراك الأسبوع القادم.'
-    : "I have your address. Thank you — I'll see you next week."
+  const kicker = t('kicker')
+  const statement = t('statement')
+  const sign = t('sign')
+  const placeholder = t('email_placeholder')
+  const cta = t('cta')
+  const priv = t('privacy')
+  const readers = t('readers')
+  const successCopy = t('success_copy')
 
   return (
     <section
@@ -74,10 +87,7 @@ export function Newsletter() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.5, ease: EASE, delay: 0.18 }}
-          className={`m-0 mb-9 text-[16px] font-medium text-[var(--color-fg2)] ${
-            isRtl ? 'font-arabic-display italic' : 'font-arabic-display italic'
-          }`}
-          style={{ fontStyle: 'italic' }}
+          className="m-0 mb-9 text-[16px] font-medium text-[var(--color-fg2)] font-arabic-display italic"
         >
           {sign}
         </motion.p>

@@ -34,9 +34,9 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
 
   return (
     <>
-      <div className="grid h-[calc(100dvh-180px)] grid-cols-[320px_1fr] overflow-hidden rounded-md border border-ink/15 bg-cream-soft">
-        <aside className="flex flex-col border-e border-ink/10">
-          <div className="flex flex-wrap gap-1 border-b border-ink/10 p-2">
+      <div className="grid h-[calc(100dvh-180px)] grid-cols-[320px_1fr] overflow-hidden rounded-md border border-border bg-bg-elevated">
+        <aside className="flex flex-col border-e border-border">
+          <div className="flex flex-wrap gap-1 border-b border-border p-2">
             {FILTERS.map((f) => (
               <button
                 key={f}
@@ -45,8 +45,8 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                 className={cn(
                   'font-label rounded-full border border-dashed px-3 py-1 text-[10px]',
                   filter === f
-                    ? 'border-amber bg-amber/10 text-amber'
-                    : 'border-ink/30 text-ink-muted hover:border-ink',
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border text-fg3 hover:border-fg1',
                 )}
               >
                 {t(`filter.${f.toLowerCase()}`)}
@@ -55,7 +55,7 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
           </div>
           <ul className="flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <li className="p-6 text-center text-[12px] text-ink-muted">{t('empty')}</li>
+              <li className="p-6 text-center text-[12px] text-fg3">{t('empty')}</li>
             ) : (
               filtered.map((m) => {
                 const selected = m.id === active?.id
@@ -65,23 +65,23 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                       type="button"
                       onClick={() => setActiveId(m.id)}
                       className={cn(
-                        'flex w-full flex-col items-start gap-1 border-b border-ink/10 px-4 py-3 text-start transition-colors',
-                        selected ? 'bg-amber/10' : 'hover:bg-cream-warm/40',
+                        'flex w-full flex-col items-start gap-1 border-b border-border px-4 py-3 text-start transition-colors',
+                        selected ? 'bg-accent-soft' : 'hover:bg-bg-deep',
                       )}
                     >
                       <div className="flex w-full items-center justify-between gap-2">
                         <span
                           className={cn(
                             'truncate text-[13px]',
-                            m.status === 'UNREAD' ? 'font-semibold text-ink' : 'text-ink-muted',
+                            m.status === 'UNREAD' ? 'font-semibold text-fg1' : 'text-fg3',
                           )}
                         >
                           {m.name}
                         </span>
                         <StatusBadge status={m.status} />
                       </div>
-                      <span className="truncate text-[11px] text-ink-muted">{m.subject}</span>
-                      <span className="font-label text-[10px] text-ink-muted">
+                      <span className="truncate text-[11px] text-fg3">{m.subject}</span>
+                      <span className="font-label text-[10px] text-fg3">
                         {m.createdAt.toISOString().slice(0, 10)}
                       </span>
                     </button>
@@ -94,19 +94,19 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
 
         <section className="flex flex-col">
           {!active ? (
-            <div className="flex flex-1 items-center justify-center text-[13px] text-ink-muted">
+            <div className="flex flex-1 items-center justify-center text-[13px] text-fg3">
               {t('select_message')}
             </div>
           ) : (
             <>
-              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 p-5">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
                 <div>
                   <h2
-                    className="text-ink font-display font-semibold text-[18px] tracking-[-0.02em]"
+                    className="text-fg1 font-display font-semibold text-[18px] tracking-[-0.02em]"
                   >
                     {active.subject}
                   </h2>
-                  <p className="font-label text-[11px] text-ink-muted">
+                  <p className="font-label text-[11px] text-fg3">
                     {active.name} · {active.email}
                   </p>
                 </div>
@@ -118,7 +118,7 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                       setReplyBody('')
                       setReplyOpen(true)
                     }}
-                    className="font-label inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink bg-ink px-3 py-1.5 text-[11px] text-cream-soft hover:bg-transparent hover:text-ink"
+                    className="font-label inline-flex items-center gap-1.5 rounded-full border border-dashed border-fg1 bg-fg1 px-3 py-1.5 text-[11px] text-bg hover:bg-transparent hover:text-fg1"
                   >
                     <Reply className="h-3.5 w-3.5" aria-hidden />
                     {t('reply')}
@@ -127,7 +127,7 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                     type="button"
                     aria-label={t('toggle_read')}
                     onClick={() => toast.success(tActions('success_saved'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:bg-cream-warm/60 hover:text-ink"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
                   >
                     {active.status === 'UNREAD' ? (
                       <MailOpen className="h-4 w-4" aria-hidden />
@@ -139,7 +139,7 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                     type="button"
                     aria-label={t('archive')}
                     onClick={() => toast.success(tActions('success_saved'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:bg-cream-warm/60 hover:text-ink"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
                   >
                     <Archive className="h-4 w-4" aria-hidden />
                   </button>
@@ -147,14 +147,14 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
                     type="button"
                     aria-label={tForms('delete')}
                     onClick={() => toast.success(tActions('success_deleted'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-amber/80 hover:bg-amber/15 hover:text-amber"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded text-accent/80 hover:bg-accent-soft hover:text-accent"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
               </header>
               <div className="flex-1 overflow-y-auto p-5">
-                <p className="whitespace-pre-line text-[14px] leading-[1.7] text-ink">
+                <p className="whitespace-pre-line text-[14px] leading-[1.7] text-fg1">
                   {active.message}
                 </p>
               </div>
@@ -184,20 +184,18 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
             <button
               type="button"
               onClick={() => setReplyOpen(false)}
-              className="font-label rounded-full border border-dashed border-ink/40 px-4 py-2 text-[12px] text-ink hover:bg-cream-warm/40"
-              style={{ letterSpacing: '0.08em' }}
+              className="font-label rounded-full border border-dashed border-border px-4 py-2 text-[12px] text-fg1 hover:bg-bg-deep"
             >
               {tForms('cancel')}
             </button>
             <button
               type="button"
               onClick={() => {
-                console.log('[admin] would send reply')
+                // TODO(phase-5): wire to /api/admin/messages reply endpoint.
                 toast.success(t('reply_sent'))
                 setReplyOpen(false)
               }}
-              className="font-label rounded-full border border-dashed border-ink bg-ink px-4 py-2 text-[12px] text-cream-soft hover:bg-transparent hover:text-ink"
-              style={{ letterSpacing: '0.08em' }}
+              className="font-label rounded-full border border-dashed border-fg1 bg-fg1 px-4 py-2 text-[12px] text-bg hover:bg-transparent hover:text-fg1"
             >
               {t('send_reply')}
             </button>

@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { MockUser } from '@/lib/auth/mock'
+import type { ServerSessionUser } from '@/lib/auth/server'
 import { stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
 import { LogoLink } from '@/components/shared/Logo'
@@ -79,7 +79,7 @@ export function AdminSidebarContent({
   user,
   onNavigate,
 }: {
-  user: MockUser
+  user: ServerSessionUser
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
@@ -90,13 +90,13 @@ export function AdminSidebarContent({
 
   return (
     <>
-      <div className="flex h-[64px] shrink-0 items-center gap-3 border-b border-ink/10 px-5">
+      <div className="flex h-[64px] shrink-0 items-center gap-3 border-b border-border px-5">
         <LogoLink href="/admin" alt={tCommon('brand')} height={32} />
         <div className="flex flex-col leading-tight">
-          <span className="font-label text-[10px] text-ink-muted">{tCommon('panel')}</span>
-          <span
-            className="text-ink font-display font-semibold text-[14px] tracking-[0.04em]"
-          >
+          <span className="text-[10px] uppercase tracking-[0.12em] text-fg3 font-display font-semibold">
+            {tCommon('panel')}
+          </span>
+          <span className="text-fg1 font-display font-semibold text-[14px] tracking-[0.04em]">
             {tCommon('brand')}
           </span>
         </div>
@@ -105,7 +105,7 @@ export function AdminSidebarContent({
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {GROUPS.map((group) => (
           <div key={group.key} className="mb-5">
-            <p className="font-label px-2 pb-2 text-[10px] text-ink-muted">
+            <p className="px-2 pb-2 text-[10px] uppercase tracking-[0.12em] text-fg3 font-display font-semibold">
               {tGroups(group.key)}
             </p>
             <ul className="space-y-0.5">
@@ -123,14 +123,14 @@ export function AdminSidebarContent({
                       className={cn(
                         'group flex items-center gap-2.5 rounded px-2 py-2 text-[13px] transition-colors',
                         active
-                          ? 'bg-amber/10 text-amber'
-                          : 'text-ink hover:bg-cream-warm/60',
+                          ? 'bg-accent-soft text-accent'
+                          : 'text-fg1 hover:bg-bg-deep',
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" aria-hidden />
                       <span>{tNav(item.key)}</span>
                       {active && (
-                        <span aria-hidden className="ms-auto h-1.5 w-1.5 rounded-full bg-amber" />
+                        <span aria-hidden className="ms-auto h-1.5 w-1.5 rounded-full bg-accent" />
                       )}
                     </Link>
                   </li>
@@ -141,21 +141,21 @@ export function AdminSidebarContent({
         ))}
       </nav>
 
-      <div className="border-t border-ink/10 p-3">
+      <div className="border-t border-border p-3">
         <div className="flex items-center gap-2.5 rounded px-2 py-2">
-          <span aria-hidden className="block h-8 w-8 shrink-0 rounded-full bg-ink/80" />
+          <span aria-hidden className="block h-8 w-8 shrink-0 rounded-full bg-fg1/80" />
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
-            <span
-              className="truncate text-[13px] text-ink font-display font-medium"
-            >
+            <span className="truncate text-[13px] text-fg1 font-display font-medium">
               {user.name}
             </span>
-            <span className="font-label text-[10px] text-amber">{user.role}</span>
+            <span className="text-[10px] uppercase tracking-[0.08em] text-accent font-display font-semibold">
+              {user.role}
+            </span>
           </div>
           <button
             type="button"
             aria-label={tCommon('logout')}
-            className="inline-flex h-9 w-9 items-center justify-center rounded text-ink-muted transition-colors hover:bg-cream-warm/80 hover:text-ink"
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1"
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -165,9 +165,9 @@ export function AdminSidebarContent({
   )
 }
 
-export function AdminSidebar({ user }: { user: MockUser }) {
+export function AdminSidebar({ user }: { user: ServerSessionUser }) {
   return (
-    <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col border-e border-ink/10 bg-cream-soft md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col border-e border-border bg-bg-elevated md:flex">
       <AdminSidebarContent user={user} />
     </aside>
   )

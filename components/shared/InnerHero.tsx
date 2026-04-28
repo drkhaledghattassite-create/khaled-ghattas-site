@@ -1,10 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import { useLocale } from 'next-intl'
 import { motion } from 'motion/react'
-import { Ornament } from '@/components/shared/Ornament'
 
-const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 type Props = {
   eyebrow?: string
@@ -13,13 +13,14 @@ type Props = {
   description?: string
   image?: { src: string; alt: string }
   align?: 'start' | 'center'
-  chapterNumber?: string
+  /** Folio number such as "Nº 01" or "٠١". Optional editorial flourish. */
+  folio?: string
 }
 
 /**
- * Inner page hero — the journal-chapter opener for /about, /articles, etc.
- * Brass fleuron + chapter number eyebrow, mask-revealed heading pair,
- * optional duotone portrait inside a printed frame, generous lead text.
+ * Inner-page hero — Qalem v2 editorial opener.
+ * Eyebrow rule + heading + optional dek + optional portrait, with a 1px
+ * hairline border below mirroring the homepage section pattern.
  */
 export function InnerHero({
   eyebrow,
@@ -28,67 +29,86 @@ export function InnerHero({
   description,
   image,
   align = 'start',
-  chapterNumber,
+  folio,
 }: Props) {
+  const locale = useLocale()
+  const isRtl = locale === 'ar'
   const alignClass = align === 'center' ? 'items-center text-center' : 'items-start text-start'
 
   return (
-    <section className="relative z-[2] overflow-hidden bg-paper px-[var(--section-pad-x)] pt-[calc(var(--section-pad-y)+44px)] pb-[var(--spacing-xl)]">
-      {/* Soft top vignette */}
+    <section
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className="relative border-b border-[var(--color-border)] [padding:clamp(80px,9vw,128px)_clamp(20px,5vw,56px)_clamp(64px,7vw,96px)]"
+    >
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(50% 35% at 80% 0%, rgba(168, 196, 214, 0.10) 0%, transparent 70%)',
-        }}
-      />
-
-      <div
-        className={`relative mx-auto grid max-w-[1280px] gap-[var(--spacing-lg)] ${image ? 'md:grid-cols-[1.2fr_1fr] md:gap-[var(--spacing-xl)]' : ''}`}
+        className={`relative mx-auto grid max-w-[var(--container-max)] gap-[clamp(40px,6vw,72px)] ${
+          image ? 'md:grid-cols-[1.2fr_1fr] md:items-center' : ''
+        }`}
       >
-        <div className={`flex flex-col gap-[var(--spacing-md)] ${alignClass}`}>
+        {folio && (
+          <span
+            aria-hidden
+            className={`absolute top-0 [inset-inline-end:0] text-[11px] font-semibold tracking-[0.18em] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${
+              isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !font-bold' : 'font-display'
+            }`}
+          >
+            {folio}
+          </span>
+        )}
+
+        <div className={`flex flex-col gap-7 ${alignClass}`}>
           {eyebrow && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
+            <motion.span
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
-              className={`flex items-baseline gap-3 text-ink-muted ${align === 'center' ? 'justify-center' : ''}`}
+              transition={{ duration: 0.55, delay: 0.05, ease: EASE }}
+              className="section-eyebrow"
             >
-              <Ornament glyph="fleuron" size={14} className="text-brass animate-flourish-pulse" />
-              <span
-                className="font-display italic font-medium text-[11px] tracking-[0.18em] uppercase [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:text-[13px] [dir=rtl]:tracking-normal [dir=rtl]:normal-case"
-              >
-                {chapterNumber ? `${chapterNumber} — ${eyebrow}` : eyebrow}
-              </span>
-            </motion.div>
+              {eyebrow}
+            </motion.span>
           )}
-          <h1 className="m-0 space-y-2 text-balance">
+
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
+            className="m-0"
+          >
             {headingItalic && (
-              <MaskedLine delay={0}>
-                <span
-                  className="text-garnet font-serif italic font-normal text-[clamp(32px,5.6vw,72px)] leading-[1.05] tracking-[-0.005em] [dir=rtl]:font-arabic [dir=rtl]:not-italic [dir=rtl]:font-semibold [dir=rtl]:tracking-normal"
-                >
-                  {headingItalic}
-                </span>
-              </MaskedLine>
-            )}
-            <MaskedLine delay={headingItalic ? 0.18 : 0}>
               <span
-                className="text-ink font-display font-normal text-[clamp(40px,7vw,96px)] leading-[0.96] tracking-[-0.024em] [dir=rtl]:font-arabic-display [dir=rtl]:font-medium [dir=rtl]:tracking-normal"
+                className={`block text-[var(--color-accent)] text-[clamp(22px,3vw,32px)] leading-[1.2] font-medium tracking-[-0.005em] mb-2 ${
+                  isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.012em]'
+                }`}
               >
-                {headingSans}
+                {headingItalic}
               </span>
-            </MaskedLine>
-          </h1>
+            )}
+            <span
+              className={`block text-[var(--color-fg1)] text-[clamp(40px,6vw,72px)] leading-[0.98] font-extrabold tracking-[-0.02em] [text-wrap:balance] ${
+                isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.035em]'
+              }`}
+            >
+              {headingSans}
+            </span>
+          </motion.h1>
+
+          <motion.span
+            aria-hidden
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 0.55, delay: 0.4, ease: EASE }}
+            className="block w-12 h-[3px] bg-[var(--color-accent)]"
+            style={{ transformOrigin: isRtl ? 'right' : 'left' }}
+          />
 
           {description && (
             <motion.p
               initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
-              className={`max-w-[58ch] text-pretty text-ink-soft font-display text-[17px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:leading-[1.95] ${align === 'center' ? 'mx-auto' : ''}`}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45, ease: EASE }}
+              className={`m-0 max-w-[58ch] text-[clamp(15px,1.4vw,17px)] leading-[1.7] text-[var(--color-fg2)] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              } ${align === 'center' ? 'mx-auto' : ''}`}
             >
               {description}
             </motion.p>
@@ -97,42 +117,24 @@ export function InnerHero({
 
         {image && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.1, ease: EASE_IN_OUT_QUART, delay: 0.5 }}
+            transition={{ duration: 0.85, ease: EASE, delay: 0.25 }}
             className="relative mx-auto w-full max-w-[520px]"
           >
-            <div className="frame-print relative aspect-[3/4]">
-              <div className="relative h-full w-full overflow-hidden">
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  fill
-                  priority
-                  sizes="(min-width: 768px) 520px, 100vw"
-                  className="object-cover object-center duotone-warm"
-                />
-              </div>
+            <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                priority
+                sizes="(min-width: 768px) 520px, 100vw"
+                className="object-cover object-center [filter:saturate(0.82)_contrast(1.04)] dark:[filter:saturate(0.65)_contrast(1.06)_brightness(0.88)]"
+              />
             </div>
           </motion.div>
         )}
       </div>
     </section>
-  )
-}
-
-function MaskedLine({ children, delay }: { children: React.ReactNode; delay: number }) {
-  return (
-    <span className="relative block overflow-hidden">
-      <motion.span
-        className="relative inline-block"
-        initial={{ y: '102%', opacity: 0 }}
-        whileInView={{ y: '0%', opacity: 1 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.95, delay, ease: EASE_IN_OUT_QUART }}
-      >
-        {children}
-      </motion.span>
-    </span>
   )
 }

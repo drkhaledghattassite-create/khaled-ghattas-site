@@ -13,12 +13,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useThemeColors } from '@/lib/hooks/useThemeColors'
 
 type Point = { day: string; value: number }
-
-const grid = '#25232120'
-const ink = '#252321'
-const amber = '#BC884A'
 
 function days(n: number, base = 100, jitter = 40): Point[] {
   const out: Point[] = []
@@ -36,49 +33,62 @@ const REVENUE = days(30, 380, 120)
 const VIEWS = days(30, 1100, 600)
 const SUBS = days(30, 24, 8)
 
+function tooltipStyle(c: { surface: string; border: string; text: string }) {
+  return {
+    background: c.surface,
+    border: `1px solid ${c.border}`,
+    color: c.text,
+    fontSize: 12,
+    borderRadius: 4,
+  }
+}
+
 export function RevenueChart() {
+  const c = useThemeColors()
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={REVENUE}>
-        <CartesianGrid stroke={grid} strokeDasharray="3 3" />
-        <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <YAxis tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <Tooltip contentStyle={{ background: '#F6F4F1', border: `1px dashed ${ink}`, fontSize: 12 }} />
-        <Line type="monotone" dataKey="value" stroke={amber} strokeWidth={2} dot={false} />
+        <CartesianGrid stroke={c.grid} strokeDasharray="3 3" />
+        <XAxis dataKey="day" tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <YAxis tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <Tooltip contentStyle={tooltipStyle(c)} />
+        <Line type="monotone" dataKey="value" stroke={c.accent} strokeWidth={2} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   )
 }
 
 export function ViewsChart() {
+  const c = useThemeColors()
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={VIEWS}>
-        <CartesianGrid stroke={grid} strokeDasharray="3 3" />
-        <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <YAxis tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <Tooltip contentStyle={{ background: '#F6F4F1', border: `1px dashed ${ink}`, fontSize: 12 }} />
-        <Bar dataKey="value" fill={ink} radius={[2, 2, 0, 0]} />
+        <CartesianGrid stroke={c.grid} strokeDasharray="3 3" />
+        <XAxis dataKey="day" tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <YAxis tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <Tooltip contentStyle={tooltipStyle(c)} />
+        <Bar dataKey="value" fill={c.text} radius={[2, 2, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
 export function SubscribersChart() {
+  const c = useThemeColors()
   return (
     <ResponsiveContainer width="100%" height={220}>
       <AreaChart data={SUBS}>
-        <CartesianGrid stroke={grid} strokeDasharray="3 3" />
-        <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <YAxis tick={{ fontSize: 10, fill: '#8B8378' }} stroke={grid} />
-        <Tooltip contentStyle={{ background: '#F6F4F1', border: `1px dashed ${ink}`, fontSize: 12 }} />
+        <CartesianGrid stroke={c.grid} strokeDasharray="3 3" />
+        <XAxis dataKey="day" tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <YAxis tick={{ fontSize: 10, fill: c.textMuted }} stroke={c.grid} />
+        <Tooltip contentStyle={tooltipStyle(c)} />
         <defs>
           <linearGradient id="subsArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={amber} stopOpacity={0.4} />
-            <stop offset="100%" stopColor={amber} stopOpacity={0} />
+            <stop offset="0%" stopColor={c.accent} stopOpacity={0.4} />
+            <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <Area type="monotone" dataKey="value" stroke={amber} fill="url(#subsArea)" strokeWidth={2} />
+        <Area type="monotone" dataKey="value" stroke={c.accent} fill="url(#subsArea)" strokeWidth={2} />
       </AreaChart>
     </ResponsiveContainer>
   )

@@ -15,10 +15,10 @@ export function AboutTeaser() {
   void tFooter
 
   const stats = [
-    { num: isRtl ? '+١٥' : '15+', label: t('stats.years_label') },
-    { num: isRtl ? '+١٬٠٠٠' : '1,000+', label: t('stats.lectures_label') },
-    { num: isRtl ? '+١م' : '1M+', label: isRtl ? 'متابع رقمي' : 'Followers digital' },
-    { num: isRtl ? '٦' : '6', label: t('stats.books_label') },
+    { num: t('stats.years_value'), label: t('stats.years_label') },
+    { num: t('stats.lectures_value'), label: t('stats.lectures_label') },
+    { num: t('stats.followers_value'), label: t('stats.followers_label') },
+    { num: t('stats.books_value'), label: t('stats.books_label') },
   ]
 
   const venues = ['Harvard', 'Cornell', 'Stanford', 'AUB Beirut']
@@ -26,11 +26,9 @@ export function AboutTeaser() {
     ? ['BBC عربي', 'الجزيرة', 'سكاي نيوز عربية', 'LBC', 'MTV Lebanon', 'العربية', 'OTV']
     : ['BBC Arabic', 'Al Jazeera', 'Sky News Arabia', 'LBC', 'MTV Lebanon', 'Al Arabiya', 'OTV']
 
-  const venuesLabel = isRtl ? 'محاضرات في' : 'Spoken at'
-  const outletsLabel = isRtl ? 'حضور إعلامي' : 'Media appearances'
-  const affiliation = isRtl
-    ? 'مؤسس مبادرة «الورشة» الاجتماعية في لبنان.'
-    : 'Founder of Al-Warsheh, a social initiative in Lebanon.'
+  const venuesLabel = t('venues_label')
+  const outletsLabel = t('outlets_label')
+  const affiliation = t('affiliation')
 
   return (
     <section
@@ -87,10 +85,9 @@ export function AboutTeaser() {
           {stats.map((s) => (
             <div key={s.label} className="flex flex-col">
               <dt
-                className={`text-[clamp(40px,5vw,64px)] leading-[0.95] tracking-[-0.03em] text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
+                className={`text-[clamp(40px,5vw,64px)] leading-[0.95] font-extrabold tracking-[-0.03em] text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
                   isRtl ? 'font-arabic-display' : 'font-display'
                 }`}
-                style={{ fontWeight: 800 }}
               >
                 {s.num}
               </dt>

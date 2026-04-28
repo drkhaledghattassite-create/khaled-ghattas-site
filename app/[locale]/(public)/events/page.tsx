@@ -3,13 +3,19 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { EventsTimeline } from '@/components/sections/EventsTimeline'
 import { getPastEvents, getUpcomingEvents } from '@/lib/db/queries'
+import { pageMetadata } from '@/lib/seo/page-metadata'
 
 type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'events.meta' })
-  return { title: t('title'), description: t('description') }
+  return pageMetadata({
+    locale,
+    path: '/events',
+    title: t('title'),
+    description: t('description'),
+  })
 }
 
 export default async function EventsPage({ params }: Props) {

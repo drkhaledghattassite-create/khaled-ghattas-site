@@ -8,7 +8,18 @@
  * For one-row tables (settings, content blocks) it upserts on the unique key.
  */
 
-import 'dotenv/config'
+// Load .env.local first (project-local), fall back to .env if it exists.
+try {
+  process.loadEnvFile('.env.local')
+} catch {
+  /* fall through */
+}
+try {
+  process.loadEnvFile('.env')
+} catch {
+  /* fall through */
+}
+
 import { drizzle } from 'drizzle-orm/neon-http'
 import { neon } from '@neondatabase/serverless'
 import * as schema from '../lib/db/schema'

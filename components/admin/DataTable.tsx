@@ -81,26 +81,26 @@ export function DataTable<T>({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {searchable && (
           <label className="relative inline-flex items-center">
-            <Search className="pointer-events-none absolute start-2.5 h-3.5 w-3.5 text-ink-muted" aria-hidden />
+            <Search className="pointer-events-none absolute start-2.5 h-3.5 w-3.5 text-fg3" aria-hidden />
             <input
               type="search"
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               placeholder={t('forms.search')}
-              className="h-9 min-w-[260px] rounded-full border border-dashed border-ink/40 bg-transparent ps-8 pe-4 text-[13px] text-ink placeholder:text-ink-muted focus:border-ink focus:outline-none"
+              className="h-9 min-w-[260px] rounded-full border border-border bg-bg-elevated ps-8 pe-4 text-[13px] text-fg1 placeholder:text-fg3 focus:border-accent focus:outline-none"
             />
           </label>
         )}
         {selectedCount > 0 && (
-          <span className="font-label text-[11px] text-ink-muted">
+          <span className="text-[11px] uppercase tracking-[0.08em] text-fg3 font-display font-semibold">
             {selectedCount} / {totalRows} {t('forms.selected')}
           </span>
         )}
       </div>
 
-      <div className="overflow-hidden rounded-md border border-ink/15 bg-cream-soft">
+      <div className="overflow-hidden rounded-md border border-border bg-bg-elevated">
         <table className="w-full">
-          <thead className="border-b border-ink/15 bg-cream-warm/40">
+          <thead className="border-b border-border bg-bg-deep">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((header) => {
@@ -111,8 +111,8 @@ export function DataTable<T>({
                       key={header.id}
                       onClick={sortable ? header.column.getToggleSortingHandler() : undefined}
                       className={cn(
-                        'font-label px-3 py-2.5 text-start text-[10px] uppercase tracking-[0.06em] text-ink-muted',
-                        sortable && 'cursor-pointer select-none hover:text-ink',
+                        'px-3 py-2.5 text-start text-[10px] uppercase tracking-[0.08em] text-fg3 font-display font-semibold',
+                        sortable && 'cursor-pointer select-none hover:text-fg1',
                       )}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -129,7 +129,7 @@ export function DataTable<T>({
               <tr>
                 <td
                   colSpan={allColumns.length}
-                  className="px-4 py-12 text-center text-ink-muted"
+                  className="px-4 py-12 text-center text-fg3"
                 >
                   <div className="flex flex-col items-center gap-3">
                     <p>{t('empty.title')}</p>
@@ -142,12 +142,12 @@ export function DataTable<T>({
                 <tr
                   key={row.id}
                   className={cn(
-                    'border-t border-ink/10 transition-colors',
-                    row.getIsSelected() ? 'bg-amber/10' : 'hover:bg-cream-warm/30',
+                    'border-t border-border transition-colors',
+                    row.getIsSelected() ? 'bg-accent-soft' : 'hover:bg-bg-deep',
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2.5 text-[13px] text-ink">
+                    <td key={cell.id} className="px-3 py-2.5 text-[13px] text-fg1">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -160,7 +160,7 @@ export function DataTable<T>({
 
       {pagination && table.getPageCount() > 1 && (
         <div className="flex items-center justify-between gap-3">
-          <span className="font-label text-[11px] text-ink-muted">
+          <span className="text-[11px] uppercase tracking-[0.08em] text-fg3 font-display font-semibold">
             {t('pagination.page', {
               current: table.getState().pagination.pageIndex + 1,
               total: table.getPageCount(),
@@ -172,7 +172,7 @@ export function DataTable<T>({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
               aria-label={t('pagination.previous')}
-              className="inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted transition-colors hover:bg-cream-warm/60 hover:text-ink disabled:opacity-40"
+              className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
             </button>
@@ -181,7 +181,7 @@ export function DataTable<T>({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
               aria-label={t('pagination.next')}
-              className="inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted transition-colors hover:bg-cream-warm/60 hover:text-ink disabled:opacity-40"
+              className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
             </button>

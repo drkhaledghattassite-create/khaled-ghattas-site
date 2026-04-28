@@ -7,15 +7,11 @@
     "books": "Books",
     "store": "Store",
     "interviews": "Interviews",
-    "gallery": "Gallery",
     "contact": "Contact",
     "events": "Events",
     "menu": "Menu",
     "close": "Close",
     "primary": "Primary navigation",
-    "progress": "Page progress indicator",
-    "page_index": "Page - Index",
-    "page_index_numbered": "Page - {n}",
     "signin": "Sign In",
     "signup": "Sign Up",
     "dashboard": "Dashboard",
@@ -51,7 +47,9 @@
       "books": "Books",
       "works": "Published works"
     },
-    "portrait_alt": "Portrait of Dr. Khaled Ghattass"
+    "portrait_alt": "Portrait of Dr. Khaled Ghattass",
+    "name": "Dr. Khaled Ghattass",
+    "established": "Beirut — Est. 2010"
   },
   "cta": {
     "articles": "View Articles",
@@ -64,24 +62,35 @@
     "all_books": "Browse store",
     "details": "Details",
     "buy_now": "Buy now",
-    "enter_gallery": "Enter gallery",
+    "video_coming_soon": "Video coming soon",
     "subscribe": "Subscribe",
     "scroll_up_to_reveal_nav": "Scroll up to reveal nav"
   },
   "loading": {
-    "intro": "Loading",
-    "marquee": "Cell Biologist — Human Behavior Expert — Author — Speaker — Founder of Al-Warsheh",
-    "marquee_row_1": "CELL BIOLOGIST — HUMAN BEHAVIOR EXPERT — AUTHOR — SPEAKER — FOUNDER OF AL-WARSHEH",
-    "marquee_row_2": "15+ YEARS — 1000+ LECTURES — 5+ BOOKS — FOUNDER OF AL-WARSHEH"
+    "intro": "Loading"
   },
-  "tapes": {
-    "cream": "1000+ LECTURES & WORKSHOPS — ACROSS THE ARAB WORLD AND BEYOND",
-    "dark": "15+ YEARS — IN CELL BIOLOGY AND HUMAN BEHAVIOR"
+  "not_found": {
+    "meta": {
+      "title": "Page not found",
+      "description": "The page you are looking for does not exist."
+    },
+    "eyebrow": "Error 404",
+    "heading": "Page not found",
+    "description": "The page you tried to reach has moved, or never existed. Let's get you back on track.",
+    "back_home": "Back to home",
+    "contact": "Contact"
   },
-  "stats": {
-    "bio": "Cell biologist and expert in human behavior — author, speaker, and founder of Al-Warsheh. Dr. Ghattass works to restore balance to individuals, institutions, and communities through a message that speaks to the human at their core. He weaves behavioral science, philosophy, cultural understanding, and art into a singular voice — translating complex academic concepts into deeply human stories. With more than two million followers across digital platforms, he has delivered hundreds of lectures and workshops across the Arab world.",
-    "media": "Trained at Harvard, Cornell, Stanford, and the American University of Beirut. Published across major regional and international platforms.",
-    "cta": "Learn more"
+  "error": {
+    "meta": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred."
+    },
+    "eyebrow": "Unexpected error",
+    "heading": "Something went wrong",
+    "description": "We hit a snag rendering this page. You can try again, or head back to the homepage.",
+    "try_again": "Try again",
+    "back_home": "Back to home",
+    "details_label": "Error details"
   },
   "about": {
     "meta": {
@@ -104,17 +113,24 @@
       "interviews": "Interviews",
       "books": "Books",
       "decades": "Years"
-    }
+    },
+    "folio": "Nº 01",
+    "numbers": {
+      "1": "01",
+      "2": "02",
+      "3": "03",
+      "4": "04"
+    },
+    "in_summary": "In summary",
+    "in_four_lines": "In four lines",
+    "bio_eyebrow": "Biographical Note",
+    "featured_eyebrow": "Featured on",
+    "stages_outlets": "Stages & Outlets",
+    "spoken_at": "Spoken at",
+    "media_appearances": "Media appearances",
+    "outlets": ["BBC Arabic", "Al Jazeera", "Sky News Arabia", "LBC", "MTV Lebanon", "Al Arabiya"]
   },
   "articles": {
-    "heading": {
-      "part_1": "Intellectual Archive:",
-      "part_2": "Articles of Insight & Impact"
-    },
-    "bridge": {
-      "row_1": "600+ ARTICLE COLLECTION - ",
-      "row_2": "ONE ARTICLE EVERY WEEK - "
-    },
     "meta": {
       "title": "Articles",
       "description": "An archive of Dr. Khaled Ghattass's writing on philosophy, psychology, and society",
@@ -142,6 +158,9 @@
   "article": {
     "author": "Author",
     "related": "Related articles",
+    "min_read": "min read",
+    "folio": "Nº 02",
+    "continue_reading": "Continue reading",
     "share": {
       "label": "Share:",
       "twitter": "Twitter",
@@ -149,14 +168,14 @@
       "whatsapp": "WhatsApp"
     }
   },
+  "interview": {
+    "label": "Interview",
+    "source": "Source",
+    "year": "Year",
+    "more_interviews": "More interviews",
+    "continue_watching": "Continue watching"
+  },
   "interviews": {
-    "heading": {
-      "part_1": "Voices of Insight:",
-      "part_2": "Featured interviews with Dr. Khaled Ghattass"
-    },
-    "badge": "View all interviews",
-    "badge_short": "View\nAll",
-    "stamp_text": "Click To View All — Click To View —",
     "meta": {
       "title": "Interviews",
       "description": "A curated selection of Dr. Khaled Ghattass's most notable interviews"
@@ -171,14 +190,6 @@
     }
   },
   "books": {
-    "heading": {
-      "part_1": "Explore the Store",
-      "part_2": "Books & Sessions That Make a Difference"
-    },
-    "bridge": {
-      "row_1": "BROWSE STORE - ",
-      "row_2": "BROWSE STORE - "
-    },
     "filters": {
       "all": "All",
       "books": "Books",
@@ -210,24 +221,21 @@
     "publisher": "Publisher",
     "year": "Year",
     "category": "Category",
-    "related": "Related books"
+    "related": "Related books",
+    "also_browse": "Also browse",
+    "checkout": {
+      "coming_soon": "Online checkout will open soon. Use the contact form to order in the meantime.",
+      "error": "Could not start checkout. Please try again."
+    }
   },
-  "gallery": {
-    "heading": {
-      "part_1": "A Gallery of",
-      "part_2": "Memories"
-    },
-    "meta": {
-      "title": "Gallery",
-      "description": "Moments from Dr. Khaled Ghattass's life events and lectures"
-    },
-    "page": {
-      "eyebrow": "Visual Archive",
-      "hero": {
-        "italic": "A Gallery of",
-        "sans": "Dr. Khaled Ghattass's Life Events"
-      },
-      "description": "Memorable moments from lectures, events, and engagements across Arab cities and beyond."
+  "checkout": {
+    "success": {
+      "title": "Order confirmed",
+      "description": "Your purchase is in your library. You will also receive a receipt by email.",
+      "eyebrow": "Thank you",
+      "heading": "Welcome to your library",
+      "open_library": "Open library",
+      "browse_more": "Browse more"
     }
   },
   "contact": {
@@ -241,7 +249,10 @@
         "italic": "Get in touch with",
         "sans": "Dr. Khaled Ghattass"
       },
-      "description": "For press inquiries, invitations, and engagement requests for events and interviews."
+      "description": "For press inquiries, invitations, and engagement requests for events and interviews.",
+      "folio": "Nº 06",
+      "form_eyebrow": "Send a message",
+      "form_heading": "Get in touch"
     },
     "form": {
       "name": "Name",
@@ -254,7 +265,10 @@
       "message_placeholder": "Write your message here...",
       "submit": "Send message",
       "submitting": "Sending...",
-      "submitted": "Thank you, your message has been received"
+      "submitted": "Thank you, your message has been received",
+      "error_generic": "Could not send. Please try again.",
+      "error_validation": "Please check your entries and try again.",
+      "error_rate_limited": "Too many attempts. Please wait a moment."
     },
     "info": {
       "heading": "Contact information",
@@ -288,13 +302,21 @@
     "heading": "STAY CONNECTED",
     "description": "Get the latest articles and releases in your inbox",
     "email_label": "Email",
-    "email_placeholder": "name@example.com",
+    "email_placeholder": "your@email.com",
     "subscribe": "Subscribe",
     "submitting": "Subscribing...",
     "subscribed": "Subscribed successfully",
     "invalid_email": "Please enter a valid email address",
     "success_message": "We'll be in touch soon",
-    "submit": "Subscribe"
+    "submit": "Subscribe",
+    "kicker": "A personal invitation",
+    "statement": "I do not write a newsletter to market. I write it because I want our conversation to continue through the week, even when we do not meet. One essay, a small letter, plenty of meaning.",
+    "sign": "— Khaled",
+    "cta": "Join me",
+    "privacy": "No ads. I will never share your address. Unsubscribe any time.",
+    "readers": "Read by a million across platforms",
+    "success_copy": "I have your address. Thank you — I'll see you next week.",
+    "rate_limited": "Too many attempts."
   },
   "footer": {
     "brand": "Dr. Khaled Ghattass",
@@ -303,13 +325,6 @@
     "go_to_next_page": "Go to next page",
     "next_page_label": "About",
     "copyright": "All rights reserved"
-  },
-  "sections": {
-    "articles_placeholder": "Articles section — coming in next phase",
-    "books_placeholder": "Books section — coming in next phase",
-    "interviews_placeholder": "Interviews section — coming in next phase",
-    "gallery_placeholder": "Gallery section — coming in next phase",
-    "newsletter_placeholder": "Newsletter — coming in next phase"
   },
   "admin": {
     "user": {
@@ -600,14 +615,22 @@
     "stats": {
       "years_label": "Years of Experience",
       "lectures_label": "Lectures",
-      "books_label": "Books"
+      "books_label": "Books",
+      "followers_label": "Followers digital",
+      "years_value": "15+",
+      "lectures_value": "1,000+",
+      "followers_value": "1M+",
+      "books_value": "6"
     },
     "featured_on": {
       "heading": "FEATURED ON"
     },
     "heading": "A life in print and memory",
     "bio_preview_fallback": "Cell biologist, behavioral expert, author, lecturer, and founder of Al-Warsheh. For over fifteen years he has built a bridge between science and society, delivering more than a thousand lectures across Lebanon and the Arab world.",
-    "cta_more": "Read more"
+    "cta_more": "Read more",
+    "venues_label": "Spoken at",
+    "outlets_label": "Media appearances",
+    "affiliation": "Founder of Al-Warsheh, a social initiative in Lebanon."
   },
   "store_showcase": {
     "eyebrow": "EXPLORE THE WORK",
@@ -618,13 +641,23 @@
       "session": "SESSION"
     },
     "cta_buy": "BUY NOW",
-    "cta_browse_all": "BROWSE FULL STORE"
+    "cta_browse_all": "BROWSE FULL STORE",
+    "kicker_hero": "Latest title",
+    "kicker_other": "Other volumes",
+    "kicker_lectures": "Recorded lectures",
+    "lectures_heading": "Recorded Lectures",
+    "lectures_intro": "Lectures in Dr. Khaled's own voice. Bought once, watched any time.",
+    "instant": "Instant access",
+    "unit_titles": "titles"
   },
   "articles_section": {
     "eyebrow": "RECENT WRITING",
     "heading": "ARTICLES",
     "featured_label": "Featured",
-    "view_all": "VIEW ALL ARTICLES"
+    "view_all": "VIEW ALL ARTICLES",
+    "kicker_recent": "Most recent",
+    "min_read": "min read",
+    "folio": "Nº 01"
   },
   "interviews_section": {
     "eyebrow": "VOICES OF VISION",
@@ -659,6 +692,40 @@
       "create_account": "Create one",
       "or": "Or",
       "google": "Continue with Google"
+    },
+    "forgot": {
+      "meta": {
+        "title": "Forgot password",
+        "description": "Reset your account password"
+      },
+      "eyebrow": "Reset password",
+      "heading": "Forgot password",
+      "subheading": "Enter the email associated with your account. We'll send a reset link.",
+      "email_label": "Email",
+      "email_placeholder": "name@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "success_title": "Check your email",
+      "success_text": "If an account matches that email, a reset link is on its way.",
+      "back_to_login": "Back to sign in"
+    },
+    "reset": {
+      "meta": {
+        "title": "Reset password",
+        "description": "Choose a new password"
+      },
+      "eyebrow": "New password",
+      "heading": "Choose a new password",
+      "subheading": "Pick something memorable but hard to guess.",
+      "password_label": "New password",
+      "password_placeholder": "At least 8 characters",
+      "confirm_label": "Confirm password",
+      "confirm_placeholder": "Repeat the password",
+      "submit": "Update password",
+      "submitting": "Updating…",
+      "mismatch": "Passwords do not match.",
+      "missing_token": "This reset link is invalid or expired.",
+      "success": "Password updated. You can now sign in."
     },
     "signup": {
       "meta": {

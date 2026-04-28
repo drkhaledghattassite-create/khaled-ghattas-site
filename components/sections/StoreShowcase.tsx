@@ -27,16 +27,14 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
 
   const heroTitle = isRtl ? heroBook.titleAr : heroBook.titleEn
   const heroPrice = Math.round(Number(heroBook.price))
-  const heroHref = heroBook.externalUrl ?? `/books/${heroBook.slug}`
+  const heroHref = `/books/${heroBook.slug}`
 
-  const kickerHero = isRtl ? 'الإصدار الأحدث' : 'Latest title'
-  const kickerOther = isRtl ? 'مجلّدات أخرى' : 'Other volumes'
-  const kickerLectures = isRtl ? 'محاضرات مدفوعة' : 'Recorded lectures'
-  const lecturesHeading = isRtl ? 'محاضرات مسجّلة' : 'Recorded Lectures'
-  const lecturesIntro = isRtl
-    ? 'محاضرات بصوت الدكتور خالد، تُشترى مرة وتُشاهد متى شئت.'
-    : "Lectures in Dr. Khaled's own voice. Bought once, watched any time."
-  const instant = isRtl ? 'وصول فوري' : 'Instant access'
+  const kickerHero = t('kicker_hero')
+  const kickerOther = t('kicker_other')
+  const kickerLectures = t('kicker_lectures')
+  const lecturesHeading = t('lectures_heading')
+  const lecturesIntro = t('lectures_intro')
+  const instant = t('instant')
 
   return (
     <section
@@ -75,9 +73,6 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
             <Link
               href={heroHref}
               className="relative block aspect-[4/5] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:var(--shadow-lift)]"
-              {...(heroBook.externalUrl
-                ? { target: '_blank', rel: 'noopener noreferrer' }
-                : {})}
             >
               <span
                 className={`absolute z-10 [inset-block-start:14px] [inset-inline-start:14px] inline-flex items-center px-2.5 py-[5px] rounded-full text-[10px] font-bold uppercase tracking-[0.14em] bg-white/95 text-[var(--color-fg1)] backdrop-blur-md ${
@@ -126,13 +121,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                     USD
                   </span>
                 </span>
-                <Link
-                  href={heroHref}
-                  className="btn-pill btn-pill-primary"
-                  {...(heroBook.externalUrl
-                    ? { target: '_blank', rel: 'noopener noreferrer' }
-                    : {})}
-                >
+                <Link href={heroHref} className="btn-pill btn-pill-primary">
                   {t('cta_buy')}
                 </Link>
               </div>
@@ -169,7 +158,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                   isRtl ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case' : 'font-display'
                 }`}
               >
-                {shelfBooks.length} {isRtl ? 'عناوين' : 'titles'}
+                {shelfBooks.length} {t('unit_titles')}
               </span>
             </header>
             <ul
@@ -180,14 +169,12 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                 const type = isRtl ? b.descriptionAr ?? '' : b.descriptionEn ?? ''
                 const price = Math.round(Number(b.price))
                 const lang = b.titleEn === b.titleAr ? 'EN' : 'AR'
-                const href = b.externalUrl ?? `/books/${b.slug}`
 
                 return (
                   <li key={b.id} className="snap-start min-w-0">
                     <Link
-                      href={href}
+                      href={`/books/${b.slug}`}
                       className="group flex flex-col gap-3.5 transition-transform duration-[240ms] ease-[var(--ease-out)] hover:-translate-y-[3px]"
-                      {...(b.externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     >
                       <div className="relative w-full aspect-[2/3] overflow-hidden rounded-[2px] bg-[var(--color-bg-deep)] [box-shadow:0_6px_20px_rgba(0,0,0,0.10)] group-hover:[box-shadow:0_12px_32px_rgba(0,0,0,0.18)] transition-shadow duration-[240ms]">
                         <Image
@@ -255,14 +242,12 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
               {sessions.slice(0, 2).map((l) => {
                 const title = isRtl ? l.titleAr : l.titleEn
                 const price = Math.round(Number(l.price))
-                const href = l.externalUrl ?? `/books/${l.slug}`
 
                 return (
                   <li key={l.id}>
                     <Link
-                      href={href}
+                      href={`/books/${l.slug}`}
                       className="grid grid-cols-1 gap-[18px] items-stretch h-full group"
-                      {...(l.externalUrl ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     >
                       <div className="relative aspect-[16/10] overflow-hidden rounded-[4px] bg-[var(--color-fg1)]">
                         <Image

@@ -1,11 +1,18 @@
 import { Redis } from '@upstash/redis'
-import { Ratelimit } from '@upstash/ratelimit'
 
-export const redis = Redis.fromEnv()
+export const HAS_UPSTASH =
+  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
 
-export const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, '10 s'),
-  analytics: true,
-  prefix: 'rl',
-})
+let cached: Redis | null = null
+
+export function getRedis(): Redis | null {
+  if (!HAS_UPSTASH) return null
+  if (cached) return cached
+  cached = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  })
+  return cached
+}
+
+export { tryRateLimit, type RateLimitResult } from './ratelimit'

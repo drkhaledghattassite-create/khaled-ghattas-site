@@ -48,7 +48,7 @@ const DEFAULTS: BookInput = {
   descriptionAr: '',
   descriptionEn: '',
   coverImage: '',
-  price: '',
+  price: '0',
   currency: 'USD',
   digitalFile: '',
   externalUrl: '',
@@ -79,17 +79,43 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
 
   async function onSubmit(values: BookInput) {
     setSubmitting(true)
-    console.log(`[admin] would ${mode} book`, values)
-    await new Promise((r) => setTimeout(r, 300))
-    setSubmitting(false)
-    toast.success(tActions('success_saved'))
-    router.push('/admin/books')
+    try {
+      const url =
+        mode === 'create' ? '/api/admin/books' : `/api/admin/books/${bookId}`
+      const method = mode === 'create' ? 'POST' : 'PATCH'
+      const res = await fetch(url, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_saved'))
+      router.push('/admin/books')
+    } catch (err) {
+      console.error('[BookForm]', err)
+      toast.error(tActions('error_generic'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function onDelete() {
-    console.log(`[admin] would delete book ${bookId}`)
-    toast.success(tActions('success_deleted'))
-    router.push('/admin/books')
+    if (!bookId) return
+    try {
+      const res = await fetch(`/api/admin/books/${bookId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_deleted'))
+      router.push('/admin/books')
+    } catch (err) {
+      console.error('[BookForm/delete]', err)
+      toast.error(tActions('error_generic'))
+    }
   }
 
   return (
@@ -175,7 +201,7 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
           </div>
         </div>
 
-        <aside className="space-y-5 self-start rounded-md border border-dashed border-ink/30 bg-cream-soft p-5">
+        <aside className="space-y-5 self-start rounded-md border border-border bg-bg-elevated p-5">
           <FormField control={form.control} name="status" render={({ field }) => (
             <FormItem>
               <FormLabel>{t('status')}</FormLabel>
@@ -256,24 +282,21 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="font-label inline-flex items-center justify-center rounded-full border border-dashed border-ink bg-ink px-4 py-2 text-[12px] text-cream-soft hover:bg-transparent hover:text-ink disabled:opacity-60"
-              style={{ letterSpacing: '0.08em' }}
+              className="inline-flex items-center justify-center rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60"
             >
               {submitting ? tForms('saving') : tForms('save')}
             </button>
             <button
               type="button"
               onClick={() => router.push('/admin/books')}
-              className="font-label rounded-full border border-dashed border-ink/40 px-4 py-2 text-[12px] text-ink hover:bg-cream-warm/40"
-              style={{ letterSpacing: '0.08em' }}
+              className="rounded-full border border-border px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-fg1 font-display font-semibold hover:bg-bg-deep transition-colors"
             >
               {tForms('cancel')}
             </button>
             {mode === 'edit' && (
               <AlertDialog>
                 <AlertDialogTrigger
-                  className="font-label inline-flex items-center justify-center gap-1.5 rounded-full border border-dashed border-amber/60 px-4 py-2 text-[12px] text-amber hover:bg-amber hover:text-cream-soft"
-                  style={{ letterSpacing: '0.08em' }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-accent/60 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-accent font-display font-semibold transition-colors hover:bg-accent hover:text-accent-fg"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   {tForms('delete')}

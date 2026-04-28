@@ -16,7 +16,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       accessorKey: 'id',
       header: t('id'),
       cell: ({ row }) => (
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="font-mono text-[11px] text-fg3">
           {row.original.id.slice(-8).toUpperCase()}
         </span>
       ),
@@ -26,8 +26,8 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       header: t('customer'),
       cell: ({ row }) => (
         <div className="flex flex-col leading-tight">
-          <span className="font-medium text-ink">{row.original.customerName ?? '—'}</span>
-          <span className="text-[11px] text-ink-muted">{row.original.customerEmail}</span>
+          <span className="font-medium text-fg1">{row.original.customerName ?? '—'}</span>
+          <span className="text-[11px] text-fg3">{row.original.customerEmail}</span>
         </div>
       ),
     },
@@ -53,7 +53,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       cell: ({ row }) => (
         <Link
           href={`/admin/orders/${row.original.id}`}
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-ink-muted hover:bg-cream-warm/60 hover:text-ink"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
           aria-label={tForms('view')}
         >
           <Eye className="h-3.5 w-3.5" aria-hidden />

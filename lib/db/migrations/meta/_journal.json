@@ -8,6 +8,20 @@
       "when": 1777050648042,
       "tag": "0000_blue_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777378642656,
+      "tag": "0001_remarkable_toad_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777405296163,
+      "tag": "0002_flippant_luke_cage",
+      "breakpoints": true
     }
   ]
 }

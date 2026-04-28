@@ -8,61 +8,15 @@ import { LibraryCard, type LibraryItem } from './LibraryCard'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-// Mock library — Phase 4B/6 will fetch from orders.
-const MOCK_LIBRARY: LibraryItem[] = [
-  {
-    id: 'b1',
-    type: 'BOOK',
-    titleAr: 'ليس هذا ما كتبت',
-    titleEn: 'This Is Not What I Wrote',
-    cover: '/Paid books/book-1.jpg',
-    href: '/books/this-is-not-what-i-wrote',
-    primaryHref: '/books/this-is-not-what-i-wrote',
-    downloadHref: '#',
-    progress: 64,
-  },
-  {
-    id: 'b2',
-    type: 'BOOK',
-    titleAr: 'وكان النفاق جميلًا',
-    titleEn: 'Hypocrisy Was Once Beautiful',
-    cover: '/Paid books/book-2.jpg',
-    href: '/books/hypocrisy-was-once-beautiful',
-    primaryHref: '/books/hypocrisy-was-once-beautiful',
-    downloadHref: '#',
-    progress: 100,
-  },
-  {
-    id: 'l1',
-    type: 'LECTURE',
-    titleAr: 'تجربة خطرة',
-    titleEn: 'A Dangerous Experience',
-    cover: '/Paid sessions/session-1.png',
-    href: '/books/a-dangerous-experience',
-    primaryHref: '/books/a-dangerous-experience',
-    progress: 12,
-  },
-  {
-    id: 'l2',
-    type: 'LECTURE',
-    titleAr: 'القصة ما قبل الأخيرة',
-    titleEn: 'The Story Before the End',
-    cover: '/Paid sessions/session-2.png',
-    href: '/books/the-story-before-the-end',
-    primaryHref: '/books/the-story-before-the-end',
-    progress: 0,
-  },
-]
-
 type Filter = 'all' | 'books' | 'lectures'
 
-export function LibraryView() {
+export function LibraryView({ items: initialItems = [] }: { items?: LibraryItem[] }) {
   const t = useTranslations('dashboard.library')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const [filter, setFilter] = useState<Filter>('all')
 
-  const items = MOCK_LIBRARY.filter((item) => {
+  const items = initialItems.filter((item) => {
     if (filter === 'books') return item.type === 'BOOK'
     if (filter === 'lectures') return item.type === 'LECTURE'
     return true

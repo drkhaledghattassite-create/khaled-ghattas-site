@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { ShareButtons } from '@/components/shared/ShareButtons'
+import { ArticleJsonLd } from '@/components/seo/StructuredData'
 import {
   getArticleBySlug,
   getArticles,
@@ -26,9 +27,51 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
   const article = await getArticleBySlug(slug)
   if (!article) return {}
-  const title = locale === 'ar' ? article.titleAr : article.titleEn
-  const description = locale === 'ar' ? article.excerptAr : article.excerptEn
-  return { title, description }
+  const isAr = locale === 'ar'
+  const title = isAr ? article.titleAr : article.titleEn
+  const description = isAr ? article.excerptAr : article.excerptEn
+  const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/articles/${slug}`
+  const image = article.coverImage ?? '/opengraph-image'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: url,
+      languages: {
+        ar: `${SITE_URL}/articles/${slug}`,
+        en: `${SITE_URL}/en/articles/${slug}`,
+      },
+    },
+    openGraph: {
+      type: 'article',
+      title,
+      description,
+      url,
+      siteName: 'Dr. Khaled Ghattass',
+      images: [{ url: image, width: 1200, height: 630, alt: title }],
+      locale: isAr ? 'ar_LB' : 'en_US',
+      publishedTime: article.publishedAt?.toISOString(),
+      modifiedTime: article.updatedAt?.toISOString(),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+  }
+}
+
+function formatDate(date: Date, isRtl: boolean): string {
+  const opts: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' }
+  return new Intl.DateTimeFormat(isRtl ? 'ar-EG' : 'en-US', opts).format(date)
+}
+
+function estimateReadMinutes(content: string, isRtl: boolean): number {
+  const words = content.trim().split(/\s+/).filter(Boolean).length
+  if (words === 0) return 1
+  return Math.max(1, Math.round(words / (isRtl ? 180 : 220)))
 }
 
 export default async function ArticlePage({ params }: Props) {
@@ -40,6 +83,7 @@ export default async function ArticlePage({ params }: Props) {
   const t = await getTranslations('article')
   const tNav = await getTranslations('nav')
   const tCommon = await getTranslations('common')
+  const tArticles = await getTranslations('articles')
   const related = await getRelatedArticles(slug, 3)
   const isRtl = locale === 'ar'
   const Back = isRtl ? ChevronRight : ChevronLeft
@@ -47,137 +91,215 @@ export default async function ArticlePage({ params }: Props) {
   const title = locale === 'ar' ? article.titleAr : article.titleEn
   const excerpt = locale === 'ar' ? article.excerptAr : article.excerptEn
   const content = locale === 'ar' ? article.contentAr : article.contentEn
-  const dateLabel = (article.publishedAt ?? article.createdAt)
-    .toISOString()
-    .slice(0, 10)
+  const date = formatDate(article.publishedAt ?? article.createdAt, isRtl)
+  const minutes = estimateReadMinutes(content, isRtl)
+  const minRead = t('min_read')
 
   return (
-    <article className="bg-cream pt-[calc(43px+var(--spacing-md))] pb-[var(--spacing-xl)]">
-      <div className="mx-auto max-w-[900px] px-[var(--spacing-md)]">
-        <div className="mb-6 flex items-center justify-between">
-          <Breadcrumbs
-            crumbs={[
-              { href: '/', label: tNav('home') },
-              { href: '/articles', label: tNav('articles') },
-              { href: `/articles/${article.slug}`, label: title },
-            ]}
-          />
-          <Link
-            href="/articles"
-            className="font-label inline-flex items-center gap-1 text-[12px] text-ink-muted transition-colors hover:text-ink"
-          >
-            <Back className="h-3 w-3" aria-hidden />
-            {tCommon('back')}
-          </Link>
-        </div>
-
-        <header className="mt-4 space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="font-label rounded-full border border-dashed border-amber bg-amber/10 px-3 py-1 text-[11px] text-amber">
-              {article.category}
-            </span>
-            <time
-              dateTime={dateLabel}
-              className="font-label text-[12px] text-ink-muted"
+    <article
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className="bg-[var(--color-bg)]"
+    >
+      <ArticleJsonLd article={article} locale={locale} />
+      {/* Hero header */}
+      <header className="border-b border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)_clamp(40px,5vw,72px)]">
+        <div className="mx-auto max-w-[860px]">
+          <div className="flex items-center justify-between mb-8">
+            <Breadcrumbs
+              crumbs={[
+                { href: '/', label: tNav('home') },
+                { href: '/articles', label: tNav('articles') },
+                { href: `/articles/${article.slug}`, label: title },
+              ]}
+            />
+            <Link
+              href="/articles"
+              className={`inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--color-fg3)] hover:text-[var(--color-fg1)] transition-colors ${
+                isRtl ? 'font-arabic-body !text-[13px]' : 'font-display'
+              }`}
             >
-              {dateLabel}
-            </time>
+              <Back className="h-3 w-3" aria-hidden />
+              {tCommon('back')}
+            </Link>
           </div>
+
+          <span
+            aria-hidden
+            className={`inline-block mb-6 text-[11px] font-semibold tracking-[0.18em] text-[var(--color-fg3)] [font-feature-settings:"tnum"] ${
+              isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !font-bold' : 'font-display'
+            }`}
+          >
+            {t('folio')}
+          </span>
+
+          <div
+            className={`flex items-center flex-wrap gap-3.5 mb-6 text-[11px] font-bold uppercase tracking-[0.14em] ${
+              isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+            }`}
+          >
+            {article.category && (
+              <span className="text-[var(--color-accent)]">
+                {tArticles(`categories.${article.category}`)}
+              </span>
+            )}
+            <span aria-hidden className="inline-block w-[3px] h-[3px] rounded-full bg-[var(--color-fg3)]" />
+            <time dateTime={(article.publishedAt ?? article.createdAt).toISOString()} className="text-[var(--color-fg3)]">
+              {date}
+            </time>
+            <span aria-hidden className="inline-block w-[3px] h-[3px] rounded-full bg-[var(--color-fg3)]" />
+            <span className="text-[var(--color-fg3)]">{minutes} {minRead}</span>
+          </div>
+
           <h1
-            className="uppercase text-ink font-display font-semibold text-[clamp(32px,6vw,60px)] leading-[1.1] tracking-[-1.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
+            className={`m-0 text-[clamp(36px,5.5vw,64px)] leading-[1.05] font-extrabold tracking-[-0.02em] text-[var(--color-fg1)] [text-wrap:balance] ${
+              isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.035em]'
+            }`}
           >
             {title}
           </h1>
-          <p
-            className="text-ink-muted font-serif italic text-[20px] leading-[1.6] [dir=rtl]:font-arabic [dir=rtl]:not-italic"
-          >
-            {excerpt}
-          </p>
-        </header>
 
-        {article.coverImage && (
-          <div className="dotted-outline relative my-10 aspect-[16/9] overflow-hidden bg-cream-warm">
-            <Image
-              src={article.coverImage}
-              alt=""
-              fill
-              sizes="(min-width: 768px) 900px, 100vw"
-              className="object-cover"
-              priority
-            />
-          </div>
-        )}
+          <span
+            aria-hidden
+            className="block w-12 h-[3px] bg-[var(--color-accent)] my-7"
+          />
 
-        <div
-          className="text-ink font-serif text-[18px] leading-[1.8] [dir=rtl]:font-arabic"
-        >
-          {content.split('\n').map((p, i) => (
-            <p key={i} className="mb-5">
-              {p}
+          {excerpt && (
+            <p
+              className={`m-0 text-[clamp(17px,1.7vw,21px)] leading-[1.6] text-[var(--color-fg2)] [text-wrap:pretty] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              {excerpt}
             </p>
-          ))}
+          )}
         </div>
+      </header>
 
-        <div className="mt-10 flex items-center justify-between border-t border-dashed border-ink/30 pt-6">
-          <div className="flex items-center gap-3">
-            <span className="relative block h-10 w-10 overflow-hidden rounded-full border border-dashed border-ink bg-cream-soft">
-              <Image
-                src="/dr khaled photo.jpeg"
-                alt=""
-                fill
-                sizes="40px"
-                className="object-cover grayscale"
-              />
-            </span>
-            <div className="flex flex-col">
-              <span className="font-label text-[11px] text-ink-muted">{t('author')}</span>
-              <span
-                className="text-ink font-display font-semibold tracking-[0.02em] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
+      {article.coverImage && (
+        <div className="relative aspect-[16/9] w-full max-w-[1200px] mx-auto overflow-hidden bg-[var(--color-bg-deep)] [margin-block:clamp(40px,5vw,72px)]">
+          <Image
+            src={article.coverImage}
+            alt={title}
+            fill
+            sizes="(min-width: 1200px) 1200px, 100vw"
+            className="object-cover"
+            priority
+          />
+        </div>
+      )}
+
+      {/* Body */}
+      <section className="[padding:clamp(40px,5vw,72px)_clamp(20px,5vw,56px)]">
+        <div className="mx-auto max-w-[680px]">
+          <div
+            className={`text-[var(--color-fg1)] text-[18px] leading-[1.85] ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
+          >
+            {content.split('\n').map((p, i) => (
+              <p
+                key={i}
+                className={`mb-6 ${i === 0 ? 'dropcap' : ''}`}
               >
-                {tNav('brand')}
-              </span>
-            </div>
+                {p}
+              </p>
+            ))}
           </div>
-          <ShareButtons url={`${SITE_URL}/${locale === 'ar' ? '' : 'en/'}articles/${article.slug}`} title={title} />
-        </div>
-      </div>
 
-      <section className="mx-auto mt-[var(--spacing-xl)] max-w-[1200px] px-[var(--spacing-md)]">
-        <h2
-          className="mb-8 uppercase text-ink font-display font-semibold text-[clamp(24px,4vw,36px)] tracking-[-0.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
-        >
-          {t('related')}
-        </h2>
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {related.map((r) => (
-            <li key={r.id} className="group">
-              <Link href={`/articles/${r.slug}`} className="block">
-                {r.coverImage && (
-                  <div className="relative aspect-[4/3] overflow-hidden border border-dashed border-ink bg-cream-soft">
-                    <Image
-                      src={r.coverImage}
-                      alt=""
-                      fill
-                      sizes="(min-width: 768px) 400px, 100vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
-                  </div>
-                )}
-                <div className="mt-3 space-y-1">
-                  <span className="font-label text-[11px] text-amber">
-                    {(r.publishedAt ?? r.createdAt).toISOString().slice(0, 10)}
-                  </span>
-                  <p
-                    className="uppercase text-ink font-display font-semibold text-[18px] leading-[1.25] tracking-[-0.5px] [dir=rtl]:font-arabic [dir=rtl]:font-bold [dir=rtl]:tracking-normal"
-                  >
-                    {locale === 'ar' ? r.titleAr : r.titleEn}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+          <div className="mt-12 flex items-center justify-between border-t border-[var(--color-border)] pt-8">
+            <div className="flex items-center gap-3">
+              <span className="relative block h-11 w-11 overflow-hidden rounded-full bg-[var(--color-bg-deep)]">
+                <Image
+                  src="/dr khaled photo.jpeg"
+                  alt=""
+                  fill
+                  sizes="44px"
+                  className="object-cover"
+                />
+              </span>
+              <div className="flex flex-col">
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-fg3)] ${
+                    isRtl ? 'font-arabic-body !text-[12px] !tracking-normal !normal-case !font-bold' : 'font-display'
+                  }`}
+                >
+                  {t('author')}
+                </span>
+                <span
+                  className={`text-[14px] font-bold text-[var(--color-fg1)] ${
+                    isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.012em]'
+                  }`}
+                >
+                  {tNav('brand')}
+                </span>
+              </div>
+            </div>
+            <ShareButtons url={`${SITE_URL}/${locale === 'ar' ? '' : 'en/'}articles/${article.slug}`} title={title} />
+          </div>
+        </div>
       </section>
+
+      {/* Related */}
+      {related.length > 0 && (
+        <section
+          className="border-t border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)]"
+        >
+          <div className="mx-auto max-w-[var(--container-max)]">
+            <header className="grid items-end gap-2 pb-10 md:pb-12">
+              <span className="section-eyebrow">{t('continue_reading')}</span>
+              <h2 className="section-title">{t('related')}</h2>
+            </header>
+
+            <ul className="m-0 p-0 list-none grid grid-cols-1 gap-[clamp(28px,4vw,40px)] md:grid-cols-3">
+              {related.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/articles/${r.slug}`}
+                    className="group flex flex-col gap-3.5 transition-transform duration-[240ms] ease-[var(--ease-out)] hover:-translate-y-1"
+                  >
+                    {r.coverImage && (
+                      <div className="relative aspect-[4/3] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
+                        <Image
+                          src={r.coverImage}
+                          alt=""
+                          fill
+                          sizes="(min-width: 768px) 400px, 100vw"
+                          className="object-cover transition-transform duration-[400ms] group-hover:scale-[1.03]"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-2 px-0.5">
+                      {r.category && (
+                        <span
+                          className={`text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)] ${
+                            isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !normal-case !font-bold' : 'font-display'
+                          }`}
+                        >
+                          {tArticles(`categories.${r.category}`)}
+                        </span>
+                      )}
+                      <h3
+                        className={`m-0 text-[18px] leading-[1.3] font-bold text-[var(--color-fg1)] group-hover:text-[var(--color-accent)] transition-colors ${
+                          isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.012em]'
+                        }`}
+                      >
+                        {locale === 'ar' ? r.titleAr : r.titleEn}
+                      </h3>
+                      <span
+                        className={`text-[12px] font-medium text-[var(--color-fg3)] [font-feature-settings:"tnum"] ${
+                          isRtl ? 'font-arabic-body' : 'font-display'
+                        }`}
+                      >
+                        {formatDate(r.publishedAt ?? r.createdAt, isRtl)}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </article>
   )
 }

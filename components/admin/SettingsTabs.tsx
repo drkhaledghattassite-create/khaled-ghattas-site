@@ -44,14 +44,56 @@ export function SettingsTabs({ settings }: Props) {
   const [taxRate, setTaxRate] = useState('0')
   const [maintenance, setMaintenance] = useState(false)
 
-  function save() {
-    console.log('[admin] would persist settings')
-    toast.success(tActions('success_saved'))
+  async function save() {
+    const payload: Record<string, string> = {
+      site_title_ar: siteTitleAr,
+      site_title_en: siteTitleEn,
+      site_description_ar: siteDescriptionAr,
+      site_description_en: siteDescriptionEn,
+      twitter_url: twitter,
+      facebook_url: facebook,
+      youtube_url: youtube,
+      instagram_url: instagram,
+      linkedin_url: linkedin,
+      default_meta_image: defaultMetaImage,
+      google_analytics_id: gaId,
+      robots_index: String(robotsIndex),
+      from_name: fromName,
+      from_email: fromEmail,
+      reply_to_email: replyTo,
+      currency,
+      tax_rate: taxRate,
+      maintenance_mode: String(maintenance),
+    }
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_saved'))
+    } catch (err) {
+      console.error('[SettingsTabs/save]', err)
+      toast.error(tActions('error_generic'))
+    }
   }
 
-  function clearCache() {
-    console.log('[admin] would clear cache')
-    toast.success(tActions('cache_cleared'))
+  async function clearCache() {
+    try {
+      const res = await fetch('/api/admin/revalidate', { method: 'POST' })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('cache_cleared'))
+    } catch (err) {
+      console.error('[SettingsTabs/clearCache]', err)
+      toast.error(tActions('error_generic'))
+    }
   }
 
   const SaveBar = (
@@ -59,8 +101,7 @@ export function SettingsTabs({ settings }: Props) {
       <button
         type="button"
         onClick={save}
-        className="font-label rounded-full border border-dashed border-ink bg-ink px-5 py-2 text-[12px] text-cream-soft hover:bg-transparent hover:text-ink"
-        style={{ letterSpacing: '0.08em' }}
+        className="font-label rounded-full border border-dashed border-fg1 bg-fg1 px-5 py-2 text-[12px] text-bg hover:bg-transparent hover:text-fg1"
       >
         {tForms('save')}
       </button>
@@ -136,7 +177,7 @@ export function SettingsTabs({ settings }: Props) {
         <Field label="Google Analytics ID">
           <Input value={gaId} onChange={(e) => setGaId(e.target.value)} placeholder="G-…" />
         </Field>
-        <div className="flex items-center gap-3 rounded border border-dashed border-ink/30 px-4 py-3">
+        <div className="flex items-center gap-3 rounded border border-dashed border-border px-4 py-3">
           <Switch checked={robotsIndex} onCheckedChange={setRobotsIndex} id="robots" />
           <Label htmlFor="robots">{t('robots_indexing')}</Label>
         </div>
@@ -155,8 +196,8 @@ export function SettingsTabs({ settings }: Props) {
         <Field label={t('reply_to_email')}>
           <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
         </Field>
-        <div className="rounded border border-dashed border-ink/30 px-4 py-3 text-[12px] text-ink-muted">
-          {t('resend_status')}: <span className="text-ink">{t('resend_ready')}</span>
+        <div className="rounded border border-dashed border-border px-4 py-3 text-[12px] text-fg3">
+          {t('resend_status')}: <span className="text-fg1">{t('resend_ready')}</span>
         </div>
         {SaveBar}
       </TabsContent>
@@ -187,15 +228,14 @@ export function SettingsTabs({ settings }: Props) {
       </TabsContent>
 
       <TabsContent value="maintenance" className="space-y-4">
-        <div className="flex items-center gap-3 rounded border border-dashed border-ink/30 px-4 py-3">
+        <div className="flex items-center gap-3 rounded border border-dashed border-border px-4 py-3">
           <Switch checked={maintenance} onCheckedChange={setMaintenance} id="maintenance" />
           <Label htmlFor="maintenance">{t('maintenance_mode')}</Label>
         </div>
         <button
           type="button"
           onClick={clearCache}
-          className="font-label inline-flex rounded-full border border-dashed border-amber/60 px-4 py-2 text-[12px] text-amber hover:bg-amber hover:text-cream-soft"
-          style={{ letterSpacing: '0.08em' }}
+          className="font-label inline-flex rounded-full border border-dashed border-accent/60 px-4 py-2 text-[12px] text-accent hover:bg-accent hover:text-accent-fg"
         >
           {t('clear_cache')}
         </button>
@@ -207,7 +247,7 @@ export function SettingsTabs({ settings }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="font-label text-[11px] text-ink-muted">{label}</Label>
+      <Label className="font-label text-[11px] text-fg3">{label}</Label>
       {children}
     </div>
   )

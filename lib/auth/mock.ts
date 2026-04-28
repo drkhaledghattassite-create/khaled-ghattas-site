@@ -39,10 +39,13 @@ export const mockUsers: MockUser[] = [
 ]
 
 /**
- * Toggle to simulate signed-out state during dev (test the public auth pills).
- * Flip to `false` to render Sign In / Sign Up; leave `true` for the avatar dropdown.
+ * Mock-auth toggle. Defaults to ON for local development; flip the
+ * `MOCK_AUTH` env var to anything other than "true" (or unset it) to
+ * use the real Better Auth wiring instead.
  */
-export const MOCK_AUTH_ENABLED = true
+export const MOCK_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_MOCK_AUTH !== 'false' &&
+  process.env.MOCK_AUTH !== 'false'
 
 /** ID of the user that getMockSession will return. Toggle for testing. */
 export const MOCK_ACTIVE_USER_ID = '1'

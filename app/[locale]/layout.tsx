@@ -7,8 +7,9 @@ import { IBM_Plex_Sans_Arabic, Readex_Pro, Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
 import { RouteLoader } from '@/components/layout/RouteLoader'
+import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData'
 import { routing } from '@/lib/i18n/routing'
-import { SITE_NAME } from '@/lib/constants'
+import { SITE_NAME, SITE_URL } from '@/lib/constants'
 import '../globals.css'
 
 const arabic = IBM_Plex_Sans_Arabic({
@@ -33,10 +34,70 @@ const display = Inter({
 })
 
 
-export const metadata: Metadata = {
-  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
-  description:
-    'الموقع الرسمي للدكتور خالد غطاس — عالم بيولوجيا الخلايا وخبير في السلوك البشري، كاتب ومحاضر، مؤسس مبادرة الورشة.',
+type LocaleParams = { params: Promise<{ locale: string }> }
+
+const SITE_NAME_AR = 'د. خالد غطاس'
+
+export async function generateMetadata({ params }: LocaleParams): Promise<Metadata> {
+  const { locale } = await params
+  const isAr = locale === 'ar'
+
+  const title = isAr ? SITE_NAME_AR : SITE_NAME
+  const description = isAr
+    ? 'الموقع الرسمي للدكتور خالد غطاس — عالم بيولوجيا الخلايا وخبير في السلوك البشري، كاتب ومحاضر، مؤسس مبادرة الورشة.'
+    : 'The official site of Dr. Khaled Ghattass — cell biologist, expert in human behavior, author, speaker, founder of Al-Warsheh.'
+
+  const canonical = isAr ? SITE_URL : `${SITE_URL}/en`
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: isAr ? `%s — ${SITE_NAME_AR}` : `%s — ${SITE_NAME}`,
+    },
+    description,
+    applicationName: SITE_NAME,
+    authors: [{ name: SITE_NAME, url: SITE_URL }],
+    creator: SITE_NAME,
+    publisher: SITE_NAME,
+    alternates: {
+      canonical,
+      languages: {
+        ar: SITE_URL,
+        en: `${SITE_URL}/en`,
+        'x-default': SITE_URL,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: SITE_NAME,
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: SITE_NAME }],
+      locale: isAr ? 'ar_LB' : 'en_US',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/opengraph-image'],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+    icons: {
+      icon: '/icon',
+      apple: '/apple-icon',
+    },
+  }
 }
 
 export const viewport: Viewport = {
@@ -81,6 +142,8 @@ export default async function LocaleLayout({ children, params }: Props) {
         <a href="#main-content" className="skip-link">
           {t('skip_to_content')}
         </a>
+        <WebsiteJsonLd locale={locale} />
+        <OrganizationJsonLd locale={locale} />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
           <RouteLoader />

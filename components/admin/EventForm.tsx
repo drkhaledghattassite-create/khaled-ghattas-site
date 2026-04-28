@@ -63,17 +63,52 @@ export function EventForm({ initialValues, mode, eventId }: Props) {
 
   async function onSubmit(values: EventInput) {
     setSubmitting(true)
-    console.log(`[admin] would ${mode} event`, values)
-    await new Promise((r) => setTimeout(r, 300))
-    setSubmitting(false)
-    toast.success(tActions('success_saved'))
-    router.push('/admin/events')
+    try {
+      const url =
+        mode === 'create'
+          ? '/api/admin/events'
+          : `/api/admin/events/${eventId}`
+      const method = mode === 'create' ? 'POST' : 'PATCH'
+      const body = {
+        ...values,
+        startDate: values.startDate.toISOString(),
+        endDate: values.endDate ? values.endDate.toISOString() : null,
+      }
+      const res = await fetch(url, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_saved'))
+      router.push('/admin/events')
+    } catch (err) {
+      console.error('[EventForm]', err)
+      toast.error(tActions('error_generic'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function onDelete() {
-    console.log(`[admin] would delete event ${eventId}`)
-    toast.success(tActions('success_deleted'))
-    router.push('/admin/events')
+    if (!eventId) return
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_deleted'))
+      router.push('/admin/events')
+    } catch (err) {
+      console.error('[EventForm/delete]', err)
+      toast.error(tActions('error_generic'))
+    }
   }
 
   return (
@@ -138,7 +173,7 @@ export function EventForm({ initialValues, mode, eventId }: Props) {
           )} />
         </div>
 
-        <aside className="space-y-5 self-start rounded-md border border-dashed border-ink/30 bg-cream-soft p-5">
+        <aside className="space-y-5 self-start rounded-md border border-border bg-bg-elevated p-5">
           <FormField control={form.control} name="status" render={({ field }) => (
             <FormItem>
               <FormLabel>{t('status')}</FormLabel>
@@ -159,15 +194,15 @@ export function EventForm({ initialValues, mode, eventId }: Props) {
             </FormItem>
           )} />
           <div className="flex flex-col gap-2 pt-2">
-            <button type="submit" disabled={submitting} className="font-label rounded-full border border-dashed border-ink bg-ink px-4 py-2 text-[12px] text-cream-soft hover:bg-transparent hover:text-ink disabled:opacity-60" style={{ letterSpacing: '0.08em' }}>
+            <button type="submit" disabled={submitting} className="rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60">
               {submitting ? tForms('saving') : tForms('save')}
             </button>
-            <button type="button" onClick={() => router.push('/admin/events')} className="font-label rounded-full border border-dashed border-ink/40 px-4 py-2 text-[12px] text-ink hover:bg-cream-warm/40" style={{ letterSpacing: '0.08em' }}>
+            <button type="button" onClick={() => router.push('/admin/events')} className="rounded-full border border-border px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-fg1 font-display font-semibold hover:bg-bg-deep transition-colors">
               {tForms('cancel')}
             </button>
             {mode === 'edit' && (
               <AlertDialog>
-                <AlertDialogTrigger className="font-label inline-flex items-center justify-center gap-1.5 rounded-full border border-dashed border-amber/60 px-4 py-2 text-[12px] text-amber hover:bg-amber hover:text-cream-soft" style={{ letterSpacing: '0.08em' }}>
+                <AlertDialogTrigger className="inline-flex items-center justify-center gap-1.5 rounded-full border border-accent/60 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-accent font-display font-semibold transition-colors hover:bg-accent hover:text-accent-fg">
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   {tForms('delete')}
                 </AlertDialogTrigger>

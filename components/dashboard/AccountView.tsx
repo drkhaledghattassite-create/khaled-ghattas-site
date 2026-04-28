@@ -4,11 +4,18 @@ import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
-import type { MockUser } from '@/lib/auth/mock'
+import type { ServerSessionUser } from '@/lib/auth/server'
+import { authClient } from '@/lib/auth/client'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-export function AccountView({ user }: { user: MockUser }) {
+export function AccountView({
+  user,
+  initialBio,
+}: {
+  user: ServerSessionUser
+  initialBio?: string | null
+}) {
   const t = useTranslations('dashboard.account')
   const locale = useLocale()
   const isRtl = locale === 'ar'
@@ -16,18 +23,44 @@ export function AccountView({ user }: { user: MockUser }) {
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
   const [bio, setBio] = useState(
-    isRtl
-      ? 'قارئ شغوف بالفلسفة والأدب والعلوم السلوكية.'
-      : 'A reader passionate about philosophy, literature, and behavioral science.',
+    initialBio ??
+      (isRtl
+        ? 'قارئ شغوف بالفلسفة والأدب والعلوم السلوكية.'
+        : 'A reader passionate about philosophy, literature, and behavioral science.'),
   )
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 600))
-    setSaving(false)
-    toast.success(t('saved'))
+    try {
+      // Update name/email via Better Auth (no-op in mock mode).
+      if (name !== user.name || email !== user.email) {
+        try {
+          await authClient.updateUser({ name })
+        } catch (err) {
+          console.warn('[AccountView] updateUser:', err)
+        }
+      }
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, email, bio }),
+      })
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error(isRtl ? 'يلزم تسجيل الدخول.' : 'Sign in required.')
+          return
+        }
+        throw new Error(`HTTP ${res.status}`)
+      }
+      toast.success(t('saved'))
+    } catch (err) {
+      console.error('[AccountView]', err)
+      toast.error(isRtl ? 'تعذر الحفظ.' : 'Could not save changes.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

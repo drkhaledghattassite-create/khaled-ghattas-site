@@ -3,7 +3,10 @@
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { Link, useRouter } from '@/lib/i18n/navigation'
+import { authClient } from '@/lib/auth/client'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -21,10 +24,35 @@ export function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    // Mock auth — Phase 4B will wire Better Auth.
-    await new Promise((r) => setTimeout(r, 600))
-    setLoading(false)
-    router.push('/dashboard')
+    try {
+      const { error } = await authClient.signIn.email({
+        email,
+        password,
+        rememberMe: remember,
+        callbackURL: '/dashboard',
+      })
+      if (error) {
+        toast.error(error.message ?? 'Sign-in failed.')
+        return
+      }
+      router.push('/dashboard')
+    } catch (err) {
+      console.error('[LoginForm]', err)
+      toast.error('Sign-in failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleGoogle() {
+    setLoading(true)
+    try {
+      await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' })
+    } catch (err) {
+      console.error('[LoginForm/google]', err)
+      toast.error('Google sign-in failed.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -79,7 +107,7 @@ export function LoginForm() {
           isRtl={isRtl}
           required
           autoComplete="current-password"
-          trailingLink={{ label: t('forgot'), href: '/login' }}
+          trailingLink={{ label: t('forgot'), href: '/forgot-password' }}
         />
 
         <label
@@ -99,8 +127,9 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="btn-pill btn-pill-primary w-full mt-2 !py-3.5 !px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-pill btn-pill-primary w-full mt-2 !py-3.5 !px-6 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
           {loading ? t('submitting') : t('submit')}
         </button>
       </form>
@@ -121,11 +150,13 @@ export function LoginForm() {
       {/* OAuth — full-width secondary */}
       <button
         type="button"
-        className={`btn-pill btn-pill-secondary w-full inline-flex items-center justify-center gap-3 !py-3 ${
+        onClick={handleGoogle}
+        disabled={loading}
+        className={`btn-pill btn-pill-secondary w-full inline-flex items-center justify-center gap-3 !py-3 disabled:opacity-60 disabled:cursor-not-allowed ${
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       >
-        <GoogleGlyph />
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <GoogleGlyph />}
         {t('google')}
       </button>
 

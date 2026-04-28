@@ -32,6 +32,11 @@ import {
   type GalleryItem,
   type Interview,
   type MessageStatus,
+  type NewArticle,
+  type NewBook,
+  type NewEvent,
+  type NewGalleryItem,
+  type NewInterview,
   type Order,
   type SiteSetting,
   type Subscriber,
@@ -58,6 +63,12 @@ const HAS_DB =
 const noDb = (op: string) => {
   console.warn(`[queries] ${op}: no DATABASE_URL — skipped (placeholder mode)`)
 }
+
+// Mock session IDs ('1', '2', '3') aren't valid UUIDs. Guard before issuing
+// SQL against uuid columns so a real DB doesn't error on cast.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const isUuid = (s: string) => UUID_RE.test(s)
 
 const byOrder = <T extends { orderIndex: number }>(a: T, b: T) =>
   a.orderIndex - b.orderIndex
@@ -145,6 +156,7 @@ export async function searchArticles(query: string): Promise<Article[]> {
 }
 
 export async function incrementArticleViews(id: string): Promise<void> {
+  if (!isUuid(id)) return
   if (!HAS_DB) {
     noDb(`incrementArticleViews(${id})`)
     return
@@ -184,6 +196,15 @@ export async function getBookBySlug(slug: string): Promise<Book | null> {
     return row ?? null
   }
   return placeholderBooks.find((b) => b.slug === slug) ?? null
+}
+
+export async function getBookById(id: string): Promise<Book | null> {
+  if (HAS_DB) {
+    if (!isUuid(id)) return null
+    const [row] = await db.select().from(books).where(eq(books.id, id)).limit(1)
+    return row ?? null
+  }
+  return placeholderBooks.find((b) => b.id === id) ?? null
 }
 
 export async function getRelatedBooks(slug: string, count = 3): Promise<Book[]> {
@@ -234,6 +255,20 @@ export async function getInterviewBySlug(slug: string): Promise<Interview | null
     return row ?? null
   }
   return placeholderInterviews.find((i) => i.slug === slug) ?? null
+}
+
+export async function getRelatedInterviews(slug: string, count = 3): Promise<Interview[]> {
+  if (HAS_DB) {
+    return db
+      .select()
+      .from(interviews)
+      .where(and(ne(interviews.slug, slug), eq(interviews.status, 'PUBLISHED')))
+      .orderBy(desc(interviews.year), interviews.orderIndex)
+      .limit(count)
+  }
+  return placeholderInterviews
+    .filter((i) => i.slug !== slug && i.status === 'PUBLISHED')
+    .slice(0, count)
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -334,10 +369,18 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 
 export async function getUserById(id: string): Promise<User | null> {
   if (HAS_DB) {
+    if (!isUuid(id)) return null
     const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1)
     return row ?? null
   }
   return placeholderUsers.find((u) => u.id === id) ?? null
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  if (HAS_DB) {
+    return db.select().from(users).orderBy(desc(users.createdAt))
+  }
+  return placeholderUsers
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
@@ -349,6 +392,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 export async function updateUserRole(id: string, role: UserRole): Promise<void> {
+  if (!isUuid(id)) return
   if (!HAS_DB) {
     noDb(`updateUserRole(${id}, ${role})`)
     return
@@ -362,6 +406,7 @@ export async function updateUserRole(id: string, role: UserRole): Promise<void> 
 
 export async function getOrderById(id: string): Promise<Order | null> {
   if (HAS_DB) {
+    if (!isUuid(id)) return null
     const [row] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
     return row ?? null
   }
@@ -370,6 +415,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
 
 export async function getOrdersByUserId(userId: string): Promise<Order[]> {
   if (HAS_DB) {
+    if (!isUuid(userId)) return []
     return db
       .select()
       .from(orders)
@@ -507,6 +553,7 @@ export async function getContactMessages(
 }
 
 export async function markMessageRead(id: string): Promise<void> {
+  if (!isUuid(id)) return
   if (!HAS_DB) {
     noDb(`markMessageRead(${id})`)
     return
@@ -533,6 +580,13 @@ export async function getSetting(key: string): Promise<SiteSetting | null> {
   return placeholderSettings.find((s) => s.key === key) ?? null
 }
 
+export async function getAllSettings(): Promise<SiteSetting[]> {
+  if (HAS_DB) {
+    return db.select().from(siteSettings).orderBy(siteSettings.key)
+  }
+  return placeholderSettings
+}
+
 export async function setSetting(key: string, value: string): Promise<void> {
   if (!HAS_DB) {
     noDb(`setSetting(${key})`)
@@ -542,6 +596,19 @@ export async function setSetting(key: string, value: string): Promise<void> {
     .insert(siteSettings)
     .values({ key, value })
     .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } })
+}
+
+export async function setSettingsBulk(entries: Record<string, string>): Promise<void> {
+  if (!HAS_DB) {
+    noDb(`setSettingsBulk(${Object.keys(entries).length} keys)`)
+    return
+  }
+  for (const [key, value] of Object.entries(entries)) {
+    await db
+      .insert(siteSettings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } })
+  }
 }
 
 export async function getContentBlock(key: string): Promise<ContentBlock | null> {
@@ -556,10 +623,18 @@ export async function getContentBlock(key: string): Promise<ContentBlock | null>
   return placeholderContentBlocks.find((b) => b.key === key) ?? null
 }
 
+export async function getAllContentBlocks(): Promise<ContentBlock[]> {
+  if (HAS_DB) {
+    return db.select().from(contentBlocks).orderBy(contentBlocks.key)
+  }
+  return placeholderContentBlocks
+}
+
 export async function setContentBlock(
   key: string,
   valueAr: string,
   valueEn: string,
+  description?: string | null,
 ): Promise<void> {
   if (!HAS_DB) {
     noDb(`setContentBlock(${key})`)
@@ -567,11 +642,248 @@ export async function setContentBlock(
   }
   await db
     .insert(contentBlocks)
-    .values({ key, valueAr, valueEn })
+    .values({ key, valueAr, valueEn, description: description ?? null })
     .onConflictDoUpdate({
       target: contentBlocks.key,
-      set: { valueAr, valueEn, updatedAt: new Date() },
+      set: {
+        valueAr,
+        valueEn,
+        description: description ?? null,
+        updatedAt: new Date(),
+      },
     })
+}
+
+export async function deleteContentBlock(key: string): Promise<boolean> {
+  if (!HAS_DB) {
+    noDb(`deleteContentBlock(${key})`)
+    return false
+  }
+  const result = await db.delete(contentBlocks).where(eq(contentBlocks.key, key))
+  return (result.rowCount ?? 0) > 0
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Mutations — admin CRUD
+ *
+ * Each create/update/delete is a no-op when DATABASE_URL is unset, returning
+ * `null` (and logging once via noDb). Real Drizzle paths run when connected.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function createArticle(data: NewArticle): Promise<Article | null> {
+  if (!HAS_DB) {
+    noDb(`createArticle(${data.slug})`)
+    return null
+  }
+  const [row] = await db.insert(articles).values(data).returning()
+  return row ?? null
+}
+
+export async function updateArticle(
+  id: string,
+  data: Partial<NewArticle>,
+): Promise<Article | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateArticle(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(articles)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(articles.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteArticle(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteArticle(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(articles)
+    .where(eq(articles.id, id))
+    .returning({ id: articles.id })
+  return rows.length > 0
+}
+
+export async function createBook(data: NewBook): Promise<Book | null> {
+  if (!HAS_DB) {
+    noDb(`createBook(${data.slug})`)
+    return null
+  }
+  const [row] = await db.insert(books).values(data).returning()
+  return row ?? null
+}
+
+export async function updateBook(
+  id: string,
+  data: Partial<NewBook>,
+): Promise<Book | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateBook(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(books)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(books.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteBook(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteBook(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(books)
+    .where(eq(books.id, id))
+    .returning({ id: books.id })
+  return rows.length > 0
+}
+
+export async function createInterview(
+  data: NewInterview,
+): Promise<Interview | null> {
+  if (!HAS_DB) {
+    noDb(`createInterview(${data.slug})`)
+    return null
+  }
+  const [row] = await db.insert(interviews).values(data).returning()
+  return row ?? null
+}
+
+export async function updateInterview(
+  id: string,
+  data: Partial<NewInterview>,
+): Promise<Interview | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateInterview(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(interviews)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(interviews.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteInterview(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteInterview(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(interviews)
+    .where(eq(interviews.id, id))
+    .returning({ id: interviews.id })
+  return rows.length > 0
+}
+
+export async function createEvent(data: NewEvent): Promise<Event | null> {
+  if (!HAS_DB) {
+    noDb(`createEvent(${data.slug})`)
+    return null
+  }
+  const [row] = await db.insert(events).values(data).returning()
+  return row ?? null
+}
+
+export async function updateEvent(
+  id: string,
+  data: Partial<NewEvent>,
+): Promise<Event | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateEvent(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(events)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(events.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteEvent(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteEvent(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(events)
+    .where(eq(events.id, id))
+    .returning({ id: events.id })
+  return rows.length > 0
+}
+
+export async function createGalleryItem(
+  data: NewGalleryItem,
+): Promise<GalleryItem | null> {
+  if (!HAS_DB) {
+    noDb(`createGalleryItem(${data.image})`)
+    return null
+  }
+  const [row] = await db.insert(gallery).values(data).returning()
+  return row ?? null
+}
+
+export async function updateGalleryItem(
+  id: string,
+  data: Partial<NewGalleryItem>,
+): Promise<GalleryItem | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateGalleryItem(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(gallery)
+    .set(data)
+    .where(eq(gallery.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteGalleryItem(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteGalleryItem(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(gallery)
+    .where(eq(gallery.id, id))
+    .returning({ id: gallery.id })
+  return rows.length > 0
+}
+
+export async function updateOrderStatus(
+  id: string,
+  status: 'PENDING' | 'PAID' | 'FULFILLED' | 'REFUNDED' | 'FAILED',
+): Promise<Order | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateOrderStatus(${id}, ${status})`)
+    return null
+  }
+  const [row] = await db
+    .update(orders)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(orders.id, id))
+    .returning()
+  return row ?? null
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -601,3 +913,6 @@ export type {
 
 /** Whether the unified queries layer is talking to a real database. */
 export const isDbConnected = HAS_DB
+
+/** True iff the string parses as a Postgres uuid. Mock session IDs are not. */
+export const isValidUuid = isUuid

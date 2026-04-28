@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link, usePathname } from '@/lib/i18n/navigation'
-import type { MockUser } from '@/lib/auth/mock'
+import type { ServerSessionUser } from '@/lib/auth/server'
 
 const TABS = [
   { key: 'account', href: '/dashboard' },
@@ -22,7 +22,7 @@ export function DashboardLayout({
 }: {
   children: ReactNode
   activeTab: 'account' | 'library' | 'settings'
-  user: MockUser
+  user: ServerSessionUser
 }) {
   const t = useTranslations('dashboard.tabs')
   const locale = useLocale()

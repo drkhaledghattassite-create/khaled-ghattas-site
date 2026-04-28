@@ -56,18 +56,27 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
               aria-hidden
               className="absolute inset-0 [background:linear-gradient(180deg,rgba(0,0,0,0)_30%,rgba(0,0,0,0.55))] pointer-events-none"
             />
-            <a
-              href={featured.videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute inset-0 z-10"
-              aria-label={title}
-            />
+            {featured.videoUrl ? (
+              <a
+                href={featured.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute inset-0 z-10"
+                aria-label={title}
+              />
+            ) : (
+              <Link
+                href={`/interviews/${featured.slug}`}
+                className="absolute inset-0 z-10"
+                aria-label={title}
+              />
+            )}
             <button
               type="button"
               aria-label={t('watch')}
-              className="absolute z-20 top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 transition-transform duration-200 hover:scale-105"
-              onClick={() => window.open(featured.videoUrl, '_blank', 'noopener,noreferrer')}
+              disabled={!featured.videoUrl}
+              className="absolute z-20 top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 transition-transform duration-200 hover:scale-105 disabled:opacity-70"
+              onClick={() => featured.videoUrl && window.open(featured.videoUrl, '_blank', 'noopener,noreferrer')}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
@@ -125,15 +134,25 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
               </p>
             )}
             <div className="flex flex-wrap items-center gap-4">
-              <a
-                href={featured.videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`link-underline self-start ${isRtl ? 'font-arabic-body' : 'font-display'}`}
-              >
-                {t('watch')}
-                <span aria-hidden>{isRtl ? '←' : '→'}</span>
-              </a>
+              {featured.videoUrl ? (
+                <a
+                  href={featured.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`link-underline self-start ${isRtl ? 'font-arabic-body' : 'font-display'}`}
+                >
+                  {t('watch')}
+                  <span aria-hidden>{isRtl ? '←' : '→'}</span>
+                </a>
+              ) : (
+                <Link
+                  href={`/interviews/${featured.slug}`}
+                  className={`link-underline self-start ${isRtl ? 'font-arabic-body' : 'font-display'}`}
+                >
+                  {isRtl ? 'تفاصيل المقابلة' : 'Interview details'}
+                  <span aria-hidden>{isRtl ? '←' : '→'}</span>
+                </Link>
+              )}
               <Link
                 href="/interviews"
                 className="btn-pill btn-pill-secondary text-[13px]"

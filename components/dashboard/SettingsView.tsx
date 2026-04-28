@@ -3,17 +3,95 @@
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
+import { useRouter } from '@/lib/i18n/navigation'
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher'
+import { authClient } from '@/lib/auth/client'
 import { SettingsThemeRadio } from './SettingsThemeRadio'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
-export function SettingsView() {
+export function SettingsView({
+  initialPreferences,
+}: {
+  initialPreferences?: { newsletter?: boolean; purchases?: boolean } | null
+} = {}) {
   const t = useTranslations('dashboard.settings')
   const locale = useLocale()
+  const router = useRouter()
   const isRtl = locale === 'ar'
-  const [newsletter, setNewsletter] = useState(true)
-  const [purchases, setPurchases] = useState(true)
+  const [newsletter, setNewsletter] = useState(initialPreferences?.newsletter ?? true)
+  const [purchases, setPurchases] = useState(initialPreferences?.purchases ?? true)
+  const [saving, setSaving] = useState(false)
+
+  async function persistPreference(patch: {
+    newsletter?: boolean
+    purchases?: boolean
+  }) {
+    try {
+      const res = await fetch('/api/user/preferences', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok && res.status !== 401) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+    } catch (err) {
+      console.error('[Settings] preferences', err)
+    }
+  }
+
+  async function handleSignOutEverywhere() {
+    setSaving(true)
+    try {
+      const candidate = authClient as unknown as {
+        revokeSessions?: () => Promise<unknown>
+      }
+      if (typeof candidate.revokeSessions === 'function') {
+        await candidate.revokeSessions()
+      } else {
+        await authClient.signOut()
+      }
+      toast.success(isRtl ? 'تم تسجيل الخروج من كل الأجهزة.' : 'Signed out everywhere.')
+      router.push('/login')
+    } catch (err) {
+      console.error('[Settings] signOutEverywhere', err)
+      toast.error(isRtl ? 'تعذر تسجيل الخروج.' : 'Could not sign out.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (
+      !confirm(
+        isRtl
+          ? 'هل أنت متأكد؟ سيتم حذف حسابك ومكتبتك نهائيًا.'
+          : 'Are you sure? Your account and library will be permanently deleted.',
+      )
+    )
+      return
+
+    setSaving(true)
+    try {
+      const candidate = authClient as unknown as {
+        deleteUser?: () => Promise<unknown>
+      }
+      if (typeof candidate.deleteUser === 'function') {
+        await candidate.deleteUser()
+      } else {
+        await fetch('/api/user/profile', { method: 'DELETE' })
+      }
+      toast.success(isRtl ? 'تم حذف الحساب.' : 'Account deleted.')
+      router.push('/')
+    } catch (err) {
+      console.error('[Settings] deleteAccount', err)
+      toast.error(isRtl ? 'تعذر حذف الحساب.' : 'Could not delete account.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-[clamp(40px,5vw,72px)]">
@@ -77,14 +155,20 @@ export function SettingsView() {
             label={t('notifications.newsletter_label')}
             description={t('notifications.newsletter_desc')}
             checked={newsletter}
-            onChange={setNewsletter}
+            onChange={(v) => {
+              setNewsletter(v)
+              void persistPreference({ newsletter: v })
+            }}
             isRtl={isRtl}
           />
           <ToggleRow
             label={t('notifications.purchases_label')}
             description={t('notifications.purchases_desc')}
             checked={purchases}
-            onChange={setPurchases}
+            onChange={(v) => {
+              setPurchases(v)
+              void persistPreference({ purchases: v })
+            }}
             isRtl={isRtl}
           />
         </div>
@@ -94,7 +178,9 @@ export function SettingsView() {
       <div className="pt-6 mt-2 border-t border-[var(--color-border)]">
         <button
           type="button"
-          className={`inline-flex items-center gap-2 px-[18px] py-2.5 rounded-full border border-[var(--color-border-strong)] bg-transparent text-[14px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors ${
+          onClick={handleSignOutEverywhere}
+          disabled={saving}
+          className={`inline-flex items-center gap-2 px-[18px] py-2.5 rounded-full border border-[var(--color-border-strong)] bg-transparent text-[14px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
             isRtl ? 'font-arabic-body !font-bold' : 'font-display'
           }`}
         >
@@ -116,7 +202,9 @@ export function SettingsView() {
       >
         <button
           type="button"
-          className={`btn-pill border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-[var(--color-accent-fg)] ${
+          onClick={handleDeleteAccount}
+          disabled={saving}
+          className={`btn-pill border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-[var(--color-accent-fg)] disabled:opacity-60 disabled:cursor-not-allowed ${
             isRtl ? 'font-arabic-body' : 'font-display'
           }`}
           style={{ borderWidth: 1, background: 'transparent' }}

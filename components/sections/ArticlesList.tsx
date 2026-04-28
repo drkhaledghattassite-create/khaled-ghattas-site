@@ -61,8 +61,8 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
   const featuredMinutes = estimateReadMinutes(featured, locale)
   const featuredCover = featured.coverImage ?? FALLBACK
 
-  const featuredKicker = isRtl ? 'الأحدث' : 'Most recent'
-  const minRead = isRtl ? 'دقائق قراءة' : 'min read'
+  const featuredKicker = tSection('kicker_recent')
+  const minRead = tSection('min_read')
   const readArticleLabel = tArticles('read_article')
 
   return (
@@ -105,7 +105,7 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
               isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !font-bold' : 'font-display'
             }`}
           >
-            {isRtl ? 'العدد ٠١' : 'Nº 01'}
+            {tSection('folio')}
           </span>
 
           {/* Image with caption */}

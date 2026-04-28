@@ -3,13 +3,19 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { BooksGrid } from '@/components/sections/BooksGrid'
 import { getBooks } from '@/lib/db/queries'
+import { pageMetadata } from '@/lib/seo/page-metadata'
 
 type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'books.meta' })
-  return { title: t('title'), description: t('description') }
+  return pageMetadata({
+    locale,
+    path: '/books',
+    title: t('title'),
+    description: t('description'),
+  })
 }
 
 export default async function BooksPage({ params }: Props) {
@@ -25,7 +31,6 @@ export default async function BooksPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/dr khaled photo.jpeg', alt: '' }}
       />
       <BooksGrid books={books} />
     </>

@@ -32,11 +32,25 @@ export function UsersPanel({ users }: { users: User[] }) {
     setDraftRole(u.role)
   }
 
-  function save() {
+  async function save() {
     if (!editing) return
-    console.log(`[admin] would update user ${editing.id} role to ${draftRole}`)
-    toast.success(tActions('success_saved'))
-    setEditing(null)
+    try {
+      const res = await fetch(`/api/admin/users/${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ role: draftRole }),
+      })
+      if (!res.ok) {
+        toast.error(tActions('error_generic'))
+        return
+      }
+      toast.success(tActions('success_saved'))
+    } catch (err) {
+      console.error('[UsersPanel/save]', err)
+      toast.error(tActions('error_generic'))
+    } finally {
+      setEditing(null)
+    }
   }
 
   const columns: ColumnDef<User>[] = [
@@ -44,7 +58,7 @@ export function UsersPanel({ users }: { users: User[] }) {
       id: 'avatar',
       header: '',
       enableSorting: false,
-      cell: () => <span aria-hidden className="block h-8 w-8 rounded-full bg-ink/80" />,
+      cell: () => <span aria-hidden className="block h-8 w-8 rounded-full bg-fg1/80" />,
     },
     {
       accessorKey: 'name',
@@ -71,7 +85,7 @@ export function UsersPanel({ users }: { users: User[] }) {
           type="button"
           onClick={() => openEdit(row.original)}
           aria-label={t('edit_role')}
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-ink-muted hover:bg-cream-warm/60 hover:text-ink"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -82,7 +96,7 @@ export function UsersPanel({ users }: { users: User[] }) {
   return (
     <>
       <div className="space-y-5">
-        <p className="text-[13px] text-ink-muted">{t('description')}</p>
+        <p className="text-[13px] text-fg3">{t('description')}</p>
         <DataTable columns={columns} data={users} />
       </div>
 
@@ -98,7 +112,7 @@ export function UsersPanel({ users }: { users: User[] }) {
             {ROLES.map((r) => (
               <label
                 key={r}
-                className="flex cursor-pointer items-center gap-2 rounded border border-dashed border-ink/30 px-3 py-2 text-[13px] hover:border-ink"
+                className="flex cursor-pointer items-center gap-2 rounded border border-border px-3 py-2 text-[13px] hover:border-fg1"
               >
                 <input
                   type="radio"

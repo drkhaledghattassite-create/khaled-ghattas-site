@@ -1,36 +1,39 @@
 import { cn } from '@/lib/utils'
 
+const NEUTRAL = 'bg-bg-deep text-fg2'
+const ACCENT = 'bg-accent-soft text-accent'
+const POSITIVE = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+
 const TONES: Record<string, string> = {
-  DRAFT: 'bg-ink/10 text-ink',
-  PUBLISHED: 'bg-success/15 text-success',
-  ARCHIVED: 'bg-ink/15 text-ink-muted',
-  PENDING: 'bg-amber/15 text-amber',
-  PAID: 'bg-success/15 text-success',
-  FULFILLED: 'bg-success/20 text-success',
-  REFUNDED: 'bg-ink/15 text-ink-muted',
-  FAILED: 'bg-amber/20 text-amber',
-  UNREAD: 'bg-amber/15 text-amber',
-  READ: 'bg-ink/10 text-ink-muted',
-  ACTIVE: 'bg-success/15 text-success',
-  UNSUBSCRIBED: 'bg-ink/10 text-ink-muted',
-  BOUNCED: 'bg-amber/20 text-amber',
-  UPCOMING: 'bg-amber/15 text-amber',
-  PAST: 'bg-ink/10 text-ink-muted',
-  CANCELLED: 'bg-amber/20 text-amber',
-  ADMIN: 'bg-amber/15 text-amber',
-  CLIENT: 'bg-success/15 text-success',
-  USER: 'bg-ink/10 text-ink-muted',
+  DRAFT: NEUTRAL,
+  PUBLISHED: POSITIVE,
+  ARCHIVED: NEUTRAL,
+  PENDING: ACCENT,
+  PAID: POSITIVE,
+  FULFILLED: POSITIVE,
+  REFUNDED: NEUTRAL,
+  FAILED: ACCENT,
+  UNREAD: ACCENT,
+  READ: NEUTRAL,
+  ACTIVE: POSITIVE,
+  UNSUBSCRIBED: NEUTRAL,
+  BOUNCED: ACCENT,
+  UPCOMING: ACCENT,
+  PAST: NEUTRAL,
+  CANCELLED: ACCENT,
+  ADMIN: ACCENT,
+  CLIENT: POSITIVE,
+  USER: NEUTRAL,
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone = TONES[status] ?? 'bg-ink/10 text-ink-muted'
+  const tone = TONES[status] ?? NEUTRAL
   return (
     <span
       className={cn(
-        'font-label inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] font-display font-semibold',
         tone,
       )}
-      style={{ letterSpacing: '0.06em' }}
     >
       {status}
     </span>

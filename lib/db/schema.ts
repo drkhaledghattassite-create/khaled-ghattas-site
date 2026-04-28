@@ -73,6 +73,8 @@ export const users = pgTable(
     emailVerified: boolean('email_verified').notNull().default(false),
     name: text('name'),
     image: text('image'),
+    bio: text('bio'),
+    preferences: text('preferences'),
     role: userRole('role').notNull().default('USER'),
     passwordHash: text('password_hash'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -116,7 +118,12 @@ export const accounts = pgTable('account', {
   accessTokenExpiresAt: timestamp('access_token_expires_at', {
     withTimezone: true,
   }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', {
+    withTimezone: true,
+  }),
   scope: text('scope'),
+  idToken: text('id_token'),
+  password: text('password'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -131,6 +138,9 @@ export const verifications = pgTable('verification', {
   value: text('value').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
 })

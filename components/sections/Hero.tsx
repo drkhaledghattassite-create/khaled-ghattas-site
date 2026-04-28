@@ -19,8 +19,8 @@ export function Hero() {
   const tCta = useTranslations('cta')
   const isRtl = locale === 'ar'
 
-  const name = isRtl ? 'د. خالد غطاس' : 'Dr. Khaled Ghattass'
-  const established = isRtl ? 'بيروت — منذ ٢٠١٠' : 'Beirut — Est. 2010'
+  const name = t('name')
+  const established = t('established')
 
   const stats: StatItem[] = [
     { numLatn: '15', label: t('stats.years'), hasPlus: true },

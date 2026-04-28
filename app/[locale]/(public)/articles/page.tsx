@@ -2,15 +2,20 @@ import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { ArticlesList } from '@/components/sections/ArticlesList'
-import { ArticlesBridgeMarquee } from '@/components/sections/ArticlesBridgeMarquee'
 import { getArticles } from '@/lib/db/queries'
+import { pageMetadata } from '@/lib/seo/page-metadata'
 
 type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'articles.meta' })
-  return { title: t('title'), description: t('description') }
+  return pageMetadata({
+    locale,
+    path: '/articles',
+    title: t('title'),
+    description: t('description'),
+  })
 }
 
 export default async function ArticlesPage({ params }: Props) {
@@ -30,8 +35,6 @@ export default async function ArticlesPage({ params }: Props) {
       />
 
       <ArticlesList articles={articles} showHeader={false} />
-
-      <ArticlesBridgeMarquee />
     </>
   )
 }
