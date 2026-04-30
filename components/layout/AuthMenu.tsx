@@ -10,15 +10,22 @@ type Variant = 'compact' | 'stacked'
 /**
  * Single "Sign in" entry — once on the form, the user can toggle to /register
  * via the existing footer link.
+ *
+ * The `enabled` prop is the runtime gate (settings.features.auth_enabled);
+ * when omitted, falls back to the build-time NEXT_PUBLIC_AUTH_ENABLED env var
+ * for backward compatibility with callers that don't yet pass settings.
  */
 export async function AuthMenu({
   variant = 'compact',
   className,
+  enabled,
 }: {
   variant?: Variant
   className?: string
+  enabled?: boolean
 }) {
-  if (!AUTH_ENABLED) return null
+  const isEnabled = enabled ?? AUTH_ENABLED
+  if (!isEnabled) return null
 
   const session = await getServerSession()
   const t = await getTranslations('nav')

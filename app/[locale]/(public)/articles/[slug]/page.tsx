@@ -11,11 +11,13 @@ import { ReadingProgress } from '@/components/motion/ReadingProgress'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import { PullQuote } from '@/components/motion/PullQuote'
 import { FocusModeToggle } from '@/components/motion/FocusModeToggle'
+import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   getArticleBySlug,
   getArticles,
   getRelatedArticles,
 } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { SITE_URL } from '@/lib/constants'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
@@ -81,6 +83,12 @@ function estimateReadMinutes(content: string, isRtl: boolean): number {
 export default async function ArticlePage({ params }: Props) {
   const { locale, slug } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('articles')) {
+    return <ComingSoon pageKey="articles" />
+  }
+
   const article = await getArticleBySlug(slug)
   if (!article) notFound()
 

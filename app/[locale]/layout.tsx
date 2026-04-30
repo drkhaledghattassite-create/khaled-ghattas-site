@@ -7,6 +7,7 @@ import { IBM_Plex_Sans_Arabic, Readex_Pro, Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
 import { AppLoader } from '@/components/layout/AppLoader'
+import { MaintenanceBanner } from '@/components/layout/MaintenanceBanner'
 import { ViewTransitionsRouter } from '@/components/motion/ViewTransitionsRouter'
 import { ProximityPrefetch } from '@/components/motion/ProximityPrefetch'
 import { CustomCursor } from '@/components/motion/CustomCursor'
@@ -14,6 +15,7 @@ import { SectionBackgroundCrossfade } from '@/components/motion/SectionBackgroun
 import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData'
 import { routing } from '@/lib/i18n/routing'
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import '../globals.css'
 
 const arabic = IBM_Plex_Sans_Arabic({
@@ -127,9 +129,17 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   setRequestLocale(locale)
-  const messages = await getMessages()
-  const t = await getTranslations({ locale, namespace: 'common' })
+  const [messages, t, settings] = await Promise.all([
+    getMessages(),
+    getTranslations({ locale, namespace: 'common' }),
+    getCachedSiteSettings(),
+  ])
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
+
+  const maintenanceMessage =
+    locale === 'ar'
+      ? settings.maintenance.message_ar
+      : settings.maintenance.message_en
 
   return (
     <html
@@ -138,13 +148,22 @@ export default async function LocaleLayout({ children, params }: Props) {
       className={`${arabic.variable} ${arabicDisplay.variable} ${display.variable}`}
       suppressHydrationWarning
     >
-      <body suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className={settings.features.maintenance_mode ? 'has-maintenance' : undefined}
+      >
         <a href="#main-content" className="skip-link">
           {t('skip_to_content')}
         </a>
         <WebsiteJsonLd locale={locale} />
         <OrganizationJsonLd locale={locale} />
         <NextIntlClientProvider locale={locale} messages={messages}>
+          {settings.features.maintenance_mode && (
+            <MaintenanceBanner
+              message={maintenanceMessage}
+              until={settings.maintenance.until}
+            />
+          )}
           <Providers>{children}</Providers>
           <ViewTransitionsRouter />
           <ProximityPrefetch />

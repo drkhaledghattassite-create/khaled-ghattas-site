@@ -13,9 +13,10 @@ const EASE = EASE_EDITORIAL
 
 type StoreShowcaseProps = {
   books: Book[]
+  featuredBookId?: string | null
 }
 
-export function StoreShowcase({ books }: StoreShowcaseProps) {
+export function StoreShowcase({ books, featuredBookId }: StoreShowcaseProps) {
   const t = useTranslations('store_showcase')
   const locale = useLocale()
   const isRtl = locale === 'ar'
@@ -23,8 +24,16 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
   const allBooks = books.filter((b) => b.productType === 'BOOK')
   const sessions = books.filter((b) => b.productType === 'SESSION')
 
-  const heroBook = allBooks[0] ?? books[0]
-  const shelfBooks = allBooks.slice(1, 6).length > 0 ? allBooks.slice(1, 6) : books.slice(1, 6)
+  // Admin can pin a featured book via site settings; otherwise fall back to
+  // the first BOOK-type item, then to any book in the list.
+  const pinnedBook = featuredBookId
+    ? books.find((b) => b.id === featuredBookId) ?? null
+    : null
+  const heroBook = pinnedBook ?? allBooks[0] ?? books[0]
+  const shelfPool = allBooks.length > 0 ? allBooks : books
+  const shelfBooks = heroBook
+    ? shelfPool.filter((b) => b.id !== heroBook.id).slice(0, 5)
+    : shelfPool.slice(0, 5)
 
   if (!heroBook) return null
 

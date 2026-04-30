@@ -17,6 +17,7 @@ import {
   Package,
   Settings,
   ShoppingCart,
+  SlidersHorizontal,
   Users,
   Video,
   type LucideIcon,
@@ -31,6 +32,10 @@ type NavItem = {
   href: string
   key: string
   icon: LucideIcon
+  /** When true, only highlight on exact path match. Use for parent items
+   *  whose sub-routes have their own sidebar entry (e.g. /admin/settings vs.
+   *  /admin/settings/site). */
+  exact?: boolean
 }
 
 type NavGroup = {
@@ -68,7 +73,8 @@ const GROUPS: NavGroup[] = [
   {
     key: 'site',
     items: [
-      { href: '/admin/settings', key: 'settings', icon: Settings },
+      { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
+      { href: '/admin/settings/site', key: 'site_settings', icon: SlidersHorizontal },
       { href: '/admin/content', key: 'content', icon: FileEdit },
       { href: '/admin/media', key: 'media', icon: ImageIcon },
     ],
@@ -110,8 +116,9 @@ export function AdminSidebarContent({
             </p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const active =
-                  item.href === '/admin'
+                const active = item.exact
+                  ? path === item.href
+                  : item.href === '/admin'
                     ? path === '/admin'
                     : path === item.href || path.startsWith(`${item.href}/`)
                 const Icon = item.icon

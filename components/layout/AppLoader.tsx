@@ -10,8 +10,11 @@ const SESSION_KEY = 'kg_intro_seen'
 const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1]
 const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
 
-const FIRST_DURATION_MS = 2000
+const FIRST_DURATION_MS = 1500
 const NAV_DURATION_MS = 700
+/** Minimum time the nav loader stays on screen so it never flashes.
+ *  Tuned for the logo to be clearly readable, not just a glimpse. */
+const NAV_MIN_DISPLAY_MS = 480
 
 type Mode = 'first' | 'nav' | null
 
@@ -34,6 +37,9 @@ export function AppLoader() {
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firstDoneRef = useRef(false)
+  /** Timestamp (performance.now()) of the most recent nav-trigger.
+   *  0 means: loader is not currently armed by an explicit click. */
+  const navStartRef = useRef<number>(0)
 
   // Mount: detect first-load vs already-seen, then settle
   useEffect(() => {
@@ -69,7 +75,60 @@ export function AppLoader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Subsequent path changes → brief nav overlay
+  // Proactive trigger — fire the loader immediately on any internal anchor
+  // click, BEFORE the new route's RSC payload begins fetching. This is what
+  // makes the click feel instant. Mirrors the same skip-rules as
+  // ViewTransitionsRouter (modifier keys, target=_blank, hash, mailto, etc.).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const onClick = (e: MouseEvent) => {
+      if (!firstDoneRef.current) return
+      if (e.button !== 0) return
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      // NOTE: deliberately NOT checking e.defaultPrevented — ViewTransitionsRouter
+      // calls preventDefault on every internal link in its capture-phase handler,
+      // which would otherwise suppress this loader entirely.
+
+      const target = e.target as Element | null
+      const link = target?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!link) return
+      if (link.target && link.target !== '' && link.target !== '_self') return
+      if (link.hasAttribute('download')) return
+      if (link.dataset.loader === 'off') return
+
+      const href = link.getAttribute('href')
+      if (!href) return
+      if (href.startsWith('#')) return
+      if (href.startsWith('mailto:') || href.startsWith('tel:')) return
+
+      try {
+        const url = new URL(href, window.location.href)
+        if (url.origin !== window.location.origin) return
+        const dest = url.pathname + url.search + url.hash
+        const current =
+          window.location.pathname + window.location.search + window.location.hash
+        if (dest === current) return
+      } catch {
+        return
+      }
+
+      if (navTimerRef.current) clearTimeout(navTimerRef.current)
+      navStartRef.current = performance.now()
+      setMode('nav')
+    }
+
+    // Capture phase so we run alongside ViewTransitionsRouter (which also uses
+    // capture). stopPropagation between document-level listeners only blocks
+    // other nodes — our handler still fires.
+    document.addEventListener('click', onClick, { capture: true })
+    return () => document.removeEventListener('click', onClick, { capture: true })
+  }, [])
+
+  // Pathname change → schedule HIDE (with min-display window so the loader
+  // never flashes when prefetched/cached routes arrive instantly). Also
+  // covers browser back/forward and programmatic router.push, where the
+  // click handler above never fires — in that case we show + hide here.
   useEffect(() => {
     if (!firstDoneRef.current) return
     if (prevPath.current === null) {
@@ -80,9 +139,21 @@ export function AppLoader() {
     prevPath.current = pathname
 
     if (navTimerRef.current) clearTimeout(navTimerRef.current)
-    setMode('nav')
-    const dur = reduceMotion ? 200 : NAV_DURATION_MS
-    navTimerRef.current = setTimeout(() => setMode(null), dur)
+
+    // Back/forward case: no click happened, mode is null. Arm now.
+    if (navStartRef.current === 0) {
+      navStartRef.current = performance.now()
+      setMode('nav')
+    }
+
+    const elapsed = performance.now() - navStartRef.current
+    const minDisplay = reduceMotion ? 160 : NAV_MIN_DISPLAY_MS
+    const remaining = Math.max(minDisplay - elapsed, 50)
+
+    navTimerRef.current = setTimeout(() => {
+      setMode(null)
+      navStartRef.current = 0
+    }, remaining)
   }, [pathname, reduceMotion])
 
   // Imperative trigger — for actions that don't change pathname (e.g. external
@@ -124,8 +195,8 @@ function FirstLoadSplash({
   label: string
   reduceMotion: boolean
 }) {
-  const wipeDuration = reduceMotion ? 0.2 : 1.0
-  const wipeDelay = reduceMotion ? 0 : 0.95
+  const wipeDuration = reduceMotion ? 0.2 : 0.7
+  const wipeDelay = reduceMotion ? 0 : 0.4
 
   return (
     <motion.div
@@ -142,7 +213,7 @@ function FirstLoadSplash({
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: [0, 1, 1, 0], scale: [0.96, 1, 1, 0.98] }}
-          transition={{ duration: 2.0, times: [0, 0.18, 0.78, 1], ease: 'easeOut' }}
+          transition={{ duration: 1.5, times: [0, 0.2, 0.78, 1], ease: 'easeOut' }}
           className="invert"
         >
           <Logo height={64} alt="" priority />
@@ -199,7 +270,7 @@ function NavOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: enter, ease: EASE_OUT_EXPO }}
-      className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--color-bg)]/[0.32] backdrop-blur-xl backdrop-saturate-[1.15] supports-[backdrop-filter]:bg-[var(--color-bg)]/[0.22]"
+      className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--color-bg)]/[0.78] backdrop-blur-xl backdrop-saturate-[1.15] supports-[backdrop-filter]:bg-[var(--color-bg)]/[0.62]"
     >
       <span className="sr-only">{label}</span>
       <motion.div

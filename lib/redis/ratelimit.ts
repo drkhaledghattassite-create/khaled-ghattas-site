@@ -1,8 +1,13 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
+const RAW_URL = process.env.UPSTASH_REDIS_REST_URL ?? ''
+const RAW_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? ''
 const HAS_UPSTASH =
-  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
+  !!RAW_URL &&
+  !!RAW_TOKEN &&
+  !RAW_URL.includes('dummy') &&
+  !RAW_TOKEN.includes('dummy')
 
 let limiter: Ratelimit | null = null
 
@@ -41,16 +46,30 @@ export async function tryRateLimit(key: string): Promise<RateLimitResult> {
       reset: 0,
     }
   }
-  const { success, limit, remaining, reset } = await rl.limit(key)
-  return {
-    ok: success,
-    headers: {
-      'X-RateLimit-Limit': String(limit),
-      'X-RateLimit-Remaining': String(remaining),
-      'X-RateLimit-Reset': String(reset),
-    },
-    remaining,
-    limit,
-    reset,
+  try {
+    const { success, limit, remaining, reset } = await rl.limit(key)
+    return {
+      ok: success,
+      headers: {
+        'X-RateLimit-Limit': String(limit),
+        'X-RateLimit-Remaining': String(remaining),
+        'X-RateLimit-Reset': String(reset),
+      },
+      remaining,
+      limit,
+      reset,
+    }
+  } catch (err) {
+    // Fail open when the Redis backend is unreachable (network error, bad URL,
+    // misconfigured credentials). Better to allow a request through than to
+    // 500 the caller when our rate-limit infrastructure itself is broken.
+    console.error('[tryRateLimit]', err)
+    return {
+      ok: true,
+      headers: { 'X-RateLimit-Bypass': 'redis-error' },
+      remaining: 10,
+      limit: 10,
+      reset: 0,
+    }
   }
 }

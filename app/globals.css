@@ -343,6 +343,18 @@
     color: #FAFAFA;
   }
 
+  /* Maintenance banner is fixed top-0; push content + sticky header down. */
+  body.has-maintenance {
+    --site-header-top: 40px;
+    padding-top: 40px;
+  }
+  @media (min-width: 768px) {
+    body.has-maintenance {
+      --site-header-top: 48px;
+      padding-top: 48px;
+    }
+  }
+
   /* Premium selection color */
   ::selection {
     background: var(--color-accent);

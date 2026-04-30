@@ -733,18 +733,18 @@ export const placeholderEvents: Event[] = [
 /* ────────────────────────────────────────────────────────────────────── */
 
 export const placeholderSettings: SiteSetting[] = [
-  { id: 's-1', key: 'site_title_ar',       value: 'د. خالد غطاس',                                                                  updatedAt: NOW },
-  { id: 's-2', key: 'site_title_en',       value: 'Dr. Khaled Ghattass',                                                            updatedAt: NOW },
-  { id: 's-3', key: 'site_description_ar', value: 'عالم بيولوجيا وخبير في السلوك البشري — كاتب ومحاضر، مؤسس مبادرة الورشة.',          updatedAt: NOW },
-  { id: 's-4', key: 'site_description_en', value: 'Cell biologist and expert in human behavior — author, speaker, and founder of Al-Warsheh.', updatedAt: NOW },
-  { id: 's-5', key: 'twitter_url',         value: 'https://twitter.com/drkhaledghattas',                                            updatedAt: NOW },
-  { id: 's-6', key: 'facebook_url',        value: 'https://facebook.com/drkhaledghattas',                                           updatedAt: NOW },
-  { id: 's-7', key: 'youtube_url',         value: 'https://youtube.com/@drkhaledghattass',                                          updatedAt: NOW },
-  { id: 's-8', key: 'instagram_url',       value: 'https://instagram.com/drkhaledghattas',                                          updatedAt: NOW },
-  { id: 's-9', key: 'contact_email',       value: 'Team@drkhaledghattass.com',                                                      updatedAt: NOW },
-  { id: 's-10', key: 'contact_phone',      value: '009613579666',                                                                    updatedAt: NOW },
-  { id: 's-11', key: 'contact_address_ar', value: 'مكتبة خالد غطاس — برجا، لبنان',                                                  updatedAt: NOW },
-  { id: 's-12', key: 'contact_address_en', value: 'Khaled Ghattass Library — Burja, Lebanon',                                       updatedAt: NOW },
+  { id: 's-1', key: 'site_title_ar',       value: 'د. خالد غطاس',                                                                  valueJson: null, updatedAt: NOW },
+  { id: 's-2', key: 'site_title_en',       value: 'Dr. Khaled Ghattass',                                                            valueJson: null, updatedAt: NOW },
+  { id: 's-3', key: 'site_description_ar', value: 'عالم بيولوجيا وخبير في السلوك البشري — كاتب ومحاضر، مؤسس مبادرة الورشة.',          valueJson: null, updatedAt: NOW },
+  { id: 's-4', key: 'site_description_en', value: 'Cell biologist and expert in human behavior — author, speaker, and founder of Al-Warsheh.', valueJson: null, updatedAt: NOW },
+  { id: 's-5', key: 'twitter_url',         value: 'https://twitter.com/drkhaledghattas',                                            valueJson: null, updatedAt: NOW },
+  { id: 's-6', key: 'facebook_url',        value: 'https://facebook.com/drkhaledghattas',                                           valueJson: null, updatedAt: NOW },
+  { id: 's-7', key: 'youtube_url',         value: 'https://youtube.com/@drkhaledghattass',                                          valueJson: null, updatedAt: NOW },
+  { id: 's-8', key: 'instagram_url',       value: 'https://instagram.com/drkhaledghattas',                                          valueJson: null, updatedAt: NOW },
+  { id: 's-9', key: 'contact_email',       value: 'Team@drkhaledghattass.com',                                                      valueJson: null, updatedAt: NOW },
+  { id: 's-10', key: 'contact_phone',      value: '009613579666',                                                                   valueJson: null, updatedAt: NOW },
+  { id: 's-11', key: 'contact_address_ar', value: 'مكتبة خالد غطاس — برجا، لبنان',                                                  valueJson: null, updatedAt: NOW },
+  { id: 's-12', key: 'contact_address_en', value: 'Khaled Ghattass Library — Burja, Lebanon',                                       valueJson: null, updatedAt: NOW },
 ]
 
 export const placeholderContentBlocks: ContentBlock[] = [

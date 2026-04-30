@@ -5,6 +5,8 @@ import { InnerHero } from '@/components/shared/InnerHero'
 import { PersonJsonLd } from '@/components/seo/StructuredData'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
+import { ComingSoon } from '@/components/shared/ComingSoon'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -22,6 +24,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AboutPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('about')) {
+    return <ComingSoon pageKey="about" />
+  }
+
   const t = await getTranslations('about')
   const isRtl = locale === 'ar'
 

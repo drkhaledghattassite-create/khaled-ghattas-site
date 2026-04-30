@@ -37,6 +37,14 @@ export function YouTubeIcon(props: IconProps) {
   )
 }
 
+export function LinkedInIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" {...props}>
+      <path d="M19 0H5C2.24 0 0 2.24 0 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5V5c0-2.76-2.24-5-5-5ZM7.27 20.1H3.65V9.24h3.62V20.1ZM5.47 7.76h-.03c-1.22 0-2.01-.83-2.01-1.87 0-1.06.81-1.87 2.05-1.87s2 .81 2.03 1.87c0 1.04-.78 1.87-2.04 1.87Zm14.87 12.34h-3.63v-5.8c0-1.45-.52-2.45-1.83-2.45-1 0-1.6.67-1.86 1.32-.1.23-.12.55-.12.88V20.1H9.28s.05-9.85 0-10.86h3.63v1.54a3.6 3.6 0 0 1 3.27-1.8c2.39 0 4.18 1.56 4.18 4.89v6.23Z" />
+    </svg>
+  )
+}
+
 export function InstagramIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" {...props}>

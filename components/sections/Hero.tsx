@@ -14,7 +14,12 @@ type StatItem = {
   hasPlus: boolean
 }
 
-export function Hero() {
+type HeroProps = {
+  showCtaBooks?: boolean
+  showCtaArticles?: boolean
+}
+
+export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps = {}) {
   const locale = useLocale()
   const t = useTranslations('hero')
   const tCta = useTranslations('cta')
@@ -148,8 +153,8 @@ export function Hero() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_EDITORIAL, delay: 0.34 }}
-          className={`m-0 mb-7 text-[clamp(52px,7.5vw,112px)] leading-[0.9] font-extrabold tracking-[-0.03em] text-[var(--color-fg1)] overflow-hidden ${
-            isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.04em]'
+          className={`m-0 mb-7 text-[clamp(52px,7.5vw,112px)] leading-[0.9] font-extrabold tracking-[-0.03em] text-[var(--color-fg1)] overflow-hidden pb-[0.16em] ${
+            isRtl ? 'font-arabic-display !leading-[1.05]' : 'font-arabic-display !tracking-[-0.04em]'
           }`}
         >
           <motion.span
@@ -222,19 +227,25 @@ export function Hero() {
         </motion.div>
 
         {/* CTAs — primary CTA gets magnetic effect */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 1.08 }}
-          className="flex flex-wrap items-center gap-2.5"
-        >
-          <Link href="/books" className="btn-pill btn-pill-accent">
-            {tCta('books')}
-          </Link>
-          <Link href="/articles" className="btn-pill btn-pill-secondary">
-            {tCta('articles')}
-          </Link>
-        </motion.div>
+        {(showCtaBooks || showCtaArticles) && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 1.08 }}
+            className="flex flex-wrap items-center gap-2.5"
+          >
+            {showCtaBooks && (
+              <Link href="/books" className="btn-pill btn-pill-accent">
+                {tCta('books')}
+              </Link>
+            )}
+            {showCtaArticles && (
+              <Link href="/articles" className="btn-pill btn-pill-secondary">
+                {tCta('articles')}
+              </Link>
+            )}
+          </motion.div>
+        )}
       </div>
     </section>
   )

@@ -6,11 +6,13 @@ import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { InterviewJsonLd } from '@/components/seo/StructuredData'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
+import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   getInterviewBySlug,
   getInterviews,
   getRelatedInterviews,
 } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { SITE_URL } from '@/lib/constants'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
@@ -63,6 +65,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function InterviewPage({ params }: Props) {
   const { locale, slug } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('interviews')) {
+    return <ComingSoon pageKey="interviews" />
+  }
+
   const interview = await getInterviewBySlug(slug)
   if (!interview) notFound()
 

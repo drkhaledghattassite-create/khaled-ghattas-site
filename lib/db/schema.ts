@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -368,6 +369,7 @@ export const siteSettings = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull(),
     value: text('value').notNull().default(sql`''`),
+    valueJson: jsonb('value_json'),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

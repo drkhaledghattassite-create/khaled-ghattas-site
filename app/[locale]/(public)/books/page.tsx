@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { BooksGrid } from '@/components/sections/BooksGrid'
+import { ComingSoon } from '@/components/shared/ComingSoon'
 import { getBooks } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -21,6 +23,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BooksPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('books')) {
+    return <ComingSoon pageKey="books" />
+  }
+
   const t = await getTranslations('books.page')
   const books = await getBooks()
 

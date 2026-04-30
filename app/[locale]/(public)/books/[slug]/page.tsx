@@ -7,11 +7,13 @@ import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { BookJsonLd } from '@/components/seo/StructuredData'
 import { BookBuyButton } from '@/components/sections/BookBuyButton'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
+import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   getBookBySlug,
   getBooks,
   getRelatedBooks,
 } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { SITE_URL } from '@/lib/constants'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
@@ -64,6 +66,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BookPage({ params }: Props) {
   const { locale, slug } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('books')) {
+    return <ComingSoon pageKey="books" />
+  }
+
   const book = await getBookBySlug(slug)
   if (!book) notFound()
 

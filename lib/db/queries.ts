@@ -10,6 +10,7 @@
  */
 
 import { and, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
 import { db } from '.'
 import {
   articles,
@@ -43,6 +44,17 @@ import {
   type User,
   type UserRole,
 } from './schema'
+import {
+  coerceSettings,
+  DEFAULT_SETTINGS,
+  mergeSettings,
+} from '../site-settings/defaults'
+import {
+  SITE_CONFIG_KEY,
+  SITE_SETTINGS_CACHE_TAG,
+  type SiteSettings,
+} from '../site-settings/types'
+import type { SiteSettingsPatch } from '../site-settings/zod'
 import {
   placeholderArticles,
   placeholderBooks,
@@ -609,6 +621,72 @@ export async function setSettingsBulk(entries: Record<string, string>): Promise<
       .values({ key, value })
       .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt: new Date() } })
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Structured site settings (single JSON blob under key 'site_config').
+ *
+ * Read with getSiteSettings(); the cached, request-deduped wrapper lives in
+ * lib/site-settings/get.ts and is what pages should call. updateSiteSettings()
+ * merges a partial update over the current row and revalidates the
+ * 'site-settings' cache tag.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  if (!HAS_DB) return DEFAULT_SETTINGS
+  try {
+    const [row] = await db
+      .select({ valueJson: siteSettings.valueJson })
+      .from(siteSettings)
+      .where(eq(siteSettings.key, SITE_CONFIG_KEY))
+      .limit(1)
+    if (!row || row.valueJson == null) return DEFAULT_SETTINGS
+    return coerceSettings(row.valueJson)
+  } catch (err) {
+    console.error('[getSiteSettings]', err)
+    return DEFAULT_SETTINGS
+  }
+}
+
+export async function updateSiteSettings(
+  patch: SiteSettingsPatch,
+): Promise<SiteSettings> {
+  const current = await getSiteSettings()
+  const next = mergeSettings(current, patch)
+
+  if (!HAS_DB) {
+    noDb('updateSiteSettings')
+    revalidateTag(SITE_SETTINGS_CACHE_TAG)
+    return next
+  }
+
+  await db
+    .insert(siteSettings)
+    .values({ key: SITE_CONFIG_KEY, value: '', valueJson: next })
+    .onConflictDoUpdate({
+      target: siteSettings.key,
+      set: { valueJson: next, updatedAt: new Date() },
+    })
+
+  revalidateTag(SITE_SETTINGS_CACHE_TAG)
+  return next
+}
+
+export async function resetSiteSettings(): Promise<SiteSettings> {
+  if (!HAS_DB) {
+    noDb('resetSiteSettings')
+    revalidateTag(SITE_SETTINGS_CACHE_TAG)
+    return DEFAULT_SETTINGS
+  }
+  await db
+    .insert(siteSettings)
+    .values({ key: SITE_CONFIG_KEY, value: '', valueJson: DEFAULT_SETTINGS })
+    .onConflictDoUpdate({
+      target: siteSettings.key,
+      set: { valueJson: DEFAULT_SETTINGS, updatedAt: new Date() },
+    })
+  revalidateTag(SITE_SETTINGS_CACHE_TAG)
+  return DEFAULT_SETTINGS
 }
 
 export async function getContentBlock(key: string): Promise<ContentBlock | null> {

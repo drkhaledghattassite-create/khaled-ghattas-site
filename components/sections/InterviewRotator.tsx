@@ -11,13 +11,25 @@ import { Tilt3D } from '@/components/motion/Tilt3D'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
-export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
+type InterviewRotatorProps = {
+  interviews: Interview[]
+  featuredInterviewId?: string | null
+}
+
+export function InterviewRotator({
+  interviews,
+  featuredInterviewId,
+}: InterviewRotatorProps) {
   const locale = useLocale()
   const t = useTranslations('interviews_section')
   const isRtl = locale === 'ar'
   const reduceMotion = useReducedMotion()
 
-  const featured = interviews[0]
+  // Pinned interview — falls through to the first one when no match.
+  const pinned = featuredInterviewId
+    ? interviews.find((i) => i.id === featuredInterviewId)
+    : null
+  const featured = pinned ?? interviews[0]
   if (!featured) return null
 
   const title = isRtl ? featured.titleAr : featured.titleEn

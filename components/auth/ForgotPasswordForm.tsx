@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { Link } from '@/lib/i18n/navigation'
 import { authClient } from '@/lib/auth/client'
+import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -13,6 +15,8 @@ export function ForgotPasswordForm() {
   const t = useTranslations('auth.forgot')
   const locale = useLocale()
   const isRtl = locale === 'ar'
+  const searchParams = useSearchParams()
+  const redirectTarget = safeRedirect(searchParams.get('redirect'))
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -23,7 +27,7 @@ export function ForgotPasswordForm() {
     try {
       const { error } = await authClient.requestPasswordReset({
         email,
-        redirectTo: '/reset-password',
+        redirectTo: withRedirect('/reset-password', redirectTarget),
       })
       if (error) {
         toast.error(error.message ?? 'Could not send reset link.')
@@ -44,7 +48,10 @@ export function ForgotPasswordForm() {
         <span className="section-eyebrow !text-accent">{t('eyebrow')}</span>
         <h1 className="section-title">{t('success_title')}</h1>
         <p className="text-base text-fg2 leading-relaxed">{t('success_text')}</p>
-        <Link href="/login" className="link-underline mt-2 self-start">
+        <Link
+          href={withRedirect('/login', redirectTarget)}
+          className="link-underline mt-2 self-start"
+        >
           {t('back_to_login')}
         </Link>
       </div>
@@ -108,7 +115,10 @@ export function ForgotPasswordForm() {
       <p className={`mt-8 text-center text-[14px] text-fg2 ${
         isRtl ? 'font-arabic-body' : 'font-display'
       }`}>
-        <Link href="/login" className="link-underline !text-fg1 hover:!text-accent">
+        <Link
+          href={withRedirect('/login', redirectTarget)}
+          className="link-underline !text-fg1 hover:!text-accent"
+        >
           {t('back_to_login')}
         </Link>
       </p>

@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { getStripe } from '@/lib/stripe'
 import { getBookById } from '@/lib/db/queries'
 import { getServerSession } from '@/lib/auth/server'
-import { apiError, errInternal, errNotFound, parseJsonBody } from '@/lib/api/errors'
+import { apiError, errInternal, errNotFound, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
 import { assertSameOrigin } from '@/lib/api/origin'
 import { SITE_URL } from '@/lib/constants'
 
@@ -15,6 +15,11 @@ const checkoutSchema = z.object({
 export async function POST(req: Request) {
   const originErr = assertSameOrigin(req)
   if (originErr) return originErr
+
+  // Require an authenticated session before doing any work — orders need to
+  // be linked to a user account so they show up in the buyer's dashboard.
+  const session = await getServerSession()
+  if (!session) return errUnauthorized('Sign in to complete your purchase.')
 
   const body = await parseJsonBody(req, checkoutSchema)
   if (!body.ok) return body.response
@@ -27,8 +32,7 @@ export async function POST(req: Request) {
   const book = await getBookById(body.data.bookId)
   if (!book) return errNotFound('Book not found.')
 
-  const session = await getServerSession()
-  const customerEmail = session?.user.email
+  const customerEmail = session.user.email
 
   // Build absolute return URLs from request origin so the flow works in dev too.
   const reqHeaders = await headers()
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
       metadata: {
         bookId: book.id,
         bookSlug: book.slug,
-        userId: session?.user.id ?? '',
+        userId: session.user.id,
       },
     })
 

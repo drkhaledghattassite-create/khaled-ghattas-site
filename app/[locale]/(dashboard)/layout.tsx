@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { setRequestLocale } from 'next-intl/server'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
-import { BottomNav } from '@/components/layout/BottomNav'
 import { AuthMenu } from '@/components/layout/AuthMenu'
 
 type Props = {
@@ -15,12 +14,14 @@ export default async function DashboardSectionLayout({ children, params }: Props
   setRequestLocale(locale)
   return (
     <>
-      <SiteHeader authSlot={<AuthMenu variant="compact" />} />
-      <main id="main-content" className="bg-[var(--color-bg)] pb-[60px] md:pb-0">
+      <SiteHeader
+        authSlot={<AuthMenu variant="compact" />}
+        mobileAuthSlot={<AuthMenu variant="stacked" />}
+      />
+      <main id="main-content" className="bg-[var(--color-bg)]">
         {children}
       </main>
       <SiteFooter />
-      <BottomNav mobileAuthSlot={<AuthMenu variant="stacked" />} />
     </>
   )
 }

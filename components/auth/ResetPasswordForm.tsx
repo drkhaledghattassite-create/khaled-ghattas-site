@@ -7,6 +7,7 @@ import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import { authClient } from '@/lib/auth/client'
+import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -17,6 +18,7 @@ export function ResetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const redirectTarget = safeRedirect(searchParams.get('redirect'))
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -44,7 +46,7 @@ export function ResetPasswordForm() {
         return
       }
       toast.success(t('success'))
-      router.push('/login')
+      router.push(withRedirect('/login', redirectTarget))
     } catch (err) {
       console.error('[ResetPassword]', err)
       toast.error('Could not reset password.')
@@ -58,7 +60,10 @@ export function ResetPasswordForm() {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col gap-4">
         <span className="section-eyebrow !text-accent">{t('eyebrow')}</span>
         <h1 className="section-title">{t('missing_token')}</h1>
-        <Link href="/forgot-password" className="link-underline mt-2 self-start">
+        <Link
+          href={withRedirect('/forgot-password', redirectTarget)}
+          className="link-underline mt-2 self-start"
+        >
           {isRtl ? 'طلب رابط جديد' : 'Request a new link'}
         </Link>
       </div>

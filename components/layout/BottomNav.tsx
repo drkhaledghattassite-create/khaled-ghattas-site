@@ -6,19 +6,44 @@ import { usePathname, Link } from '@/lib/i18n/navigation'
 import { motion } from 'motion/react'
 import { MobileMenu } from './MobileMenu'
 import { EASE_EDITORIAL } from '@/lib/motion/variants'
+import type { NavItem } from './SiteHeader'
 
-const QUICK_LINKS = [
-  { key: 'about', href: '/about' },
-  { key: 'articles', href: '/articles' },
+const DEFAULT_QUICK_LINKS: NavItem[] = [
   { key: 'store', href: '/books' },
-] as const
+  { key: 'articles', href: '/articles' },
+  { key: 'events', href: '/events' },
+  { key: 'about', href: '/about' },
+]
 
-export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
+const BOTTOM_NAV_KEYS = new Set(['store', 'articles', 'events', 'about'])
+
+type BottomNavProps = {
+  mobileAuthSlot?: ReactNode
+  /** Pre-filtered nav items from the layout. The bottom bar shows the quick
+   *  subset (about / articles / store) intersected with the user's filter. */
+  navItems?: NavItem[]
+  showLocaleSwitcher?: boolean
+}
+
+export function BottomNav({
+  mobileAuthSlot,
+  navItems,
+  showLocaleSwitcher = true,
+}: BottomNavProps) {
   const locale = useLocale()
   const t = useTranslations('nav')
   const isRtl = locale === 'ar'
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Quick links: keep the bottom-nav order but only the items the layout
+  // marked visible. Falls back to the static default when called without props.
+  const visibleKeys = navItems
+    ? new Set(navItems.map((i) => i.key))
+    : new Set(DEFAULT_QUICK_LINKS.map((i) => i.key))
+  const quickLinks = DEFAULT_QUICK_LINKS.filter(
+    (i) => BOTTOM_NAV_KEYS.has(i.key) && visibleKeys.has(i.key),
+  )
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
@@ -34,7 +59,7 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
       >
         <div className="mx-auto max-w-[var(--container-max)] flex items-center justify-between gap-2 px-5 h-[56px]">
           <ul className="flex items-center gap-5 list-none m-0 p-0">
-            {QUICK_LINKS.map((item) => {
+            {quickLinks.map((item) => {
               const active = isActive(item.href)
               return (
                 <li key={item.key}>
@@ -79,7 +104,13 @@ export function BottomNav({ mobileAuthSlot }: { mobileAuthSlot?: ReactNode }) {
         </div>
       </nav>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} authSlot={mobileAuthSlot} />
+      <MobileMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        authSlot={mobileAuthSlot}
+        navItems={navItems}
+        showLocaleSwitcher={showLocaleSwitcher}
+      />
     </>
   )
 }

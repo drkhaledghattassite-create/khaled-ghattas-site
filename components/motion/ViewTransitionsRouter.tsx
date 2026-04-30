@@ -15,6 +15,10 @@ import { useRouter } from 'next/navigation'
  *  - Capture-phase listener runs BEFORE Next.js Link's onClick. We preventDefault
  *    so the Link's bubbled onClick early-returns, then push via the App-Router
  *    wrapped in startViewTransition.
+ *  - We do NOT stopPropagation: React's synthetic event delegation needs the
+ *    bubble phase to fire user-attached `onClick` handlers (e.g. closing a
+ *    mobile drawer when one of its links is tapped). Next.js Link's internal
+ *    onClick checks `defaultPrevented` and bails, so there's no double-nav.
  *  - We respect modifier keys, target="_blank", non-left-clicks, hash-only links,
  *    mailto/tel, and cross-origin URLs — these all pass through untouched.
  */
@@ -55,7 +59,6 @@ export function ViewTransitionsRouter() {
       if (dest === current) return
 
       e.preventDefault()
-      e.stopPropagation()
 
       const transitionFn = (
         document as Document & {

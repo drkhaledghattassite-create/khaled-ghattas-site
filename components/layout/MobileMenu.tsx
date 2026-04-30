@@ -3,34 +3,47 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Link } from '@/lib/i18n/navigation'
+import { Link, usePathname } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { ThemeToggle } from './ThemeToggle'
 import { staggerContainer, staggerItem, EASE_EDITORIAL } from '@/lib/motion/variants'
+import type { NavItem } from './SiteHeader'
 
-const NAV_ITEMS = [
+const DEFAULT_NAV_ITEMS: NavItem[] = [
   { key: 'home', href: '/' },
   { key: 'about', href: '/about' },
   { key: 'store', href: '/books' },
   { key: 'articles', href: '/articles' },
   { key: 'interviews', href: '/interviews' },
+  { key: 'events', href: '/events' },
   { key: 'contact', href: '/contact' },
-] as const
+]
 
 type Props = {
   open: boolean
   onClose: () => void
   authSlot?: ReactNode
+  navItems?: NavItem[]
+  showLocaleSwitcher?: boolean
 }
 
-export function MobileMenu({ open, onClose, authSlot }: Props) {
+export function MobileMenu({
+  open,
+  onClose,
+  authSlot,
+  navItems = DEFAULT_NAV_ITEMS,
+  showLocaleSwitcher = true,
+}: Props) {
   const t = useTranslations('nav')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const reduceMotion = useReducedMotion()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
+  const pathname = usePathname()
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
 
   useEffect(() => {
     if (!open) return
@@ -94,7 +107,7 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
             <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4">
               <LogoLink href="/" onClick={onClose} alt={t('brand')} height={26} />
               <div className="flex items-center gap-2">
-                <LocaleSwitcher />
+                {showLocaleSwitcher && <LocaleSwitcher />}
                 <ThemeToggle />
                 <button
                   ref={closeButtonRef}
@@ -139,47 +152,58 @@ export function MobileMenu({ open, onClose, authSlot }: Props) {
               animate="visible"
               className="flex flex-col gap-1 px-6 pt-6 list-none m-0 flex-1 overflow-y-auto"
             >
-              {NAV_ITEMS.map((item) => (
-                <motion.li key={item.key} variants={staggerItem}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    className="group relative flex items-center justify-between gap-4 py-4 transition-transform duration-200 hover:translate-x-1 rtl:hover:-translate-x-1"
-                  >
-                    <span
-                      className={`relative inline-block text-[26px] leading-[1.15] font-bold tracking-tight text-[var(--color-fg1)] transition-colors duration-200 group-hover:text-[var(--color-accent)] ${
-                        isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.02em]'
-                      }`}
+              {navItems.map((item) => {
+                const active = isActive(item.href)
+                return (
+                  <motion.li key={item.key} variants={staggerItem}>
+                    <Link
+                      href={item.href}
+                      onClick={onClose}
+                      aria-current={active ? 'page' : undefined}
+                      className="group relative flex items-center justify-between gap-4 py-4 transition-transform duration-200 hover:translate-x-1 rtl:hover:-translate-x-1"
                     >
-                      {t(item.key)}
-                      {/* Underline reveal — origin start */}
                       <span
+                        className={`relative inline-block text-[26px] leading-[1.15] font-bold tracking-tight transition-colors duration-200 ${
+                          active
+                            ? 'text-[var(--color-accent)]'
+                            : 'text-[var(--color-fg1)] group-hover:text-[var(--color-accent)]'
+                        } ${isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.02em]'}`}
+                      >
+                        {t(item.key)}
+                        <span
+                          aria-hidden
+                          className={`pointer-events-none absolute inset-x-0 -bottom-1 block h-[2px] origin-[var(--tw-origin,start)] bg-[var(--color-accent)] transition-transform duration-300 ${
+                            active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                          }`}
+                          style={{ transformOrigin: isRtl ? 'right' : 'left' }}
+                        />
+                      </span>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
                         aria-hidden
-                        className="pointer-events-none absolute inset-x-0 -bottom-1 block h-[2px] origin-[var(--tw-origin,start)] scale-x-0 bg-[var(--color-accent)] transition-transform duration-300 group-hover:scale-x-100"
-                        style={{ transformOrigin: isRtl ? 'right' : 'left' }}
-                      />
-                    </span>
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      aria-hidden
-                      className="flex-shrink-0 text-[var(--color-fg3)] transition-colors duration-200 group-hover:text-[var(--color-accent)]"
-                      style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}
-                    >
-                      <path
-                        d="M4 10h12M10 4l6 6-6 6"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Link>
-                  <span aria-hidden className="block h-px bg-[var(--color-border)]" />
-                </motion.li>
-              ))}
+                        className={`flex-shrink-0 transition-colors duration-200 ${
+                          active
+                            ? 'text-[var(--color-accent)]'
+                            : 'text-[var(--color-fg3)] group-hover:text-[var(--color-accent)]'
+                        }`}
+                        style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}
+                      >
+                        <path
+                          d="M4 10h12M10 4l6 6-6 6"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+                    <span aria-hidden className="block h-px bg-[var(--color-border)]" />
+                  </motion.li>
+                )
+              })}
             </motion.ul>
 
             {/* Auth slot — full-width primary at the bottom */}

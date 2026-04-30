@@ -324,7 +324,41 @@
     "description": "A curated archive of Dr. Khaled Ghattass's thought between science, art, and philosophy — books, lectures, and the Al-Warsheh social initiative.",
     "go_to_next_page": "Go to next page",
     "next_page_label": "About",
-    "copyright": "All rights reserved"
+    "copyright": "All rights reserved",
+    "column_site": "Site",
+    "column_store": "Store",
+    "column_connect": "Connect",
+    "location": "Beirut — Lebanon",
+    "brand_quote": "Words are deeds, and ideas are seeds. What we plant remains.",
+    "brand_quote_attribution": "Dr. Khaled Ghattass"
+  },
+  "coming_soon": {
+    "eyebrow": "Coming Soon",
+    "heading_books": "Bookstore Coming Soon",
+    "heading_articles": "Articles Coming Soon",
+    "heading_interviews": "Interviews Coming Soon",
+    "heading_events": "Events Coming Soon",
+    "heading_about": "About Coming Soon",
+    "heading_contact": "Contact Coming Soon",
+    "body_books": "We're preparing the bookstore with care. Soon you'll find Dr. Khaled's books and recorded lectures available for instant digital delivery.",
+    "body_articles": "The article archive is being curated. A growing collection of essays on philosophy, psychology, and society will be published here shortly.",
+    "body_interviews": "A selection of television, radio, and podcast interviews is being assembled. Watch this space for the full conversation library.",
+    "body_events": "The 2025–2026 tour calendar is being finalized. Upcoming lectures, workshops, and engagements will be listed here soon.",
+    "body_about": "The biography page is being polished. A full account of Dr. Khaled's career, books, and the Al-Warsheh initiative is on its way.",
+    "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via Team@drkhaledghattass.com in the meantime.",
+    "folio_books": "Nº 03",
+    "folio_articles": "Nº 02",
+    "folio_interviews": "Nº 04",
+    "folio_events": "Nº 05",
+    "folio_about": "Nº 01",
+    "folio_contact": "Nº 06",
+    "expected_by": "Expected by {date}",
+    "notify_me": "Notify me on launch"
+  },
+  "maintenance": {
+    "default_message": "Site under maintenance",
+    "until": "Until {date}",
+    "dismiss": "Dismiss"
   },
   "admin": {
     "user": {
@@ -351,6 +385,7 @@
       "messages": "Messages",
       "users": "Users",
       "settings": "Settings",
+      "site_settings": "Site settings",
       "content": "Content blocks",
       "media": "Media library",
       "new": "New",
@@ -588,6 +623,93 @@
       "maintenance_mode": "Maintenance mode",
       "clear_cache": "Clear cache"
     },
+    "site_settings": {
+      "title": "Site settings",
+      "subtitle": "Operational toggles for the public site — homepage sections, navigation, footer, hero CTAs, featured content, runtime features, maintenance banner, and coming-soon pages. Changes take effect immediately on save.",
+      "groups": {
+        "homepage_title": "Homepage sections",
+        "homepage_desc": "Show or hide each section of the homepage. The hero is always visible — the site needs an opening surface.",
+        "navigation_title": "Navigation",
+        "navigation_desc": "Toggle individual nav links across the header, mobile drawer, and bottom bar. Pages added to Coming Soon are hidden automatically.",
+        "footer_title": "Footer sections",
+        "footer_desc": "Toggle blocks of the global footer.",
+        "hero_ctas_title": "Hero call-to-action buttons",
+        "hero_ctas_desc": "Show or hide the buttons under the hero. Hide both for a quieter opener.",
+        "featured_title": "Featured content",
+        "featured_desc": "Pin a specific item to lead each homepage section. Default uses the first published item.",
+        "features_title": "Runtime features",
+        "features_desc": "Top-level switches that affect site behavior, not just visual layout.",
+        "maintenance_title": "Maintenance banner",
+        "maintenance_desc": "Shown when Maintenance mode is on. Leave fields empty to use the default message.",
+        "coming_soon_title": "Coming-soon pages",
+        "coming_soon_desc": "Selected pages show a Coming Soon screen instead of their content and are excluded from the sitemap. The link still appears in navigation — use the Navigation toggles above if you want to hide it."
+      },
+      "homepage": {
+        "show_hero": "Hero (always on)",
+        "show_hero_desc": "The site's opening section. Cannot be hidden.",
+        "show_about_teaser": "About teaser",
+        "show_store_showcase": "Store showcase",
+        "show_articles_list": "Articles list",
+        "show_interview_rotator": "Interview rotator",
+        "show_newsletter": "Newsletter section"
+      },
+      "navigation": {
+        "show_nav_books": "Books / Store",
+        "show_nav_articles": "Articles",
+        "show_nav_interviews": "Interviews",
+        "show_nav_events": "Events",
+        "show_nav_about": "About",
+        "show_nav_contact": "Contact",
+        "show_locale_switcher": "Locale switcher (AR ⇄ EN)",
+        "bottom_nav_note": "The mobile bottom bar mirrors these toggles automatically."
+      },
+      "footer": {
+        "show_footer_social": "Social links",
+        "show_footer_brand": "Brand quote",
+        "show_footer_brand_desc": "Editorial signature line in the footer",
+        "show_footer_quick_links": "Quick links columns",
+        "show_footer_colophon": "Colophon row (copyright, location)"
+      },
+      "hero_ctas": {
+        "show_hero_cta_books": "\"Visit Store\" button",
+        "show_hero_cta_articles": "\"View Articles\" button"
+      },
+      "featured": {
+        "featured_book_id": "Featured book",
+        "featured_article_slug": "Featured article",
+        "featured_interview_id": "Featured interview",
+        "default_option": "Default (first published)",
+        "default_hint": "Empty = use the first published item from the database."
+      },
+      "features": {
+        "auth_enabled": "Auth UI enabled",
+        "auth_enabled_desc": "Show Sign In / Sign Up in the public navigation.",
+        "newsletter_form_enabled": "Newsletter form enabled",
+        "newsletter_form_enabled_desc": "Allow new subscribers to submit the form.",
+        "maintenance_mode": "Maintenance mode",
+        "maintenance_mode_desc": "Show a site-wide banner above all pages."
+      },
+      "maintenance": {
+        "message_ar": "Banner message (Arabic)",
+        "message_en": "Banner message (English)",
+        "placeholder_ar": "الموقع تحت الصيانة",
+        "placeholder_en": "Site under maintenance",
+        "until": "End date",
+        "until_hint": "Optional. Appended to the banner as \"Until <date>\"."
+      },
+      "coming_soon": {
+        "books": "Books / Store",
+        "articles": "Articles",
+        "interviews": "Interviews",
+        "events": "Events",
+        "about": "About",
+        "contact": "Contact"
+      },
+      "unsaved_changes": "Unsaved changes",
+      "reset": "Reset to defaults",
+      "reset_confirm_title": "Reset all site settings?",
+      "reset_confirm_body": "Every toggle and selector will return to its default value. This cannot be undone."
+    },
     "content_blocks": {
       "new_key": "New block key",
       "add_block": "Add block",
@@ -746,6 +868,12 @@
       "submitting": "Creating…",
       "have_account": "Already have an account?",
       "sign_in": "Sign in"
+    },
+    "required": {
+      "title": "Sign in to continue",
+      "description": "You need to be signed in to complete your purchase. Sign in or create a free account — we'll bring you right back to this page.",
+      "sign_in": "Sign in",
+      "cancel": "Cancel"
     }
   },
   "dashboard": {

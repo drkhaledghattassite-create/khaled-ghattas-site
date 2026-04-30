@@ -34,9 +34,14 @@ function estimateReadMinutes(article: Article, locale: string): number {
 type ArticlesListProps = {
   articles: Article[]
   showHeader?: boolean
+  featuredArticleSlug?: string | null
 }
 
-export function ArticlesList({ articles, showHeader = true }: ArticlesListProps) {
+export function ArticlesList({
+  articles,
+  showHeader = true,
+  featuredArticleSlug,
+}: ArticlesListProps) {
   const locale = useLocale()
   const tSection = useTranslations('articles_section')
   const tArticles = useTranslations('articles')
@@ -54,9 +59,13 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
     )
   }
 
-  const featured = articles[0]
+  // Pinned featured article — falls through to first published if missing.
+  const pinned = featuredArticleSlug
+    ? articles.find((a) => a.slug === featuredArticleSlug)
+    : null
+  const featured = pinned ?? articles[0]
   if (!featured) return null
-  const rest = articles.slice(1)
+  const rest = articles.filter((a) => a.id !== featured.id)
 
   const featuredTitle = isRtl ? featured.titleAr : featured.titleEn
   const featuredExcerpt = isRtl ? featured.excerptAr : featured.excerptEn

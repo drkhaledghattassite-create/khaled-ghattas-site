@@ -54,3 +54,11 @@ bilingual content per article, ideally in markdown.
 Books with `productType: 'BOOK'` need `digitalFile` URLs pointing to
 real PDF files (or external store URLs in `externalUrl`). Currently
 none are wired.
+
+## New items to confirm with Dr. Khaled
+
+- [ ] Footer brand quote signature line — currently
+      placeholder: "الكلمة فعلٌ، والفكرة بذرة. ما زرعناه يبقى."
+      Ask Dr. Khaled if he has a preferred personal
+      editorial signature line. Add to messages/ar.json
+      and messages/en.json under footer.brand_quote.

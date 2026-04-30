@@ -96,7 +96,7 @@ export function CustomCursor() {
           scale: ringScale,
         }}
         transition={{ scale: { duration: 0.25, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.18 } }}
-        className="pointer-events-none fixed left-0 top-0 z-[10000] h-9 w-9 rounded-full border-[1.5px] border-[var(--color-fg1)] mix-blend-difference will-change-transform"
+        className="pointer-events-none fixed left-0 top-0 z-[10000] h-9 w-9 rounded-full border-[1.5px] border-white mix-blend-difference will-change-transform"
       />
       {/* Dot (1:1) */}
       <motion.div
@@ -109,7 +109,7 @@ export function CustomCursor() {
           scale: dotScale,
         }}
         transition={{ scale: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }}
-        className="pointer-events-none fixed left-0 top-0 z-[10000] h-1.5 w-1.5 rounded-full bg-[var(--color-fg1)] mix-blend-difference will-change-transform"
+        className="pointer-events-none fixed left-0 top-0 z-[10000] h-1.5 w-1.5 rounded-full bg-white mix-blend-difference will-change-transform"
       />
     </>
   )

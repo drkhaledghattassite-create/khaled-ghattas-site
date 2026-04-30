@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import { authClient } from '@/lib/auth/client'
+import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -14,13 +16,22 @@ export function SignupForm() {
   const t = useTranslations('auth.signup')
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const isRtl = locale === 'ar'
+  const redirectTarget = safeRedirect(searchParams.get('redirect'))
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  function showNavLoader(duration = 3000) {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(
+      new CustomEvent('kg:loader:show', { detail: { duration } }),
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -31,13 +42,14 @@ export function SignupForm() {
         email,
         password,
         name,
-        callbackURL: '/dashboard',
+        callbackURL: redirectTarget,
       })
       if (error) {
         toast.error(error.message ?? 'Sign-up failed.')
         return
       }
-      router.push('/dashboard')
+      showNavLoader()
+      router.push(redirectTarget)
     } catch (err) {
       console.error('[SignupForm]', err)
       toast.error('Sign-up failed.')
@@ -48,8 +60,9 @@ export function SignupForm() {
 
   async function handleGoogle() {
     setLoading(true)
+    showNavLoader(8000)
     try {
-      await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' })
+      await authClient.signIn.social({ provider: 'google', callbackURL: redirectTarget })
     } catch (err) {
       console.error('[SignupForm/google]', err)
       toast.error('Google sign-up failed.')
@@ -66,28 +79,28 @@ export function SignupForm() {
       className="flex flex-col"
     >
       <span
-        className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)] ${
+        className={`mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)] ${
           isRtl ? 'font-arabic-body !text-[14px] !tracking-normal !normal-case !font-bold' : 'font-display'
         }`}
       >
         {t('eyebrow')}
       </span>
       <h1
-        className={`m-0 text-[clamp(28px,3.6vw,40px)] leading-[1.1] font-bold tracking-[-0.02em] text-[var(--color-fg1)] ${
+        className={`m-0 text-[clamp(24px,3vw,32px)] leading-[1.1] font-bold tracking-[-0.02em] text-[var(--color-fg1)] ${
           isRtl ? 'font-arabic-display' : 'font-arabic-display'
         }`}
       >
         {t('heading')}
       </h1>
       <p
-        className={`m-0 mt-3 text-[16px] leading-[1.55] text-[var(--color-fg2)] ${
+        className={`m-0 mt-1.5 text-[13.5px] leading-[1.45] text-[var(--color-fg2)] ${
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       >
         {t('subheading')}
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-9 flex flex-col gap-5" noValidate>
+      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3" noValidate>
         <Field
           id="name"
           type="text"
@@ -123,7 +136,7 @@ export function SignupForm() {
         />
 
         <label
-          className={`inline-flex items-start gap-2.5 text-[13px] leading-[1.5] text-[var(--color-fg2)] cursor-pointer select-none ${
+          className={`inline-flex items-start gap-2.5 text-[12.5px] leading-[1.4] text-[var(--color-fg2)] cursor-pointer select-none ${
             isRtl ? 'font-arabic-body' : 'font-display'
           }`}
         >
@@ -140,14 +153,14 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={loading || !agreed}
-          className="btn-pill btn-pill-primary w-full mt-2 !py-3.5 !px-6 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-pill btn-pill-primary w-full !py-2.5 !px-6 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
           {loading ? t('submitting') : t('submit')}
         </button>
       </form>
 
-      <div className="my-7 flex items-center gap-4">
+      <div className="my-4 flex items-center gap-4">
         <span aria-hidden className="block flex-1 h-px bg-[var(--color-border)]" />
         <span
           className={`text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-fg3)] ${
@@ -163,7 +176,7 @@ export function SignupForm() {
         type="button"
         onClick={handleGoogle}
         disabled={loading}
-        className={`btn-pill btn-pill-secondary w-full inline-flex items-center justify-center gap-3 !py-3 disabled:opacity-60 disabled:cursor-not-allowed ${
+        className={`btn-pill btn-pill-secondary w-full inline-flex items-center justify-center gap-3 !py-2.5 disabled:opacity-60 disabled:cursor-not-allowed ${
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       >
@@ -172,13 +185,13 @@ export function SignupForm() {
       </button>
 
       <p
-        className={`mt-8 text-center text-[14px] text-[var(--color-fg2)] ${
+        className={`mt-4 text-center text-[13.5px] text-[var(--color-fg2)] ${
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       >
         {t('have_account')}{' '}
         <Link
-          href="/login"
+          href={withRedirect('/login', redirectTarget)}
           className="link-underline !text-[var(--color-fg1)] hover:!text-[var(--color-accent)]"
         >
           {t('sign_in')}
@@ -235,7 +248,7 @@ function Field({
   autoComplete,
 }: FieldProps) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <label
         htmlFor={id}
         className={`text-[13px] font-semibold text-[var(--color-fg1)] ${
@@ -253,7 +266,7 @@ function Field({
         placeholder={placeholder}
         required={required}
         autoComplete={autoComplete}
-        className={`w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--color-accent)] focus:[box-shadow:var(--shadow-focus)] ${
+        className={`w-full px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--color-accent)] focus:[box-shadow:var(--shadow-focus)] ${
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       />

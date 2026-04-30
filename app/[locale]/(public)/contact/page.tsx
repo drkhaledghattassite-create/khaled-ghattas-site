@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { ContactForm } from '@/components/forms/ContactForm'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
+import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   FacebookIcon,
   InstagramIcon,
@@ -11,6 +12,7 @@ import {
   YouTubeIcon,
 } from '@/components/shared/social-icons'
 import { pageMetadata } from '@/lib/seo/page-metadata'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -28,6 +30,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ContactPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+
+  const settings = await getCachedSiteSettings()
+  if (settings.coming_soon_pages.includes('contact')) {
+    return <ComingSoon pageKey="contact" />
+  }
+
   const t = await getTranslations('contact')
   const isRtl = locale === 'ar'
 
