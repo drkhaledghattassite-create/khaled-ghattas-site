@@ -56,6 +56,7 @@ export function InterviewsGallery({ interviews }: { interviews: Interview[] }) {
                         fill
                         sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
                         className="object-cover [filter:brightness(0.78)_contrast(1.05)] transition-[transform,filter] duration-[400ms] group-hover:scale-[1.03] group-hover:[filter:brightness(0.86)_contrast(1.05)]"
+                        style={{ viewTransitionName: `interview-${interview.slug}` }}
                       />
                       <div
                         aria-hidden
@@ -149,6 +150,7 @@ function FeaturedCard({
           fill
           sizes="(min-width: 768px) 60vw, 100vw"
           className="object-cover [filter:brightness(0.8)_contrast(1.05)] transition-[transform,filter] duration-[400ms] group-hover:scale-[1.02] group-hover:[filter:brightness(0.86)_contrast(1.05)]"
+          style={{ viewTransitionName: `interview-${interview.slug}` }}
         />
         <div
           aria-hidden

@@ -41,6 +41,7 @@ export function AboutTeaser() {
   return (
     <section
       id="about"
+      data-bg="var(--color-bg-elevated)"
       className="border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >

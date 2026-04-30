@@ -42,6 +42,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
   return (
     <section
       id="store"
+      data-bg="var(--color-bg)"
       className="bg-[var(--color-bg)] border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
@@ -101,6 +102,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                 fill
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover"
+                style={{ viewTransitionName: `book-${heroBook.slug}` }}
               />
             </Link>
 
@@ -199,6 +201,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                           fill
                           sizes="240px"
                           className="object-cover"
+                          style={{ viewTransitionName: `book-${b.slug}` }}
                         />
                       </div>
                       <div className="flex flex-col gap-1 px-0.5">
@@ -276,6 +279,7 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
                           fill
                           sizes="(min-width: 768px) 50vw, 100vw"
                           className="object-cover [filter:brightness(0.78)_contrast(1.04)] group-hover:scale-[1.03] group-hover:[filter:brightness(0.85)] transition-[transform,filter] duration-[400ms] ease-[var(--ease-out)]"
+                          style={{ viewTransitionName: `book-${l.slug}` }}
                         />
                         <div className="absolute inset-0 [background:linear-gradient(180deg,rgba(0,0,0,0)_50%,rgba(0,0,0,0.45))]" aria-hidden />
                         <span

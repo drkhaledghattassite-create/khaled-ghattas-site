@@ -50,7 +50,8 @@
       "PowerShell(gh repo view drkhaledghattassite-create/khaled-ghattas-site 2>&1)",
       "PowerShell(cmdkey /list:git:https://github.com 2>&1)",
       "PowerShell(cmdkey /delete:git:https://github.com 2>&1)",
-      "PowerShell(cmdkey /list:LegacyGeneric:target=git:https://github.com 2>&1)"
+      "PowerShell(cmdkey /list:LegacyGeneric:target=git:https://github.com 2>&1)",
+      "mcp__magic__21st_magic_component_inspiration"
     ]
   }
 }

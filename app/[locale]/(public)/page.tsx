@@ -1,5 +1,4 @@
 import { setRequestLocale } from 'next-intl/server'
-import { PageLoader } from '@/components/layout/PageLoader'
 import { Hero } from '@/components/sections/Hero'
 import { AboutTeaser } from '@/components/sections/AboutTeaser'
 import { StoreShowcase } from '@/components/sections/StoreShowcase'
@@ -22,7 +21,6 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      <PageLoader />
       <Hero />
       <AboutTeaser />
       <StoreShowcase books={books} />

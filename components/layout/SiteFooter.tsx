@@ -73,6 +73,7 @@ export function SiteFooter() {
   return (
     <footer
       dir={isRtl ? 'rtl' : 'ltr'}
+      data-hide-in-focus="true"
       className="bg-[var(--color-bg)] border-t border-[var(--color-border)] [padding-top:clamp(80px,10vw,128px)]"
     >
       {/* Brand colophon — accent rule + quote + attribution */}

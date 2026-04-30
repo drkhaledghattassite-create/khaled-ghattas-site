@@ -58,6 +58,7 @@ export function Newsletter() {
   return (
     <section
       id="newsletter"
+      data-bg="var(--color-bg-elevated)"
       className="bg-[var(--color-bg-elevated)] border-t border-[var(--color-border)] [padding:clamp(96px,12vw,160px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >

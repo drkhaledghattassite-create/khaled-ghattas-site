@@ -52,6 +52,7 @@ export function Hero() {
       ref={sectionRef}
       id="top"
       aria-label={t('section_label')}
+      data-bg="var(--color-bg)"
       className="qh-hero relative grid overflow-hidden border-b border-[var(--color-border)] md:grid-cols-2 md:min-h-[calc(100dvh-57px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { showNavLoader } from '@/lib/motion/nav-transition'
 
 type Props = {
   bookId: string
@@ -35,6 +36,7 @@ export function BookBuyButton({ bookId, className, children }: Props) {
         toast.error(json.error?.message ?? t('error'))
         return
       }
+      showNavLoader(1500)
       window.location.href = json.url
     } catch (err) {
       console.error('[BookBuyButton]', err)

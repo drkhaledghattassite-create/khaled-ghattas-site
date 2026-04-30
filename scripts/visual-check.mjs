@@ -6,10 +6,10 @@ const OUT = join(process.cwd(), '.visual-check')
 mkdirSync(OUT, { recursive: true })
 
 const PAGES = [
-  { url: 'http://localhost:3002/', name: 'home-ar' },
-  { url: 'http://localhost:3002/about', name: 'about-ar' },
-  { url: 'http://localhost:3002/en', name: 'home-en' },
-  { url: 'http://localhost:3002/en/about', name: 'about-en' },
+  { url: 'http://localhost:3004/', name: 'home-ar' },
+  { url: 'http://localhost:3004/about', name: 'about-ar' },
+  { url: 'http://localhost:3004/en', name: 'home-en' },
+  { url: 'http://localhost:3004/en/about', name: 'about-en' },
 ]
 
 const SCROLL_STEPS = [0, 600, 1400, 2400, 3400, 4400, 5400]
@@ -32,9 +32,9 @@ async function run() {
 
   for (const p of PAGES) {
     console.log(`>> ${p.url}`)
-    await page.goto(p.url, { waitUntil: 'networkidle', timeout: 60000 })
-    // Wait for entrance animations
-    await page.waitForTimeout(1800)
+    await page.goto(p.url, { waitUntil: 'load', timeout: 60000 })
+    // Wait for entrance animations + nav overlay
+    await page.waitForTimeout(2200)
 
     for (const y of SCROLL_STEPS) {
       await page.evaluate((yy) => window.scrollTo({ top: yy, behavior: 'instant' }), y)

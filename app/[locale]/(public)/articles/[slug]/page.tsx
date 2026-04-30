@@ -9,6 +9,8 @@ import { ShareButtons } from '@/components/shared/ShareButtons'
 import { ArticleJsonLd } from '@/components/seo/StructuredData'
 import { ReadingProgress } from '@/components/motion/ReadingProgress'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
+import { PullQuote } from '@/components/motion/PullQuote'
+import { FocusModeToggle } from '@/components/motion/FocusModeToggle'
 import {
   getArticleBySlug,
   getArticles,
@@ -103,6 +105,7 @@ export default async function ArticlePage({ params }: Props) {
       className="bg-[var(--color-bg)]"
     >
       <ReadingProgress />
+      <FocusModeToggle />
       <ArticleJsonLd article={article} locale={locale} />
       {/* Hero header */}
       <header className="border-b border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)_clamp(40px,5vw,72px)]">
@@ -189,28 +192,40 @@ export default async function ArticlePage({ params }: Props) {
             sizes="(min-width: 1200px) 1200px, 100vw"
             className="object-cover"
             priority
+            style={{ viewTransitionName: `article-${article.slug}` }}
           />
         </div>
       )}
 
       {/* Body */}
-      <section className="[padding:clamp(40px,5vw,72px)_clamp(20px,5vw,56px)]">
+      <section className="[padding:clamp(40px,5vw,72px)_clamp(20px,5vw,56px)]" data-focus-content>
         <div className="mx-auto max-w-[680px]">
           <div
             className={`text-[var(--color-fg1)] text-[18px] leading-[1.85] ${
               isRtl ? 'font-arabic-body' : 'font-display'
             }`}
           >
-            {content.split('\n').map((p, i) => (
-              <ScrollRevealLine
-                key={i}
-                as="p"
-                offset={['start 0.85', 'start 0.3']}
-                className={`mb-6 ${i === 0 ? 'dropcap' : ''}`}
-              >
-                {p}
-              </ScrollRevealLine>
-            ))}
+            {content.split('\n').filter(Boolean).map((raw, i) => {
+              const trimmed = raw.trim()
+              if (trimmed.startsWith('> ')) {
+                const body = trimmed.slice(2).trim()
+                return (
+                  <PullQuote key={i}>
+                    {body}
+                  </PullQuote>
+                )
+              }
+              return (
+                <ScrollRevealLine
+                  key={i}
+                  as="p"
+                  offset={['start 0.85', 'start 0.3']}
+                  className={`mb-6 ${i === 0 ? 'dropcap' : ''}`}
+                >
+                  {raw}
+                </ScrollRevealLine>
+              )
+            })}
           </div>
 
           <div className="mt-12 flex items-center justify-between border-t border-[var(--color-border)] pt-8">

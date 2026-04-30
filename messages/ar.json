@@ -13,7 +13,6 @@
     "close": "إغلاق",
     "primary": "القائمة الأساسية",
     "signin": "تسجيل الدخول",
-    "signup": "إنشاء حساب",
     "dashboard": "لوحة التحكم",
     "account": "حسابي",
     "admin": "إدارة",
@@ -30,8 +29,8 @@
     "theme_dark": "التبديل إلى الوضع الداكن",
     "skip_to_content": "تخطّ إلى المحتوى",
     "language_switch": {
-      "ar": "عربي",
-      "en": "English"
+      "aria_switch_to_ar": "التبديل إلى العربية",
+      "aria_switch_to_en": "التبديل إلى الإنجليزية"
     }
   },
   "hero": {
@@ -65,8 +64,7 @@
     "details": "تفاصيل",
     "buy_now": "اشترِ الآن",
     "video_coming_soon": "الفيديو قريبًا",
-    "subscribe": "اشترك في النشرة",
-    "scroll_up_to_reveal_nav": "اسحب للأعلى لعرض القائمة"
+    "subscribe": "اشترك في النشرة"
   },
   "loading": {
     "intro": "جاري التحميل"

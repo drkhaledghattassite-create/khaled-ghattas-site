@@ -29,6 +29,7 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
   return (
     <section
       id="interview"
+      data-bg="var(--color-bg-elevated)"
       className="bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
@@ -55,6 +56,7 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
               fill
               sizes="(min-width: 768px) 60vw, 100vw"
               className="object-cover object-[center_18%] [filter:brightness(0.78)_contrast(1.05)] transition-[transform,filter] duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.02] group-hover:[filter:brightness(0.85)_contrast(1.05)]"
+              style={{ viewTransitionName: `interview-${featured.slug}` }}
             />
             <div
               aria-hidden

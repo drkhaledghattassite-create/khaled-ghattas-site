@@ -13,7 +13,6 @@
     "close": "Close",
     "primary": "Primary navigation",
     "signin": "Sign In",
-    "signup": "Sign Up",
     "dashboard": "Dashboard",
     "account": "My Account",
     "admin": "Admin",
@@ -30,8 +29,8 @@
     "theme_dark": "Switch to dark mode",
     "skip_to_content": "Skip to content",
     "language_switch": {
-      "ar": "العربية",
-      "en": "EN"
+      "aria_switch_to_ar": "Switch to Arabic",
+      "aria_switch_to_en": "Switch to English"
     }
   },
   "hero": {
@@ -65,8 +64,7 @@
     "details": "Details",
     "buy_now": "Buy now",
     "video_coming_soon": "Video coming soon",
-    "subscribe": "Subscribe",
-    "scroll_up_to_reveal_nav": "Scroll up to reveal nav"
+    "subscribe": "Subscribe"
   },
   "loading": {
     "intro": "Loading"

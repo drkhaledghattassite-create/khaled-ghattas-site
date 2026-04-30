@@ -98,6 +98,7 @@ export function BooksGrid({ books }: { books: Book[] }) {
                       fill
                       sizes="(min-width: 1024px) 280px, (min-width: 768px) 33vw, 50vw"
                       className="object-cover transition-transform duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.03]"
+                      style={{ viewTransitionName: `book-${product.slug}` }}
                     />
                     <span
                       className={cn(

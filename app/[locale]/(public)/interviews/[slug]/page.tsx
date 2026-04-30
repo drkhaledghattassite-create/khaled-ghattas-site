@@ -113,6 +113,7 @@ export default async function InterviewPage({ params }: Props) {
                 priority
                 sizes="(min-width: 1280px) 1280px, 100vw"
                 className="object-cover [filter:brightness(0.78)_contrast(1.05)] transition-[transform,filter] duration-[400ms] group-hover:scale-[1.01] group-hover:[filter:brightness(0.86)_contrast(1.05)]"
+                style={{ viewTransitionName: `interview-${interview.slug}` }}
               />
               <div
                 aria-hidden
@@ -152,6 +153,7 @@ export default async function InterviewPage({ params }: Props) {
                 priority
                 sizes="(min-width: 1280px) 1280px, 100vw"
                 className="object-cover [filter:brightness(0.65)_contrast(1.02)]"
+                style={{ viewTransitionName: `interview-${interview.slug}` }}
               />
               <div
                 aria-hidden

@@ -24,6 +24,7 @@ export function SiteHeader({ authSlot }: { authSlot?: ReactNode }) {
   return (
     <header
       dir={isRtl ? 'rtl' : 'ltr'}
+      data-hide-in-focus="true"
       className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/[0.92] backdrop-blur-md backdrop-saturate-[1.2]"
     >
       <div className="mx-auto max-w-[var(--container-max)] grid grid-cols-[auto_1fr_auto] items-center gap-6 [padding:14px_clamp(20px,5vw,56px)]">

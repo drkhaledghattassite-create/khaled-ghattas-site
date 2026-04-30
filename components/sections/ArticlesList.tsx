@@ -74,6 +74,7 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
   return (
     <section
       id="articles"
+      data-bg="var(--color-bg-deep)"
       className="border-b border-[var(--color-border)] [padding:clamp(80px,10vw,140px)_clamp(20px,5vw,56px)]"
       dir={isRtl ? 'rtl' : 'ltr'}
     >
@@ -122,6 +123,7 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
               fill
               sizes="(min-width: 768px) 600px, 100vw"
               className="object-cover [filter:grayscale(0.08)] transition-transform duration-[400ms] ease-[var(--ease-out)] group-hover:scale-[1.02]"
+              style={{ viewTransitionName: `article-${featured.slug}` }}
             />
             {/* Inset shadow ring */}
             <span

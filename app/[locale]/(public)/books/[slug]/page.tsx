@@ -111,6 +111,7 @@ export default async function BookPage({ params }: Props) {
                 sizes="(min-width: 768px) 440px, 100vw"
                 className="object-cover"
                 priority
+                style={{ viewTransitionName: `book-${book.slug}` }}
               />
               <span
                 className={`absolute z-10 [inset-block-start:14px] [inset-inline-start:14px] inline-flex items-center px-2.5 py-[5px] rounded-full text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur-md ${

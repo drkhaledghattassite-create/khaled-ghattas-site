@@ -4,7 +4,13 @@ import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/lib/i18n/navigation'
 import { useTransition } from 'react'
 import { cn } from '@/lib/utils'
+import { withViewTransition } from '@/lib/motion/nav-transition'
 
+/**
+ * Alternate-only locale switcher (Apple-style).
+ * Renders a single button showing the language code you'd switch TO.
+ * Latin font + tabular nums for visual stability across both locales.
+ */
 export function LocaleSwitcher({
   className,
 }: {
@@ -16,42 +22,38 @@ export function LocaleSwitcher({
   const t = useTranslations('common.language_switch')
   const [pending, startTransition] = useTransition()
 
-  const switchTo = (next: 'ar' | 'en') => {
-    if (next === locale) return
+  const target: 'ar' | 'en' = locale === 'ar' ? 'en' : 'ar'
+  const label = target.toUpperCase()
+  const aria = target === 'ar' ? t('aria_switch_to_ar') : t('aria_switch_to_en')
+
+  const handleClick = () => {
     startTransition(() => {
-      router.replace(pathname, { locale: next })
+      withViewTransition(() => router.replace(pathname, { locale: target }))
     })
   }
 
   return (
-    <div
-      role="group"
-      aria-label="Language"
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={aria}
+      title={aria}
+      disabled={pending}
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full border border-[var(--color-border)] bg-transparent p-[2px]',
+        'inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-transparent px-2.5',
+        'text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--color-fg2)]',
+        'transition-[color,border-color,background-color,transform] duration-200',
+        'hover:text-[var(--color-fg1)] hover:border-[var(--color-border-strong)]',
+        'active:translate-y-px',
         pending && 'opacity-50 pointer-events-none',
         className,
       )}
+      style={{
+        fontFamily: 'var(--font-display)',
+        fontFeatureSettings: '"tnum" 1, "lnum" 1',
+      }}
     >
-      {(['ar', 'en'] as const).map((lng) => (
-        <button
-          key={lng}
-          type="button"
-          onClick={() => switchTo(lng)}
-          aria-pressed={locale === lng}
-          className={cn(
-            'rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors duration-200',
-            locale === lng
-              ? 'bg-[var(--color-fg1)] text-[var(--color-bg)]'
-              : 'text-[var(--color-fg3)] hover:text-[var(--color-fg1)]',
-            lng === 'ar'
-              ? '[dir=rtl]:font-arabic'
-              : 'font-display uppercase tracking-[0.06em]',
-          )}
-        >
-          {t(lng)}
-        </button>
-      ))}
-    </div>
+      {label}
+    </button>
   )
 }

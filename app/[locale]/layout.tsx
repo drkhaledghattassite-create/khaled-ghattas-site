@@ -6,7 +6,11 @@ import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server
 import { IBM_Plex_Sans_Arabic, Readex_Pro, Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
-import { RouteLoader } from '@/components/layout/RouteLoader'
+import { AppLoader } from '@/components/layout/AppLoader'
+import { ViewTransitionsRouter } from '@/components/motion/ViewTransitionsRouter'
+import { ProximityPrefetch } from '@/components/motion/ProximityPrefetch'
+import { CustomCursor } from '@/components/motion/CustomCursor'
+import { SectionBackgroundCrossfade } from '@/components/motion/SectionBackgroundCrossfade'
 import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData'
 import { routing } from '@/lib/i18n/routing'
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
@@ -142,7 +146,11 @@ export default async function LocaleLayout({ children, params }: Props) {
         <OrganizationJsonLd locale={locale} />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
-          <RouteLoader />
+          <ViewTransitionsRouter />
+          <ProximityPrefetch />
+          <SectionBackgroundCrossfade />
+          <CustomCursor />
+          <AppLoader />
           <Toaster richColors closeButton position="top-center" />
         </NextIntlClientProvider>
       </body>

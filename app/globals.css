@@ -653,3 +653,130 @@
 .hover-shift:hover {
   padding-inline-start: 8px;
 }
+
+/* ==========================================================================
+   View Transitions API — premium navigation crossfade + matched elements
+   ========================================================================== */
+
+/* Default crossfade for the page root */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation-name: vt-fade-out;
+}
+::view-transition-new(root) {
+  animation-name: vt-fade-in;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Matched-element transitions get a longer, smoother curve */
+::view-transition-group(*) {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-image-pair(*) {
+  isolation: isolate;
+}
+::view-transition-old(*),
+::view-transition-new(*) {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Reduced-motion: kill the slide, keep a quick fade */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 120ms;
+  }
+  @keyframes vt-fade-out {
+    to { opacity: 0; transform: none; }
+  }
+  @keyframes vt-fade-in {
+    from { opacity: 0; transform: none; }
+  }
+}
+
+/* Utility: per-element view transition names assigned dynamically.
+   We use data-view-transition-name="kebab-name" → set the prop via attr().
+   attr() with a type like <custom-ident> only works in modern browsers,
+   so we fall back to inline style on the element where needed. */
+[data-vt-name] {
+  view-transition-name: var(--vt-name);
+}
+
+/* ==========================================================================
+   Custom cursor — hide system cursor on hover-capable devices,
+   keep I-beam on text inputs.
+   ========================================================================== */
+.has-custom-cursor,
+.has-custom-cursor * {
+  cursor: none;
+}
+.has-custom-cursor input,
+.has-custom-cursor textarea,
+.has-custom-cursor [contenteditable="true"] {
+  cursor: text;
+}
+.has-custom-cursor select,
+.has-custom-cursor [role="listbox"] option {
+  cursor: default;
+}
+
+/* ==========================================================================
+   Article focus / reading mode
+   ========================================================================== */
+.focus-mode [data-hide-in-focus="true"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s var(--ease-editorial);
+}
+.focus-mode .has-custom-cursor,
+.focus-mode {
+  /* keep custom cursor visible — premium reading still gets the cursor */
+}
+.focus-mode body {
+  background-color: var(--color-bg);
+}
+.focus-mode main {
+  padding-block-start: clamp(2rem, 5vw, 6rem);
+  padding-block-end: clamp(2rem, 5vw, 6rem);
+}
+[data-focus-content] {
+  transition: max-width 0.45s var(--ease-editorial),
+              font-size 0.35s var(--ease-editorial),
+              line-height 0.35s var(--ease-editorial);
+}
+.focus-mode [data-focus-content] {
+  max-width: 680px;
+  margin-inline: auto;
+}
+.focus-mode [data-focus-content] p,
+.focus-mode [data-focus-content] li {
+  font-size: clamp(18px, 1.45vw, 22px);
+  line-height: 1.9;
+}
+.focus-mode [data-focus-dim] {
+  opacity: 0.35;
+  transition: opacity 0.35s var(--ease-editorial);
+}
