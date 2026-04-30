@@ -5,8 +5,11 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import type { Book } from '@/lib/db/queries'
+import { blurRevealBidirectional, EASE_EDITORIAL, VIEWPORT_BIDIRECTIONAL } from '@/lib/motion/variants'
+import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EASE = EASE_EDITORIAL
 
 type StoreShowcaseProps = {
   books: Book[]
@@ -48,6 +51,15 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
           <div>
             <span className="section-eyebrow">{t('eyebrow')}</span>
             <h2 className="section-title mt-3.5">{t('heading')}</h2>
+            <ScrollReveal
+              as="p"
+              offset={['start 0.85', 'start 0.4']}
+              className={`mt-4 max-w-[560px] text-[clamp(15px,1.6vw,18px)] leading-[1.7] [text-wrap:pretty] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              {t('description')}
+            </ScrollReveal>
           </div>
           <Link
             href="/books"
@@ -62,12 +74,12 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
 
         {/* Books — asymmetric: hero featured + shelf list */}
         <div className="grid items-start gap-[clamp(32px,5vw,80px)] lg:grid-cols-[1.05fr_1fr]">
-          {/* Hero book */}
+          {/* Hero book — bidirectional reveal so it dims back out when scrolled past */}
           <motion.article
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ duration: 0.7, ease: EASE }}
+            variants={blurRevealBidirectional}
+            initial="hidden"
+            whileInView="visible"
+            viewport={VIEWPORT_BIDIRECTIONAL}
             className="grid grid-cols-1 gap-7"
           >
             <Link
@@ -107,9 +119,13 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
               >
                 {heroTitle}
               </h3>
-              <p className="text-[17px] leading-[1.6] text-[var(--color-fg2)]">
-                {isRtl ? heroBook.descriptionAr ?? '' : heroBook.descriptionEn ?? ''}
-              </p>
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.3']}
+                className="text-[17px] leading-[1.6]"
+              >
+                {(isRtl ? heroBook.descriptionAr : heroBook.descriptionEn) ?? ''}
+              </ScrollRevealLine>
               <div className="flex items-center gap-5 mt-2">
                 <span
                   className={`text-[24px] font-semibold text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
@@ -233,9 +249,13 @@ export function StoreShowcase({ books }: StoreShowcaseProps) {
               >
                 {lecturesHeading}
               </h3>
-              <p className="text-[16px] leading-[1.6] text-[var(--color-fg2)] m-0 max-w-[540px]">
+              <ScrollReveal
+                as="p"
+                offset={['start 0.85', 'start 0.4']}
+                className="text-[16px] leading-[1.6] m-0 max-w-[540px]"
+              >
                 {lecturesIntro}
-              </p>
+              </ScrollReveal>
             </header>
 
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-[clamp(16px,2.5vw,28px)] list-none m-0 p-0">

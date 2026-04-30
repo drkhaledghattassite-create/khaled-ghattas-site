@@ -5,13 +5,17 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import type { Interview } from '@/lib/db/queries'
-
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+import { blurRevealBidirectional, VIEWPORT_BIDIRECTIONAL } from '@/lib/motion/variants'
+import { useReducedMotion } from '@/lib/motion/hooks'
+import { Tilt3D } from '@/components/motion/Tilt3D'
+import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
 export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
   const locale = useLocale()
   const t = useTranslations('interviews_section')
   const isRtl = locale === 'ar'
+  const reduceMotion = useReducedMotion()
 
   const featured = interviews[0]
   if (!featured) return null
@@ -37,14 +41,14 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
         </header>
 
         <motion.article
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.1 }}
-          transition={{ duration: 0.7, ease: EASE }}
+          variants={blurRevealBidirectional}
+          initial="hidden"
+          whileInView="visible"
+          viewport={VIEWPORT_BIDIRECTIONAL}
           className="grid items-center gap-[clamp(32px,5vw,64px)] md:grid-cols-[1.3fr_1fr]"
         >
-          {/* Cinematic 16:9 frame */}
-          <div className="group relative overflow-hidden rounded-[4px] aspect-video bg-[var(--color-fg1)]">
+          {/* Cinematic 16:9 frame — subtle 3D tilt on cursor */}
+          <Tilt3D max={4} className="group relative overflow-hidden rounded-[4px] aspect-video bg-[var(--color-fg1)]">
             <Image
               src={featured.thumbnailImage}
               alt={title}
@@ -71,17 +75,31 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
                 aria-label={title}
               />
             )}
-            <button
+            <motion.button
               type="button"
               aria-label={t('watch')}
               disabled={!featured.videoUrl}
+              animate={
+                reduceMotion
+                  ? undefined
+                  : {
+                      boxShadow: [
+                        '0 0 0 0 rgba(255,255,255,0.55)',
+                        '0 0 0 14px rgba(255,255,255,0)',
+                        '0 0 0 0 rgba(255,255,255,0)',
+                      ],
+                    }
+              }
+              transition={
+                reduceMotion ? undefined : { duration: 2.4, repeat: Infinity, ease: 'easeOut' }
+              }
               className="absolute z-20 top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 transition-transform duration-200 hover:scale-105 disabled:opacity-70"
               onClick={() => featured.videoUrl && window.open(featured.videoUrl, '_blank', 'noopener,noreferrer')}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
               </svg>
-            </button>
+            </motion.button>
             <span
               className={`absolute z-20 [inset-block-end:16px] [inset-inline-end:16px] inline-flex items-center px-2.5 py-[5px] rounded-full bg-black/50 text-white/90 text-[11px] font-semibold tracking-[0.12em] backdrop-blur-md ${
                 isRtl ? 'font-arabic-body !tracking-normal' : 'font-display'
@@ -108,18 +126,20 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
                 {year && <span>{year}</span>}
               </div>
             )}
-          </div>
+          </Tilt3D>
 
           {/* Meta */}
           <div className="flex flex-col gap-[22px]">
             <blockquote className="m-0 p-0">
-              <p
-                className={`m-0 text-[clamp(20px,2.4vw,28px)] leading-[1.55] font-medium text-[var(--color-fg1)] [text-wrap:pretty] ${
+              <ScrollReveal
+                as="p"
+                offset={['start 0.85', 'start 0.3']}
+                className={`m-0 text-[clamp(20px,2.4vw,28px)] leading-[1.55] font-medium [text-wrap:pretty] ${
                   isRtl ? 'font-arabic-display' : 'font-arabic-display !leading-[1.45] tracking-[-0.01em]'
                 }`}
               >
                 {description ? `«${description}»` : title}
-              </p>
+              </ScrollReveal>
             </blockquote>
             <h3
               className={`m-0 text-[clamp(18px,2vw,22px)] leading-[1.35] font-bold text-[var(--color-fg1)] [text-wrap:balance] pt-5 border-t border-[var(--color-border)] ${
@@ -129,9 +149,13 @@ export function InterviewRotator({ interviews }: { interviews: Interview[] }) {
               {title}
             </h3>
             {description && (
-              <p className="m-0 text-[14px] leading-[1.6] text-[var(--color-fg3)]">
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.35']}
+                className="m-0 text-[14px] leading-[1.6]"
+              >
                 {description.length > 220 ? description.slice(0, 220) + '…' : description}
-              </p>
+              </ScrollRevealLine>
             )}
             <div className="flex flex-wrap items-center gap-4">
               {featured.videoUrl ? (

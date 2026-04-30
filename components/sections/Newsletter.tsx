@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
+import { AnimatedText } from '@/components/motion/AnimatedText'
+import { EASE_EDITORIAL } from '@/lib/motion/variants'
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EASE = EASE_EDITORIAL
 
 export function Newsletter() {
   const t = useTranslations('newsletter')
@@ -70,17 +72,17 @@ export function Newsletter() {
           {kicker}
         </motion.span>
 
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.65, ease: EASE, delay: 0.05 }}
+        <AnimatedText
+          as="p"
+          text={statement}
+          by="word"
+          stagger={0.05}
+          delay={0.1}
+          duration={0.7}
           className={`m-0 mb-3.5 text-[clamp(22px,3vw,32px)] leading-[1.55] font-medium text-[var(--color-fg1)] tracking-[-0.005em] [text-wrap:pretty] ${
             isRtl ? 'font-arabic-display' : 'font-arabic-display !leading-[1.4] tracking-[-0.015em]'
           }`}
-        >
-          {statement}
-        </motion.p>
+        />
 
         <motion.p
           initial={{ opacity: 0, y: 8 }}

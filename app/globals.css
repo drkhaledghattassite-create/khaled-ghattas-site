@@ -135,16 +135,32 @@
   --radius-xl:   12px;
   --radius-pill: 9999px;
 
-  /* Easing */
+  /* Easing — premium curve set
+     editorial : smooth slowdown, premium feel
+     reveal    : dramatic reveal arrival
+     dramatic  : entrance with weight
+     stagger   : material-like for sequenced children */
   --ease-out:          cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-out-expo:     cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out:       cubic-bezier(0.77, 0, 0.175, 1);
   --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-editorial:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal:       cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-dramatic:     cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-stagger:      cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* Legacy duration tokens (preserved for compat) */
   --dur-fast: 180ms;
   --dur-base: 240ms;
   --dur-slow: 400ms;
+
+  /* Motion durations — narrative timing */
+  --motion-fast:      200ms;
+  --motion-base:      400ms;
+  --motion-medium:    600ms;
+  --motion-slow:      800ms;
+  --motion-cinematic: 1200ms;
 
   /* Shadows */
   --shadow-card:  0 1px 2px rgba(0,0,0,0.04), 0 4px 16px -4px rgba(0,0,0,0.06);
@@ -269,6 +285,11 @@
     font-feature-settings: "lnum", "kern", "liga";
   }
 
+  html[lang="en"] body,
+  html[dir="ltr"] body {
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  }
+
   .num-latn {
     font-feature-settings: "lnum", "tnum";
     font-variant-numeric: tabular-nums lining-nums;
@@ -313,12 +334,37 @@
     color: var(--color-fg1);
     font-synthesis: none;
     position: relative;
+    transition: background-color 320ms var(--ease-editorial),
+                color 220ms var(--ease-editorial);
   }
 
   .dark body {
     background-color: #0A0A0A;
     color: #FAFAFA;
   }
+
+  /* Premium selection color */
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+  ::-moz-selection {
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  /* Refined scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 8px;
+    border: 2px solid var(--color-bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-fg3);
+  }
+  html { scrollbar-color: var(--color-border-strong) transparent; }
 
   a {
     color: inherit;
@@ -343,6 +389,7 @@
 }
 .font-arabic-body {
   font-family: var(--font-arabic), system-ui, sans-serif;
+  word-spacing: 0.05em;
 }
 .font-hero {
   font-family: var(--font-arabic-display), var(--font-arabic), sans-serif;
@@ -350,6 +397,8 @@
   line-height: var(--leading-display);
   font-weight: 700;
   letter-spacing: 0;
+  font-feature-settings: "kern", "liga", "lnum";
+  font-variation-settings: "opsz" auto;
 }
 [dir="ltr"] .font-hero { font-family: var(--font-arabic-display), var(--font-display), sans-serif; letter-spacing: -0.02em; }
 
@@ -454,10 +503,33 @@
   letter-spacing: -0.01em;
   color: var(--color-fg1);
   margin: 0;
+  font-feature-settings: "kern", "liga", "lnum";
+  font-variation-settings: "opsz" auto;
+  text-wrap: balance;
 }
 [dir="ltr"] .section-title {
   font-family: var(--font-arabic-display), var(--font-display), sans-serif;
   letter-spacing: -0.025em;
+}
+
+/* Subtle depth on monumental headings — dark mode only.
+   Tiny shadow gives type weight against the deep background. */
+.dark .section-title,
+.dark .font-hero {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* Italic-feeling emphasis for Arabic display text (Arabic has no italics). */
+.italic-feel {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  font-style: italic;
+}
+[dir="rtl"] .italic-feel {
+  font-style: normal;
+  font-weight: 300;
+  letter-spacing: 0.015em;
+  opacity: 0.92;
 }
 
 /* ==========================================================================
@@ -546,6 +618,33 @@
   transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .link-underline:hover { color: var(--color-accent); }
+
+/* Animated reveal underline — line slides in from start side on hover */
+.link-reveal {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s var(--ease-editorial);
+}
+.link-reveal::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s var(--ease-editorial), background-color 0.25s ease;
+}
+[dir="rtl"] .link-reveal::after { transform-origin: right; }
+.link-reveal:hover { color: var(--color-accent); }
+.link-reveal:hover::after { transform: scaleX(1); background: var(--color-accent); }
 
 /* Hover-shift — inset-padding shift used by article rows / shelf rows */
 .hover-shift {

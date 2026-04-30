@@ -3,6 +3,7 @@ import { Mail, MapPin, Phone } from 'lucide-react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { ContactForm } from '@/components/forms/ContactForm'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import {
   FacebookIcon,
   InstagramIcon,
@@ -69,13 +70,15 @@ export default async function ContactPage({ params }: Props) {
           <aside className="flex flex-col gap-8">
             <div className="flex flex-col gap-3">
               <span className="section-eyebrow">{t('info.heading')}</span>
-              <p
-                className={`m-0 text-[15px] leading-[1.65] text-[var(--color-fg2)] ${
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.4']}
+                className={`m-0 text-[15px] leading-[1.65] ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}
               >
                 {t('info.description')}
-              </p>
+              </ScrollRevealLine>
             </div>
 
             <ul className="m-0 p-0 list-none flex flex-col gap-3 pt-6 border-t border-[var(--color-border)]">
@@ -151,13 +154,15 @@ export default async function ContactPage({ params }: Props) {
               >
                 {t('info.speaking_label')}
               </p>
-              <p
-                className={`m-0 text-[14px] leading-[1.6] text-[var(--color-fg2)] ${
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.4']}
+                className={`m-0 text-[14px] leading-[1.6] ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}
               >
                 {t('info.speaking_text')}
-              </p>
+              </ScrollRevealLine>
             </div>
           </aside>
         </div>

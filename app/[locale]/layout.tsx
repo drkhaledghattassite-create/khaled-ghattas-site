@@ -93,17 +93,13 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
         'max-snippet': -1,
       },
     },
-    icons: {
-      icon: '/icon',
-      apple: '/apple-icon',
-    },
   }
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },
+    { media: '(prefers-color-scheme: light)', color: '#EDE7DF' },
+    { media: '(prefers-color-scheme: dark)', color: '#252321' },
   ],
   width: 'device-width',
   initialScale: 1,

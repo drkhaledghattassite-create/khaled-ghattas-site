@@ -5,8 +5,14 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import type { Article } from '@/lib/db/queries'
+import {
+  blurRevealBidirectional,
+  EASE_EDITORIAL,
+  VIEWPORT_BIDIRECTIONAL,
+} from '@/lib/motion/variants'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EASE = EASE_EDITORIAL
 const FALLBACK = '/dr khaled photo.jpeg'
 
 function formatDate(date: Date, isRtl: boolean): string {
@@ -92,10 +98,10 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
 
         {/* Featured — editorial print-magazine treatment with folio number */}
         <motion.article
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.1 }}
-          transition={{ duration: 0.7, ease: EASE }}
+          variants={blurRevealBidirectional}
+          initial="hidden"
+          whileInView="visible"
+          viewport={VIEWPORT_BIDIRECTIONAL}
           className="group relative grid items-stretch gap-[clamp(32px,5vw,72px)] [padding:clamp(40px,5vw,72px)_0_clamp(56px,6vw,80px)] mb-0 border-b border-[var(--color-border)] md:grid-cols-[1.1fr_1fr]"
         >
           {/* Folio number — top corner */}
@@ -169,13 +175,15 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
 
             {/* Dek */}
             {featuredExcerpt && (
-              <p
-                className={`m-0 max-w-[540px] text-[clamp(16px,1.4vw,18px)] leading-[1.55] text-[var(--color-fg2)] [text-wrap:pretty] ${
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.3']}
+                className={`m-0 max-w-[540px] text-[clamp(16px,1.4vw,18px)] leading-[1.55] [text-wrap:pretty] ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}
               >
                 {featuredExcerpt}
-              </p>
+              </ScrollRevealLine>
             )}
 
             {/* Foot — uppercase metadata + auto-margined link */}
@@ -213,10 +221,10 @@ export function ArticlesList({ articles, showHeader = true }: ArticlesListProps)
               return (
                 <motion.li
                   key={article.id}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 14 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.05 }}
-                  transition={{ duration: 0.55, delay: i * 0.04, ease: EASE }}
+                  transition={{ duration: 0.6, delay: i * 0.06, ease: EASE }}
                   className="border-b border-[var(--color-border)]"
                 >
                   <Link

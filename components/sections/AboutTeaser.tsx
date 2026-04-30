@@ -3,8 +3,16 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
+import {
+  blurRevealBidirectional,
+  staggerContainer,
+  staggerItem,
+  EASE_EDITORIAL,
+  VIEWPORT_BIDIRECTIONAL,
+} from '@/lib/motion/variants'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EASE = EASE_EDITORIAL
 
 export function AboutTeaser() {
   const t = useTranslations('about_teaser')
@@ -50,21 +58,23 @@ export function AboutTeaser() {
           </motion.span>
         </header>
 
-        {/* Featured pull-quote bio — editorial weight, accent border-start, restrained typography */}
+        {/* Featured pull-quote bio — bidirectional: dims back out when scrolled past */}
         <motion.blockquote
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.15 }}
-          transition={{ duration: 0.7, ease: EASE }}
+          variants={blurRevealBidirectional}
+          initial="hidden"
+          whileInView="visible"
+          viewport={VIEWPORT_BIDIRECTIONAL}
           className="m-0 relative ps-[clamp(28px,5vw,48px)] py-1 border-s-[3px] border-[var(--color-accent)]"
         >
-          <p
-            className={`m-0 text-[clamp(24px,3.4vw,38px)] font-medium text-[var(--color-fg1)] [text-wrap:pretty] ${
+          <ScrollRevealLine
+            as="p"
+            offset={['start 0.85', 'start 0.3']}
+            className={`m-0 text-[clamp(24px,3.4vw,38px)] font-medium [text-wrap:pretty] ${
               isRtl ? 'font-arabic-display leading-[1.45]' : 'font-arabic-display leading-[1.35] tracking-[-0.018em]'
             }`}
           >
             {t('bio_preview_fallback')}
-          </p>
+          </ScrollRevealLine>
           <footer
             className={`mt-[22px] inline-flex items-center gap-2.5 text-[13px] font-semibold uppercase tracking-[0.12em] text-[var(--color-fg3)] before:content-[''] before:w-6 before:h-px before:bg-[var(--color-border-strong)] before:inline-block ${
               isRtl ? 'font-arabic-body !tracking-normal !normal-case !text-[14px] !font-bold' : 'font-display'
@@ -76,14 +86,14 @@ export function AboutTeaser() {
 
         {/* Stats grid */}
         <motion.dl
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.15 }}
-          transition={{ duration: 0.65, ease: EASE, delay: 0.05 }}
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-15%' }}
           className="grid grid-cols-2 md:grid-cols-4 gap-6 m-0 pt-8 border-t border-[var(--color-border)]"
         >
           {stats.map((s) => (
-            <div key={s.label} className="flex flex-col">
+            <motion.div key={s.label} variants={staggerItem} className="flex flex-col">
               <dt
                 className={`text-[clamp(40px,5vw,64px)] leading-[0.95] font-extrabold tracking-[-0.03em] text-[var(--color-fg1)] [font-feature-settings:'tnum'] ${
                   isRtl ? 'font-arabic-display' : 'font-display'
@@ -94,7 +104,7 @@ export function AboutTeaser() {
               <dd className="mt-3 m-0 text-[13px] tracking-[0.02em] text-[var(--color-fg3)]">
                 {s.label}
               </dd>
-            </div>
+            </motion.div>
           ))}
         </motion.dl>
 

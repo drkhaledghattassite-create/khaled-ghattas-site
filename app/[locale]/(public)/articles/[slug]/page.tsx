@@ -7,6 +7,8 @@ import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { ShareButtons } from '@/components/shared/ShareButtons'
 import { ArticleJsonLd } from '@/components/seo/StructuredData'
+import { ReadingProgress } from '@/components/motion/ReadingProgress'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import {
   getArticleBySlug,
   getArticles,
@@ -100,6 +102,7 @@ export default async function ArticlePage({ params }: Props) {
       dir={isRtl ? 'rtl' : 'ltr'}
       className="bg-[var(--color-bg)]"
     >
+      <ReadingProgress />
       <ArticleJsonLd article={article} locale={locale} />
       {/* Hero header */}
       <header className="border-b border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)_clamp(40px,5vw,72px)]">
@@ -164,13 +167,15 @@ export default async function ArticlePage({ params }: Props) {
           />
 
           {excerpt && (
-            <p
-              className={`m-0 text-[clamp(17px,1.7vw,21px)] leading-[1.6] text-[var(--color-fg2)] [text-wrap:pretty] ${
+            <ScrollRevealLine
+              as="p"
+              offset={['start 0.85', 'start 0.3']}
+              className={`m-0 text-[clamp(17px,1.7vw,21px)] leading-[1.6] [text-wrap:pretty] ${
                 isRtl ? 'font-arabic-body' : 'font-display'
               }`}
             >
               {excerpt}
-            </p>
+            </ScrollRevealLine>
           )}
         </div>
       </header>
@@ -197,12 +202,14 @@ export default async function ArticlePage({ params }: Props) {
             }`}
           >
             {content.split('\n').map((p, i) => (
-              <p
+              <ScrollRevealLine
                 key={i}
+                as="p"
+                offset={['start 0.85', 'start 0.3']}
                 className={`mb-6 ${i === 0 ? 'dropcap' : ''}`}
               >
                 {p}
-              </p>
+              </ScrollRevealLine>
             ))}
           </div>
 

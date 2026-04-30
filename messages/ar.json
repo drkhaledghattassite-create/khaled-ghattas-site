@@ -26,6 +26,8 @@
     "close": "إغلاق",
     "breadcrumb": "مسار التصفح",
     "lightbox": "عرض الصورة",
+    "theme_light": "التبديل إلى الوضع الفاتح",
+    "theme_dark": "التبديل إلى الوضع الداكن",
     "skip_to_content": "تخطّ إلى المحتوى",
     "language_switch": {
       "ar": "عربي",

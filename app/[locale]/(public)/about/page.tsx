@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { PersonJsonLd } from '@/components/seo/StructuredData'
 import { pageMetadata } from '@/lib/seo/page-metadata'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -76,47 +77,55 @@ export default async function AboutPage({ params }: Props) {
                 >
                   {entry.number}
                 </span>
-                <p
-                  className={`m-0 text-[clamp(17px,1.8vw,21px)] leading-[1.55] font-medium text-[var(--color-fg1)] [text-wrap:pretty] ${
+                <ScrollRevealLine
+                  as="p"
+                  offset={['start 0.85', 'start 0.3']}
+                  className={`m-0 text-[clamp(17px,1.8vw,21px)] leading-[1.55] font-medium [text-wrap:pretty] ${
                     isRtl ? 'font-arabic-display' : 'font-arabic-display !tracking-[-0.005em]'
                   }`}
                 >
                   {entry.text}
-                </p>
+                </ScrollRevealLine>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      {/* Bio + portrait — editorial pull-quote treatment */}
+      {/* Bio + portrait — editorial pull-quote treatment, sticky portrait on desktop */}
       <section
         dir={isRtl ? 'rtl' : 'ltr'}
         className="border-b border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)]"
       >
         <div className="mx-auto max-w-[var(--container-max)] grid gap-[clamp(40px,6vw,80px)] md:grid-cols-[1fr_1.3fr] md:items-start">
-          <div className="relative mx-auto w-full max-w-[420px]">
-            <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
+          <div className="relative mx-auto w-full max-w-[420px] md:sticky md:top-24 md:self-start">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:var(--shadow-card)]">
               <Image
                 src="/drphoto.JPG"
                 alt=""
                 fill
                 sizes="(min-width: 768px) 420px, 100vw"
-                className="object-cover [filter:saturate(0.82)_contrast(1.04)] dark:[filter:saturate(0.65)_contrast(1.06)_brightness(0.88)]"
+                className="object-cover [filter:saturate(0.82)_contrast(1.04)] dark:[filter:saturate(0.65)_contrast(1.06)_brightness(0.88)] transition-transform duration-700 ease-[var(--ease-editorial)]"
               />
             </div>
+            <span
+              aria-hidden
+              className="hidden md:block absolute -bottom-3 inset-inline-start-0 w-10 h-[3px] bg-[var(--color-accent)]"
+            />
           </div>
 
           <div className="flex flex-col gap-7">
             <span className="section-eyebrow">{t('bio_eyebrow')}</span>
             <blockquote className="m-0 relative ps-[clamp(20px,3vw,32px)] py-1 border-s-[3px] border-[var(--color-accent)]">
-              <p
-                className={`m-0 text-[clamp(17px,1.7vw,21px)] leading-[1.65] font-medium text-[var(--color-fg1)] [text-wrap:pretty] ${
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.25']}
+                className={`m-0 text-[clamp(17px,1.7vw,21px)] leading-[1.65] font-medium [text-wrap:pretty] ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}
               >
                 {t('bio_paragraph')}
-              </p>
+              </ScrollRevealLine>
             </blockquote>
 
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-6 m-0 pt-7 border-t border-[var(--color-border)]">

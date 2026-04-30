@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { InterviewJsonLd } from '@/components/seo/StructuredData'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import {
   getInterviewBySlug,
   getInterviews,
@@ -183,13 +184,15 @@ export default async function InterviewPage({ params }: Props) {
                 className="block w-12 h-[3px] bg-[var(--color-accent)]"
               />
               {description && (
-                <p
-                  className={`m-0 text-[clamp(16px,1.6vw,19px)] leading-[1.65] text-[var(--color-fg2)] [text-wrap:pretty] ${
+                <ScrollRevealLine
+                  as="p"
+                  offset={['start 0.85', 'start 0.3']}
+                  className={`m-0 text-[clamp(16px,1.6vw,19px)] leading-[1.65] [text-wrap:pretty] ${
                     isRtl ? 'font-arabic-body' : 'font-display'
                   }`}
                 >
                   {description}
-                </p>
+                </ScrollRevealLine>
               )}
               {interview.videoUrl ? (
                 <a

@@ -5,6 +5,7 @@ import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import type { Event } from '@/lib/db/queries'
 import { cn } from '@/lib/utils'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -112,14 +113,16 @@ function EventGroup({
                   {(locale === 'ar' ? event.locationAr : event.locationEn) ?? ''}
                 </span>
               )}
-              <p
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.4']}
                 className={cn(
-                  'm-0 text-[15px] leading-[1.65] text-[var(--color-fg2)] [text-wrap:pretty]',
+                  'm-0 text-[15px] leading-[1.65] [text-wrap:pretty]',
                   isRtl ? 'font-arabic-body' : 'font-display',
                 )}
               >
-                {locale === 'ar' ? event.descriptionAr : event.descriptionEn}
-              </p>
+                {(locale === 'ar' ? event.descriptionAr : event.descriptionEn) ?? ''}
+              </ScrollRevealLine>
               {isUpcoming && (
                 <Link
                   href="/contact"

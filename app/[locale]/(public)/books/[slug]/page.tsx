@@ -6,6 +6,7 @@ import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { BookJsonLd } from '@/components/seo/StructuredData'
 import { BookBuyButton } from '@/components/sections/BookBuyButton'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import {
   getBookBySlug,
   getBooks,
@@ -151,13 +152,15 @@ export default async function BookPage({ params }: Props) {
             <span aria-hidden className="block w-12 h-[3px] bg-[var(--color-accent)]" />
 
             {description && (
-              <p
-                className={`m-0 text-[16px] leading-[1.75] text-[var(--color-fg2)] [text-wrap:pretty] ${
+              <ScrollRevealLine
+                as="p"
+                offset={['start 0.85', 'start 0.3']}
+                className={`m-0 text-[16px] leading-[1.75] [text-wrap:pretty] ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}
               >
                 {description}
-              </p>
+              </ScrollRevealLine>
             )}
 
             {price !== null && (

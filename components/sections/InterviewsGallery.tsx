@@ -6,6 +6,7 @@ import { motion } from 'motion/react'
 import { Link } from '@/lib/i18n/navigation'
 import type { Interview } from '@/lib/db/queries'
 import { cn } from '@/lib/utils'
+import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -188,14 +189,16 @@ function FeaturedCard({
           {title}
         </h2>
         {description && (
-          <p
+          <ScrollRevealLine
+            as="p"
+            offset={['start 0.85', 'start 0.35']}
             className={cn(
-              'm-0 text-[15px] leading-[1.65] text-[var(--color-fg2)] [text-wrap:pretty]',
+              'm-0 text-[15px] leading-[1.65] [text-wrap:pretty]',
               isRtl ? 'font-arabic-body' : 'font-display',
             )}
           >
             {description}
-          </p>
+          </ScrollRevealLine>
         )}
         <Link
           href={`/interviews/${interview.slug}`}
