@@ -23,30 +23,37 @@ Secondary locale: English (LTR) at `/en/`.
 
 No release tags exist yet. Recent commits (most recent first):
 
-- `4551122` — design issues + login/signup flow + removed old-URL checkout redirect
-- `30408bf` — Qalem v2 implementation: editorial hero, folio articles, store carousel, dashboard, auth
+- `2586036` — unified loader on every transition, admin auth-toggle visibility,
+  mobile top-nav (bottom nav removed), purchase-blocked-without-login flow
+- `7c060ca` — side-nav polish, navigation transitions on mobile
+- `3e75c2d` — agents created, scroll animation polish
+- `4551122` — design fixes, login/signup flow, removed old-URL checkout redirect
+- `30408bf` — Qalem v2 implementation: editorial hero, folio articles, store
+  carousel, dashboard, auth
 - `fdb5712` — Qalem design system handoff from Claude Design
 - `6ede3e7` — Tailwind v4 migration + dark mode + section restructure
-- `21a319e` — Step 2.5 UX (bottom nav, locale switcher, auth menu, Store rename)
+- `21a319e` — Step 2.5 UX (locale switcher, auth menu, Store rename)
 - `bcb3108` — Phase 5: full admin panel with mock auth
 - `8e27f90` — Phase 4A: Drizzle schema, migrations, unified query layer
 
-The current branch (`main`) carries uncommitted work: motion components
-(`AnimatedText`, `CountUp`, `PageTransition`, `ReadingProgress`, `Tilt3D`,
-`ScrollReveal`, `ScrollRevealLine`, `LoadingSequence`), real PWA icons under
-`public/`, `app/manifest.ts`, the `app/[locale]/template.tsx` page-transition
-shell, and revisions to several public sections. Status snapshot at session
-start is in `.claude` history.
-
 What works in dev:
-- All 50 routes render under both locales (Arabic at `/`, English at `/en`).
+- All public + auth + dashboard + admin routes render under both locales
+  (Arabic at `/`, English at `/en`).
 - Mock auth lets you impersonate `ADMIN`, `CLIENT`, or `USER` without a DB.
+  Toggled OFF in `.env.local` once real Better Auth is configured.
 - Without `DATABASE_URL`, all data reads fall back to `lib/placeholder-data.ts`.
-- Admin CRUD UIs are live; their POST/PATCH/DELETE handlers exist for articles,
-  books, interviews, events, gallery, orders, users, settings, content-blocks.
+- Admin CRUD UIs are live for articles, books, interviews, events, gallery,
+  orders, users, settings, content-blocks. The structured site-settings
+  toggle panel lives at `/admin/settings/site`.
+- Purchase flow is gated client-side (via `useSession`) AND server-side
+  (`/api/checkout` returns 401 without a session). Unauthenticated buy
+  attempts open `AuthRequiredDialog`, which sends users to
+  `/login?redirect=<original-path>` and bounces them back after sign-in.
 
 What's stubbed:
-- Stripe checkout (webhook validates signatures, doesn't process events yet).
+- Stripe checkout: route requires session and creates real Stripe sessions
+  when `STRIPE_SECRET_KEY` is set; otherwise returns 503 "coming soon".
+  Webhook validates signatures but does not yet write `orders` rows.
 - Image upload pipeline (Uploadthing not wired; admin forms accept URL strings).
 - Markdown article body parser (paragraphs split by `\n` for now).
 - Site-wide search.
@@ -73,28 +80,76 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
   UNSUBSCRIBED/BOUNCED), `eventStatus` (UPCOMING/PAST/CANCELLED),
   `articleCategory` (PHILOSOPHY/PSYCHOLOGY/SOCIETY/POLITICS/CULTURE/OTHER),
   `productType` (BOOK/SESSION).
-- Migrations in `lib/db/migrations/`. Three migrations exist; see
-  `LAUNCH-CHECKLIST.md` step 2 for filenames.
+- Migrations in `lib/db/migrations/`. **Four** migrations exist:
+  `0000_blue_adam_warlock.sql`, `0001_remarkable_toad_men.sql`,
+  `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last adds the
+  `value_json` jsonb column on `site_settings` for the structured-settings
+  blob). Apply with `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point. It
   uses Drizzle when `DATABASE_URL` is set to a real Neon URL, and falls back
   to `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
   This is auto-detected — there is **no `HAS_DB` env flag**, only the
   `HAS_DB` constant inside `queries.ts`.
 
+### Site settings (structured)
+
+Stored as a single JSON blob in `site_settings.value_json` under the
+`site_config` key. Read/write through:
+- `lib/site-settings/types.ts` — `SiteSettings` shape + `COMING_SOON_PAGES`.
+- `lib/site-settings/defaults.ts` — `DEFAULT_SETTINGS`, `mergeSettings`,
+  `coerceSettings`.
+- `lib/site-settings/zod.ts` — `siteSettingsPatchSchema` for the admin PATCH.
+- `lib/site-settings/get.ts` — `getCachedSiteSettings()`: `unstable_cache`
+  + `React.cache` wrapper. Tagged `'site-settings'`. Pages should use this.
+- `lib/db/queries.ts` — `getSiteSettings()` (uncached) and
+  `updateSiteSettings(patch)` (admin-only path; revalidates the cache tag).
+- API: `app/api/admin/site-settings/route.ts` — `GET` + `PATCH`, gated by
+  `requireAdmin(req)` and per-admin rate-limited.
+- Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
+
+Toggle groups: `homepage`, `navigation`, `footer`, `hero_ctas`, `featured`,
+`features` (auth_enabled, newsletter_form_enabled, maintenance_mode),
+`maintenance` (message + until date), `coming_soon_pages`.
+
+**Coming Soon ≠ Hide.** Two independent concerns:
+- A page in `coming_soon_pages` renders the `ComingSoon` placeholder instead
+  of its content and is excluded from the sitemap. The link **stays** in
+  navigation.
+- A page hidden via `navigation.show_nav_*` toggles is removed from the nav
+  + footer. Whether it's also coming-soon is a separate decision.
+
 ### Auth
 - Better Auth (`better-auth@^1.6`).
 - Auth route catch-all: `app/api/auth/[...all]/route.ts`.
-- `lib/auth/server.ts` exposes `getServerSession()`. `lib/auth/admin-guard.ts`
-  exposes `requireAdmin(req)` (does origin check via `assertSameOrigin` +
-  role check).
+- `lib/auth/index.ts` configures Better Auth. Session timing:
+  - `expiresIn: 30 days` (absolute lifetime)
+  - `updateAge: 24 hours` (sliding refresh — active users effectively stay
+    logged in indefinitely)
+- `lib/auth/server.ts` exposes `getServerSession()` (mock-aware).
+- `lib/auth/client.ts` exposes `authClient`, `signIn`, `signUp`, `signOut`,
+  `useSession` for client components.
+- `lib/auth/admin-guard.ts` exposes `requireAdmin(req)` — runs origin check
+  via `assertSameOrigin` + role check.
+- `lib/auth/redirect.ts` — `safeRedirect(raw)` and `withRedirect(href, target)`
+  for the post-login redirect-back flow. Rejects `//host`, `/\evil`, and
+  embedded schemes (`/javascript:…`).
+- `components/auth/AuthRequiredDialog.tsx` — reusable login-required prompt
+  used by purchase-gated actions. Sends users to
+  `/login?redirect=<encoded path>`; the auth forms read this param and
+  bounce the user back after a successful sign-in. The chain is preserved
+  across login ↔ register, login ↔ forgot, reset → login, and Google OAuth
+  via `callbackURL`.
 - **Mock auth** lives in `lib/auth/mock.ts`. Toggled by env:
   `MOCK_AUTH=false` AND `NEXT_PUBLIC_MOCK_AUTH=false` — both must be the
   literal string `"false"` to disable mock mode. Default in dev is ON.
 - Mock users: `id 1` admin@drkhaledghattass.com (Kamal, ADMIN),
-  `id 2` khaled@drkhaledghattass.com (Dr. Khaled, CLIENT), `id 3` test user.
-  Active mock user is `MOCK_ACTIVE_USER_ID = '1'`.
-- Public auth-UI gate: `NEXT_PUBLIC_AUTH_ENABLED === 'true'` shows
-  Sign In / Sign Up in the header. Otherwise hidden.
+  `id 2` khaled@drkhaledghattass.com (Dr. Khaled, CLIENT),
+  `id 3` user@example.com (test user). Active mock user is
+  `MOCK_ACTIVE_USER_ID = '1'`.
+- Public auth-UI gate: two-layered. `settings.features.auth_enabled` (DB,
+  per-deployment) is the runtime gate read by `AuthMenu`; the env flag
+  `NEXT_PUBLIC_AUTH_ENABLED === 'true'` is the build-time fallback for
+  callers that don't pass the runtime setting.
 - Three roles, three meanings:
   - `USER` — buyer / reader, has `/dashboard`.
   - `ADMIN` — full content + settings access at `/admin`.
@@ -121,9 +176,21 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 - Hooks in `lib/motion/hooks.ts`: `useReducedMotion`, `useIsMobile`,
   `useIsTouchDevice`, `useScrollReveal`, `useScrollVelocity`,
   `useScrollProgress`.
-- Motion components: `components/motion/*` — `AnimatedText`, `CountUp`,
-  `PageTransition`, `ReadingProgress`, `Tilt3D`, `ScrollReveal`,
-  `ScrollRevealLine`.
+- Motion components in `components/motion/`: `AnimatedText`, `CountUp`,
+  `CustomCursor`, `FocusModeToggle`, `PageTransition`, `ProximityPrefetch`,
+  `PullQuote`, `ReadingProgress`, `ScrollReveal`, `ScrollRevealLine`,
+  `SectionBackgroundCrossfade`, `Tilt3D`, `ViewTransitionsRouter`.
+- `ViewTransitionsRouter` is a global capture-phase anchor-click interceptor
+  that wraps internal navigation in `document.startViewTransition`. It
+  `preventDefault`s the link click and pushes via the App-Router. **It does
+  NOT `stopPropagation`** — React's bubble-phase delegation must still fire
+  so user-attached `onClick` handlers (e.g. closing a mobile drawer when one
+  of its links is tapped) work. Don't add `stopPropagation` here.
+- `AppLoader` (in `components/layout/`) is the unified app-wide loader. It
+  shows a sequenced splash on first load (sessionStorage-gated) and a brief
+  logo overlay on subsequent navigations. It listens for both anchor clicks
+  (capture phase) and a custom `kg:loader:show` event so non-link
+  navigations (e.g. post-login `router.push`) can also trigger it.
 
 ### Other deps
 - `lenis@^1.3` — smooth scroll (`components/providers/LenisProvider.tsx`).
@@ -299,7 +366,9 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `/admin/subscribers`
 - `/admin/messages`
 - `/admin/users`
-- `/admin/settings`
+- `/admin/settings` (legacy key/value page)
+- `/admin/settings/site` (structured toggles — homepage, navigation, footer,
+  hero CTAs, featured items, features, maintenance, coming-soon pages)
 - `/admin/content` (content-blocks editor)
 - `/admin/media` (media library)
 
@@ -319,14 +388,17 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `contact` — POST, zod-validated, IP rate-limited.
 - `newsletter` — POST, zod-validated, IP rate-limited.
 - `revalidate` — bearer-token-protected (`REVALIDATE_TOKEN`).
-- `checkout` — Phase 6 stub.
+- `checkout` — POST. Requires session (returns 401 otherwise). Creates a
+  Stripe Checkout session when `STRIPE_SECRET_KEY` is set; returns 503
+  ("coming soon") otherwise. Origin-checked.
 - `stripe/webhook` — signature verification implemented; event handling pending.
 - `user/profile` — PATCH, DELETE (account self-edit / self-delete).
 - `user/preferences` — PATCH.
 - `admin/articles[/id]`, `admin/books[/id]`, `admin/interviews[/id]`,
   `admin/events[/id]`, `admin/gallery[/id]`, `admin/orders/[id]`,
-  `admin/users/[id]`, `admin/settings`, `admin/content-blocks[/key]`,
-  `admin/revalidate` — all gated by `requireAdmin(req)` (origin + role).
+  `admin/users/[id]`, `admin/settings`, `admin/site-settings` (structured),
+  `admin/content-blocks[/key]`, `admin/revalidate` — all gated by
+  `requireAdmin(req)` (origin + role).
 
 ## API conventions
 
@@ -354,7 +426,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
 ```
 
 Public POSTs additionally call `tryRateLimit('<key>:<ip>')` from
-`@/lib/redis/ratelimit`. Without Upstash credentials the rate-limit is a no-op.
+`@/lib/redis/ratelimit`. The helper **fails open** — without Upstash
+credentials, when the URL/token contain `dummy`, OR when the Redis call
+throws at runtime, the request is allowed through. We log the error rather
+than 500ing the user when the rate-limit infrastructure itself is broken.
 
 Helpers in `lib/api/errors.ts`: `apiError(code, message, extras?)`,
 `errInvalidJson()`, `errValidation(fieldErrors)`, `errUnauthorized()`,
@@ -424,44 +499,66 @@ so explicitly rather than implying success.
 
 ### File organization
 - `app/` — routes (Next.js App Router).
-- `components/admin/` — admin-only components.
+- `components/admin/` — admin-only components (incl. `SiteSettingsForm`).
 - `components/dashboard/` — dashboard-only components.
-- `components/auth/` — auth-form components.
-- `components/layout/` — site chrome (header, footer, nav, locale switcher, theme toggle, route loader).
-- `components/sections/` — homepage and listing-page sections.
+- `components/auth/` — `LoginForm`, `SignupForm`, `ForgotPasswordForm`,
+  `ResetPasswordForm`, `AuthAside`, `AuthRequiredDialog`.
+- `components/layout/` — site chrome: `SiteHeader` (with mobile hamburger),
+  `SiteFooter`, `MobileMenu`, `LocaleSwitcher`, `ThemeToggle`, `AuthMenu`,
+  `UserMenuDropdown`, `AppLoader`, `LoadingSequence`, `MaintenanceBanner`.
+  `BottomNav.tsx` still exists but is no longer imported anywhere — the
+  hamburger in `SiteHeader` opens `MobileMenu` directly on mobile.
+- `components/sections/` — homepage and listing-page sections, plus
+  `BookBuyButton` (purchase trigger; gated on session via `useSession`).
 - `components/motion/` — motion-specific reusable components.
 - `components/seo/` — JSON-LD components.
-- `components/ui/` — shadcn primitives.
+- `components/ui/` — Base UI / shadcn primitives. `dialog.tsx` and
+  `alert-dialog.tsx` are Qalem-skinned: real backdrop scrim, `border` +
+  `shadow-lift` instead of a thin ring, `text-start` (logical), 18px bold
+  title, `max-w-[560px]`, simple footer (no colored bg — `bg-bg-deep` was
+  invisible against `bg-elevated` in light mode).
 - `components/shared/`, `components/forms/`, `components/providers/` — small utilities.
 - `lib/` — business logic (auth, db, motion, redis, email, validators, i18n,
-  api, seo, stripe, hooks).
+  api, seo, stripe, site-settings, hooks).
 - `messages/` — i18n JSON.
 - `public/` — static assets.
-- `scripts/` — dev tooling (`dev.mjs`, `build.mjs`, `seed.ts`, `gen-icons.mjs`,
-  `promote-admin.mjs`, `visual-check.mjs`).
+- `scripts/` — dev tooling: `dev.mjs`, `build.mjs`, `seed.ts`, `gen-icons.mjs`,
+  `promote-admin.mjs`, `reset-db.mjs`, `verify-db.mjs`, `fix-external-urls.mjs`,
+  `visual-check.mjs`.
 
 ## Auth & mock mode
 
 - `lib/auth/mock.ts` provides `getMockSession()` returning the active mock user
   when `MOCK_AUTH_ENABLED` is true (the default in dev). Toggle off by setting
   BOTH `MOCK_AUTH=false` and `NEXT_PUBLIC_MOCK_AUTH=false`.
-- `lib/auth/server.ts` provides `getServerSession()` — the production path.
+- `lib/auth/server.ts` provides `getServerSession()` — the production path
+  (mock-aware).
+- `lib/auth/client.ts` exposes `useSession()` for client components (used by
+  `BookBuyButton` to gate purchases).
 - `lib/auth/admin-guard.ts` exports `requireAdmin(req)`.
-- `lib/auth/index.ts` configures Better Auth.
+- `lib/auth/index.ts` configures Better Auth (30-day sessions, 24h refresh).
+- `lib/auth/redirect.ts` — safe-redirect helpers for the post-login bounce-back.
 - Promotion script: `node --env-file=.env.local scripts/promote-admin.mjs <email> ADMIN|CLIENT`.
 
-The two flags work together:
+Two gates work together:
 - `MOCK_AUTH_ENABLED` (computed in `mock.ts`) — gates fake sessions.
-- `AUTH_ENABLED` (`NEXT_PUBLIC_AUTH_ENABLED === 'true'`) — gates whether the
-  public site shows Sign In / Sign Up links at all.
+- **`features.auth_enabled`** (DB-backed via `site_settings.value_json`,
+  read through `getCachedSiteSettings`) — runtime gate for the public-nav
+  Sign In UI. The env flag `NEXT_PUBLIC_AUTH_ENABLED` is the build-time
+  fallback for callers that don't pass the runtime setting.
 
-Behavior matrix:
-| `AUTH_ENABLED` | `MOCK_AUTH_ENABLED` | Result |
+Behavior matrix (using the runtime `auth_enabled`):
+| `auth_enabled` | `MOCK_AUTH_ENABLED` | Result |
 | --- | --- | --- |
 | false | true  | Public nav hides auth links. Admin/dashboard protected by mock. (Default dev.) |
 | true  | true  | Public nav shows auth. Mock session active. (Demo mode.) |
 | true  | false | Public nav shows auth. Real Better Auth. (Production.) |
 | false | false | Public nav hides auth. Routes return 401. (Maintenance.) |
+
+> Mock-mode caveat: in dev with `MOCK_AUTH_ENABLED=true`, server-side
+> `getServerSession()` returns the mock user, but client-side
+> `authClient.useSession()` queries Better Auth's real endpoint and sees no
+> session. If you're testing purchase gating, turn mock OFF.
 
 ## Real content status
 
@@ -521,7 +618,7 @@ Optional / feature-gated:
 Runtime flags (string-equality `'true'` / `'false'`):
 | Var | Effect |
 | --- | --- |
-| `NEXT_PUBLIC_AUTH_ENABLED` | Show Sign In / Sign Up in public nav. |
+| `NEXT_PUBLIC_AUTH_ENABLED` | Build-time fallback for the auth UI gate. The runtime gate is `features.auth_enabled` in the structured site settings. |
 | `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Both `'false'` to disable mock auth. |
 
 `HAS_DB` is **not** an env var. It's auto-detected from `DATABASE_URL`
@@ -568,12 +665,13 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
 ## Reference
 
 - Design tokens: `app/globals.css` (`@theme inline { ... }` block).
-- Schema: `lib/db/schema.ts`.
+- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0003`.
 - Unified queries: `lib/db/queries.ts`.
-- Mock auth: `lib/auth/mock.ts`.
+- Site settings: `lib/site-settings/{types,defaults,zod,get}.ts`.
+- Auth: `lib/auth/{index,server,client,admin-guard,mock,redirect}.ts`.
 - Motion: `lib/motion/variants.ts` and `lib/motion/hooks.ts`.
 - Validators: `lib/validators/*`.
-- Agents: `.claude/agents/`.
+- Agents: `.claude/agents/` (eight project-scoped agents — see Agent team).
 - Pending content: `CONTENT-NEEDED.md`.
 - Launch checklist: `LAUNCH-CHECKLIST.md`.
 - Outstanding follow-ups: `TODO.md`.
