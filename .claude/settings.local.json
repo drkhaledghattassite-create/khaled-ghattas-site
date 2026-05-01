@@ -51,7 +51,9 @@
       "PowerShell(cmdkey /list:git:https://github.com 2>&1)",
       "PowerShell(cmdkey /delete:git:https://github.com 2>&1)",
       "PowerShell(cmdkey /list:LegacyGeneric:target=git:https://github.com 2>&1)",
-      "mcp__magic__21st_magic_component_inspiration"
+      "mcp__magic__21st_magic_component_inspiration",
+      "mcp__claude_ai_Netlify__netlify-project-services-reader",
+      "mcp__claude_ai_Netlify__get-netlify-coding-context"
     ]
   }
 }
