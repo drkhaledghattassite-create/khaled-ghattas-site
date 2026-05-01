@@ -129,11 +129,25 @@ export default async function LocaleLayout({ children, params }: Props) {
   }
 
   setRequestLocale(locale)
-  const [messages, t, settings] = await Promise.all([
-    getMessages(),
-    getTranslations({ locale, namespace: 'common' }),
-    getCachedSiteSettings(),
-  ])
+  let messages, t, settings
+  try {
+    messages = await getMessages()
+  } catch (err) {
+    console.error('[LocaleLayout] getMessages() failed:', err)
+    throw err
+  }
+  try {
+    t = await getTranslations({ locale, namespace: 'common' })
+  } catch (err) {
+    console.error('[LocaleLayout] getTranslations() failed:', err)
+    throw err
+  }
+  try {
+    settings = await getCachedSiteSettings()
+  } catch (err) {
+    console.error('[LocaleLayout] getCachedSiteSettings() failed:', err)
+    throw err
+  }
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
 
   const maintenanceMessage =
