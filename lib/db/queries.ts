@@ -98,15 +98,19 @@ export type GetArticlesOptions = {
 export async function getArticles(options: GetArticlesOptions = {}): Promise<Article[]> {
   const { limit, featured, category } = options
   if (HAS_DB) {
-    const conditions = [eq(articles.status, 'PUBLISHED')]
-    if (featured !== undefined) conditions.push(eq(articles.featured, featured))
-    if (category) conditions.push(eq(articles.category, category))
-    return db
-      .select()
-      .from(articles)
-      .where(and(...conditions))
-      .orderBy(desc(articles.publishedAt), articles.orderIndex)
-      .limit(limit ?? 100)
+    try {
+      const conditions = [eq(articles.status, 'PUBLISHED')]
+      if (featured !== undefined) conditions.push(eq(articles.featured, featured))
+      if (category) conditions.push(eq(articles.category, category))
+      return await db
+        .select()
+        .from(articles)
+        .where(and(...conditions))
+        .orderBy(desc(articles.publishedAt), articles.orderIndex)
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getArticles] DB error, falling back to placeholders:', err)
+    }
   }
   let rows = placeholderArticles
     .filter((a) => a.status === 'PUBLISHED')
@@ -118,20 +122,28 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<Art
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   if (HAS_DB) {
-    const [row] = await db.select().from(articles).where(eq(articles.slug, slug)).limit(1)
-    return row ?? null
+    try {
+      const [row] = await db.select().from(articles).where(eq(articles.slug, slug)).limit(1)
+      return row ?? null
+    } catch (err) {
+      console.error('[getArticleBySlug] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderArticles.find((a) => a.slug === slug) ?? null
 }
 
 export async function getRelatedArticles(slug: string, count = 3): Promise<Article[]> {
   if (HAS_DB) {
-    return db
-      .select()
-      .from(articles)
-      .where(and(ne(articles.slug, slug), eq(articles.status, 'PUBLISHED')))
-      .orderBy(desc(articles.publishedAt))
-      .limit(count)
+    try {
+      return await db
+        .select()
+        .from(articles)
+        .where(and(ne(articles.slug, slug), eq(articles.status, 'PUBLISHED')))
+        .orderBy(desc(articles.publishedAt))
+        .limit(count)
+    } catch (err) {
+      console.error('[getRelatedArticles] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderArticles
     .filter((a) => a.slug !== slug && a.status === 'PUBLISHED')
@@ -188,14 +200,18 @@ export type GetBooksOptions = { limit?: number; featured?: boolean }
 export async function getBooks(options: GetBooksOptions = {}): Promise<Book[]> {
   const { limit, featured } = options
   if (HAS_DB) {
-    const conditions = [eq(books.status, 'PUBLISHED')]
-    if (featured !== undefined) conditions.push(eq(books.featured, featured))
-    return db
-      .select()
-      .from(books)
-      .where(and(...conditions))
-      .orderBy(books.orderIndex)
-      .limit(limit ?? 100)
+    try {
+      const conditions = [eq(books.status, 'PUBLISHED')]
+      if (featured !== undefined) conditions.push(eq(books.featured, featured))
+      return await db
+        .select()
+        .from(books)
+        .where(and(...conditions))
+        .orderBy(books.orderIndex)
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getBooks] DB error, falling back to placeholders:', err)
+    }
   }
   let rows = placeholderBooks.filter((b) => b.status === 'PUBLISHED').slice().sort(byOrder)
   if (featured !== undefined) rows = rows.filter((b) => b.featured === featured)
@@ -204,8 +220,12 @@ export async function getBooks(options: GetBooksOptions = {}): Promise<Book[]> {
 
 export async function getBookBySlug(slug: string): Promise<Book | null> {
   if (HAS_DB) {
-    const [row] = await db.select().from(books).where(eq(books.slug, slug)).limit(1)
-    return row ?? null
+    try {
+      const [row] = await db.select().from(books).where(eq(books.slug, slug)).limit(1)
+      return row ?? null
+    } catch (err) {
+      console.error('[getBookBySlug] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderBooks.find((b) => b.slug === slug) ?? null
 }
@@ -213,20 +233,28 @@ export async function getBookBySlug(slug: string): Promise<Book | null> {
 export async function getBookById(id: string): Promise<Book | null> {
   if (HAS_DB) {
     if (!isUuid(id)) return null
-    const [row] = await db.select().from(books).where(eq(books.id, id)).limit(1)
-    return row ?? null
+    try {
+      const [row] = await db.select().from(books).where(eq(books.id, id)).limit(1)
+      return row ?? null
+    } catch (err) {
+      console.error('[getBookById] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderBooks.find((b) => b.id === id) ?? null
 }
 
 export async function getRelatedBooks(slug: string, count = 3): Promise<Book[]> {
   if (HAS_DB) {
-    return db
-      .select()
-      .from(books)
-      .where(and(ne(books.slug, slug), eq(books.status, 'PUBLISHED')))
-      .orderBy(books.orderIndex)
-      .limit(count)
+    try {
+      return await db
+        .select()
+        .from(books)
+        .where(and(ne(books.slug, slug), eq(books.status, 'PUBLISHED')))
+        .orderBy(books.orderIndex)
+        .limit(count)
+    } catch (err) {
+      console.error('[getRelatedBooks] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderBooks
     .filter((b) => b.slug !== slug && b.status === 'PUBLISHED')
@@ -244,14 +272,18 @@ export async function getInterviews(
 ): Promise<Interview[]> {
   const { limit, featured } = options
   if (HAS_DB) {
-    const conditions = [eq(interviews.status, 'PUBLISHED')]
-    if (featured !== undefined) conditions.push(eq(interviews.featured, featured))
-    return db
-      .select()
-      .from(interviews)
-      .where(and(...conditions))
-      .orderBy(desc(interviews.year), interviews.orderIndex)
-      .limit(limit ?? 100)
+    try {
+      const conditions = [eq(interviews.status, 'PUBLISHED')]
+      if (featured !== undefined) conditions.push(eq(interviews.featured, featured))
+      return await db
+        .select()
+        .from(interviews)
+        .where(and(...conditions))
+        .orderBy(desc(interviews.year), interviews.orderIndex)
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getInterviews] DB error, falling back to placeholders:', err)
+    }
   }
   let rows = placeholderInterviews
     .filter((i) => i.status === 'PUBLISHED')
@@ -263,20 +295,28 @@ export async function getInterviews(
 
 export async function getInterviewBySlug(slug: string): Promise<Interview | null> {
   if (HAS_DB) {
-    const [row] = await db.select().from(interviews).where(eq(interviews.slug, slug)).limit(1)
-    return row ?? null
+    try {
+      const [row] = await db.select().from(interviews).where(eq(interviews.slug, slug)).limit(1)
+      return row ?? null
+    } catch (err) {
+      console.error('[getInterviewBySlug] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderInterviews.find((i) => i.slug === slug) ?? null
 }
 
 export async function getRelatedInterviews(slug: string, count = 3): Promise<Interview[]> {
   if (HAS_DB) {
-    return db
-      .select()
-      .from(interviews)
-      .where(and(ne(interviews.slug, slug), eq(interviews.status, 'PUBLISHED')))
-      .orderBy(desc(interviews.year), interviews.orderIndex)
-      .limit(count)
+    try {
+      return await db
+        .select()
+        .from(interviews)
+        .where(and(ne(interviews.slug, slug), eq(interviews.status, 'PUBLISHED')))
+        .orderBy(desc(interviews.year), interviews.orderIndex)
+        .limit(count)
+    } catch (err) {
+      console.error('[getRelatedInterviews] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderInterviews
     .filter((i) => i.slug !== slug && i.status === 'PUBLISHED')
@@ -294,14 +334,18 @@ export async function getGalleryItems(
 ): Promise<GalleryItem[]> {
   const { limit, category } = options
   if (HAS_DB) {
-    const conditions = [eq(gallery.status, 'PUBLISHED')]
-    if (category) conditions.push(eq(gallery.category, category))
-    return db
-      .select()
-      .from(gallery)
-      .where(and(...conditions))
-      .orderBy(gallery.orderIndex)
-      .limit(limit ?? 100)
+    try {
+      const conditions = [eq(gallery.status, 'PUBLISHED')]
+      if (category) conditions.push(eq(gallery.category, category))
+      return await db
+        .select()
+        .from(gallery)
+        .where(and(...conditions))
+        .orderBy(gallery.orderIndex)
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getGalleryItems] DB error, falling back to placeholders:', err)
+    }
   }
   let rows = placeholderGallery
     .filter((g) => g.status === 'PUBLISHED')
@@ -313,14 +357,18 @@ export async function getGalleryItems(
 
 export async function getGalleryCategories(): Promise<string[]> {
   if (HAS_DB) {
-    const rows = await db
-      .selectDistinct({ category: gallery.category })
-      .from(gallery)
-      .where(eq(gallery.status, 'PUBLISHED'))
-    return rows
-      .map((r) => r.category)
-      .filter((c): c is string => Boolean(c))
-      .sort()
+    try {
+      const rows = await db
+        .selectDistinct({ category: gallery.category })
+        .from(gallery)
+        .where(eq(gallery.status, 'PUBLISHED'))
+      return rows
+        .map((r) => r.category)
+        .filter((c): c is string => Boolean(c))
+        .sort()
+    } catch (err) {
+      console.error('[getGalleryCategories] DB error, falling back to placeholders:', err)
+    }
   }
   return Array.from(
     new Set(
@@ -337,12 +385,16 @@ export async function getGalleryCategories(): Promise<string[]> {
 
 export async function getUpcomingEvents(limit?: number): Promise<Event[]> {
   if (HAS_DB) {
-    return db
-      .select()
-      .from(events)
-      .where(eq(events.status, 'UPCOMING'))
-      .orderBy(events.startDate)
-      .limit(limit ?? 100)
+    try {
+      return await db
+        .select()
+        .from(events)
+        .where(eq(events.status, 'UPCOMING'))
+        .orderBy(events.startDate)
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getUpcomingEvents] DB error, falling back to placeholders:', err)
+    }
   }
   const rows = placeholderEvents
     .filter((e) => e.status === 'UPCOMING')
@@ -353,12 +405,16 @@ export async function getUpcomingEvents(limit?: number): Promise<Event[]> {
 
 export async function getPastEvents(limit?: number): Promise<Event[]> {
   if (HAS_DB) {
-    return db
-      .select()
-      .from(events)
-      .where(eq(events.status, 'PAST'))
-      .orderBy(desc(events.startDate))
-      .limit(limit ?? 100)
+    try {
+      return await db
+        .select()
+        .from(events)
+        .where(eq(events.status, 'PAST'))
+        .orderBy(desc(events.startDate))
+        .limit(limit ?? 100)
+    } catch (err) {
+      console.error('[getPastEvents] DB error, falling back to placeholders:', err)
+    }
   }
   const rows = placeholderEvents
     .filter((e) => e.status === 'PAST')
@@ -369,8 +425,12 @@ export async function getPastEvents(limit?: number): Promise<Event[]> {
 
 export async function getEventBySlug(slug: string): Promise<Event | null> {
   if (HAS_DB) {
-    const [row] = await db.select().from(events).where(eq(events.slug, slug)).limit(1)
-    return row ?? null
+    try {
+      const [row] = await db.select().from(events).where(eq(events.slug, slug)).limit(1)
+      return row ?? null
+    } catch (err) {
+      console.error('[getEventBySlug] DB error, falling back to placeholders:', err)
+    }
   }
   return placeholderEvents.find((e) => e.slug === slug) ?? null
 }
