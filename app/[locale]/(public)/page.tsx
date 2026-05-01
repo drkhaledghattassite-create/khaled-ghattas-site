@@ -11,15 +11,28 @@ import { getCachedSiteSettings } from '@/lib/site-settings/get'
 type Props = { params: Promise<{ locale: string }> }
 
 export default async function HomePage({ params }: Props) {
+  console.log('[HomePage] start')
   const { locale } = await params
   setRequestLocale(locale)
+  console.log('[HomePage] locale=', locale)
 
-  const [settings, articles, books, interviews] = await Promise.all([
-    getCachedSiteSettings(),
-    getArticles({ limit: 6 }),
-    getBooks({ limit: 10 }),
-    getInterviews({ limit: 5 }),
-  ])
+  let settings, articles, books, interviews
+  try {
+    settings = await getCachedSiteSettings()
+    console.log('[HomePage] settings ok')
+  } catch (e) { console.error('[HomePage] settings failed', e); throw e }
+  try {
+    articles = await getArticles({ limit: 6 })
+    console.log('[HomePage] articles count=', articles.length)
+  } catch (e) { console.error('[HomePage] articles failed', e); throw e }
+  try {
+    books = await getBooks({ limit: 10 })
+    console.log('[HomePage] books count=', books.length)
+  } catch (e) { console.error('[HomePage] books failed', e); throw e }
+  try {
+    interviews = await getInterviews({ limit: 5 })
+    console.log('[HomePage] interviews count=', interviews.length)
+  } catch (e) { console.error('[HomePage] interviews failed', e); throw e }
 
   const { homepage, hero_ctas, featured, features } = settings
   const showNewsletter = homepage.show_newsletter && features.newsletter_form_enabled

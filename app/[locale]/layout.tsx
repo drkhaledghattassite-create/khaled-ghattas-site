@@ -122,13 +122,16 @@ type Props = {
 }
 
 export default async function LocaleLayout({ children, params }: Props) {
+  console.log('[LocaleLayout] start')
   const { locale } = await params
+  console.log('[LocaleLayout] locale=', locale)
 
   if (!hasLocale(routing.locales, locale)) {
     notFound()
   }
 
   setRequestLocale(locale)
+  console.log('[LocaleLayout] setRequestLocale done')
   let messages, t, settings
   try {
     messages = await getMessages()

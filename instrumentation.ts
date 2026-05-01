@@ -1,6 +1,25 @@
 import type { Instrumentation } from 'next'
 
-export async function register() {}
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    process.on('unhandledRejection', (reason) => {
+      const r = reason as { message?: string; stack?: string; name?: string }
+      console.error('[unhandledRejection]', {
+        name: r?.name,
+        message: r?.message,
+        stack: r?.stack,
+        raw: reason,
+      })
+    })
+    process.on('uncaughtException', (err) => {
+      console.error('[uncaughtException]', {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack,
+      })
+    })
+  }
+}
 
 // Captures the full error + stack before Next.js redacts it in production
 // builds. Without this, the only thing that surfaces in Netlify function

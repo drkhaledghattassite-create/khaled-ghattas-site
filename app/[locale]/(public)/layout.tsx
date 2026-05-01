@@ -32,8 +32,16 @@ function buildNavItems(settings: Awaited<ReturnType<typeof getCachedSiteSettings
 
 export default async function PublicLayout({ children, params }: Props) {
   const { locale } = await params
+  console.log('[PublicLayout] start, locale=', locale)
   setRequestLocale(locale)
-  const settings = await getCachedSiteSettings()
+  let settings
+  try {
+    settings = await getCachedSiteSettings()
+    console.log('[PublicLayout] settings ok')
+  } catch (e) {
+    console.error('[PublicLayout] settings failed', e)
+    throw e
+  }
 
   const navItems = buildNavItems(settings)
   const showLocaleSwitcher = settings.navigation.show_locale_switcher
