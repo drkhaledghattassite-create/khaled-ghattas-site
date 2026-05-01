@@ -37,17 +37,29 @@ export default async function HomePage({ params }: Props) {
   const { homepage, hero_ctas, featured, features } = settings
   const showNewsletter = homepage.show_newsletter && features.newsletter_form_enabled
 
-  // DIAGNOSTIC: minimal JSX to confirm whether sections cause the crash.
-  // If this loads cleanly, the error is in one of the sections.
-  // If it still crashes, the error is in PublicLayout / LocaleLayout chrome.
-  void homepage; void hero_ctas; void featured; void showNewsletter
-  void articles; void books; void interviews
-  console.log('[HomePage] returning minimal JSX')
   return (
-    <div style={{ padding: 64, fontFamily: 'sans-serif' }}>
-      <h1>HomePage diagnostic render</h1>
-      <p>If you see this, the error is in one of the homepage sections.</p>
-      <p>articles: {articles.length} · books: {books.length} · interviews: {interviews.length}</p>
-    </div>
+    <>
+      <Hero
+        showCtaBooks={hero_ctas.show_hero_cta_books}
+        showCtaArticles={hero_ctas.show_hero_cta_articles}
+      />
+      {homepage.show_about_teaser && <AboutTeaser />}
+      {homepage.show_store_showcase && (
+        <StoreShowcase books={books} featuredBookId={featured.featured_book_id} />
+      )}
+      {homepage.show_articles_list && (
+        <ArticlesList
+          articles={articles}
+          featuredArticleSlug={featured.featured_article_slug}
+        />
+      )}
+      {homepage.show_interview_rotator && (
+        <InterviewRotator
+          interviews={interviews}
+          featuredInterviewId={featured.featured_interview_id}
+        />
+      )}
+      {showNewsletter && <Newsletter />}
+    </>
   )
 }
