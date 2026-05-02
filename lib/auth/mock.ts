@@ -39,13 +39,21 @@ export const mockUsers: MockUser[] = [
 ]
 
 /**
- * Mock-auth toggle. Defaults to ON for local development; flip the
- * `MOCK_AUTH` env var to anything other than "true" (or unset it) to
- * use the real Better Auth wiring instead.
+ * Mock-auth toggle.
+ *
+ * SECURITY [C-2]: This used to default to ON unless BOTH env vars were the
+ * literal string `'false'`. A single env-var miss in production then handed
+ * every anonymous visitor an admin session (since `MOCK_ACTIVE_USER_ID = '1'`
+ * is the ADMIN mock user). The semantics are now INVERTED:
+ *   - Mock is OFF unless explicitly opted in with `MOCK_AUTH=true` or
+ *     `NEXT_PUBLIC_MOCK_AUTH=true`.
+ *   - Mock can NEVER run when NODE_ENV === 'production', regardless of env.
+ * Do NOT relax either gate.
  */
 export const MOCK_AUTH_ENABLED =
-  process.env.NEXT_PUBLIC_MOCK_AUTH !== 'false' &&
-  process.env.MOCK_AUTH !== 'false'
+  process.env.NODE_ENV !== 'production' &&
+  (process.env.MOCK_AUTH === 'true' ||
+    process.env.NEXT_PUBLIC_MOCK_AUTH === 'true')
 
 /** ID of the user that getMockSession will return. Toggle for testing. */
 export const MOCK_ACTIVE_USER_ID = '1'
@@ -53,6 +61,17 @@ export const MOCK_ACTIVE_USER_ID = '1'
 export type MockSession = { user: MockUser }
 
 export async function getMockSession(): Promise<MockSession | null> {
+  // SECURITY [C-2]: belt-and-braces — even if MOCK_AUTH_ENABLED were somehow
+  // true in production (build-time env capture, hot-swap, etc.), this throws
+  // before any caller can receive a fake admin session. A 500 in production
+  // is preferable to a silent privilege escalation.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[lib/auth/mock.ts] Mock auth invoked in production. ' +
+        'This is a security violation. Check MOCK_AUTH_ENABLED ' +
+        'and ensure real auth is configured.',
+    )
+  }
   if (!MOCK_AUTH_ENABLED) return null
   const user = mockUsers.find((u) => u.id === MOCK_ACTIVE_USER_ID)
   if (!user) {

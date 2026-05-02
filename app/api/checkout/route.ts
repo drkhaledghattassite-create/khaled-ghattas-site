@@ -34,16 +34,44 @@ export async function POST(req: Request) {
 
   const customerEmail = session.user.email
 
-  // Build absolute return URLs from request origin so the flow works in dev too.
-  const reqHeaders = await headers()
-  const host = reqHeaders.get('host')
-  const proto = reqHeaders.get('x-forwarded-proto') ?? 'https'
-  const origin = host ? `${proto}://${host}` : SITE_URL
+  // SECURITY [H-4]: Stripe success/cancel URLs MUST be derived from a trusted
+  // source. Previously this used the `Host` header to build the origin, which
+  // is attacker-controlled (Host header injection) — an attacker who could
+  // influence the upstream proxy could redirect successful buyers to an
+  // attacker-controlled domain.
+  // In production: always use SITE_URL (= NEXT_PUBLIC_APP_URL), which is
+  // baked into the deployment env.
+  // In dev: fall back to the request-derived origin so localhost / .local /
+  // 127.0.0.1 workflows keep working, but reject any other host so a
+  // mistakenly-deployed dev build can't be exploited the same way.
+  let origin: string
+  if (process.env.NODE_ENV === 'production') {
+    origin = SITE_URL
+  } else {
+    const reqHeaders = await headers()
+    const host = reqHeaders.get('host') ?? ''
+    const proto = reqHeaders.get('x-forwarded-proto') ?? 'http'
+    const isDevHost =
+      /^localhost(:\d+)?$/i.test(host) ||
+      /^127\.0\.0\.1(:\d+)?$/.test(host) ||
+      /\.local(:\d+)?$/i.test(host)
+    if (host && isDevHost) {
+      origin = `${proto}://${host}`
+    } else {
+      origin = SITE_URL
+    }
+  }
 
   const priceCents = Math.round(Number(book.price) * 100)
   if (!Number.isFinite(priceCents) || priceCents <= 0) {
     return apiError('VALIDATION', 'Book price is invalid.', { status: 400 })
   }
+
+  // Stripe fetches images server-side, so they must be publicly reachable
+  // absolute URLs. Skip local/relative paths (won't load from Stripe's edge)
+  // and localhost (Stripe can't reach it from the public internet).
+  const imageUrl = pickPublicImageUrl(book.coverImage)
+  const productImages = imageUrl ? [imageUrl] : undefined
 
   try {
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -57,7 +85,7 @@ export async function POST(req: Request) {
             product_data: {
               name: book.titleEn || book.titleAr,
               description: book.descriptionEn ?? book.descriptionAr ?? undefined,
-              images: book.coverImage ? [book.coverImage] : undefined,
+              images: productImages,
             },
             unit_amount: priceCents,
           },
@@ -80,6 +108,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, url: checkoutSession.url })
   } catch (err) {
     console.error('[api/checkout] stripe error', err)
-    return errInternal('Could not create checkout session.')
+    const detail =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'string'
+          ? err
+          : 'Unknown error.'
+    const message =
+      process.env.NODE_ENV === 'production'
+        ? 'Could not create checkout session.'
+        : `Could not create checkout session: ${detail}`
+    return errInternal(message)
   }
+}
+
+function pickPublicImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+  const host = parsed.hostname.toLowerCase()
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    return null
+  }
+  return parsed.toString()
 }

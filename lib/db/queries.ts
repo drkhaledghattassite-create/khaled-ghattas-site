@@ -9,7 +9,7 @@
  * `placeholder-data.ts`.
  */
 
-import { and, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { db } from '.'
 import {
@@ -20,6 +20,7 @@ import {
   events,
   gallery,
   interviews,
+  orderItems,
   orders,
   siteSettings,
   subscribers,
@@ -39,6 +40,7 @@ import {
   type NewGalleryItem,
   type NewInterview,
   type Order,
+  type OrderItem,
   type SiteSetting,
   type Subscriber,
   type User,
@@ -528,6 +530,152 @@ export async function getOrderStats(): Promise<OrderStats> {
     )
   }
   return { totalRevenue: 0, orderCount: 0, paidCount: 0, pendingCount: 0 }
+}
+
+export type CreateOrderFromStripeInput = {
+  stripeSessionId: string
+  stripePaymentIntentId: string | null
+  userId: string | null
+  customerEmail: string
+  customerName?: string | null
+  totalAmount: string
+  currency: string
+  items: Array<{ bookId: string; quantity: number; priceAtPurchase: string }>
+}
+
+/**
+ * Idempotent: if an order already exists for this Stripe session, returns it
+ * unchanged. Otherwise inserts the order then its items sequentially, manually
+ * rolling back the order row if the items insert fails (the neon-http driver
+ * does not support transactions).
+ */
+export async function createOrderFromStripeSession(
+  input: CreateOrderFromStripeInput,
+): Promise<Order | null> {
+  if (!HAS_DB) {
+    noDb(`createOrderFromStripeSession(${input.stripeSessionId})`)
+    return null
+  }
+
+  const [existing] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.stripeSessionId, input.stripeSessionId))
+    .limit(1)
+  if (existing) return existing
+
+  const [row] = await db
+    .insert(orders)
+    .values({
+      userId: input.userId && isUuid(input.userId) ? input.userId : null,
+      status: 'PAID',
+      totalAmount: input.totalAmount,
+      currency: input.currency.toUpperCase(),
+      stripeSessionId: input.stripeSessionId,
+      stripePaymentIntentId: input.stripePaymentIntentId,
+      customerEmail: input.customerEmail,
+      customerName: input.customerName ?? null,
+    })
+    .returning()
+  if (!row) return null
+
+  const validItems = input.items.filter((it) => isUuid(it.bookId))
+  if (validItems.length === 0) return row
+
+  try {
+    await db.insert(orderItems).values(
+      validItems.map((it) => ({
+        orderId: row.id,
+        bookId: it.bookId,
+        quantity: it.quantity,
+        priceAtPurchase: it.priceAtPurchase,
+      })),
+    )
+  } catch (err) {
+    try {
+      await db.delete(orders).where(eq(orders.id, row.id))
+    } catch (cleanupErr) {
+      console.error(
+        '[createOrderFromStripeSession] orders rollback failed; orphan row',
+        { orderId: row.id, stripeSessionId: input.stripeSessionId, cleanupErr },
+      )
+    }
+    throw err
+  }
+
+  return row
+}
+
+export type LibraryEntry = {
+  order: Order
+  item: OrderItem
+  book: Book
+}
+
+/**
+ * Returns one row per *unique book* the user owns, joined to its order +
+ * order_item. Only PAID/FULFILLED orders count.
+ *
+ * Dedup is intentional: the user can legitimately purchase the same digital
+ * book twice (each is a real Stripe transaction we keep on record) but the
+ * library should display the book once. DISTINCT ON (book_id) ordered by
+ * (book_id, created_at asc) keeps the *earliest* order/item per book as the
+ * canonical "owned since" pairing. The result is then re-sorted in JS so the
+ * library shows newest acquisitions first — Postgres requires the SQL ORDER
+ * BY's leading columns to match the DISTINCT ON columns, so we cannot do the
+ * desc(createdAt) sort in the same query.
+ */
+export async function getLibraryEntriesByUserId(
+  userId: string,
+): Promise<LibraryEntry[]> {
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  const rows = await db
+    .selectDistinctOn([orderItems.bookId], {
+      order: orders,
+      item: orderItems,
+      book: books,
+    })
+    .from(orders)
+    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+    .innerJoin(books, eq(orderItems.bookId, books.id))
+    .where(
+      and(
+        eq(orders.userId, userId),
+        or(eq(orders.status, 'PAID'), eq(orders.status, 'FULFILLED')),
+      ),
+    )
+    .orderBy(orderItems.bookId, asc(orders.createdAt))
+  return rows.sort(
+    (a, b) => b.order.createdAt.getTime() - a.order.createdAt.getTime(),
+  )
+}
+
+/**
+ * True iff the user has at least one PAID/FULFILLED order containing this
+ * book/session. Used to gate the Buy CTA on detail pages so the same product
+ * isn't shown as purchasable to a user who already owns it. Returns false in
+ * mock mode (no DB) so the buy flow stays exercisable in dev.
+ */
+export async function userOwnsProduct(
+  userId: string,
+  bookId: string,
+): Promise<boolean> {
+  if (!HAS_DB) return false
+  if (!isUuid(userId) || !isUuid(bookId)) return false
+  const [row] = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(
+      and(
+        eq(orders.userId, userId),
+        eq(orderItems.bookId, bookId),
+        or(eq(orders.status, 'PAID'), eq(orders.status, 'FULFILLED')),
+      ),
+    )
+    .limit(1)
+  return Boolean(row)
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1020,6 +1168,46 @@ export async function updateOrderStatus(
     .update(orders)
     .set({ status, updatedAt: new Date() })
     .where(eq(orders.id, id))
+    .returning()
+  return row ?? null
+}
+
+/**
+ * Lookup by Stripe payment_intent id. Used by the webhook to mirror
+ * payment-side events (charge.refunded, payment_intent.payment_failed) onto
+ * the local order row.
+ */
+export async function getOrderByPaymentIntentId(
+  paymentIntentId: string,
+): Promise<Order | null> {
+  if (!HAS_DB) return null
+  if (!paymentIntentId) return null
+  const [row] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.stripePaymentIntentId, paymentIntentId))
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Idempotent: updates the order whose stripePaymentIntentId matches. Used by
+ * the webhook. Returns null if no matching order exists (e.g. event for a
+ * payment we never recorded).
+ */
+export async function updateOrderStatusByPaymentIntentId(
+  paymentIntentId: string,
+  status: 'PENDING' | 'PAID' | 'FULFILLED' | 'REFUNDED' | 'FAILED',
+): Promise<Order | null> {
+  if (!HAS_DB) {
+    noDb(`updateOrderStatusByPaymentIntentId(${paymentIntentId}, ${status})`)
+    return null
+  }
+  if (!paymentIntentId) return null
+  const [row] = await db
+    .update(orders)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(orders.stripePaymentIntentId, paymentIntentId))
     .returning()
   return row ?? null
 }

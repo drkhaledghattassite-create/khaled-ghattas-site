@@ -108,7 +108,17 @@ export function AdminSidebarContent({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      {/* min-h-0 lets this flex child shrink so overflow-y-auto actually
+          engages instead of growing the parent. overscroll-contain stops
+          wheel/touch scroll from chaining into the page underneath.
+          data-lenis-prevent tells the global Lenis smooth-scroll instance
+          (mounted in LenisProvider) to ignore wheel events here so the
+          inner nav owns its own scroll instead of Lenis hijacking the
+          wheel for the document. */}
+      <nav
+        data-lenis-prevent
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]"
+      >
         {GROUPS.map((group) => (
           <div key={group.key} className="mb-5">
             <p className="px-2 pb-2 text-[10px] uppercase tracking-[0.12em] text-fg3 font-display font-semibold">
@@ -174,7 +184,7 @@ export function AdminSidebarContent({
 
 export function AdminSidebar({ user }: { user: ServerSessionUser }) {
   return (
-    <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col border-e border-border bg-bg-elevated md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
       <AdminSidebarContent user={user} />
     </aside>
   )

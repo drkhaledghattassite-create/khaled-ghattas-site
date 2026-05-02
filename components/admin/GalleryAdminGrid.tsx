@@ -29,11 +29,16 @@ type EditDraft = {
 
 export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
   const t = useTranslations('admin')
+  const tConfirm = useTranslations('admin.confirm')
+  const tAria = useTranslations('admin.aria')
   const router = useRouter()
   const [filter, setFilter] = useState<string>('all')
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditDraft | null>(null)
   const [saving, setSaving] = useState(false)
+  // Pending delete target — replaces native confirm() with a styled AlertDialog
+  // matching the rest of admin (see ArticlesTable for the same pattern).
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const categories = Array.from(
     new Set(gallery.map((g) => g.category).filter(Boolean) as string[]),
   )
@@ -41,7 +46,6 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
     filter === 'all' ? gallery : gallery.filter((g) => g.category === filter)
 
   async function handleDelete(id: string) {
-    if (!confirm(t('actions.confirm_delete'))) return
     setBusy(id)
     try {
       const res = await fetch(`/api/admin/gallery/${id}`, { method: 'DELETE' })
@@ -56,6 +60,7 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
       toast.error(t('actions.error_generic'))
     } finally {
       setBusy(null)
+      setPendingDelete(null)
     }
   }
 
@@ -155,9 +160,11 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
                 <button
                   type="button"
                   disabled={busy === photo.id}
-                  onClick={() => handleDelete(photo.id)}
+                  onClick={() => setPendingDelete(photo.id)}
                   className="inline-flex h-6 w-6 items-center justify-center rounded bg-bg-elevated/90 text-accent hover:bg-bg-elevated disabled:opacity-60"
-                  aria-label="Delete"
+                  aria-label={tAria('delete_item', {
+                    name: photo.titleEn ?? photo.titleAr ?? 'photo',
+                  })}
                 >
                   <Trash2 className="h-3 w-3" aria-hidden />
                 </button>
@@ -206,6 +213,33 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
             <AlertDialogCancel disabled={saving}>{t('forms.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={saveEdit} disabled={saving}>
               {saving ? t('forms.saving') : t('forms.save')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete-confirm dialog — replaces the previous native confirm() prompt. */}
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tConfirm('delete_gallery_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tConfirm('delete_gallery_body')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy !== null}>
+              {tConfirm('delete_cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingDelete && handleDelete(pendingDelete)}
+              disabled={busy !== null}
+              variant="destructive"
+            >
+              {tConfirm('delete_confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

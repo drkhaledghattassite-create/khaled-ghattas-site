@@ -6,6 +6,11 @@ import { getUserById } from '@/lib/db/queries'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { AccountView } from '@/components/dashboard/AccountView'
 
+// Auth-gated route — render per-request so getServerSession sees real cookies.
+// Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
+// and Next prerenders static HTML with session=null baked in.
+export const dynamic = 'force-dynamic'
+
 type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

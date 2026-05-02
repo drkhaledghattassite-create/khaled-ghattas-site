@@ -9,6 +9,13 @@ type Props = {
   params: Promise<{ locale: string }>
 }
 
+// Every dashboard page reads getServerSession to redirect anonymous users
+// and personalize content; the AuthMenu rendered in this layout reads it
+// too. force-dynamic makes the whole group render per-request — otherwise
+// static prerender bakes session=null into the HTML and authenticated users
+// are bounced to /login before they can see their library/settings.
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardSectionLayout({ children, params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)

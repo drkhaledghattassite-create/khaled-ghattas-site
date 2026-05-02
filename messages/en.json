@@ -1,4 +1,25 @@
 {
+  "status": {
+    "draft": "Draft",
+    "published": "Published",
+    "archived": "Archived",
+    "pending": "Pending",
+    "paid": "Paid",
+    "fulfilled": "Fulfilled",
+    "refunded": "Refunded",
+    "failed": "Failed",
+    "unread": "Unread",
+    "read": "Read",
+    "active": "Active",
+    "unsubscribed": "Unsubscribed",
+    "bounced": "Bounced",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "cancelled": "Cancelled",
+    "admin": "Admin",
+    "client": "Client",
+    "user": "User"
+  },
   "nav": {
     "brand": "Dr. Khaled Ghattass",
     "home": "Home",
@@ -225,7 +246,10 @@
     "also_browse": "Also browse",
     "checkout": {
       "coming_soon": "Online checkout will open soon. Use the contact form to order in the meantime.",
-      "error": "Could not start checkout. Please try again."
+      "error": "Could not start checkout. Please try again.",
+      "owned_label": "You own this",
+      "owned_aria_label": "You own this — go to your library",
+      "go_to_library": "Go to library"
     }
   },
   "checkout": {
@@ -427,12 +451,40 @@
       "success_exported": "CSV exported",
       "error_generic": "Something went wrong",
       "cache_cleared": "Cache cleared",
-      "url_copied": "URL copied"
+      "url_copied": "URL copied",
+      "refund_no_payment_intent": "This order has no Stripe payment intent — refund not possible from the panel."
     },
     "pagination": {
       "page": "Page {current} of {total}",
       "previous": "Previous",
       "next": "Next"
+    },
+    "common": {
+      "views": "Views",
+      "stripe_payment_intent": "Stripe Payment Intent",
+      "stripe_session": "Stripe Session",
+      "user_id": "User ID",
+      "name_field": "Name",
+      "email_field": "Email"
+    },
+    "aria": {
+      "delete_item": "Delete {name}",
+      "edit_item": "Edit {name}",
+      "view_item": "View {name}"
+    },
+    "confirm": {
+      "delete_article_title": "Delete article?",
+      "delete_article_body": "This will permanently delete \"{name}\". This action cannot be undone.",
+      "delete_book_title": "Delete book?",
+      "delete_book_body": "This will permanently delete \"{name}\". This action cannot be undone.",
+      "delete_event_title": "Delete event?",
+      "delete_event_body": "This will permanently delete \"{name}\". This action cannot be undone.",
+      "delete_interview_title": "Delete interview?",
+      "delete_interview_body": "This will permanently delete \"{name}\". This action cannot be undone.",
+      "delete_gallery_title": "Delete photo?",
+      "delete_gallery_body": "This will permanently delete this photo. This action cannot be undone.",
+      "delete_confirm": "Delete",
+      "delete_cancel": "Cancel"
     },
     "dashboard": {
       "stats": {
@@ -559,7 +611,20 @@
       "refund": "Refund",
       "cancel_order": "Cancel",
       "open_stripe": "Open in Stripe",
-      "back_to_orders": "All orders"
+      "back_to_orders": "All orders",
+      "confirm": {
+        "back": "Back",
+        "fulfill_title": "Mark this order as fulfilled?",
+        "fulfill_description": "{email} bought this order ({amount}). Marking it fulfilled records that you've delivered the goods. No charge or refund happens on Stripe.",
+        "fulfill_confirm": "Mark fulfilled",
+        "refund_title": "Refund this order?",
+        "refund_description": "This will issue a real refund of {amount} back to {email} via Stripe. The customer's card is credited and the action cannot be undone from the panel — only reversed by the customer's bank.",
+        "refund_confirm": "Yes, refund {amount}",
+        "refunding": "Refunding…",
+        "cancel_title": "Cancel this order?",
+        "cancel_description": "Mark the order from {email} ({amount}) as failed. This is a record-keeping action only — no Stripe refund will be issued. Use \"Refund\" if you also need to return the money.",
+        "cancel_confirm": "Yes, mark failed"
+      }
     },
     "subscribers": {
       "description": "Newsletter subscribers and audience growth.",

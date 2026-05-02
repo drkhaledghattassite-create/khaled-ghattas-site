@@ -139,13 +139,16 @@ Toggle groups: `homepage`, `navigation`, `footer`, `hero_ctas`, `featured`,
   bounce the user back after a successful sign-in. The chain is preserved
   across login ↔ register, login ↔ forgot, reset → login, and Google OAuth
   via `callbackURL`.
-- **Mock auth** lives in `lib/auth/mock.ts`. Toggled by env:
-  `MOCK_AUTH=false` AND `NEXT_PUBLIC_MOCK_AUTH=false` — both must be the
-  literal string `"false"` to disable mock mode. Default in dev is ON.
+- **Mock auth** lives in `lib/auth/mock.ts`. Opt-in via env:
+  set `MOCK_AUTH=true` (or `NEXT_PUBLIC_MOCK_AUTH=true`) to enable. Default
+  is OFF — and mock auth is **hard-disabled** when `NODE_ENV === 'production'`
+  regardless of env. `getMockSession()` throws in production as a defense-in-
+  depth guard against env-misconfiguration privilege escalation. (Inverted
+  from the pre-launch semantics; see SECURITY [C-2] in `lib/auth/mock.ts`.)
 - Mock users: `id 1` admin@drkhaledghattass.com (Kamal, ADMIN),
   `id 2` khaled@drkhaledghattass.com (Dr. Khaled, CLIENT),
   `id 3` user@example.com (test user). Active mock user is
-  `MOCK_ACTIVE_USER_ID = '1'`.
+  `MOCK_ACTIVE_USER_ID = '1'` (ADMIN — that's why mock-in-prod is fatal).
 - Public auth-UI gate: two-layered. `settings.features.auth_enabled` (DB,
   per-deployment) is the runtime gate read by `AuthMenu`; the env flag
   `NEXT_PUBLIC_AUTH_ENABLED === 'true'` is the build-time fallback for
@@ -529,14 +532,21 @@ so explicitly rather than implying success.
 ## Auth & mock mode
 
 - `lib/auth/mock.ts` provides `getMockSession()` returning the active mock user
-  when `MOCK_AUTH_ENABLED` is true (the default in dev). Toggle off by setting
-  BOTH `MOCK_AUTH=false` and `NEXT_PUBLIC_MOCK_AUTH=false`.
+  when `MOCK_AUTH_ENABLED` is true. Mock auth is **opt-in** in dev — set
+  `MOCK_AUTH=true` (or `NEXT_PUBLIC_MOCK_AUTH=true`) in `.env.local` to enable.
+  Default OFF. `NODE_ENV === 'production'` hard-disables it; `getMockSession()`
+  throws if invoked in production at all.
 - `lib/auth/server.ts` provides `getServerSession()` — the production path
-  (mock-aware).
+  (mock-aware in dev only; mock branch is gated by `NODE_ENV !== 'production'`).
 - `lib/auth/client.ts` exposes `useSession()` for client components (used by
   `BookBuyButton` to gate purchases).
 - `lib/auth/admin-guard.ts` exports `requireAdmin(req)`.
 - `lib/auth/index.ts` configures Better Auth (30-day sessions, 24h refresh).
+  Throws at module load when `BETTER_AUTH_SECRET` is unset in production
+  (SECURITY [C-1]). In dev with no secret, an ephemeral `randomBytes(32)`
+  secret is used per process — sessions don't persist across restarts, by
+  design. `trustedOrigins` locked to `NEXT_PUBLIC_APP_URL` + `BETTER_AUTH_URL`
+  in production; dev also includes `localhost:3000`/`:3001`.
 - `lib/auth/redirect.ts` — safe-redirect helpers for the post-login bounce-back.
 - Promotion script: `node --env-file=.env.local scripts/promote-admin.mjs <email> ADMIN|CLIENT`.
 
@@ -547,18 +557,18 @@ Two gates work together:
   Sign In UI. The env flag `NEXT_PUBLIC_AUTH_ENABLED` is the build-time
   fallback for callers that don't pass the runtime setting.
 
-Behavior matrix (using the runtime `auth_enabled`):
+Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED` is dev-only):
 | `auth_enabled` | `MOCK_AUTH_ENABLED` | Result |
 | --- | --- | --- |
-| false | true  | Public nav hides auth links. Admin/dashboard protected by mock. (Default dev.) |
-| true  | true  | Public nav shows auth. Mock session active. (Demo mode.) |
-| true  | false | Public nav shows auth. Real Better Auth. (Production.) |
-| false | false | Public nav hides auth. Routes return 401. (Maintenance.) |
+| false | true  | Public nav hides auth links. Admin/dashboard protected by mock. (Dev with `MOCK_AUTH=true`.) |
+| true  | true  | Public nav shows auth. Mock session active. (Dev demo mode.) |
+| true  | false | Public nav shows auth. Real Better Auth. (Production — mock can't run here.) |
+| false | false | Public nav hides auth. Routes return 401. (Maintenance / default dev with no opt-in.) |
 
 > Mock-mode caveat: in dev with `MOCK_AUTH_ENABLED=true`, server-side
 > `getServerSession()` returns the mock user, but client-side
 > `authClient.useSession()` queries Better Auth's real endpoint and sees no
-> session. If you're testing purchase gating, turn mock OFF.
+> session. If you're testing purchase gating, leave mock off (the default).
 
 ## Real content status
 
@@ -600,7 +610,7 @@ Full reference in `.env.local.example`. Required for production:
 | Var | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Neon Postgres connection |
-| `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. **Required at build & runtime in production** — server throws at module load if missing (SECURITY [C-1]). |
 | `BETTER_AUTH_URL` | Production origin |
 | `NEXT_PUBLIC_APP_URL` | Production origin (for metadata, sitemap, OG) |
 | `REVALIDATE_TOKEN` | `openssl rand -hex 32` |
@@ -619,7 +629,7 @@ Runtime flags (string-equality `'true'` / `'false'`):
 | Var | Effect |
 | --- | --- |
 | `NEXT_PUBLIC_AUTH_ENABLED` | Build-time fallback for the auth UI gate. The runtime gate is `features.auth_enabled` in the structured site settings. |
-| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Both `'false'` to disable mock auth. |
+| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Either set to `'true'` to opt into mock auth (dev only — hard-disabled in production regardless). Default OFF. |
 
 `HAS_DB` is **not** an env var. It's auto-detected from `DATABASE_URL`
 inside `lib/db/queries.ts`.
@@ -650,8 +660,10 @@ describing the task in a way that triggers auto-delegation.
 1. Provision Neon, generate `BETTER_AUTH_SECRET` + `REVALIDATE_TOKEN`, populate
    `.env.local` (production values go on Netlify).
 2. Apply migrations to Neon (`npm run db:migrate`); seed if desired.
-3. Disable mock auth (`MOCK_AUTH=false`, `NEXT_PUBLIC_MOCK_AUTH=false`); enable
-   real auth (`NEXT_PUBLIC_AUTH_ENABLED=true`).
+3. Confirm mock auth is OFF in production env (the default — leave `MOCK_AUTH`
+   unset, or set to anything other than `'true'`). Even with `MOCK_AUTH=true`,
+   `NODE_ENV === 'production'` blocks it. Enable real auth UI
+   (`NEXT_PUBLIC_AUTH_ENABLED=true`).
 4. Promote admin and CLIENT users via `scripts/promote-admin.mjs`.
 5. Get pending content from Dr. Khaled (interviews, articles, OG, favicon).
 6. Run the agent team: `security-auditor`, `seo-checker`,

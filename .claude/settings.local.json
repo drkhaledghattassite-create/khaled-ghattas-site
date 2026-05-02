@@ -53,7 +53,17 @@
       "PowerShell(cmdkey /list:LegacyGeneric:target=git:https://github.com 2>&1)",
       "mcp__magic__21st_magic_component_inspiration",
       "mcp__claude_ai_Netlify__netlify-project-services-reader",
-      "mcp__claude_ai_Netlify__get-netlify-coding-context"
+      "mcp__claude_ai_Netlify__get-netlify-coding-context",
+      "PowerShell(stripe *)",
+      "PowerShell(Test-Path *)",
+      "Skill(claude-md-management:revise-claude-md)",
+      "PowerShell(& \"C:\\\\Users\\\\OATech\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Stripe.StripeCli_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\stripe.exe\" login --complete 'https://dashboard.stripe.com/stripecli/auth/cliauth_URF1o33p7tLrZD?secret=fiO6W421QLxiUkELt5CXlTQZOBPPEmTe')",
+      "PowerShell(& \"C:\\\\Users\\\\OATech\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Stripe.StripeCli_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\stripe.exe\" listen --forward-to localhost:3000/api/stripe/webhook)",
+      "PowerShell($tools = @{}; foreach \\($t in 'winget','scoop','choco'\\) { try { $v = & $t --version 2>$null; if \\($?\\) { $tools[$t] = $v } } catch {} }; $tools | Format-Table -AutoSize)",
+      "PowerShell(winget install *)",
+      "PowerShell(Out-File *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(Get-Process *)"
     ]
   }
 }

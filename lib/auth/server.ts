@@ -31,9 +31,14 @@ function fromMock(u: MockUser): ServerSessionUser {
  *
  * - In mock mode (MOCK_AUTH_ENABLED), returns the impersonated mock user.
  * - In real mode, calls Better Auth via the request headers.
+ *
+ * SECURITY [C-2]: The `NODE_ENV !== 'production'` guard is intentional and
+ * redundant with the same guard in MOCK_AUTH_ENABLED itself — kept here as
+ * defense-in-depth so a future refactor of mock.ts can't reintroduce the
+ * "anonymous-visitor-becomes-admin" failure mode.
  */
 export async function getServerSession(): Promise<ServerSession> {
-  if (MOCK_AUTH_ENABLED) {
+  if (process.env.NODE_ENV !== 'production' && MOCK_AUTH_ENABLED) {
     const m = await getMockSession()
     return m ? { user: fromMock(m.user) } : null
   }

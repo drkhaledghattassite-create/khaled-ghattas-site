@@ -34,8 +34,9 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
 
   return (
     <>
-      <div className="grid h-[calc(100dvh-180px)] grid-cols-[320px_1fr] overflow-hidden rounded-md border border-border bg-bg-elevated">
-        <aside className="flex flex-col border-e border-border">
+      {/* Responsive grid: stacked on mobile (list above detail), two-pane on md+. */}
+      <div className="grid h-[calc(100dvh-180px)] grid-cols-1 overflow-hidden rounded-md border border-border bg-bg-elevated md:grid-cols-[320px_1fr]">
+        <aside className="flex max-h-[40dvh] flex-col border-b border-border md:max-h-none md:border-b-0 md:border-e md:border-border">
           <div className="flex flex-wrap gap-1 border-b border-border p-2">
             {FILTERS.map((f) => (
               <button

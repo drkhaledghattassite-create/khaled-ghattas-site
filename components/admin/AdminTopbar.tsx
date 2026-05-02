@@ -3,13 +3,18 @@
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { Bell, ChevronRight, Menu, Plus, Search } from 'lucide-react'
+// Removed Bell + Search icons along with the dead search input and unwired
+// notifications bell. They'll come back in a later phase when the search and
+// notifications backends exist; until then hiding empty UI is more honest.
+import { ChevronRight, Menu, Plus } from 'lucide-react'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import { authClient } from '@/lib/auth/client'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import { stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
 import { AdminSidebarContent } from './AdminSidebar'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +44,6 @@ export function AdminTopbar({ user }: { user: ServerSessionUser }) {
   const router = useRouter()
   const tNav = useTranslations('admin.nav')
   const tCommon = useTranslations('admin.topbar')
-  const tForms = useTranslations('admin.forms')
   const tUser = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -113,15 +117,12 @@ export function AdminTopbar({ user }: { user: ServerSessionUser }) {
         </h1>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="relative hidden items-center md:flex">
-          <Search className="pointer-events-none absolute start-2.5 h-3.5 w-3.5 text-fg3" aria-hidden />
-          <input
-            type="search"
-            placeholder={tForms('search')}
-            className="h-9 min-w-[260px] rounded-full border border-border bg-bg-elevated ps-8 pe-4 text-[13px] text-fg1 placeholder:text-fg3 focus:border-accent focus:outline-none"
-          />
-        </label>
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* TODO(phase-2): wire a global admin search across articles, books,
+            interviews, events, orders, users. Removed the dead input on
+            2026-05-02 — empty placeholder UI was misleading. */}
+        {/* TODO(phase-2): notifications bell removed — there's no real
+            notification stream wired yet. Re-add when a feed source exists. */}
 
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -131,7 +132,7 @@ export function AdminTopbar({ user }: { user: ServerSessionUser }) {
             <Plus className="h-3.5 w-3.5" aria-hidden />
             {tCommon('new')}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-[200px]">
             <DropdownMenuGroup>
               <DropdownMenuLabel>{tCommon('quick_actions')}</DropdownMenuLabel>
             </DropdownMenuGroup>
@@ -144,28 +145,33 @@ export function AdminTopbar({ user }: { user: ServerSessionUser }) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <button
-          type="button"
-          aria-label={tCommon('notifications')}
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1"
-        >
-          <Bell className="h-4 w-4" aria-hidden />
-          <span className="absolute -end-0.5 -top-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-medium text-accent-fg">
-            3
-          </span>
-        </button>
+        {/* Theme + locale toggles, mirroring the public site header so
+            admins can flip dark/light and AR/EN without leaving /admin. */}
+        <span className="hidden sm:inline-flex">
+          <ThemeToggle />
+        </span>
+        <span className="hidden sm:inline-flex">
+          <LocaleSwitcher />
+        </span>
 
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={user.name}
-            className="flex h-9 items-center gap-2 rounded-full border border-border ps-1 pe-3 text-[13px] text-fg1 transition-colors hover:bg-bg-deep"
+            className="flex h-9 max-w-[160px] items-center gap-2 rounded-full border border-border ps-1 pe-3 text-[13px] text-fg1 transition-colors hover:bg-bg-deep md:max-w-[220px]"
           >
-            <span aria-hidden className="block h-7 w-7 rounded-full bg-fg1/80" />
-            <span className="hidden sm:inline">{user.name}</span>
+            <span aria-hidden className="block h-7 w-7 shrink-0 rounded-full bg-fg1/80" />
+            <span className="hidden truncate sm:inline">{user.name}</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          {/* min-w-[260px] gives long emails (e.g., kamallchhimi@gmail.com)
+              room to render without horizontal-clip truncation that hid the
+              first few characters in RTL. */}
+          <DropdownMenuContent align="end" className="min-w-[260px]">
             <DropdownMenuGroup>
-              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                <span className="block max-w-[240px] truncate" dir="ltr" title={user.email}>
+                  {user.email}
+                </span>
+              </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/admin/settings" />}>

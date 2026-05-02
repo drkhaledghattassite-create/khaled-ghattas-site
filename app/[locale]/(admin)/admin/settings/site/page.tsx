@@ -3,6 +3,11 @@ import { SiteSettingsForm } from '@/components/admin/SiteSettingsForm'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { getArticles, getBooks, getInterviews } from '@/lib/db/queries'
 
+// Auth-gated route — render per-request so getServerSession sees real cookies.
+// Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
+// and Next prerenders static HTML with session=null baked in.
+export const dynamic = 'force-dynamic'
+
 type Props = { params: Promise<{ locale: string }> }
 
 export default async function AdminSiteSettingsPage({ params }: Props) {

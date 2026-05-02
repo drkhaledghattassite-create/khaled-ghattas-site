@@ -1,4 +1,25 @@
 {
+  "status": {
+    "draft": "مسودة",
+    "published": "منشور",
+    "archived": "مؤرشف",
+    "pending": "قيد الانتظار",
+    "paid": "مدفوع",
+    "fulfilled": "تم التسليم",
+    "refunded": "مسترد",
+    "failed": "فشل",
+    "unread": "غير مقروء",
+    "read": "مقروء",
+    "active": "نشط",
+    "unsubscribed": "غير مشترك",
+    "bounced": "مرتد",
+    "upcoming": "قادم",
+    "past": "سابق",
+    "cancelled": "ملغى",
+    "admin": "مسؤول",
+    "client": "عميل",
+    "user": "مستخدم"
+  },
   "nav": {
     "brand": "د. خالد غطاس",
     "home": "الرئيسية",
@@ -225,7 +246,10 @@
     "also_browse": "تصفح أيضًا",
     "checkout": {
       "coming_soon": "الدفع الإلكتروني سيُفعَّل قريبًا. لإتمام الشراء الآن، تواصل معنا عبر صفحة التواصل.",
-      "error": "تعذّر بدء الدفع. حاول مرة أخرى."
+      "error": "تعذّر بدء الدفع. حاول مرة أخرى.",
+      "owned_label": "تملك هذا",
+      "owned_aria_label": "تملك هذا — اذهب إلى مكتبتك",
+      "go_to_library": "إلى مكتبتي"
     }
   },
   "checkout": {
@@ -427,12 +451,40 @@
       "success_exported": "تم تصدير CSV",
       "error_generic": "حدث خطأ ما",
       "cache_cleared": "تم مسح التخزين المؤقت",
-      "url_copied": "تم نسخ الرابط"
+      "url_copied": "تم نسخ الرابط",
+      "refund_no_payment_intent": "هذا الطلب بدون معرّف دفع من Stripe — لا يمكن الاسترداد من اللوحة."
     },
     "pagination": {
       "page": "الصفحة {current} من {total}",
       "previous": "السابق",
       "next": "التالي"
+    },
+    "common": {
+      "views": "المشاهدات",
+      "stripe_payment_intent": "Stripe Payment Intent",
+      "stripe_session": "Stripe Session",
+      "user_id": "معرّف المستخدم",
+      "name_field": "الاسم",
+      "email_field": "البريد"
+    },
+    "aria": {
+      "delete_item": "حذف {name}",
+      "edit_item": "تعديل {name}",
+      "view_item": "عرض {name}"
+    },
+    "confirm": {
+      "delete_article_title": "حذف هذا المقال؟",
+      "delete_article_body": "سيتم حذف «{name}» نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_book_title": "حذف هذا الكتاب؟",
+      "delete_book_body": "سيتم حذف «{name}» نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_event_title": "حذف هذه الفعالية؟",
+      "delete_event_body": "سيتم حذف «{name}» نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_interview_title": "حذف هذه المقابلة؟",
+      "delete_interview_body": "سيتم حذف «{name}» نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_gallery_title": "حذف هذه الصورة؟",
+      "delete_gallery_body": "سيتم حذف هذه الصورة نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_confirm": "حذف",
+      "delete_cancel": "إلغاء"
     },
     "dashboard": {
       "stats": {
@@ -559,7 +611,20 @@
       "refund": "استرداد",
       "cancel_order": "إلغاء",
       "open_stripe": "فتح في Stripe",
-      "back_to_orders": "كل الطلبات"
+      "back_to_orders": "كل الطلبات",
+      "confirm": {
+        "back": "رجوع",
+        "fulfill_title": "تأكيد تنفيذ هذا الطلب؟",
+        "fulfill_description": "{email} اشترى هذا الطلب ({amount}). تحديد التنفيذ يسجّل أنّك سلّمت المنتج. لا يحدث أي خصم أو استرداد على Stripe.",
+        "fulfill_confirm": "تم التنفيذ",
+        "refund_title": "استرداد قيمة هذا الطلب؟",
+        "refund_description": "سيُجرى استرداد فعلي بمبلغ {amount} لحساب {email} عبر Stripe. تُعاد القيمة إلى بطاقة العميل ولا يمكن التراجع عن هذا الإجراء من اللوحة — يلزم تدخّل البنك إن أردت إلغاءه.",
+        "refund_confirm": "نعم، استرداد {amount}",
+        "refunding": "جارٍ الاسترداد…",
+        "cancel_title": "إلغاء هذا الطلب؟",
+        "cancel_description": "تحديد طلب {email} ({amount}) كـ«فاشل». هذا إجراء توثيقي فقط — لن يُجرى أي استرداد عبر Stripe. استخدم «استرداد» إذا كنت تريد إعادة المبلغ أيضًا.",
+        "cancel_confirm": "نعم، تحديده كفاشل"
+      }
     },
     "subscribers": {
       "description": "مشتركو النشرة البريدية.",

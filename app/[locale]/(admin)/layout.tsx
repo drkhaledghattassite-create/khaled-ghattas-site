@@ -10,6 +10,12 @@ type Props = {
   params: Promise<{ locale: string }>
 }
 
+// All admin routes are auth-gated via requireServerRole below. force-dynamic
+// makes every admin page render per-request — without this, the catch around
+// the auth call lets Next prerender the routes as static HTML with the
+// /login redirect baked in, bouncing real admins to login.
+export const dynamic = 'force-dynamic'
+
 export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)

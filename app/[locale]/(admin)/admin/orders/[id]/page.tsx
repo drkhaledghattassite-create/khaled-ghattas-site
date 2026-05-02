@@ -15,91 +15,80 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!order) notFound()
 
   const t = await getTranslations('admin.orders')
+  const tCommon = await getTranslations('admin.common')
 
   return (
     <div className="space-y-6">
       <Link
         href="/admin/orders"
-        className="font-label inline-flex items-center gap-1 text-[12px] text-ink-muted hover:text-ink"
+        className="font-label inline-flex items-center gap-1 text-[12px] text-fg3 hover:text-fg1"
       >
         <ChevronLeft className="h-3 w-3 rtl:rotate-180" aria-hidden />
         {t('back_to_orders')}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section className="space-y-4 rounded-md border border-dashed border-ink/30 bg-cream-soft p-6">
+        <section className="space-y-4 rounded-md border border-dashed border-border bg-bg-elevated p-6">
           <header className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="font-label text-[10px] text-ink-muted">{t('id')}</p>
-              <p className="font-mono text-[14px] text-ink">{order.id}</p>
+              <p className="font-label text-[10px] text-fg3">{t('id')}</p>
+              <p className="font-mono text-[14px] text-fg1">{order.id}</p>
             </div>
             <StatusBadge status={order.status} />
           </header>
 
-          <dl className="grid grid-cols-2 gap-4 border-t border-dashed border-ink/30 pt-4 text-[13px]">
+          <dl className="grid grid-cols-2 gap-4 border-t border-dashed border-border pt-4 text-[13px]">
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">{t('total')}</dt>
-              <dd
-                className="text-ink font-display font-semibold text-[24px]"
-              >
+              <dt className="font-label text-[10px] text-fg3">{t('total')}</dt>
+              <dd className="text-fg1 font-display font-semibold text-[24px]">
                 ${order.totalAmount} {order.currency}
               </dd>
             </div>
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">{t('created_at')}</dt>
-              <dd className="text-ink">{order.createdAt.toISOString().slice(0, 16).replace('T', ' ')}</dd>
+              <dt className="font-label text-[10px] text-fg3">{t('created_at')}</dt>
+              <dd className="text-fg1">{order.createdAt.toISOString().slice(0, 16).replace('T', ' ')}</dd>
             </div>
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">Stripe PI</dt>
-              <dd className="font-mono text-[11px] text-ink-muted">
+              <dt className="font-label text-[10px] text-fg3">{tCommon('stripe_payment_intent')}</dt>
+              <dd className="font-mono text-[11px] text-fg3">
                 {order.stripePaymentIntentId ?? '—'}
               </dd>
             </div>
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">Stripe Session</dt>
-              <dd className="font-mono text-[11px] text-ink-muted">
+              <dt className="font-label text-[10px] text-fg3">{tCommon('stripe_session')}</dt>
+              <dd className="font-mono text-[11px] text-fg3">
                 {order.stripeSessionId ?? '—'}
               </dd>
             </div>
           </dl>
         </section>
 
-        <aside className="space-y-4 rounded-md border border-dashed border-ink/30 bg-cream-soft p-6">
-          <h2
-            className="text-ink font-display font-semibold text-[14px] uppercase tracking-[0.04em]"
-          >
+        <aside className="space-y-4 rounded-md border border-dashed border-border bg-bg-elevated p-6">
+          <h2 className="text-fg1 font-display font-semibold text-[14px] uppercase tracking-[0.04em]">
             {t('customer')}
           </h2>
           <dl className="space-y-2 text-[13px]">
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">Name</dt>
-              <dd className="text-ink">{order.customerName ?? '—'}</dd>
+              <dt className="font-label text-[10px] text-fg3">{tCommon('name_field')}</dt>
+              <dd className="text-fg1">{order.customerName ?? '—'}</dd>
             </div>
             <div>
-              <dt className="font-label text-[10px] text-ink-muted">Email</dt>
-              <dd className="text-ink">{order.customerEmail}</dd>
+              <dt className="font-label text-[10px] text-fg3">{tCommon('email_field')}</dt>
+              <dd className="text-fg1">{order.customerEmail}</dd>
             </div>
             {order.userId && (
               <div>
-                <dt className="font-label text-[10px] text-ink-muted">User ID</dt>
-                <dd className="font-mono text-[11px] text-ink-muted">{order.userId}</dd>
+                <dt className="font-label text-[10px] text-fg3">{tCommon('user_id')}</dt>
+                <dd className="font-mono text-[11px] text-fg3">{order.userId}</dd>
               </div>
             )}
           </dl>
         </aside>
       </div>
 
-      <section className="space-y-3 rounded-md border border-dashed border-ink/30 bg-cream-soft p-6">
-        <h2
-          className="text-ink"
-          style={{
-            fontFamily: 'var(--font-oswald)',
-            fontWeight: 600,
-            fontSize: 14,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
+      <section className="space-y-3 rounded-md border border-dashed border-border bg-bg-elevated p-6">
+        {/* Heading style mirrors the sibling <h2> above — Qalem v2 tokens, no inline style. */}
+        <h2 className="text-fg1 font-display font-semibold text-[14px] uppercase tracking-[0.04em]">
           {t('actions')}
         </h2>
         <OrderActions order={order} />

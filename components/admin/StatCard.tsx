@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils'
 type Props = {
   label: string
   value: string | number
+  /** Pass a real percent change vs the prior period. Omit when there's
+   * nothing meaningful to show — fake placeholder deltas were removed. */
   delta?: number
   icon: LucideIcon
 }
@@ -26,7 +28,8 @@ export function StatCard({ label, value, delta, icon: Icon }: Props) {
           <span
             className={cn(
               'inline-flex items-center gap-0.5 text-[11px] uppercase tracking-[0.08em] font-display font-semibold',
-              positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-accent',
+              // Use the new semantic success token for positive trends, accent for negative.
+              positive ? 'text-success' : 'text-accent',
             )}
           >
             {positive ? (

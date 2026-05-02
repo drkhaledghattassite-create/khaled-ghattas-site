@@ -98,7 +98,9 @@ export function DataTable<T>({
         )}
       </div>
 
-      <div className="overflow-hidden rounded-md border border-border bg-bg-elevated">
+      {/* overflow-x-auto so wide admin tables scroll on mobile/tablet rather
+          than clip columns. The corner-rounding hold via the wrapper border. */}
+      <div className="overflow-x-auto rounded-md border border-border bg-bg-elevated">
         <table className="w-full">
           <thead className="border-b border-border bg-bg-deep">
             {table.getHeaderGroups().map((hg) => (

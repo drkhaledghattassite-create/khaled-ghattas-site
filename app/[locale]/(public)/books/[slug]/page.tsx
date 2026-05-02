@@ -10,20 +10,21 @@ import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   getBookBySlug,
-  getBooks,
   getRelatedBooks,
+  userOwnsProduct,
 } from '@/lib/db/queries'
+import { getServerSession } from '@/lib/auth/server'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { SITE_URL } from '@/lib/constants'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
-export async function generateStaticParams() {
-  const books = await getBooks()
-  return books.flatMap((b) =>
-    ['ar', 'en'].map((locale) => ({ locale, slug: b.slug })),
-  )
-}
+// Per-request server rendering: the page reads the visitor's session to
+// personalize the Buy CTA (showing "You own this" for purchased books). Static
+// prerender would bake owned=false into HTML served to all visitors, so the
+// "owned" branch could never render in production. generateStaticParams is
+// dropped because force-dynamic ignores it.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params
@@ -79,6 +80,8 @@ export default async function BookPage({ params }: Props) {
   const tNav = await getTranslations('nav')
   const tBookType = await getTranslations('books.type')
   const related = await getRelatedBooks(slug, 3)
+  const session = await getServerSession()
+  const owned = session ? await userOwnsProduct(session.user.id, book.id) : false
   const isRtl = locale === 'ar'
 
   const title = locale === 'ar' ? book.titleAr : book.titleEn
@@ -192,7 +195,11 @@ export default async function BookPage({ params }: Props) {
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <BookBuyButton bookId={book.id} className="btn-pill btn-pill-accent">
+              <BookBuyButton
+                bookId={book.id}
+                owned={owned}
+                className={owned ? 'btn-pill btn-pill-secondary' : 'btn-pill btn-pill-accent'}
+              >
                 {t('buy')}
               </BookBuyButton>
               {!isSession && book.digitalFile && (
