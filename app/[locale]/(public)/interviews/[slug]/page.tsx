@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
-import { InterviewJsonLd } from '@/components/seo/StructuredData'
+import { BreadcrumbJsonLd, InterviewJsonLd } from '@/components/seo/StructuredData'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
@@ -13,7 +13,9 @@ import {
   getRelatedInterviews,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
-import { SITE_URL } from '@/lib/constants'
+import { SITE_NAME, SITE_URL } from '@/lib/constants'
+
+const SITE_NAME_AR = 'د. خالد غطاس'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
@@ -42,6 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         ar: `${SITE_URL}/interviews/${slug}`,
         en: `${SITE_URL}/en/interviews/${slug}`,
+        'x-default': `${SITE_URL}/interviews/${slug}`,
       },
     },
     openGraph: {
@@ -49,7 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url,
-      siteName: 'Dr. Khaled Ghattass',
+      siteName: isAr ? SITE_NAME_AR : SITE_NAME,
       images: [{ url: image, width: 1200, height: 630, alt: title }],
       locale: isAr ? 'ar_LB' : 'en_US',
     },
@@ -85,21 +88,22 @@ export default async function InterviewPage({ params }: Props) {
   const source = (locale === 'ar' ? interview.sourceAr : interview.source) ?? ''
   const year = interview.year
 
+  const crumbs = [
+    { href: '/', label: tNav('home') },
+    { href: '/interviews', label: tNav('interviews') },
+    { href: `/interviews/${interview.slug}`, label: title },
+  ]
+
   return (
     <article
       dir={isRtl ? 'rtl' : 'ltr'}
       className="bg-[var(--color-bg)]"
     >
       <InterviewJsonLd interview={interview} locale={locale} />
+      <BreadcrumbJsonLd crumbs={crumbs} locale={locale} />
       <div className="[padding:clamp(48px,6vw,80px)_clamp(20px,5vw,56px)_clamp(24px,3vw,40px)]">
         <div className="mx-auto max-w-[var(--container-max)]">
-          <Breadcrumbs
-            crumbs={[
-              { href: '/', label: tNav('home') },
-              { href: '/interviews', label: tNav('interviews') },
-              { href: `/interviews/${interview.slug}`, label: title },
-            ]}
-          />
+          <Breadcrumbs crumbs={crumbs} />
         </div>
       </div>
 
@@ -289,7 +293,7 @@ export default async function InterviewPage({ params }: Props) {
                       <div className="relative aspect-video overflow-hidden rounded-[4px] bg-[var(--color-fg1)]">
                         <Image
                           src={r.thumbnailImage}
-                          alt=""
+                          alt={rTitle}
                           fill
                           sizes="(min-width: 768px) 400px, 100vw"
                           className="object-cover [filter:brightness(0.8)_contrast(1.05)] transition-[transform,filter] duration-[400ms] group-hover:scale-[1.03]"

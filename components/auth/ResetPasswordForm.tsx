@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { forwardRef, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
@@ -11,8 +11,14 @@ import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
+type Errors = {
+  password?: string
+  confirm?: string
+}
+
 export function ResetPasswordForm() {
   const t = useTranslations('auth.reset')
+  const tErr = useTranslations('auth.errors')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const router = useRouter()
@@ -23,6 +29,28 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Errors>({})
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmRef = useRef<HTMLInputElement>(null)
+
+  function validate(): Errors {
+    const next: Errors = {}
+    if (!password) next.password = tErr('password_required')
+    else if (password.length < 8) next.password = tErr('password_min')
+    if (!confirm) next.confirm = tErr('confirm_required')
+    else if (password && password !== confirm) next.confirm = tErr('confirm_mismatch')
+    return next
+  }
+
+  function focusFirstInvalid(next: Errors) {
+    if (next.password) {
+      passwordRef.current?.focus()
+      return
+    }
+    if (next.confirm) {
+      confirmRef.current?.focus()
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -30,10 +58,13 @@ export function ResetPasswordForm() {
       toast.error(t('missing_token'))
       return
     }
-    if (password !== confirm) {
-      toast.error(t('mismatch'))
+    const fieldErrors = validate()
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors)
+      focusFirstInvalid(fieldErrors)
       return
     }
+    setErrors({})
 
     setLoading(true)
     try {
@@ -42,14 +73,14 @@ export function ResetPasswordForm() {
         token,
       })
       if (error) {
-        toast.error(error.message ?? 'Could not reset password.')
+        toast.error(error.message ?? tErr('reset_failed'))
         return
       }
       toast.success(t('success'))
       router.push(withRedirect('/login', redirectTarget))
     } catch (err) {
       console.error('[ResetPassword]', err)
-      toast.error('Could not reset password.')
+      toast.error(tErr('reset_failed'))
     } finally {
       setLoading(false)
     }
@@ -96,19 +127,29 @@ export function ResetPasswordForm() {
 
       <form onSubmit={handleSubmit} className="mt-9 flex flex-col gap-5" noValidate>
         <Field
+          ref={passwordRef}
           id="password"
           label={t('password_label')}
           placeholder={t('password_placeholder')}
           value={password}
-          onChange={setPassword}
+          onChange={(v) => {
+            setPassword(v)
+            if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+          }}
+          error={errors.password}
           isRtl={isRtl}
         />
         <Field
+          ref={confirmRef}
           id="confirm"
           label={t('confirm_label')}
           placeholder={t('confirm_placeholder')}
           value={confirm}
-          onChange={setConfirm}
+          onChange={(v) => {
+            setConfirm(v)
+            if (errors.confirm) setErrors((p) => ({ ...p, confirm: undefined }))
+          }}
+          error={errors.confirm}
           isRtl={isRtl}
         />
 
@@ -124,21 +165,21 @@ export function ResetPasswordForm() {
   )
 }
 
-function Field({
-  id,
-  label,
-  placeholder,
-  value,
-  onChange,
-  isRtl,
-}: {
+type FieldProps = {
   id: string
   label: string
   placeholder: string
   value: string
   onChange: (v: string) => void
   isRtl: boolean
-}) {
+  error?: string
+}
+
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { id, label, placeholder, value, onChange, isRtl, error },
+  ref,
+) {
+  const errorId = `${id}-error`
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className={`text-[13px] font-semibold text-fg1 ${
@@ -147,6 +188,7 @@ function Field({
         {label}
       </label>
       <input
+        ref={ref}
         id={id}
         type="password"
         value={value}
@@ -154,10 +196,25 @@ function Field({
         placeholder={placeholder}
         required
         autoComplete="new-password"
-        className={`w-full px-4 py-3 rounded-[var(--radius-md)] border border-border-strong bg-bg-elevated text-[15px] text-fg1 placeholder:text-fg3 outline-none transition-[border-color,box-shadow] duration-200 focus:border-accent focus:[box-shadow:var(--shadow-focus)] ${
-          isRtl ? 'font-arabic-body' : 'font-display'
-        }`}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        className={`w-full px-4 py-3 rounded-[var(--radius-md)] border bg-bg-elevated text-[15px] text-fg1 placeholder:text-fg3 outline-none transition-[border-color,box-shadow] duration-200 focus:[box-shadow:var(--shadow-focus)] ${
+          error
+            ? 'border-[var(--color-destructive)] focus:border-[var(--color-destructive)]'
+            : 'border-border-strong focus:border-accent'
+        } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
       />
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          className={`m-0 text-[13px] leading-[1.4] text-[var(--color-destructive)] ${
+            isRtl ? 'font-arabic-body' : 'font-display'
+          }`}
+        >
+          {error}
+        </p>
+      )}
     </div>
   )
-}
+})

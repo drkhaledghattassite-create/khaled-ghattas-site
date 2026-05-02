@@ -108,15 +108,16 @@ export function SiteHeader({
             <ThemeToggle />
             {authSlot && <div className="hidden md:flex ms-1">{authSlot}</div>}
 
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger — 44×44 touch target (WCAG 2.5.5). */}
             <motion.button
               type="button"
               aria-label={t('menu')}
               aria-expanded={menuOpen}
+              aria-controls="mobile-menu-panel"
               onClick={() => setMenuOpen(true)}
               whileTap={{ scale: 0.92 }}
               transition={{ duration: 0.18, ease: EASE_EDITORIAL }}
-              className="group md:hidden ms-1 inline-flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] transition-[border-color,background-color] duration-200 hover:border-[var(--color-border-strong)] active:bg-[var(--color-bg-deep)]"
+              className="group md:hidden ms-1 inline-flex h-11 w-11 flex-col items-center justify-center gap-[5px] rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] transition-[border-color,background-color] duration-200 hover:border-[var(--color-border-strong)] active:bg-[var(--color-bg-deep)]"
             >
               <span aria-hidden className="block h-px w-4 bg-[var(--color-fg1)] transition-transform duration-200 group-hover:translate-y-[-1px]" />
               <span aria-hidden className="block h-px w-3 bg-[var(--color-accent)]" />

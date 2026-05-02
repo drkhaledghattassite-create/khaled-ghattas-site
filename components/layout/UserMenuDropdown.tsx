@@ -100,8 +100,9 @@ export function UserMenuDropdown({ user }: { user: ServerSessionUser }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
+        aria-haspopup="true"
         aria-expanded={open}
+        aria-controls="user-menu-dropdown"
         aria-label={user.name}
         className={cn(
           'inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)]',
@@ -115,7 +116,7 @@ export function UserMenuDropdown({ user }: { user: ServerSessionUser }) {
 
       {open && (
         <div
-          role="menu"
+          id="user-menu-dropdown"
           aria-label={user.name}
           className={cn(
             'absolute end-0 top-[calc(100%+12px)] z-[60] min-w-[260px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)]',
@@ -178,7 +179,6 @@ export function UserMenuDropdown({ user }: { user: ServerSessionUser }) {
             <li>
               <button
                 type="button"
-                role="menuitem"
                 onClick={handleSignOut}
                 className={cn(
                   'group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-[14px] text-[var(--color-fg1)] text-start',
@@ -217,7 +217,6 @@ function MenuItem({
     <li>
       <Link
         href={href}
-        role="menuitem"
         onClick={onSelect}
         className={cn(
           'group flex items-center gap-3 w-full rounded-[var(--radius-sm)] px-3 py-2.5 text-[14px] text-[var(--color-fg1)]',

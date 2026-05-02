@@ -10,6 +10,9 @@ import { ThemeToggle } from './ThemeToggle'
 import { staggerContainer, staggerItem, EASE_EDITORIAL } from '@/lib/motion/variants'
 import type { NavItem } from './SiteHeader'
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { key: 'home', href: '/' },
   { key: 'about', href: '/about' },
@@ -40,11 +43,13 @@ export function MobileMenu({
   const isRtl = locale === 'ar'
   const reduceMotion = useReducedMotion()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
   const pathname = usePathname()
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
 
+  // Lock scroll + remember the trigger so we can restore focus on close.
   useEffect(() => {
     if (!open) return
     previouslyFocused.current = document.activeElement as HTMLElement | null
@@ -57,10 +62,35 @@ export function MobileMenu({
     }
   }, [open])
 
+  // Focus trap + Esc-to-close. Tab from last focusable wraps to first;
+  // Shift+Tab from first wraps to last. Keeps keyboard users inside the
+  // dialog while it's open.
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const panel = panelRef.current
+      if (!panel) return
+      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      // Active focus may be outside the panel (e.g. body) — treat that
+      // as "first" so Tab pulls focus into the dialog.
+      if (e.shiftKey) {
+        if (!active || active === first || !panel.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else if (active === last || !panel.contains(active)) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -97,6 +127,8 @@ export function MobileMenu({
 
           {/* Drawer panel */}
           <motion.aside
+            ref={panelRef}
+            id="mobile-menu-panel"
             initial={{ x: panelOffset, opacity: 0.6 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: panelOffset, opacity: 0, transition: { duration: 0.28, ease: EASE_EDITORIAL } }}
@@ -145,17 +177,17 @@ export function MobileMenu({
             />
             <div aria-hidden className="mx-6 h-px bg-[var(--color-border)] mt-2" />
 
-            {/* Nav items */}
+            {/* Nav items — stagger reveal, gated under reduced-motion. */}
             <motion.ul
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
+              variants={reduceMotion ? undefined : staggerContainer}
+              initial={reduceMotion ? false : 'hidden'}
+              animate={reduceMotion ? undefined : 'visible'}
               className="flex flex-col gap-1 px-6 pt-6 list-none m-0 flex-1 overflow-y-auto"
             >
               {navItems.map((item) => {
                 const active = isActive(item.href)
                 return (
-                  <motion.li key={item.key} variants={staggerItem}>
+                  <motion.li key={item.key} variants={reduceMotion ? undefined : staggerItem}>
                     <Link
                       href={item.href}
                       onClick={onClose}
@@ -206,14 +238,20 @@ export function MobileMenu({
               })}
             </motion.ul>
 
-            {/* Auth slot — full-width primary at the bottom */}
+            {/* Auth slot — full-width primary at the bottom (reveal gated).
+                Click-handling uses event delegation: tapping a link inside
+                (Sign in / Account / Admin) closes the drawer, but tapping a
+                button (the user-menu dropdown trigger) does NOT — otherwise
+                the drawer would unmount before the dropdown could render. */}
             {authSlot && (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: EASE_EDITORIAL, delay: 0.32 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                transition={reduceMotion ? undefined : { duration: 0.5, ease: EASE_EDITORIAL, delay: 0.32 }}
                 className="px-6 pb-[max(20px,env(safe-area-inset-bottom))] pt-6"
-                onClick={onClose}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('a[href]')) onClose()
+                }}
               >
                 {authSlot}
               </motion.div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { forwardRef, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
@@ -11,9 +11,16 @@ import { authClient } from '@/lib/auth/client'
 import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type Errors = {
+  email?: string
+  password?: string
+}
 
 export function LoginForm() {
   const t = useTranslations('auth.login')
+  const tErr = useTranslations('auth.errors')
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -24,6 +31,9 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Errors>({})
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   function showNavLoader(duration = 3000) {
     if (typeof window === 'undefined') return
@@ -32,8 +42,33 @@ export function LoginForm() {
     )
   }
 
+  function validate(): Errors {
+    const next: Errors = {}
+    if (!email.trim()) next.email = tErr('email_required')
+    else if (!EMAIL_RE.test(email)) next.email = tErr('email_invalid')
+    if (!password) next.password = tErr('password_required')
+    return next
+  }
+
+  function focusFirstInvalid(next: Errors) {
+    if (next.email) {
+      emailRef.current?.focus()
+      return
+    }
+    if (next.password) {
+      passwordRef.current?.focus()
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const fieldErrors = validate()
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors)
+      focusFirstInvalid(fieldErrors)
+      return
+    }
+    setErrors({})
     setLoading(true)
     try {
       const { error } = await authClient.signIn.email({
@@ -43,7 +78,7 @@ export function LoginForm() {
         callbackURL: redirectTarget,
       })
       if (error) {
-        toast.error(error.message ?? 'Sign-in failed.')
+        toast.error(error.message ?? tErr('submit_failed'))
         return
       }
       // Cover the redirect transition — handles both client-side router.push
@@ -52,7 +87,7 @@ export function LoginForm() {
       router.push(redirectTarget)
     } catch (err) {
       console.error('[LoginForm]', err)
-      toast.error('Sign-in failed.')
+      toast.error(tErr('submit_failed'))
     } finally {
       setLoading(false)
     }
@@ -65,7 +100,7 @@ export function LoginForm() {
       await authClient.signIn.social({ provider: 'google', callbackURL: redirectTarget })
     } catch (err) {
       console.error('[LoginForm/google]', err)
-      toast.error('Google sign-in failed.')
+      toast.error(tErr('google_failed'))
       setLoading(false)
     }
   }
@@ -102,23 +137,33 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3.5" noValidate>
         <Field
+          ref={emailRef}
           id="email"
           type="email"
           label={t('email_label')}
           placeholder={t('email_placeholder')}
           value={email}
-          onChange={setEmail}
+          onChange={(v) => {
+            setEmail(v)
+            if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+          }}
+          error={errors.email}
           isRtl={isRtl}
           required
           autoComplete="email"
         />
         <Field
+          ref={passwordRef}
           id="password"
           type="password"
           label={t('password_label')}
           placeholder={t('password_placeholder')}
           value={password}
-          onChange={setPassword}
+          onChange={(v) => {
+            setPassword(v)
+            if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+          }}
+          error={errors.password}
           isRtl={isRtl}
           required
           autoComplete="current-password"
@@ -206,21 +251,27 @@ type FieldProps = {
   isRtl: boolean
   required?: boolean
   autoComplete?: string
+  error?: string
   trailingLink?: { label: string; href: string }
 }
 
-function Field({
-  id,
-  type,
-  label,
-  placeholder,
-  value,
-  onChange,
-  isRtl,
-  required,
-  autoComplete,
-  trailingLink,
-}: FieldProps) {
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  {
+    id,
+    type,
+    label,
+    placeholder,
+    value,
+    onChange,
+    isRtl,
+    required,
+    autoComplete,
+    error,
+    trailingLink,
+  },
+  ref,
+) {
+  const errorId = `${id}-error`
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-2">
@@ -244,6 +295,7 @@ function Field({
         )}
       </div>
       <input
+        ref={ref}
         id={id}
         name={id}
         type={type}
@@ -252,13 +304,28 @@ function Field({
         placeholder={placeholder}
         required={required}
         autoComplete={autoComplete}
-        className={`w-full px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--color-accent)] focus:[box-shadow:var(--shadow-focus)] ${
-          isRtl ? 'font-arabic-body' : 'font-display'
-        }`}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        className={`w-full px-4 py-2.5 rounded-[var(--radius-md)] border bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:[box-shadow:var(--shadow-focus)] ${
+          error
+            ? 'border-[var(--color-destructive)] focus:border-[var(--color-destructive)]'
+            : 'border-[var(--color-border-strong)] focus:border-[var(--color-accent)]'
+        } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
       />
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          className={`m-0 text-[13px] leading-[1.4] text-[var(--color-destructive)] ${
+            isRtl ? 'font-arabic-body' : 'font-display'
+          }`}
+        >
+          {error}
+        </p>
+      )}
     </div>
   )
-}
+})
 
 function GoogleGlyph() {
   return (

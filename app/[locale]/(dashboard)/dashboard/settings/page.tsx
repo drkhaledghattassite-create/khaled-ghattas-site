@@ -16,7 +16,11 @@ type Props = { params: Promise<{ locale: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'dashboard.settings.meta' })
-  return { title: t('title'), description: t('description') }
+  return {
+    title: t('title'),
+    description: t('description'),
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+  }
 }
 
 function parsePreferences(

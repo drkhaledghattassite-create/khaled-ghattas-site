@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from '@/lib/i18n/navigation'
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs'
 import { ShareButtons } from '@/components/shared/ShareButtons'
-import { ArticleJsonLd } from '@/components/seo/StructuredData'
+import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo/StructuredData'
 import { ReadingProgress } from '@/components/motion/ReadingProgress'
 import { ScrollRevealLine } from '@/components/motion/ScrollRevealLine'
 import { PullQuote } from '@/components/motion/PullQuote'
@@ -18,7 +18,9 @@ import {
   getRelatedArticles,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
-import { SITE_URL } from '@/lib/constants'
+import { SITE_NAME, SITE_URL } from '@/lib/constants'
+
+const SITE_NAME_AR = 'د. خالد غطاس'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
@@ -47,6 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         ar: `${SITE_URL}/articles/${slug}`,
         en: `${SITE_URL}/en/articles/${slug}`,
+        'x-default': `${SITE_URL}/articles/${slug}`,
       },
     },
     openGraph: {
@@ -54,11 +57,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url,
-      siteName: 'Dr. Khaled Ghattass',
+      siteName: isAr ? SITE_NAME_AR : SITE_NAME,
       images: [{ url: image, width: 1200, height: 630, alt: title }],
       locale: isAr ? 'ar_LB' : 'en_US',
       publishedTime: article.publishedAt?.toISOString(),
       modifiedTime: article.updatedAt?.toISOString(),
+      authors: [SITE_URL],
     },
     twitter: {
       card: 'summary_large_image',
@@ -107,6 +111,12 @@ export default async function ArticlePage({ params }: Props) {
   const minutes = estimateReadMinutes(content, isRtl)
   const minRead = t('min_read')
 
+  const crumbs = [
+    { href: '/', label: tNav('home') },
+    { href: '/articles', label: tNav('articles') },
+    { href: `/articles/${article.slug}`, label: title },
+  ]
+
   return (
     <article
       dir={isRtl ? 'rtl' : 'ltr'}
@@ -115,17 +125,12 @@ export default async function ArticlePage({ params }: Props) {
       <ReadingProgress />
       <FocusModeToggle />
       <ArticleJsonLd article={article} locale={locale} />
+      <BreadcrumbJsonLd crumbs={crumbs} locale={locale} />
       {/* Hero header */}
       <header className="border-b border-[var(--color-border)] [padding:clamp(64px,8vw,112px)_clamp(20px,5vw,56px)_clamp(40px,5vw,72px)]">
         <div className="mx-auto max-w-[860px]">
           <div className="flex items-center justify-between mb-8">
-            <Breadcrumbs
-              crumbs={[
-                { href: '/', label: tNav('home') },
-                { href: '/articles', label: tNav('articles') },
-                { href: `/articles/${article.slug}`, label: title },
-              ]}
-            />
+            <Breadcrumbs crumbs={crumbs} />
             <Link
               href="/articles"
               className={`inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--color-fg3)] hover:text-[var(--color-fg1)] transition-colors ${
@@ -241,7 +246,7 @@ export default async function ArticlePage({ params }: Props) {
               <span className="relative block h-11 w-11 overflow-hidden rounded-full bg-[var(--color-bg-deep)]">
                 <Image
                   src="/dr khaled photo.jpeg"
-                  alt=""
+                  alt={tNav('brand')}
                   fill
                   sizes="44px"
                   className="object-cover"
@@ -291,7 +296,7 @@ export default async function ArticlePage({ params }: Props) {
                       <div className="relative aspect-[4/3] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
                         <Image
                           src={r.coverImage}
-                          alt=""
+                          alt={locale === 'ar' ? r.titleAr : r.titleEn}
                           fill
                           sizes="(min-width: 768px) 400px, 100vw"
                           className="object-cover transition-transform duration-[400ms] group-hover:scale-[1.03]"

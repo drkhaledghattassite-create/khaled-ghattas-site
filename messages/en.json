@@ -52,6 +52,9 @@
     "language_switch": {
       "aria_switch_to_ar": "Switch to Arabic",
       "aria_switch_to_en": "Switch to English"
+    },
+    "alt": {
+      "portrait_dr_khaled": "Portrait of Dr. Khaled Ghattass"
     }
   },
   "hero": {
@@ -939,6 +942,21 @@
       "description": "You need to be signed in to complete your purchase. Sign in or create a free account — we'll bring you right back to this page.",
       "sign_in": "Sign in",
       "cancel": "Cancel"
+    },
+    "errors": {
+      "email_required": "Email is required.",
+      "email_invalid": "Enter a valid email address.",
+      "password_required": "Password is required.",
+      "password_min": "Password must be at least 8 characters.",
+      "name_required": "Name is required.",
+      "confirm_required": "Please confirm your password.",
+      "confirm_mismatch": "Passwords do not match.",
+      "terms_required": "You must agree to the Terms of Service and Privacy Policy.",
+      "submit_failed": "Sign-in failed.",
+      "signup_failed": "Sign-up failed.",
+      "reset_failed": "Could not reset password.",
+      "send_failed": "Could not send reset link.",
+      "google_failed": "Google sign-in failed."
     }
   },
   "dashboard": {

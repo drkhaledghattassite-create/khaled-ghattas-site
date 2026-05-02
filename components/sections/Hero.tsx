@@ -63,9 +63,9 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
     >
       {/* Portrait panel — full-bleed editorial split */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, ease: EASE_EDITORIAL }}
+        initial={reduceMotion ? false : { opacity: 0 }}
+        animate={reduceMotion ? undefined : { opacity: 1 }}
+        transition={reduceMotion ? undefined : { duration: 0.6, ease: EASE_EDITORIAL }}
         className="relative aspect-[4/3] md:aspect-auto md:min-h-[calc(100dvh-57px)] order-1 ltr:md:order-2 bg-[var(--color-bg-deep)] overflow-hidden"
       >
         {/* Parallax + ambient breathe wrapper */}
@@ -116,9 +116,9 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
         />
         {/* Est stamp on photo */}
         <motion.span
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 1.2 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={reduceMotion ? undefined : { duration: 0.6, ease: EASE_EDITORIAL, delay: 1.2 }}
           className={`absolute z-[3] [inset-block-end:20px] [inset-inline-start:20px] text-[10px] font-semibold tracking-[0.18em] uppercase text-white/75 ${
             isRtl ? 'font-arabic-body !text-[11px] !tracking-normal !normal-case !font-medium' : 'font-display'
           }`}
@@ -129,38 +129,38 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
 
       {/* Content panel — DOM order 2; visually appears on left side via grid flow / order. */}
       <div className="flex flex-col justify-center order-2 ltr:md:order-1 [padding:clamp(48px,6vw,96px)_clamp(24px,5vw,72px)]">
-        {/* Eyebrow */}
+        {/* Eyebrow — text reveal gated under reduced-motion. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: EASE_EDITORIAL, delay: 0.18 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={reduceMotion ? undefined : { duration: 0.5, ease: EASE_EDITORIAL, delay: 0.18 }}
           className={`inline-flex items-center gap-2.5 mb-7 text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--color-fg3)] ${
             isRtl ? 'font-arabic-body !text-[12.5px] !tracking-[0.04em] !normal-case !font-bold' : 'font-display'
           }`}
         >
           <motion.span
             aria-hidden
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, ease: EASE_EDITORIAL, delay: 0.28 }}
+            initial={reduceMotion ? false : { scale: 0 }}
+            animate={reduceMotion ? undefined : { scale: 1 }}
+            transition={reduceMotion ? undefined : { duration: 0.5, ease: EASE_EDITORIAL, delay: 0.28 }}
             className="inline-block w-[7px] h-[7px] rounded-full bg-[var(--color-accent)] flex-shrink-0"
           />
           {t('eyebrow')}
         </motion.div>
 
-        {/* Name — mask reveal bottom-to-top */}
+        {/* Name — mask reveal bottom-to-top, opacity-only under reduced-motion. */}
         <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: EASE_EDITORIAL, delay: 0.34 }}
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={reduceMotion ? undefined : { opacity: 1 }}
+          transition={reduceMotion ? undefined : { duration: 0.4, ease: EASE_EDITORIAL, delay: 0.34 }}
           className={`m-0 mb-7 text-[clamp(52px,7.5vw,112px)] leading-[0.9] font-extrabold tracking-[-0.03em] text-[var(--color-fg1)] overflow-hidden pb-[0.16em] ${
             isRtl ? 'font-arabic-display !leading-[1.05]' : 'font-arabic-display !tracking-[-0.04em]'
           }`}
         >
           <motion.span
-            initial={{ y: '110%' }}
-            animate={{ y: '0%' }}
-            transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+            initial={reduceMotion ? false : { y: '110%' }}
+            animate={reduceMotion ? undefined : { y: '0%' }}
+            transition={reduceMotion ? undefined : { duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
             className="block will-change-transform"
           >
             {name}
@@ -170,18 +170,18 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
         {/* Accent rule */}
         <motion.hr
           aria-hidden
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 0.7 }}
+          initial={reduceMotion ? false : { scaleX: 0, opacity: 0 }}
+          animate={reduceMotion ? undefined : { scaleX: 1, opacity: 1 }}
+          transition={reduceMotion ? undefined : { duration: 0.6, ease: EASE_EDITORIAL, delay: 0.7 }}
           className="block mb-7 w-12 h-[3px] bg-[var(--color-accent)] border-0"
           style={{ transformOrigin: isRtl ? 'right' : 'left' }}
         />
 
         {/* Statement */}
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE_EDITORIAL, delay: 0.78 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={reduceMotion ? undefined : { duration: 0.7, ease: EASE_EDITORIAL, delay: 0.78 }}
           className={`m-0 mb-10 max-w-[480px] text-[clamp(15px,1.6vw,18px)] leading-[1.75] font-normal text-[var(--color-fg2)] ${
             isRtl ? 'font-arabic-body' : 'font-display'
           }`}
@@ -191,9 +191,9 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
 
         {/* Stats trust band */}
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE_EDITORIAL, delay: 0.92 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+          animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={reduceMotion ? undefined : { duration: 0.7, ease: EASE_EDITORIAL, delay: 0.92 }}
           className="grid grid-cols-2 sm:grid-cols-4 mb-9 border-y border-[var(--color-border)]"
         >
           {stats.map((s, idx) => {
@@ -229,9 +229,9 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
         {/* CTAs — primary CTA gets magnetic effect */}
         {(showCtaBooks || showCtaArticles) && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 1.08 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            transition={reduceMotion ? undefined : { duration: 0.6, ease: EASE_EDITORIAL, delay: 1.08 }}
             className="flex flex-wrap items-center gap-2.5"
           >
             {showCtaBooks && (

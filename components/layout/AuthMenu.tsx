@@ -3,6 +3,7 @@ import { Link } from '@/lib/i18n/navigation'
 import { getServerSession } from '@/lib/auth/server'
 import { AUTH_ENABLED } from '@/lib/constants'
 import { UserMenuDropdown } from './UserMenuDropdown'
+import { MobileUserMenu } from './MobileUserMenu'
 import { cn } from '@/lib/utils'
 
 type Variant = 'compact' | 'stacked'
@@ -50,6 +51,16 @@ export async function AuthMenu({
   const isRtl = locale === 'ar'
 
   if (session) {
+    // Stacked variant runs inside the mobile drawer where a popup-style
+    // dropdown can't position correctly (trigger is at the panel bottom
+    // and `end-0` overflows the drawer in RTL). Render the menu inline.
+    if (variant === 'stacked') {
+      return (
+        <div className={cn('block', className)}>
+          <MobileUserMenu user={session.user} />
+        </div>
+      )
+    }
     return (
       <div className={cn('flex items-center', className)}>
         <UserMenuDropdown user={session.user} />

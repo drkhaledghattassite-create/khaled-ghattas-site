@@ -30,6 +30,7 @@ export default async function InterviewsPage({ params }: Props) {
   }
 
   const t = await getTranslations('interviews.page')
+  const tCommon = await getTranslations('common')
   const interviews = await getInterviews()
 
   return (
@@ -39,7 +40,7 @@ export default async function InterviewsPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/DSC06608.JPG', alt: '' }}
+        image={{ src: '/DSC06608.JPG', alt: tCommon('alt.portrait_dr_khaled') }}
       />
       <InterviewsGallery interviews={interviews} />
     </>

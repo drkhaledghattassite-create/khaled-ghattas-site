@@ -99,6 +99,9 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
         'max-snippet': -1,
       },
     },
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION,
+    },
   }
 }
 

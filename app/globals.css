@@ -364,10 +364,13 @@
     color: #FAFAFA;
   }
 
-  /* Maintenance banner is fixed top-0; push content + sticky header down. */
+  /* Maintenance banner is fixed top-0; push content + sticky header down.
+     Banner is 44px (h-11) on mobile and 48px (h-12) at md+ — see
+     MaintenanceBanner.tsx. The dismiss button is sized 44×44 (WCAG 2.5.5)
+     so the mobile band is bumped up from 40 to 44. */
   body.has-maintenance {
-    --site-header-top: 40px;
-    padding-top: 40px;
+    --site-header-top: 44px;
+    padding-top: 44px;
   }
   @media (min-width: 768px) {
     body.has-maintenance {

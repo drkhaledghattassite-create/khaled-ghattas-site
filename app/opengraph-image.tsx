@@ -7,10 +7,27 @@ export const alt = 'Dr. Khaled Ghattass'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-const logoBase64 = fs
-  .readFileSync(path.join(process.cwd(), 'public', 'logo-black.png'))
-  .toString('base64')
-const logoSrc = `data:image/png;base64,${logoBase64}`
+// next/og (Satori) ships with Latin glyph coverage only. Rendering Arabic
+// text would require fetching an Arabic font (e.g. Noto Naskh Arabic) at
+// build time and passing it via ImageResponse({ fonts }). Until that font
+// pipeline is set up, the OG image stays Latin-only — social platforms
+// localize the surrounding card via og:locale, og:title, og:description.
+
+// Read the logo at module load. Wrapped so a missing file doesn't crash OG
+// image generation for every page on the site — without this guard a single
+// rename or deploy artifact mishap blanks every social-share preview.
+function loadLogoSrc(): string | null {
+  try {
+    const buf = fs.readFileSync(
+      path.join(process.cwd(), 'public', 'logo-black.png'),
+    )
+    return `data:image/png;base64,${buf.toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
+const logoSrc = loadLogoSrc()
 
 export default function OG() {
   return new ImageResponse(
@@ -21,8 +38,8 @@ export default function OG() {
           height: '100%',
           display: 'flex',
           flexDirection: 'row',
-          background: '#EDE7DF',
-          color: '#252321',
+          background: '#FAFAFA',
+          color: '#0A0A0A',
           fontFamily: 'serif',
         }}
       >
@@ -32,7 +49,7 @@ export default function OG() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: '72px 64px',
+            padding: '64px 56px',
           }}
         >
           <div
@@ -40,34 +57,36 @@ export default function OG() {
               display: 'flex',
               alignItems: 'center',
               gap: 16,
-              fontSize: 20,
+              fontSize: 18,
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color: '#66615A',
+              color: '#737373',
               fontWeight: 600,
             }}
           >
-            <span style={{ display: 'flex', width: 36, height: 1, background: '#BC884A' }} />
+            <span style={{ display: 'flex', width: 36, height: 1, background: '#B85440' }} />
             <span style={{ display: 'flex' }}>The Official Site</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
             <div
               style={{
-                fontSize: 88,
+                display: 'flex',
+                fontSize: 84,
                 lineHeight: 1.04,
                 letterSpacing: '-0.02em',
                 fontWeight: 700,
-                color: '#252321',
+                color: '#0A0A0A',
               }}
             >
               Dr. Khaled Ghattass
             </div>
             <div
               style={{
+                display: 'flex',
                 fontSize: 26,
-                color: '#66615A',
-                maxWidth: 540,
+                color: '#404040',
+                maxWidth: 560,
                 lineHeight: 1.4,
               }}
             >
@@ -80,12 +99,12 @@ export default function OG() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              fontSize: 20,
-              color: '#66615A',
+              fontSize: 18,
+              color: '#737373',
             }}
           >
             <span>drkhaledghattass.com</span>
-            <span style={{ color: '#BC884A', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <span style={{ color: '#B85440', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Burja · Lebanon
             </span>
           </div>
@@ -98,16 +117,30 @@ export default function OG() {
             alignItems: 'center',
             justifyContent: 'center',
             padding: 56,
-            background: '#F6F4F1',
-            borderInlineStart: '1px solid rgba(37, 35, 33, 0.08)',
+            background: '#F4F4F4',
+            borderInlineStart: '1px solid rgba(10, 10, 10, 0.08)',
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logoSrc}
-            alt=""
-            style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
-          />
+          {logoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoSrc}
+              alt=""
+              style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+            />
+          ) : (
+            <span
+              style={{
+                display: 'flex',
+                fontSize: 80,
+                fontWeight: 700,
+                color: '#0A0A0A',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              KG
+            </span>
+          )}
         </div>
       </div>
     ),

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
@@ -15,6 +16,13 @@ type Props = {
 // the auth call lets Next prerender the routes as static HTML with the
 // /login redirect baked in, bouncing real admins to login.
 export const dynamic = 'force-dynamic'
+
+// Block search engines at the page level. The robots.txt disallow is the
+// crawl gate; this is the index gate for URLs Googlebot may have discovered
+// via inbound links.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+}
 
 export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params

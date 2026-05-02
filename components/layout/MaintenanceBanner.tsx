@@ -72,9 +72,9 @@ export function MaintenanceBanner({ message, until }: Props) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -56, opacity: 0 }}
           transition={{ duration: 0.32, ease: EASE_EDITORIAL }}
-          className="fixed top-0 inset-x-0 z-[70] h-10 md:h-12 bg-[var(--color-accent)] text-[var(--color-accent-fg)] overflow-hidden"
+          className="fixed top-0 inset-x-0 z-[70] h-11 md:h-12 bg-[var(--color-accent)] text-[var(--color-accent-fg)] overflow-hidden"
         >
-          <div className="relative mx-auto h-full flex max-w-[var(--container-max)] items-center justify-center [padding-inline:clamp(40px,4vw,56px)]">
+          <div className="relative mx-auto h-full flex max-w-[var(--container-max)] items-center justify-center [padding-inline:clamp(48px,4vw,56px)]">
             <p
               className={`m-0 text-center text-[12.5px] font-semibold leading-[1.4] md:text-[13px] ${
                 isRtl ? 'font-arabic-body' : 'font-display'
@@ -94,7 +94,7 @@ export function MaintenanceBanner({ message, until }: Props) {
               type="button"
               onClick={handleDismiss}
               aria-label={t('dismiss')}
-              className="absolute [inset-inline-end:8px] inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-accent-fg)]/80 transition-[background-color,opacity,transform] duration-200 hover:bg-white/15 hover:text-[var(--color-accent-fg)] active:translate-y-px"
+              className="absolute [inset-inline-end:2px] top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-accent-fg)]/80 transition-[background-color,opacity,transform] duration-200 hover:bg-white/15 hover:text-[var(--color-accent-fg)] active:translate-y-[calc(-50%+1px)]"
             >
               <X className="h-3.5 w-3.5" aria-hidden />
             </button>

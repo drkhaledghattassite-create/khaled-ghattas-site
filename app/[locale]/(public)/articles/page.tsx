@@ -30,6 +30,7 @@ export default async function ArticlesPage({ params }: Props) {
   }
 
   const t = await getTranslations('articles.page')
+  const tCommon = await getTranslations('common')
   const articles = await getArticles()
 
   return (
@@ -39,7 +40,7 @@ export default async function ArticlesPage({ params }: Props) {
         headingItalic={t('hero.italic')}
         headingSans={t('hero.sans')}
         description={t('description')}
-        image={{ src: '/drphoto.JPG', alt: '' }}
+        image={{ src: '/drphoto.JPG', alt: tCommon('alt.portrait_dr_khaled') }}
       />
 
       <ArticlesList articles={articles} showHeader={false} />

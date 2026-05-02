@@ -84,7 +84,7 @@ export function ContactForm() {
                   className={inputClass}
                 />
               </FormControl>
-              <FormMessage className="text-accent" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -105,7 +105,7 @@ export function ContactForm() {
                   className={inputClass}
                 />
               </FormControl>
-              <FormMessage className="text-accent" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -125,7 +125,7 @@ export function ContactForm() {
                   className={inputClass}
                 />
               </FormControl>
-              <FormMessage className="text-accent" />
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -146,7 +146,7 @@ export function ContactForm() {
                   className={textareaClass}
                 />
               </FormControl>
-              <FormMessage className="text-accent" />
+              <FormMessage />
             </FormItem>
           )}
         />

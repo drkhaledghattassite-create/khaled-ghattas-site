@@ -13,7 +13,7 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), [])
 
   if (!mounted) {
-    return <span className="inline-block h-8 w-8" />
+    return <span className="inline-block h-11 w-11" />
   }
 
   const isDark = resolvedTheme === 'dark'
@@ -25,7 +25,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       aria-label={label}
       title={label}
-      className="group inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-transparent text-[var(--color-fg2)] transition-[colors,background-color] duration-300 ease-[var(--ease-editorial)] hover:text-[var(--color-fg1)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-accent-soft)]"
+      className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-transparent text-[var(--color-fg2)] transition-[colors,background-color] duration-300 ease-[var(--ease-editorial)] hover:text-[var(--color-fg1)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-accent-soft)]"
     >
       <span
         className="inline-flex items-center justify-center transition-transform duration-500 ease-[var(--ease-editorial)] group-hover:rotate-[12deg]"

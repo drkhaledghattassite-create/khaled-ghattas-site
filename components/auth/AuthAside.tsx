@@ -16,7 +16,11 @@ export function AuthAside() {
   return (
     <aside
       dir={isRtl ? 'rtl' : 'ltr'}
-      className="relative flex flex-col justify-between overflow-hidden bg-[var(--color-bg-elevated)] border-[var(--color-border)] md:border-e [padding:clamp(28px,4vw,48px)_clamp(24px,4vw,48px)] min-h-[220px] md:min-h-dvh"
+      // Hidden on mobile: the editorial quote competes with the form for
+      // attention on small screens, adds vertical scroll, and pushes the
+      // form below the fold. Reserved for md+ where the side-by-side
+      // layout makes sense.
+      className="relative hidden md:flex flex-col justify-between overflow-hidden bg-[var(--color-bg-elevated)] border-[var(--color-border)] md:border-e [padding:clamp(28px,4vw,48px)_clamp(24px,4vw,48px)] md:min-h-dvh"
     >
       {/* Mark */}
       <div className="flex items-center gap-3">

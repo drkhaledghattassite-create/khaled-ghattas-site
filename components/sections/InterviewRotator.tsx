@@ -89,10 +89,11 @@ export function InterviewRotator({
                 aria-label={title}
               />
             )}
-            <motion.button
-              type="button"
-              aria-label={t('watch')}
-              disabled={!featured.videoUrl}
+            {/* Play affordance — purely decorative; the full-frame anchor
+                above is the actual link. aria-hidden + tabIndex=-1 keep
+                it out of the SR tree and the tab order. */}
+            <motion.span
+              aria-hidden="true"
               animate={
                 reduceMotion
                   ? undefined
@@ -107,13 +108,12 @@ export function InterviewRotator({
               transition={
                 reduceMotion ? undefined : { duration: 2.4, repeat: Infinity, ease: 'easeOut' }
               }
-              className="absolute z-20 top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 transition-transform duration-200 hover:scale-105 disabled:opacity-70"
-              onClick={() => featured.videoUrl && window.open(featured.videoUrl, '_blank', 'noopener,noreferrer')}
+              className="pointer-events-none absolute z-20 top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] rounded-full bg-white/95 text-[var(--color-fg1)] inline-flex items-center justify-center ps-1 transition-transform duration-200 group-hover:scale-105"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
               </svg>
-            </motion.button>
+            </motion.span>
             <span
               className={`absolute z-20 [inset-block-end:16px] [inset-inline-end:16px] inline-flex items-center px-2.5 py-[5px] rounded-full bg-black/50 text-white/90 text-[11px] font-semibold tracking-[0.12em] backdrop-blur-md ${
                 isRtl ? 'font-arabic-body !tracking-normal' : 'font-display'

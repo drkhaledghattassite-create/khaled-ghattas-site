@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { forwardRef, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
@@ -11,9 +11,18 @@ import { authClient } from '@/lib/auth/client'
 import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type Errors = {
+  name?: string
+  email?: string
+  password?: string
+  agreed?: string
+}
 
 export function SignupForm() {
   const t = useTranslations('auth.signup')
+  const tErr = useTranslations('auth.errors')
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -25,6 +34,11 @@ export function SignupForm() {
   const [password, setPassword] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Errors>({})
+  const nameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const agreedRef = useRef<HTMLInputElement>(null)
 
   function showNavLoader(duration = 3000) {
     if (typeof window === 'undefined') return
@@ -33,9 +47,44 @@ export function SignupForm() {
     )
   }
 
+  function validate(): Errors {
+    const next: Errors = {}
+    if (!name.trim()) next.name = tErr('name_required')
+    if (!email.trim()) next.email = tErr('email_required')
+    else if (!EMAIL_RE.test(email)) next.email = tErr('email_invalid')
+    if (!password) next.password = tErr('password_required')
+    else if (password.length < 8) next.password = tErr('password_min')
+    if (!agreed) next.agreed = tErr('terms_required')
+    return next
+  }
+
+  function focusFirstInvalid(next: Errors) {
+    if (next.name) {
+      nameRef.current?.focus()
+      return
+    }
+    if (next.email) {
+      emailRef.current?.focus()
+      return
+    }
+    if (next.password) {
+      passwordRef.current?.focus()
+      return
+    }
+    if (next.agreed) {
+      agreedRef.current?.focus()
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!agreed) return
+    const fieldErrors = validate()
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors)
+      focusFirstInvalid(fieldErrors)
+      return
+    }
+    setErrors({})
     setLoading(true)
     try {
       const { error } = await authClient.signUp.email({
@@ -45,14 +94,14 @@ export function SignupForm() {
         callbackURL: redirectTarget,
       })
       if (error) {
-        toast.error(error.message ?? 'Sign-up failed.')
+        toast.error(error.message ?? tErr('signup_failed'))
         return
       }
       showNavLoader()
       router.push(redirectTarget)
     } catch (err) {
       console.error('[SignupForm]', err)
-      toast.error('Sign-up failed.')
+      toast.error(tErr('signup_failed'))
     } finally {
       setLoading(false)
     }
@@ -65,10 +114,12 @@ export function SignupForm() {
       await authClient.signIn.social({ provider: 'google', callbackURL: redirectTarget })
     } catch (err) {
       console.error('[SignupForm/google]', err)
-      toast.error('Google sign-up failed.')
+      toast.error(tErr('google_failed'))
       setLoading(false)
     }
   }
+
+  const agreedErrorId = 'agreed-error'
 
   return (
     <motion.div
@@ -102,57 +153,92 @@ export function SignupForm() {
 
       <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3" noValidate>
         <Field
+          ref={nameRef}
           id="name"
           type="text"
           label={t('name_label')}
           placeholder={t('name_placeholder')}
           value={name}
-          onChange={setName}
+          onChange={(v) => {
+            setName(v)
+            if (errors.name) setErrors((p) => ({ ...p, name: undefined }))
+          }}
+          error={errors.name}
           isRtl={isRtl}
           required
           autoComplete="name"
         />
         <Field
+          ref={emailRef}
           id="email"
           type="email"
           label={t('email_label')}
           placeholder={t('email_placeholder')}
           value={email}
-          onChange={setEmail}
+          onChange={(v) => {
+            setEmail(v)
+            if (errors.email) setErrors((p) => ({ ...p, email: undefined }))
+          }}
+          error={errors.email}
           isRtl={isRtl}
           required
           autoComplete="email"
         />
         <Field
+          ref={passwordRef}
           id="password"
           type="password"
           label={t('password_label')}
           placeholder={t('password_placeholder')}
           value={password}
-          onChange={setPassword}
+          onChange={(v) => {
+            setPassword(v)
+            if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
+          }}
+          error={errors.password}
           isRtl={isRtl}
           required
           autoComplete="new-password"
         />
 
-        <label
-          className={`inline-flex items-start gap-2.5 text-[12.5px] leading-[1.4] text-[var(--color-fg2)] cursor-pointer select-none ${
-            isRtl ? 'font-arabic-body' : 'font-display'
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="h-4 w-4 mt-0.5 accent-[var(--color-accent)] cursor-pointer flex-shrink-0"
-            required
-          />
-          <span>{t('agree_terms')}</span>
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <label
+            className={`inline-flex items-start gap-2.5 text-[12.5px] leading-[1.4] text-[var(--color-fg2)] cursor-pointer select-none ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
+          >
+            <input
+              ref={agreedRef}
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => {
+                setAgreed(e.target.checked)
+                if (errors.agreed && e.target.checked)
+                  setErrors((p) => ({ ...p, agreed: undefined }))
+              }}
+              aria-invalid={!!errors.agreed}
+              aria-describedby={errors.agreed ? agreedErrorId : undefined}
+              className="h-4 w-4 mt-0.5 accent-[var(--color-accent)] cursor-pointer flex-shrink-0"
+              required
+            />
+            <span>{t('agree_terms')}</span>
+          </label>
+          {errors.agreed && (
+            <p
+              id={agreedErrorId}
+              role="alert"
+              className={`m-0 text-[13px] leading-[1.4] text-[var(--color-destructive)] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              {errors.agreed}
+            </p>
+          )}
+        </div>
 
         <button
           type="submit"
-          disabled={loading || !agreed}
+          disabled={loading}
           className="btn-pill btn-pill-primary w-full !py-2.5 !px-6 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
@@ -234,19 +320,25 @@ type FieldProps = {
   isRtl: boolean
   required?: boolean
   autoComplete?: string
+  error?: string
 }
 
-function Field({
-  id,
-  type,
-  label,
-  placeholder,
-  value,
-  onChange,
-  isRtl,
-  required,
-  autoComplete,
-}: FieldProps) {
+const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  {
+    id,
+    type,
+    label,
+    placeholder,
+    value,
+    onChange,
+    isRtl,
+    required,
+    autoComplete,
+    error,
+  },
+  ref,
+) {
+  const errorId = `${id}-error`
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -258,6 +350,7 @@ function Field({
         {label}
       </label>
       <input
+        ref={ref}
         id={id}
         name={id}
         type={type}
@@ -266,10 +359,25 @@ function Field({
         placeholder={placeholder}
         required={required}
         autoComplete={autoComplete}
-        className={`w-full px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--color-accent)] focus:[box-shadow:var(--shadow-focus)] ${
-          isRtl ? 'font-arabic-body' : 'font-display'
-        }`}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        className={`w-full px-4 py-2.5 rounded-[var(--radius-md)] border bg-[var(--color-bg-elevated)] text-[15px] text-[var(--color-fg1)] placeholder:text-[var(--color-fg3)] outline-none transition-[border-color,box-shadow] duration-200 focus:[box-shadow:var(--shadow-focus)] ${
+          error
+            ? 'border-[var(--color-destructive)] focus:border-[var(--color-destructive)]'
+            : 'border-[var(--color-border-strong)] focus:border-[var(--color-accent)]'
+        } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
       />
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          className={`m-0 text-[13px] leading-[1.4] text-[var(--color-destructive)] ${
+            isRtl ? 'font-arabic-body' : 'font-display'
+          }`}
+        >
+          {error}
+        </p>
+      )}
     </div>
   )
-}
+})

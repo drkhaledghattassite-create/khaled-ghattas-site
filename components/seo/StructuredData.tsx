@@ -38,7 +38,6 @@ export function OrganizationJsonLd({ locale }: LocaleProps) {
     name: isAr ? SITE_NAME_AR : SITE_NAME,
     url: SITE_URL,
     logo: `${SITE_URL}/logo-black.png`,
-    sameAs: [],
     contactPoint: [
       {
         '@type': 'ContactPoint',

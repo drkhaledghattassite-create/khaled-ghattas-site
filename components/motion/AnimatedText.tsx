@@ -3,6 +3,7 @@
 import type { ElementType } from 'react'
 import { motion } from 'motion/react'
 import { EASE_EDITORIAL } from '@/lib/motion/variants'
+import { useReducedMotion } from '@/lib/motion/hooks'
 
 type AnimatedTextProps = {
   text: string
@@ -34,6 +35,14 @@ export function AnimatedText({
   margin = '-15%',
 }: AnimatedTextProps) {
   const Tag = (as ?? 'span') as ElementType
+  const reduceMotion = useReducedMotion()
+
+  // Short-circuit under reduced-motion: render plain text, no per-segment
+  // motion shells, no transforms, no opacity ramp.
+  if (reduceMotion) {
+    return <Tag className={className}>{text}</Tag>
+  }
+
   const segments = by === 'word' ? text.split(/(\s+)/) : Array.from(text)
 
   const container = {

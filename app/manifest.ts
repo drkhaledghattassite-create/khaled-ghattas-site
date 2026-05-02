@@ -9,8 +9,11 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: SITE_NAME,
     short_name: SHORT_NAME,
+    // Manifest declares lang: 'ar' below, so the description must match.
+    // Web Manifest has no built-in per-locale descriptions; the primary
+    // locale wins.
     description:
-      'The official site of Dr. Khaled Ghattass — cell biologist, expert in human behavior, author, speaker, founder of Al-Warsheh.',
+      'الموقع الرسمي للدكتور خالد غطاس — عالم بيولوجيا الخلايا وخبير في السلوك البشري، كاتب ومحاضر، مؤسس مبادرة الورشة.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

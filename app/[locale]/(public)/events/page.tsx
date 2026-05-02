@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { InnerHero } from '@/components/shared/InnerHero'
 import { EventsTimeline } from '@/components/sections/EventsTimeline'
 import { ComingSoon } from '@/components/shared/ComingSoon'
+import { EventJsonLd } from '@/components/seo/StructuredData'
 import { getPastEvents, getUpcomingEvents } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
@@ -34,6 +35,9 @@ export default async function EventsPage({ params }: Props) {
 
   return (
     <>
+      {[...upcoming, ...past].map((event) => (
+        <EventJsonLd key={event.id} event={event} locale={locale} />
+      ))}
       <InnerHero
         eyebrow={t('page.eyebrow')}
         headingItalic={t('page.hero.italic')}

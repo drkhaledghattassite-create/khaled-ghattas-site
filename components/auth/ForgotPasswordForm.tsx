@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
@@ -10,9 +10,11 @@ import { authClient } from '@/lib/auth/client'
 import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function ForgotPasswordForm() {
   const t = useTranslations('auth.forgot')
+  const tErr = useTranslations('auth.errors')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const searchParams = useSearchParams()
@@ -20,9 +22,24 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [emailError, setEmailError] = useState<string | undefined>()
+  const emailRef = useRef<HTMLInputElement>(null)
+
+  function validate(): string | undefined {
+    if (!email.trim()) return tErr('email_required')
+    if (!EMAIL_RE.test(email)) return tErr('email_invalid')
+    return undefined
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const err = validate()
+    if (err) {
+      setEmailError(err)
+      emailRef.current?.focus()
+      return
+    }
+    setEmailError(undefined)
     setLoading(true)
     try {
       const { error } = await authClient.requestPasswordReset({
@@ -30,13 +47,13 @@ export function ForgotPasswordForm() {
         redirectTo: withRedirect('/reset-password', redirectTarget),
       })
       if (error) {
-        toast.error(error.message ?? 'Could not send reset link.')
+        toast.error(error.message ?? tErr('send_failed'))
         return
       }
       setDone(true)
     } catch (err) {
       console.error('[ForgotPassword]', err)
-      toast.error('Could not send reset link.')
+      toast.error(tErr('send_failed'))
     } finally {
       setLoading(false)
     }
@@ -57,6 +74,8 @@ export function ForgotPasswordForm() {
       </div>
     )
   }
+
+  const errorId = 'email-error'
 
   return (
     <motion.div
@@ -90,17 +109,36 @@ export function ForgotPasswordForm() {
             {t('email_label')}
           </label>
           <input
+            ref={emailRef}
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (emailError) setEmailError(undefined)
+            }}
             placeholder={t('email_placeholder')}
             required
             autoComplete="email"
-            className={`w-full px-4 py-3 rounded-[var(--radius-md)] border border-border-strong bg-bg-elevated text-[15px] text-fg1 placeholder:text-fg3 outline-none transition-[border-color,box-shadow] duration-200 focus:border-accent focus:[box-shadow:var(--shadow-focus)] ${
-              isRtl ? 'font-arabic-body' : 'font-display'
-            }`}
+            aria-invalid={!!emailError}
+            aria-describedby={emailError ? errorId : undefined}
+            className={`w-full px-4 py-3 rounded-[var(--radius-md)] border bg-bg-elevated text-[15px] text-fg1 placeholder:text-fg3 outline-none transition-[border-color,box-shadow] duration-200 focus:[box-shadow:var(--shadow-focus)] ${
+              emailError
+                ? 'border-[var(--color-destructive)] focus:border-[var(--color-destructive)]'
+                : 'border-border-strong focus:border-accent'
+            } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
           />
+          {emailError && (
+            <p
+              id={errorId}
+              role="alert"
+              className={`m-0 text-[13px] leading-[1.4] text-[var(--color-destructive)] ${
+                isRtl ? 'font-arabic-body' : 'font-display'
+              }`}
+            >
+              {emailError}
+            </p>
+          )}
         </div>
 
         <button

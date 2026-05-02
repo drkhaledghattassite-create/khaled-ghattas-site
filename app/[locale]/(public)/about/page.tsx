@@ -31,6 +31,7 @@ export default async function AboutPage({ params }: Props) {
   }
 
   const t = await getTranslations('about')
+  const tCommon = await getTranslations('common')
   const isRtl = locale === 'ar'
 
   const entries = [
@@ -110,7 +111,7 @@ export default async function AboutPage({ params }: Props) {
             <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:var(--shadow-card)]">
               <Image
                 src="/drphoto.JPG"
-                alt=""
+                alt={tCommon('alt.portrait_dr_khaled')}
                 fill
                 sizes="(min-width: 768px) 420px, 100vw"
                 className="object-cover [filter:saturate(0.82)_contrast(1.04)] dark:[filter:saturate(0.65)_contrast(1.06)_brightness(0.88)] transition-transform duration-700 ease-[var(--ease-editorial)]"

@@ -25,6 +25,18 @@ function localizedUrl(locale: string, path: string): string {
   return `${SITE_URL}/en${path === '/' ? '' : path}`
 }
 
+// Build the hreflang alternates block once per path. Includes x-default so
+// users without a matching content-language fall back to the primary locale.
+function alternatesFor(path: string) {
+  return {
+    languages: {
+      ar: localizedUrl('ar', path),
+      en: localizedUrl('en', path),
+      'x-default': localizedUrl('ar', path),
+    },
+  }
+}
+
 /**
  * Map a static path to its coming-soon page key (if any). Pages whose key is
  * in the admin's `coming_soon_pages` list are excluded from the sitemap so
@@ -55,66 +67,65 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const entries: MetadataRoute.Sitemap = []
 
+  // Each path gets one <loc> entry per locale with mutual hreflang. This
+  // ensures both Arabic and English URLs are first-class entries crawlers
+  // can discover directly, rather than nesting English inside Arabic's
+  // alternates block.
   for (const path of STATIC_PATHS) {
     if (isHidden(path)) continue
-    entries.push({
-      url: localizedUrl('ar', path),
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      alternates: {
-        languages: {
-          ar: localizedUrl('ar', path),
-          en: localizedUrl('en', path),
-        },
-      },
-    })
+    const lastModified = new Date()
+    for (const loc of LOCALES) {
+      entries.push({
+        url: localizedUrl(loc, path),
+        lastModified,
+        changeFrequency: 'weekly',
+        alternates: alternatesFor(path),
+      })
+    }
   }
 
   if (!hidden.has('articles')) {
     for (const a of articles) {
       const path = `/articles/${a.slug}`
-      entries.push({
-        url: localizedUrl('ar', path),
-        lastModified: a.updatedAt ?? a.publishedAt ?? new Date(),
-        changeFrequency: 'monthly',
-        alternates: {
-          languages: Object.fromEntries(
-            LOCALES.map((l) => [l, localizedUrl(l, path)]),
-          ),
-        },
-      })
+      const lastModified = a.updatedAt ?? a.publishedAt ?? new Date()
+      for (const loc of LOCALES) {
+        entries.push({
+          url: localizedUrl(loc, path),
+          lastModified,
+          changeFrequency: 'monthly',
+          alternates: alternatesFor(path),
+        })
+      }
     }
   }
 
   if (!hidden.has('books')) {
     for (const b of books) {
       const path = `/books/${b.slug}`
-      entries.push({
-        url: localizedUrl('ar', path),
-        lastModified: b.updatedAt ?? new Date(),
-        changeFrequency: 'monthly',
-        alternates: {
-          languages: Object.fromEntries(
-            LOCALES.map((l) => [l, localizedUrl(l, path)]),
-          ),
-        },
-      })
+      const lastModified = b.updatedAt ?? new Date()
+      for (const loc of LOCALES) {
+        entries.push({
+          url: localizedUrl(loc, path),
+          lastModified,
+          changeFrequency: 'monthly',
+          alternates: alternatesFor(path),
+        })
+      }
     }
   }
 
   if (!hidden.has('interviews')) {
     for (const i of interviews) {
       const path = `/interviews/${i.slug}`
-      entries.push({
-        url: localizedUrl('ar', path),
-        lastModified: i.updatedAt ?? new Date(),
-        changeFrequency: 'monthly',
-        alternates: {
-          languages: Object.fromEntries(
-            LOCALES.map((l) => [l, localizedUrl(l, path)]),
-          ),
-        },
-      })
+      const lastModified = i.updatedAt ?? new Date()
+      for (const loc of LOCALES) {
+        entries.push({
+          url: localizedUrl(loc, path),
+          lastModified,
+          changeFrequency: 'monthly',
+          alternates: alternatesFor(path),
+        })
+      }
     }
   }
 
