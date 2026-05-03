@@ -1,0 +1,1 @@
+ALTER TABLE "reading_progress" ADD COLUMN "total_pages" integer DEFAULT 0 NOT NULL;

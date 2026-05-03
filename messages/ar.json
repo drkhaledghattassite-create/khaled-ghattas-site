@@ -1058,5 +1058,142 @@
       "save": "حفظ التغييرات",
       "saved": "تم الحفظ"
     }
+  },
+  "library": {
+    "cta": {
+      "read": "اقرأ",
+      "watch": "شاهد",
+      "download_pdf": "تحميل PDF"
+    },
+    "type": {
+      "book": "كتاب",
+      "session": "جلسة"
+    },
+    "empty": {
+      "title": "مكتبتك فارغة",
+      "body": "اكتشف الكتب والجلسات لتبدأ رحلتك",
+      "cta": "تصفح الكتب"
+    },
+    "download": {
+      "preparing": "نجهز ملفك...",
+      "error": "تعذر تجهيز التحميل. يرجى المحاولة مرة أخرى."
+    },
+    "placeholder": {
+      "read": {
+        "title": "قارئ PDF قريباً",
+        "body": "ستتمكن قريباً من قراءة كتبك مباشرة هنا (المرحلة الثانية)."
+      },
+      "session": {
+        "title": "عارض الجلسات قريباً",
+        "body": "ستتمكن قريباً من مشاهدة جلساتك مباشرة هنا (المرحلة الرابعة)."
+      }
+    }
+  },
+  "reader": {
+    "loading": "جارٍ تحميل الكتاب...",
+    "error": {
+      "load_failed": "تعذر تحميل الكتاب. يرجى المحاولة مرة أخرى.",
+      "retry": "إعادة المحاولة"
+    },
+    "controls": {
+      "previous": "الصفحة السابقة",
+      "next": "الصفحة التالية",
+      "page_x_of_y": "الصفحة {current} من {total}",
+      "jump_to_page": "اذهب إلى الصفحة",
+      "go": "انتقل",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم الحفظ",
+      "close": "إغلاق القارئ"
+    },
+    "hint": {
+      "keyboard": "استخدم مفاتيح الأسهم"
+    },
+    "resume": {
+      "toast": "متابعة من الصفحة {page}"
+    },
+    "unavailable": {
+      "title": "غير متاح بعد",
+      "body": "هذا الكتاب ليس جاهزاً للقراءة بعد. سنُعلمك حالما يصبح متاحاً.",
+      "cta": "العودة إلى المكتبة"
+    },
+    "first_load": {
+      "title": "جارٍ فتح الكتاب",
+      "subtitle": "لحظة من فضلك..."
+    },
+    "aria": {
+      "top_bar": "شريط أدوات القارئ",
+      "bottom_bar": "شريط التنقل",
+      "side_rail": "اللوحة الجانبية",
+      "settings": "إعدادات القراءة",
+      "open_settings": "فتح الإعدادات",
+      "close_settings": "إغلاق الإعدادات",
+      "open_side_rail": "فتح اللوحة الجانبية",
+      "close_side_rail": "إغلاق اللوحة الجانبية",
+      "scrubber": "شريط تمرير الصفحات",
+      "fullscreen_enter": "ملء الشاشة",
+      "fullscreen_exit": "إنهاء ملء الشاشة",
+      "shortcuts": "اختصارات لوحة المفاتيح",
+      "current_page_indicator": "الصفحة الحالية"
+    },
+    "settings": {
+      "title": "إعدادات القراءة",
+      "theme_label": "نمط القراءة",
+      "info_label": "معلومات القراءة",
+      "current_page": "الصفحة الحالية",
+      "total_pages": "إجمالي الصفحات",
+      "percent_complete": "نسبة التقدم",
+      "time_remaining": "الوقت المتبقي",
+      "minutes_per_page_note": "تقدير دقيقتين لكل صفحة",
+      "go_to_page_label": "اذهب إلى صفحة",
+      "go_to_page_placeholder": "رقم الصفحة",
+      "view_bookmarks": "علاماتي المرجعية",
+      "done": "تم"
+    },
+    "theme": {
+      "label": "النمط",
+      "light": "فاتح",
+      "sepia": "ورقي",
+      "dark": "داكن"
+    },
+    "bookmarks": {
+      "title": "العلامات المرجعية",
+      "empty": "لا توجد علامات مرجعية بعد. اضغط على أيقونة العلامة لحفظ صفحة.",
+      "add": "إضافة علامة مرجعية",
+      "remove": "إزالة العلامة المرجعية",
+      "added_toast": "تمت إضافة علامة على الصفحة {page}",
+      "removed_toast": "تم حذف العلامة من الصفحة {page}",
+      "label_placeholder": "أضف ملاحظة (اختياري)",
+      "save_label": "حفظ",
+      "page_label": "صفحة {page}",
+      "jump_to": "الانتقال إلى الصفحة {page}",
+      "delete": "حذف"
+    },
+    "toc": {
+      "title": "الفهرس",
+      "go_to_section": "الانتقال إلى {section}"
+    },
+    "progress": {
+      "title": "تقدمك",
+      "percent": "{percent}%",
+      "remaining_hours": "تبقى حوالي {hours} ساعة",
+      "remaining_minutes": "تبقى حوالي {minutes} دقيقة",
+      "completed": "اكتملت القراءة"
+    },
+    "shortcuts": {
+      "title": "اختصارات لوحة المفاتيح",
+      "subtitle": "تنقل بسرعة باستخدام لوحة المفاتيح",
+      "next_page": "الصفحة التالية",
+      "previous_page": "الصفحة السابقة",
+      "toggle_bookmark": "تبديل العلامة المرجعية",
+      "toggle_fullscreen": "تبديل ملء الشاشة",
+      "cycle_theme": "تبديل النمط",
+      "open_shortcuts": "فتح هذه القائمة",
+      "close_overlay": "إغلاق",
+      "close": "إغلاق"
+    },
+    "side_rail": {
+      "open": "فتح اللوحة",
+      "close": "إغلاق اللوحة"
+    }
   }
 }

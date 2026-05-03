@@ -1058,5 +1058,142 @@
       "save": "Save changes",
       "saved": "Saved"
     }
+  },
+  "library": {
+    "cta": {
+      "read": "Read",
+      "watch": "Watch",
+      "download_pdf": "Download PDF"
+    },
+    "type": {
+      "book": "Book",
+      "session": "Session"
+    },
+    "empty": {
+      "title": "Your library is empty",
+      "body": "Discover books and sessions to start your journey",
+      "cta": "Browse books"
+    },
+    "download": {
+      "preparing": "Preparing your file...",
+      "error": "Could not prepare download. Please try again."
+    },
+    "placeholder": {
+      "read": {
+        "title": "PDF reader coming soon",
+        "body": "You'll soon be able to read your books here (Phase 2)."
+      },
+      "session": {
+        "title": "Session viewer coming soon",
+        "body": "You'll soon be able to view your sessions here (Phase 4)."
+      }
+    }
+  },
+  "reader": {
+    "loading": "Loading book...",
+    "error": {
+      "load_failed": "Could not load book. Please try again.",
+      "retry": "Retry"
+    },
+    "controls": {
+      "previous": "Previous page",
+      "next": "Next page",
+      "page_x_of_y": "Page {current} of {total}",
+      "jump_to_page": "Go to page",
+      "go": "Go",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "close": "Close reader"
+    },
+    "hint": {
+      "keyboard": "Use arrow keys"
+    },
+    "resume": {
+      "toast": "Resuming from page {page}"
+    },
+    "unavailable": {
+      "title": "Not yet available",
+      "body": "This book isn't ready for reading yet. We'll let you know as soon as it's available.",
+      "cta": "Back to library"
+    },
+    "first_load": {
+      "title": "Opening book",
+      "subtitle": "One moment..."
+    },
+    "aria": {
+      "top_bar": "Reader toolbar",
+      "bottom_bar": "Reader navigation bar",
+      "side_rail": "Side panel",
+      "settings": "Reading settings",
+      "open_settings": "Open settings",
+      "close_settings": "Close settings",
+      "open_side_rail": "Open side panel",
+      "close_side_rail": "Close side panel",
+      "scrubber": "Page scrubber",
+      "fullscreen_enter": "Enter fullscreen",
+      "fullscreen_exit": "Exit fullscreen",
+      "shortcuts": "Keyboard shortcuts",
+      "current_page_indicator": "Current page"
+    },
+    "settings": {
+      "title": "Reading settings",
+      "theme_label": "Reading theme",
+      "info_label": "Reading info",
+      "current_page": "Current page",
+      "total_pages": "Total pages",
+      "percent_complete": "Progress",
+      "time_remaining": "Time remaining",
+      "minutes_per_page_note": "Estimated at 2 min per page",
+      "go_to_page_label": "Go to page",
+      "go_to_page_placeholder": "Page number",
+      "view_bookmarks": "My bookmarks",
+      "done": "Done"
+    },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "sepia": "Sepia",
+      "dark": "Dark"
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "empty": "No bookmarks yet. Tap the bookmark icon to save a page.",
+      "add": "Add bookmark",
+      "remove": "Remove bookmark",
+      "added_toast": "Bookmark added on page {page}",
+      "removed_toast": "Bookmark removed from page {page}",
+      "label_placeholder": "Add a note (optional)",
+      "save_label": "Save",
+      "page_label": "Page {page}",
+      "jump_to": "Jump to page {page}",
+      "delete": "Delete"
+    },
+    "toc": {
+      "title": "Table of contents",
+      "go_to_section": "Go to {section}"
+    },
+    "progress": {
+      "title": "Your progress",
+      "percent": "{percent}%",
+      "remaining_hours": "About {hours} hours left",
+      "remaining_minutes": "About {minutes} minutes left",
+      "completed": "Reading complete"
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "subtitle": "Navigate quickly with your keyboard",
+      "next_page": "Next page",
+      "previous_page": "Previous page",
+      "toggle_bookmark": "Toggle bookmark",
+      "toggle_fullscreen": "Toggle fullscreen",
+      "cycle_theme": "Cycle theme",
+      "open_shortcuts": "Open this menu",
+      "close_overlay": "Close",
+      "close": "Close"
+    },
+    "side_rail": {
+      "open": "Open panel",
+      "close": "Close panel"
+    }
   }
 }

@@ -18,6 +18,11 @@ const eslintConfig = [
       'next-env.d.ts',
       'components/ui/**',
       'lib/db/migrations/**',
+      // PDF.js worker bundle copied into public/ for the in-browser PDF
+      // reader (Phase 2). The worker is shipped minified by upstream and
+      // is never edited here — linting it produces ~1500 noise warnings
+      // that bury real signal.
+      'public/pdf.worker.min.mjs',
     ],
   },
 ]

@@ -4,10 +4,23 @@ import { getStripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe'
 import {
   createOrderFromStripeSession,
   getOrderByPaymentIntentId,
+  getOrderItemsWithBooks,
   updateOrderStatusByPaymentIntentId,
 } from '@/lib/db/queries'
+import { sendEmail } from '@/lib/email/send'
+import {
+  buildPostPurchaseHtml,
+  buildPostPurchaseSubject,
+  type PostPurchaseBookEntry,
+  type PostPurchaseSessionEntry,
+} from '@/lib/email/templates/post-purchase'
+import { storage } from '@/lib/storage'
+import { SITE_URL } from '@/lib/constants'
 
 export const runtime = 'nodejs'
+
+const POST_PURCHASE_LINK_EXPIRY_DAYS = 7
+const POST_PURCHASE_LINK_EXPIRY_SECONDS = POST_PURCHASE_LINK_EXPIRY_DAYS * 24 * 60 * 60
 
 export async function POST(req: Request) {
   const stripe = getStripe()
@@ -61,8 +74,9 @@ export async function POST(req: Request) {
       const paymentIntentId =
         typeof session.payment_intent === 'string' ? session.payment_intent : null
 
+      let createdOrder: Awaited<ReturnType<typeof createOrderFromStripeSession>> = null
       try {
-        const order = await createOrderFromStripeSession({
+        createdOrder = await createOrderFromStripeSession({
           stripeSessionId: session.id,
           stripePaymentIntentId: paymentIntentId,
           userId,
@@ -75,7 +89,7 @@ export async function POST(req: Request) {
           ],
         })
         console.info(
-          `[stripe/webhook] checkout.session.completed processed (orderId=${order?.id ?? 'unknown'})`,
+          `[stripe/webhook] checkout.session.completed processed (orderId=${createdOrder?.id ?? 'unknown'})`,
         )
       } catch (err) {
         console.error('[stripe/webhook] failed to record order', err)
@@ -83,6 +97,23 @@ export async function POST(req: Request) {
           { error: { code: 'INTERNAL', message: 'Failed to record order.' } },
           { status: 500 },
         )
+      }
+
+      // Post-purchase email is best-effort: an order is already recorded, and
+      // Stripe expects a 200 from the webhook. If sending fails, log and move
+      // on. The user can always download from /dashboard/library.
+      // TODO Phase 2: queue failed emails for retry.
+      if (createdOrder && customerEmail) {
+        try {
+          await sendPostPurchaseEmail({
+            orderId: createdOrder.id,
+            customerEmail,
+            customerName,
+            userId: createdOrder.userId,
+          })
+        } catch (err) {
+          console.error('[stripe/webhook] post-purchase email failed', err)
+        }
       }
       break
     }
@@ -172,4 +203,96 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ received: true })
+}
+
+/**
+ * Compose + send the post-purchase email.
+ *
+ * Reads back the order's items joined with their books so we can correctly
+ * branch BOOK vs SESSION in the template (sessions don't get a download link,
+ * just a library URL). For each BOOK with a `digitalFile` we mint a 7-day
+ * signed URL via the storage adapter. Sessions and books-without-digital-file
+ * get a null download URL — the template falls back to the library link.
+ *
+ * Errors are caught by the caller; this fn is allowed to throw.
+ */
+async function sendPostPurchaseEmail(args: {
+  orderId: string
+  customerEmail: string
+  customerName: string | null
+  userId: string | null
+}): Promise<void> {
+  const items = await getOrderItemsWithBooks(args.orderId)
+  if (items.length === 0) {
+    console.info('[stripe/webhook] no items for order — skipping email', {
+      orderId: args.orderId,
+    })
+    return
+  }
+
+  // userId is required by the storage adapter signature even though the mock
+  // doesn't use it. Fall back to the customer email when no account is linked
+  // (guest checkout — not supported today, but we hedge against future
+  // changes rather than silently passing an empty string).
+  const ownerId = args.userId ?? `guest:${args.customerEmail}`
+
+  const books: PostPurchaseBookEntry[] = []
+  const sessions: PostPurchaseSessionEntry[] = []
+
+  for (const { book } of items) {
+    if (book.productType === 'SESSION') {
+      sessions.push({ titleAr: book.titleAr, titleEn: book.titleEn })
+      continue
+    }
+    let downloadUrl: string | null = null
+    const storageKey = book.digitalFile?.trim()
+    if (storageKey) {
+      try {
+        const signed = await storage.getSignedUrl({
+          productType: 'BOOK',
+          productId: book.id,
+          storageKey,
+          userId: ownerId,
+          expiresInSeconds: POST_PURCHASE_LINK_EXPIRY_SECONDS,
+        })
+        downloadUrl = signed.url
+      } catch (err) {
+        console.error('[stripe/webhook] storage.getSignedUrl failed for book', {
+          bookId: book.id,
+          err,
+        })
+      }
+    }
+    books.push({
+      titleAr: book.titleAr,
+      titleEn: book.titleEn,
+      downloadUrl,
+    })
+  }
+
+  const html = buildPostPurchaseHtml({
+    customerName: args.customerName,
+    books,
+    sessions,
+    libraryUrl: `${SITE_URL}/dashboard/library`,
+    signedUrlExpiresInDays: POST_PURCHASE_LINK_EXPIRY_DAYS,
+  })
+
+  const result = await sendEmail({
+    to: args.customerEmail,
+    subject: buildPostPurchaseSubject(),
+    html,
+  })
+
+  if (!result.ok) {
+    console.warn('[stripe/webhook] post-purchase email not sent', {
+      orderId: args.orderId,
+      reason: result.reason,
+    })
+    return
+  }
+  console.info('[stripe/webhook] post-purchase email sent', {
+    orderId: args.orderId,
+    emailId: result.id,
+  })
 }

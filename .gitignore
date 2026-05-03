@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Mock storage adapter dev sandbox — keep the dir + README, ignore content.
+/public/placeholder-content/*
+!/public/placeholder-content/README.md
+
+# pdfjs-dist runtime assets — copied from node_modules by the postinstall
+# script (scripts/copy-pdf-assets.mjs). Don't commit; they regenerate on
+# every `npm install` and must match the installed pdfjs-dist version.
+/public/pdf.worker.min.mjs
+/public/cmaps/
+/public/standard_fonts/

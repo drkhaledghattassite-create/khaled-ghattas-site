@@ -62,6 +62,32 @@ const nextConfig: NextConfig = {
   // Hide the floating "N issues" / build-activity badge in dev — it stamps
   // every screenshot and serves no production purpose.
   devIndicators: false,
+  // PDF.js (via react-pdf) ships an optional `canvas` import for Node-side
+  // rendering. We never render PDFs server-side — the reader is a client
+  // component and the worker runs in a Web Worker. Aliasing canvas → false
+  // prevents the Node bundle from trying to resolve the native module
+  // during the App Router's RSC pass and unblocks serverless-style builds.
+  // See node_modules/pdfjs-dist/types/src/display/api.d.ts.
+  //
+  // pdfjs-dist@5's modern build (`build/pdf.mjs`, the package's `"main"`)
+  // contains top-level ESM constructs that Webpack 5 cannot wrap correctly
+  // — `__webpack_require__.r(exports)` is called with a non-object and
+  // crashes ("Object.defineProperty called on non-object") at module
+  // evaluation. The legacy build at `legacy/build/pdf.mjs` is the same
+  // library transpiled to a shape Webpack handles. We alias the bare
+  // specifier with `$` (exact-match) so this only affects react-pdf's
+  // `import 'pdfjs-dist'` — sub-path imports like `pdfjs-dist/build/
+  // pdf.worker.min.mjs` (used by scripts/copy-pdf-assets.mjs) are
+  // unaffected.
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {}
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      canvas: false,
+      'pdfjs-dist$': 'pdfjs-dist/legacy/build/pdf.mjs',
+    }
+    return config
+  },
   async headers() {
     return [
       {

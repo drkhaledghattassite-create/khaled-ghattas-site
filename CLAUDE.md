@@ -4,6 +4,10 @@ Welcome. Read this fully before any work in this repo. It is the single source
 of truth for project conventions. Code is the source of truth for everything
 else; when this file and code disagree, trust the code and update this file.
 
+## Working with Claude on this project
+
+Every substantial or behavior-changing prompt must result in CLAUDE.md being updated to reflect the new state. If a prompt adds files, tables, routes, components, conventions, dependencies, or changes existing patterns, the implementer (Claude or otherwise) updates CLAUDE.md in the same change. CLAUDE.md is the source of truth for project conventions; if it drifts from reality, future sessions break.
+
 ## Project overview
 
 `drkhaledghattass.com` is the bilingual editorial site for Dr. Khaled Ghattass
@@ -49,6 +53,52 @@ What works in dev:
   (`/api/checkout` returns 401 without a session). Unauthenticated buy
   attempts open `AuthRequiredDialog`, which sends users to
   `/login?redirect=<original-path>` and bounces them back after sign-in.
+- **Phase 2 — premium PDF reader is live** at
+  `/dashboard/library/read/[bookId]`. Built on `react-pdf@9` (which
+  pins `pdfjs-dist@4.8.69`, the LEGACY build — see "PDF.js — pinned to
+  legacy build" below for why). Worker, cMaps, and standard fonts
+  copied to `public/` by the `scripts/copy-pdf-assets.mjs` postinstall
+  hook (paths gitignored — they regenerate per install). The route renders **full-bleed** (a `fixed
+  inset-0 z-[100]` overlay over the dashboard chrome) — DashboardLayout
+  is intentionally NOT wrapped around the read path; that layout still
+  applies to the "book has no digital file yet" notice.
+  **Architecture**: `PdfReader.tsx` is the orchestrator that mounts a
+  single `<Document>`, hosts `useReaderState`, and picks Mobile vs
+  Desktop via `useViewport()` (with hydration-safe `mounted` flag).
+  Mobile (< 768px): full-bleed page, auto-hiding top/bottom bars,
+  swipe / drag / tap-zone navigation, double-tap zoom (1x ↔ 2x),
+  haptic feedback. Desktop (>= 768px): two-page spread with collapsible
+  side rail (RTL leading edge — open by default at >= 1280px) housing
+  ToC (extracted via `pdf.getOutline()`), bookmarks, theme picker,
+  progress ring; full keyboard shortcuts (`?`, `b`, `f`, `t`, `Esc`,
+  `Space`, arrows). Three reader-only themes (`light` / `sepia` /
+  `dark`) scoped via `data-reader-theme` on the reader root, persisted
+  in `localStorage` under `reader-theme` — independent of site dark
+  mode. CSS tokens (`--reader-surface`, `--reader-fg`, `--reader-chrome`,
+  …) live in `app/globals.css` under "Reader themes — used in
+  /dashboard/library/read/[bookId] only".
+  Two save paths preserved verbatim: in-page page-changes save
+  (debounced 1.5s) via the `saveProgressAction` server action, and
+  unmount/pagehide flush via `fetch('/api/reader/progress',
+  { keepalive: true })` — the keepalive flag is what survives tab-close
+  (server actions cannot be invoked with keepalive). Both paths write
+  to the `reading_progress` table via `saveReadingProgress` upsert.
+  Both also forward `totalPages` (the PDF's `numPages`) so the dashboard
+  library card can render `(lastPage / totalPages)` as a real progress
+  percentage rather than the previous hardcoded 0%. The column ships
+  in migration `0005_dizzy_luckman.sql`; `saveReadingProgress` retries
+  without the column on write failure so an un-applied migration
+  degrades gracefully.
+  On resume the reader hydrates from `getReadingProgress` and shows
+  a sonner toast ("Resuming from page N"). The "Saved" indicator pulse
+  is throttled to once per minute so a fast-flipping session doesn't
+  spam the chrome. Mock-auth dev mode persists progress + bookmarks
+  to `.next/cache/reader-mock-store.json` via `lib/db/mock-store.ts`
+  (debounced 200ms write, gated behind `MOCK_AUTH_ENABLED` so the
+  disk read never fires in production); the file survives dev-server
+  restarts and Webpack HMR. Mock user ids ('1', '2', '3') aren't
+  UUIDs, so they can't go in the real `reading_progress` /
+  `pdf_bookmarks` tables — the JSON file is the dev substitute.
 
 What's stubbed:
 - Stripe checkout: route requires session and creates real Stripe sessions
@@ -57,6 +107,13 @@ What's stubbed:
 - Image upload pipeline (Uploadthing not wired; admin forms accept URL strings).
 - Markdown article body parser (paragraphs split by `\n` for now).
 - Site-wide search.
+- PDF per-page download + annotations (Phase 3). Bookmarks ship with
+  Phase 2 (toggle on/off per page, optional inline note, list view in
+  side rail / settings sheet) — they are persisted to the
+  `pdf_bookmarks` table when migration 0004 is applied; otherwise the
+  bookmark queries swallow the missing-table error and surface no
+  bookmarks (see the try/catch in `getBookmarks` /
+  `toggleBookmark`).
 
 See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 
@@ -71,25 +128,56 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`).
 - Neon Postgres (serverless).
-- Schema in `lib/db/schema.ts`. **15 tables**: `users`, `sessions`, `accounts`,
+- Schema in `lib/db/schema.ts`. **19 tables**: `users`, `sessions`, `accounts`,
   `verifications`, `articles`, `books`, `interviews`, `gallery`, `events`,
   `orders`, `orderItems`, `subscribers`, `contactMessages`, `siteSettings`,
-  `contentBlocks`. **8 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
+  `contentBlocks`, plus the four Phase-1 content-delivery tables
+  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`.
+  **9 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
   (DRAFT/PUBLISHED/ARCHIVED), `orderStatus` (PENDING/PAID/FULFILLED/REFUNDED/
   FAILED), `messageStatus` (UNREAD/READ/ARCHIVED), `subscriberStatus` (ACTIVE/
   UNSUBSCRIBED/BOUNCED), `eventStatus` (UPCOMING/PAST/CANCELLED),
   `articleCategory` (PHILOSOPHY/PSYCHOLOGY/SOCIETY/POLITICS/CULTURE/OTHER),
-  `productType` (BOOK/SESSION).
-- Migrations in `lib/db/migrations/`. **Four** migrations exist:
+  `productType` (BOOK/SESSION), `sessionItemType` (VIDEO/AUDIO/PDF).
+  `sessionItems.sessionId` references `books.id` (sessions live in the
+  `books` table with `productType='SESSION'`); the application enforces the
+  productType invariant — the FK does not.
+- Migrations in `lib/db/migrations/`. **Six** migrations exist:
   `0000_blue_adam_warlock.sql`, `0001_remarkable_toad_men.sql`,
-  `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last adds the
-  `value_json` jsonb column on `site_settings` for the structured-settings
-  blob). Apply with `npm run db:migrate`.
+  `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last in that
+  group adds the `value_json` jsonb column on `site_settings` for the
+  structured-settings blob), `0004_overjoyed_red_wolf.sql` (Phase 1 —
+  adds `session_item_type` enum + the four content-delivery tables with
+  their FKs and indexes; fully additive, no ALTER on existing tables),
+  and `0005_dizzy_luckman.sql` (Phase 2 — adds `total_pages integer NOT
+  NULL DEFAULT 0` to `reading_progress` so the library card can render
+  a real progress percentage; additive only). Apply with
+  `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point. It
   uses Drizzle when `DATABASE_URL` is set to a real Neon URL, and falls back
   to `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
   This is auto-detected — there is **no `HAS_DB` env flag**, only the
   `HAS_DB` constant inside `queries.ts`.
+- **Reading progress (Phase 2)**: `getReadingProgress(userId, bookId)` and
+  `saveReadingProgress(userId, bookId, lastPage)` live in
+  `lib/db/queries.ts`. They use the `reading_progress` Drizzle table with a
+  unique `(user_id, book_id)` index for upsert via `onConflictDoUpdate`.
+  Both helpers branch on `MOCK_AUTH_ENABLED` first (mock user ids fail the
+  UUID guard) and fall back to a module-level in-memory `Map` so the
+  save/restore round-trip is exercisable in dev without a seeded DB. The
+  Map resets every dev-server restart — that's by design; the goal is
+  flow exercise, not durable persistence.
+- **PDF bookmarks (Phase 2)**: `getBookmarks(userId, bookId)`,
+  `toggleBookmark(userId, bookId, pageNumber, label?)`,
+  `updateBookmarkLabel(bookmarkId, userId, label)` in `lib/db/queries.ts`,
+  fronted by `getBookmarksAction` / `toggleBookmarkAction` /
+  `updateBookmarkLabelAction` in
+  `app/[locale]/(dashboard)/dashboard/library/read/[bookId]/actions.ts`.
+  Same MOCK_AUTH_ENABLED → in-memory Map → Drizzle pattern as
+  reading progress. Drizzle path is wrapped in try/catch so a
+  not-yet-applied migration 0004 silently degrades to "no bookmarks"
+  rather than crashing the reader. UX treats one bookmark per page as
+  a toggle; the schema permits multiple.
 
 ### Site settings (structured)
 
@@ -209,8 +297,46 @@ Toggle groups: `homepage`, `navigation`, `footer`, `hero_ctas`, `featured`,
 - `date-fns@^4` — dates.
 - `react-day-picker@^9` — date pickers.
 - `sonner@^2` — toasts.
+- `react-pdf@^9` (transitively pins `pdfjs-dist@4.8.69`, the LEGACY build
+  — see "PDF.js — pinned to legacy build" below) — Phase 2 in-browser PDF
+  reader for `/dashboard/library/read/[bookId]`. The worker, cMaps, and
+  standard fonts are copied to `public/` by `scripts/copy-pdf-assets.mjs`
+  (postinstall hook) and gitignored. `next.config.ts` aliases `canvas`
+  → `false` so the optional Node-side rendering dep doesn't break
+  serverless builds, AND aliases `pdfjs-dist$` →
+  `pdfjs-dist/legacy/build/pdf.mjs` to force the legacy library build.
 - `playwright@^1.56` — devDep only (used by `scripts/visual-check.mjs`).
 - Deploy target: **Netlify**.
+
+## PDF.js — pinned to legacy build (do not "modernize")
+
+The PDF reader uses pdfjs-dist's LEGACY build, NOT the modern one. This
+pinning is intentional and required.
+
+Why:
+- pdfjs-dist@5's modern build crashes at module-eval with
+  "Object.defineProperty called on non-object" when bundled by
+  Webpack/Next.js
+- Workaround: Webpack alias in `next.config.ts` points
+  `pdfjs-dist$` → `pdfjs-dist/legacy/build/pdf.mjs`
+- `react-pdf` is pinned to v9 (which uses pdfjs-dist v4) to match this
+  constraint
+- `scripts/copy-pdf-assets.mjs` copies the LEGACY worker to `public/`,
+  not the modern one
+
+DO NOT:
+- Bump `react-pdf` to v10+ without re-testing the entire chain
+- "Simplify" the Webpack alias in `next.config.ts`
+- Switch the postinstall script to the modern worker
+- Mix legacy and modern imports
+
+If you need to upgrade in the future:
+1. Test `pdfjs-dist@latest`'s modern build with the current Next.js
+   version (the bug may be fixed upstream)
+2. If still broken, leave the legacy pinning in place
+3. If fixed, update all three places: Webpack alias in `next.config.ts`,
+   `react-pdf` version in `package.json`, and the worker source path in
+   `scripts/copy-pdf-assets.mjs`
 
 ## Design system: Qalem v2
 
@@ -355,6 +481,23 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 ### Dashboard (`app/[locale]/(dashboard)/`)
 - `/dashboard` — account view
 - `/dashboard/library` — purchased content
+- `/dashboard/library/read/[bookId]` — **Phase 2** in-browser PDF reader.
+  Server-verifies ownership (`userOwnsProduct`); on miss redirects to
+  `/dashboard/library` rather than 404 to avoid leaking catalog membership.
+  Mints a 1h signed URL via `storage.getSignedUrl`, hydrates last-page-read
+  via `getReadingProgress`, and renders the client `PdfReader` as a
+  **full-bleed overlay** (`fixed inset-0 z-[100]`) — NOT wrapped in
+  `DashboardLayout`; the dashboard chrome would compete with the
+  immersive reading surface. The unavailable-notice path (book owned but
+  no `digitalFile` attached) does keep `DashboardLayout` so users can nav
+  back to the library tab. Save flow: client debounces page changes
+  500ms → `saveProgressAction` (server action at
+  `app/[locale]/(dashboard)/dashboard/library/read/[bookId]/actions.ts`).
+  Unmount/tab-close flush → `fetch('/api/reader/progress', { keepalive: true })`
+  (the keepalive flag is what survives tab-close; server actions can't
+  be invoked with it).
+- `/dashboard/library/session/[sessionId]` — Phase-1 placeholder; session
+  viewer lands in Phase 4. Same server-side ownership gate.
 - `/dashboard/settings`
 
 ### Admin (`app/[locale]/(admin)/`)
@@ -394,7 +537,22 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `checkout` — POST. Requires session (returns 401 otherwise). Creates a
   Stripe Checkout session when `STRIPE_SECRET_KEY` is set; returns 503
   ("coming soon") otherwise. Origin-checked.
-- `stripe/webhook` — signature verification implemented; event handling pending.
+- `stripe/webhook` — signature verification + `checkout.session.completed`,
+  `charge.refunded`, `payment_intent.payment_failed`, `payment_intent.succeeded`
+  handlers. On successful checkout it also sends the post-purchase email
+  (best-effort, no-op when `RESEND_API_KEY` is missing — see Email infra).
+- `content/access` — POST. Authenticated, origin-checked, ownership-gated.
+  Returns `{ url, expiresAt }` from the storage adapter for an owned BOOK or
+  SESSION_ITEM. Rate-limited per-user (`content-access:<userId>`, 10/min).
+  `force-dynamic`. See `lib/storage/`.
+- `reader/progress` — POST. Authenticated, origin-checked, ownership-gated.
+  Mirrors the `saveProgressAction` server action so the in-browser PDF
+  reader can flush its last-read page on unmount/tab-close via
+  `fetch(..., { keepalive: true })`. Server actions can't accept that
+  flag, hence this twin route. Rate-limited per-user
+  (`reader-progress:<userId>`). `force-dynamic`. Idempotent — `saveReadingProgress`
+  uses `onConflictDoUpdate`, so duplicate writes from racing in-flight
+  saves and unmount flushes are safe.
 - `user/profile` — PATCH, DELETE (account self-edit / self-delete).
 - `user/preferences` — PATCH.
 - `admin/articles[/id]`, `admin/books[/id]`, `admin/interviews[/id]`,
@@ -513,6 +671,54 @@ so explicitly rather than implying success.
   hamburger in `SiteHeader` opens `MobileMenu` directly on mobile.
 - `components/sections/` — homepage and listing-page sections, plus
   `BookBuyButton` (purchase trigger; gated on session via `useSession`).
+- `components/dashboard/` — dashboard-only components, including the Phase-1
+  `ContentPlaceholder` ("PDF reader / session viewer coming soon" stub —
+  still used for the session viewer until Phase 4) and the Phase-1
+  download flow added to `LibraryCard.tsx` (button → fetch
+  `/api/content/access` → programmatic `<a download>` click → `sonner` toast
+  on error).
+- `components/library/` — Phase-2 premium reader. `PdfReader.tsx` is the
+  orchestrator component mounted (via `next/dynamic` from
+  `PdfReaderClient.tsx`) by `/dashboard/library/read/[bookId]`. It owns
+  the worker init, cMap/standardFont config, the single `<Document>`
+  instance, the ToC outline resolution, and picks the variant (Mobile
+  vs Desktop) via `useViewport`. The variant components and shared
+  pieces live under `components/library/reader/`:
+    - `MobileReader.tsx` — full-bleed page, swipe + drag + tap-zones,
+      double-tap zoom, auto-hiding bars.
+    - `DesktopReader.tsx` — two-page spread, collapsible side rail,
+      keyboard shortcuts, fullscreen, shortcuts overlay.
+    - `ReaderTopBar.tsx` / `ReaderBottomBar.tsx` — shared bars with
+      `variant: 'mobile' | 'desktop'`. Both use `absolute` positioning
+      so the desktop side rail isn't overlapped.
+    - `ReaderSideRail.tsx` — desktop-only collapsible rail (300px,
+      RTL leading edge) with theme picker, ToC, bookmarks, progress
+      ring.
+    - `ReaderSettingsSheet.tsx` — mobile bottom-sheet with theme,
+      reading info, go-to-page, bookmarks tab.
+    - `ShortcutsOverlay.tsx` — modal listing keyboard shortcuts
+      (focus-trapped, Esc-closeable).
+    - `PageScrubber.tsx` — `<input type="range">` styled via
+      `.reader-scrubber` in globals.css; drags update preview, commit
+      on release.
+    - `ProgressRing.tsx` — SVG progress ring with % + remaining-time
+      estimate (2 min/page).
+    - `BookmarksList.tsx` — list view used by both rail and sheet.
+    - `LoadingState.tsx` — first-load splash.
+  Reader-specific hooks live under `components/library/hooks/`:
+  `useReaderState` (page, bookmarks, progress save), `useReaderTheme`
+  (light/sepia/dark with localStorage), `useReaderShortcuts` (desktop
+  keyboard map), `useSwipeGesture` (mobile tap zones; drag handled by
+  motion's `drag="x"` on the page wrapper), `useAutoHideChrome` (3s
+  inactivity hide), `useViewport` (hydration-safe variant picker).
+  The reader theme is scoped via `data-reader-theme="..."` on the
+  reader root and is independent of the site's `.dark` mode — the
+  CSS variables `--reader-surface`, `--reader-fg`, `--reader-chrome`,
+  etc. live in `app/globals.css` under "Reader themes — used in
+  /dashboard/library/read/[bookId] only".
+  The worker file at `public/pdf.worker.min.mjs` and the cMaps under
+  `public/cmaps/` are version-pinned to the bundled `pdfjs-dist` — see
+  the file header for the upgrade procedure.
 - `components/motion/` — motion-specific reusable components.
 - `components/seo/` — JSON-LD components.
 - `components/ui/` — Base UI / shadcn primitives. `dialog.tsx` and
@@ -522,9 +728,30 @@ so explicitly rather than implying success.
   invisible against `bg-elevated` in light mode).
 - `components/shared/`, `components/forms/`, `components/providers/` — small utilities.
 - `lib/` — business logic (auth, db, motion, redis, email, validators, i18n,
-  api, seo, stripe, site-settings, hooks).
-- `messages/` — i18n JSON.
-- `public/` — static assets.
+  api, seo, stripe, site-settings, storage, hooks).
+- `lib/storage/` — Phase-1 storage abstraction. `index.ts` exports a single
+  `storage: StorageAdapter` that every signed-URL caller (access API,
+  post-purchase email, future PDF reader, future session viewer) uses.
+  `mock-adapter.ts` is the dev placeholder; the real adapter (Netlify Blobs,
+  R2, Cloudflare Stream — TBD per Dr. Khaled's storage decision) drops in
+  by editing the single import in `lib/storage/index.ts`. Nothing else moves.
+- `lib/email/` — Resend wrapper. `index.ts` exports `getResend()` (returns
+  `null` and warns once when `RESEND_API_KEY` is missing — never throws at
+  module load). `send.ts` is the canonical send wrapper used by templates;
+  it returns a tagged result so callers can branch on `no-api-key` vs
+  `send-failed`. Templates live in `lib/email/templates/` —
+  `post-purchase.ts` is the Phase-1 bilingual order confirmation.
+- `messages/` — i18n JSON. Top-level `library.*` namespace was added in
+  Phase 1 alongside the legacy `dashboard.library.*` keys for the new
+  download / placeholder copy. Phase 2 adds the top-level `reader.*`
+  namespace (loading, error, controls, resume, unavailable) consumed by
+  `components/library/PdfReader.tsx` and the read-page server component.
+  Both files maintain identical key paths (currently 821 keys each).
+- `public/` — static assets. `public/placeholder-content/` is the Phase-1
+  mock storage sandbox (gitignored content; tracked README). Phase 2 adds
+  `public/pdf.worker.min.mjs`, `public/cmaps/`, and `public/standard_fonts/`
+  — copies from `node_modules/pdfjs-dist/` pinned to the bundled version.
+  These are real shipped assets, not gitignored.
 - `scripts/` — dev tooling: `dev.mjs`, `build.mjs`, `seed.ts`, `gen-icons.mjs`,
   `promote-admin.mjs`, `reset-db.mjs`, `verify-db.mjs`, `fix-external-urls.mjs`,
   `visual-check.mjs`.
@@ -677,11 +904,17 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
 ## Reference
 
 - Design tokens: `app/globals.css` (`@theme inline { ... }` block).
-- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0003`.
+- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0004`.
 - Unified queries: `lib/db/queries.ts`.
 - Site settings: `lib/site-settings/{types,defaults,zod,get}.ts`.
 - Auth: `lib/auth/{index,server,client,admin-guard,mock,redirect}.ts`.
 - Motion: `lib/motion/variants.ts` and `lib/motion/hooks.ts`.
+- Storage abstraction: `lib/storage/{index,types,mock-adapter}.ts` —
+  `mockAdapter` is wired today; the real adapter is pending Dr. Khaled's
+  storage-provider decision. Swap by editing the single import in
+  `lib/storage/index.ts`.
+- Email: `lib/email/{index,send}.ts` (lazy Resend; never throws at module
+  load) and `lib/email/templates/post-purchase.ts` (bilingual order email).
 - Validators: `lib/validators/*`.
 - Agents: `.claude/agents/` (eight project-scoped agents — see Agent team).
 - Pending content: `CONTENT-NEEDED.md`.

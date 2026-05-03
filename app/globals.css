@@ -2,6 +2,22 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* react-pdf TextLayer + AnnotationLayer styles.
+   Imported here (not in components/library/PdfReader.tsx) because the reader
+   loads via next/dynamic with ssr:false — the lazy chunk's CSS arrives
+   AFTER the TextLayer's "styles loaded?" runtime check fires, spamming
+   "TextLayer styles not found" once per page render. Loading via globals.css
+   ensures the :root CSS variable the check reads is set before hydration.
+
+   We import the deep ESM path (not `react-pdf/dist/Page/*.css`) because
+   Tailwind's PostCSS resolver uses the `style` export condition, and
+   react-pdf's package.json `exports` map only declares `import`/`require`
+   for that path — so the conditioned export rejects the CSS request.
+   The `./*` catch-all in the same exports map accepts ANY condition,
+   so the deep path resolves cleanly. */
+@import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+@import "react-pdf/dist/esm/Page/TextLayer.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
@@ -815,4 +831,176 @@
 .focus-mode [data-focus-dim] {
   opacity: 0.35;
   transition: opacity 0.35s var(--ease-editorial);
+}
+
+/* ==========================================================================
+   Reader themes — used in /dashboard/library/read/[bookId] only.
+   These are scoped via [data-reader-theme="..."] on the reader's outermost
+   container, which is independent of site light/dark mode. The reader
+   exposes three theme tokens: surface (page background + bars),
+   fg (chrome text), chrome (translucent backdrop for top/bottom bars).
+   The PDF page itself is not recolored — only chrome + viewport surround.
+   ========================================================================== */
+[data-reader-theme="light"] {
+  --reader-surface:        #F4F4F4;
+  --reader-surface-elev:   #FFFFFF;
+  --reader-fg:             #0A0A0A;
+  --reader-fg-muted:       #404040;
+  --reader-fg-faint:       #737373;
+  --reader-border:         #E5E5E5;
+  --reader-border-strong:  #D4D4D4;
+  --reader-chrome:         rgba(255, 255, 255, 0.88);
+  --reader-accent:         #B85440;
+  --reader-accent-fg:      #FFFFFF;
+}
+
+[data-reader-theme="sepia"] {
+  --reader-surface:        hsl(40, 35%, 90%);
+  --reader-surface-elev:   hsl(40, 38%, 94%);
+  --reader-fg:             hsl(30, 30%, 18%);
+  --reader-fg-muted:       hsl(30, 22%, 32%);
+  --reader-fg-faint:       hsl(30, 18%, 46%);
+  --reader-border:         hsl(35, 25%, 78%);
+  --reader-border-strong:  hsl(35, 22%, 68%);
+  --reader-chrome:         hsl(40, 35%, 90% / 0.92);
+  --reader-accent:         #B85440;
+  --reader-accent-fg:      hsl(40, 38%, 96%);
+}
+
+[data-reader-theme="dark"] {
+  --reader-surface:        #0A0A0A;
+  --reader-surface-elev:   #171717;
+  --reader-fg:             #FAFAFA;
+  --reader-fg-muted:       #A3A3A3;
+  --reader-fg-faint:       #737373;
+  --reader-border:         #262626;
+  --reader-border-strong:  #404040;
+  --reader-chrome:         rgba(10, 10, 10, 0.88);
+  --reader-accent:         #D97560;
+  --reader-accent-fg:      #0A0A0A;
+}
+
+/* Scoped scrollbar: in reader-dark we want the scrollbar thumb visible against
+   the deep background. The site-wide scrollbar styling reuses --color-bg,
+   which is the wrong reference for an isolated reader root. */
+[data-reader-theme] ::-webkit-scrollbar-thumb {
+  background: var(--reader-border-strong);
+  border: 2px solid var(--reader-surface);
+}
+[data-reader-theme] {
+  scrollbar-color: var(--reader-border-strong) transparent;
+}
+
+/* Hide the spin buttons on number inputs inside the reader (Go-to-page) so
+   the field reads as a clean numeric input. Keep a minimum touch height. */
+[data-reader-theme] input[type="number"]::-webkit-inner-spin-button,
+[data-reader-theme] input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+[data-reader-theme] input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Reader page-scrubber. <input type="range"> renders inconsistently across
+   browsers; this normalises track + thumb to the reader theme tokens. We
+   keep the track visually LTR (numeric scrubbers don't auto-flip on most
+   browsers, and flipping them confuses RTL users — they expect the thumb
+   to move left-to-right with rising numbers regardless of UI direction). */
+[data-reader-theme] .reader-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  direction: ltr;
+}
+[data-reader-theme] .reader-scrubber::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--reader-border);
+  border-radius: 9999px;
+}
+[data-reader-theme] .reader-scrubber::-moz-range-track {
+  height: 4px;
+  background: var(--reader-border);
+  border-radius: 9999px;
+}
+[data-reader-theme] .reader-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--reader-fg);
+  border: 2px solid var(--reader-surface-elev);
+  margin-top: -7px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 120ms var(--ease-editorial);
+}
+[data-reader-theme] .reader-scrubber::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--reader-fg);
+  border: 2px solid var(--reader-surface-elev);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 120ms var(--ease-editorial);
+}
+[data-reader-theme] .reader-scrubber:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+[data-reader-theme] .reader-scrubber:active::-moz-range-thumb {
+  transform: scale(1.15);
+}
+[data-reader-theme] .reader-scrubber:focus-visible {
+  outline: none;
+}
+[data-reader-theme] .reader-scrubber:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--reader-accent);
+}
+
+/* Side-rail scroll container — Lenis intercepts wheel events globally, so
+   the rail uses `data-lenis-prevent` to opt out and rely on native overflow.
+   Native scrollbars are themed to match the reader so the affordance is
+   discoverable (default Chrome/Safari scrollbars on a translucent surface
+   are nearly invisible). Firefox uses scrollbar-color; WebKit uses the
+   ::-webkit-scrollbar pseudos. */
+[data-reader-theme] .reader-rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--reader-border-strong) transparent;
+}
+[data-reader-theme] .reader-rail-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+[data-reader-theme] .reader-rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-reader-theme] .reader-rail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--reader-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-reader-theme] .reader-rail-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--reader-fg-faint);
+  background-clip: content-box;
+}
+
+/* Keyboard shortcut chip — used in the shortcuts overlay. */
+[data-reader-theme] .reader-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--reader-border);
+  border-radius: var(--radius-sm);
+  background: var(--reader-surface-elev);
+  color: var(--reader-fg);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }

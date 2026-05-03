@@ -254,7 +254,7 @@ export const placeholderBooks: Book[] = [
     productType: 'BOOK',
     price: '20.00',
     currency: 'USD',
-    digitalFile: null,
+    digitalFile: 'book-1.pdf',
     externalUrl: null,
     publisher: 'Khaled Ghattass',
     publicationYear: 2018,

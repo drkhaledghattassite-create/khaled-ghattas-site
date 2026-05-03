@@ -22,6 +22,9 @@ import {
   interviews,
   orderItems,
   orders,
+  pdfBookmarks,
+  readingProgress,
+  sessionItems,
   siteSettings,
   subscribers,
   users,
@@ -41,6 +44,8 @@ import {
   type NewInterview,
   type Order,
   type OrderItem,
+  type PdfBookmark,
+  type SessionItem,
   type SiteSetting,
   type Subscriber,
   type User,
@@ -70,6 +75,8 @@ import {
   placeholderSubscribers,
   placeholderUsers,
 } from '../placeholder-data'
+import { MOCK_AUTH_ENABLED } from '../auth/mock'
+import { readStore, writeStore } from './mock-store'
 
 const HAS_DB =
   !!process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('dummy')
@@ -233,15 +240,19 @@ export async function getBookBySlug(slug: string): Promise<Book | null> {
 }
 
 export async function getBookById(id: string): Promise<Book | null> {
-  if (HAS_DB) {
-    if (!isUuid(id)) return null
+  if (HAS_DB && isUuid(id)) {
     try {
       const [row] = await db.select().from(books).where(eq(books.id, id)).limit(1)
-      return row ?? null
+      if (row) return row
     } catch (err) {
       console.error('[getBookById] DB error, falling back to placeholders:', err)
     }
   }
+  // Falls back to placeholders when: no DB, DB error, DB miss in mock-auth
+  // dev mode (so placeholder routes are exercisable on an un-seeded Neon),
+  // or invalid id. In real prod (HAS_DB && !MOCK_AUTH_ENABLED), a DB miss
+  // still falls through here, but the placeholder UUIDs won't exist in
+  // production traffic — so this is effectively a dev-only escape hatch.
   return placeholderBooks.find((b) => b.id === id) ?? null
 }
 
@@ -628,6 +639,44 @@ export type LibraryEntry = {
 export async function getLibraryEntriesByUserId(
   userId: string,
 ): Promise<LibraryEntry[]> {
+  // Dev-only bypass: in mock-auth mode the active "user" is one of the
+  // synthetic accounts in lib/auth/mock.ts whose ids ('1', '2', '3') are
+  // not UUIDs and never exist in any real users table. Querying real
+  // Neon for orders by such an id produces nothing (and trips the
+  // isUuid guard). So in mock-auth mode we synthesize library entries
+  // from placeholderBooks regardless of whether DATABASE_URL is set —
+  // the bypass is gated by MOCK_AUTH_ENABLED, which is hard-disabled
+  // in production by NODE_ENV !== 'production' (SECURITY [C-2] in
+  // lib/auth/mock.ts). This lets the library / download / placeholder
+  // flows be exercised against a real Neon DB that hasn't been seeded
+  // with paid orders for the mock user.
+  if (MOCK_AUTH_ENABLED) {
+    const now = new Date()
+    return placeholderBooks.map((book) => {
+      const order: Order = {
+        id: `mock-order-${book.id}`,
+        userId,
+        status: 'PAID',
+        totalAmount: book.price,
+        currency: book.currency,
+        stripePaymentIntentId: null,
+        stripeSessionId: null,
+        customerEmail: 'mock@drkhaledghattass.com',
+        customerName: 'Mock Buyer',
+        createdAt: now,
+        updatedAt: now,
+      }
+      const item: OrderItem = {
+        id: `mock-item-${book.id}`,
+        orderId: order.id,
+        bookId: book.id,
+        quantity: 1,
+        priceAtPurchase: book.price,
+        createdAt: now,
+      }
+      return { order, item, book }
+    })
+  }
   if (!HAS_DB) return []
   if (!isUuid(userId)) return []
   const rows = await db
@@ -661,6 +710,13 @@ export async function userOwnsProduct(
   userId: string,
   bookId: string,
 ): Promise<boolean> {
+  // Dev-only bypass: same rationale as getLibraryEntriesByUserId — mock
+  // users have non-UUID ids and never appear in real orders, so synthesize
+  // ownership against placeholderBooks. Gated by MOCK_AUTH_ENABLED which
+  // is hard-disabled in production via NODE_ENV.
+  if (MOCK_AUTH_ENABLED) {
+    return placeholderBooks.some((b) => b.id === bookId)
+  }
   if (!HAS_DB) return false
   if (!isUuid(userId) || !isUuid(bookId)) return false
   const [row] = await db
@@ -676,6 +732,353 @@ export async function userOwnsProduct(
     )
     .limit(1)
   return Boolean(row)
+}
+
+/**
+ * Returns the items + their parent books for a single order. Used by the
+ * post-purchase email to enumerate purchased books vs. sessions and generate
+ * one signed URL per book.
+ */
+export async function getOrderItemsWithBooks(
+  orderId: string,
+): Promise<Array<{ item: OrderItem; book: Book }>> {
+  if (!HAS_DB) return []
+  if (!isUuid(orderId)) return []
+  const rows = await db
+    .select({ item: orderItems, book: books })
+    .from(orderItems)
+    .innerJoin(books, eq(orderItems.bookId, books.id))
+    .where(eq(orderItems.orderId, orderId))
+  return rows
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Reading progress (Phase 2 — PDF reader last-page-read save/restore)
+ *
+ * Mock-mode dev store: backed by ./mock-store.ts which serialises both
+ * progress and bookmark Maps to .next/cache/reader-mock-store.json so they
+ * survive dev-server restarts and Webpack HMR. The disk read is gated
+ * behind MOCK_AUTH_ENABLED — production paths never touch the file. Mock
+ * users have non-UUID ids ('1', '2', '3') so we can't put them in the
+ * real readingProgress table (UUID FK + unique constraint).
+ *
+ * Production NEVER reaches the mock branch — MOCK_AUTH_ENABLED is
+ * hard-disabled by NODE_ENV !== 'production' in lib/auth/mock.ts.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// No module-level Map — mock mode reads/writes through readStore/writeStore
+// on every call. Module-level singletons are unsafe under Next.js HMR
+// because multiple module instances of queries.ts can coexist, each with
+// its own captured Map; writes to one were invisible to reads from another.
+// The disk file is the single source of truth; reads always pull fresh.
+
+export async function getReadingProgress(
+  userId: string,
+  bookId: string,
+): Promise<{ lastPage: number; totalPages: number; lastReadAt: Date } | null> {
+  // Order matters: check MOCK_AUTH_ENABLED before isUuid because mock
+  // user ids fail the UUID guard (and that's by design — see the helper
+  // comment above).
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.progress.get(`${userId}:${bookId}`) ?? null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(userId) || !isUuid(bookId)) return null
+  try {
+    const [row] = await db
+      .select({
+        lastPage: readingProgress.lastPage,
+        totalPages: readingProgress.totalPages,
+        lastReadAt: readingProgress.lastReadAt,
+      })
+      .from(readingProgress)
+      .where(
+        and(
+          eq(readingProgress.userId, userId),
+          eq(readingProgress.bookId, bookId),
+        ),
+      )
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    // The reading_progress migration (0004) and/or totalPages column
+    // (0005) may not be applied yet on every deployment. Treat a missing
+    // table/column error the same as "no progress" so the reader still
+    // opens at page 1.
+    console.error('[getReadingProgress]', err)
+    return null
+  }
+}
+
+export async function saveReadingProgress(
+  userId: string,
+  bookId: string,
+  lastPage: number,
+  totalPages?: number,
+): Promise<void> {
+  if (!Number.isInteger(lastPage) || lastPage < 1) return
+  const total =
+    totalPages != null && Number.isInteger(totalPages) && totalPages >= 0
+      ? totalPages
+      : undefined
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const key = `${userId}:${bookId}`
+    const existing = store.progress.get(key)
+    store.progress.set(key, {
+      lastPage,
+      // Preserve a previously-known total when the new save omits one
+      // (e.g. keepalive-fetch flush before the document finished loading).
+      totalPages: total ?? existing?.totalPages ?? 0,
+      lastReadAt: new Date(),
+    })
+    writeStore(store)
+    return
+  }
+  if (!HAS_DB) return
+  if (!isUuid(userId) || !isUuid(bookId)) return
+  try {
+    // Unique index `reading_progress_user_book_idx` on (user_id, book_id) is
+    // the conflict target; on conflict we bump lastPage (+ totalPages) and
+    // lastReadAt.
+    if (total !== undefined) {
+      try {
+        await db
+          .insert(readingProgress)
+          .values({
+            userId,
+            bookId,
+            lastPage,
+            totalPages: total,
+            lastReadAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [readingProgress.userId, readingProgress.bookId],
+            set: { lastPage, totalPages: total, lastReadAt: new Date() },
+          })
+        return
+      } catch (innerErr) {
+        // Migration 0005 (totalPages column) may not be applied yet on this
+        // deployment. Fall through to a write that doesn't reference the
+        // column at all so we still persist lastPage + lastReadAt.
+        console.error(
+          '[saveReadingProgress] totalPages write failed; retrying without column',
+          innerErr,
+        )
+      }
+    }
+    await db
+      .insert(readingProgress)
+      .values({ userId, bookId, lastPage, lastReadAt: new Date() })
+      .onConflictDoUpdate({
+        target: [readingProgress.userId, readingProgress.bookId],
+        set: { lastPage, lastReadAt: new Date() },
+      })
+  } catch (err) {
+    // Silent degrade — the save action returns { ok: false } and the
+    // user sees no toast. Worst case: they re-open at page 1 next time.
+    console.error('[saveReadingProgress]', err)
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PDF bookmarks (Phase 2 — premium reader)
+ *
+ * Mirror of getReadingProgress in shape: dev-only mock store backed by the
+ * shared mock-store file (see ./mock-store.ts), real Drizzle path for
+ * production. Migration 0004 creates the pdf_bookmarks table; if it has
+ * not been applied yet on a given deployment, the try/catch around each
+ * Drizzle call swallows the missing-table error and the bookmark UI
+ * silently degrades to "no bookmarks" rather than crashing the reader.
+ *
+ * Schema permits multiple bookmarks per (user, book, page); the UX treats
+ * one-per-page as a toggle, but the queries don't enforce that — call
+ * toggleBookmark to add-or-delete based on existence.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// Bookmarks share the same on-disk JSON as reading progress via
+// lib/db/mock-store.ts; every read calls readStore(), every write calls
+// writeStore() — there is no module-level cache.
+
+const mockBookmarkKey = (userId: string, bookId: string) =>
+  `${userId}:${bookId}`
+
+export async function getBookmarks(
+  userId: string,
+  bookId: string,
+): Promise<PdfBookmark[]> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.bookmarks.get(mockBookmarkKey(userId, bookId)) ?? []
+    // Ascending by pageNumber — list/jump UX expects natural reading order.
+    return [...list].sort((a, b) => a.pageNumber - b.pageNumber)
+  }
+  if (!HAS_DB) return []
+  if (!isUuid(userId) || !isUuid(bookId)) return []
+  try {
+    return await db
+      .select()
+      .from(pdfBookmarks)
+      .where(
+        and(
+          eq(pdfBookmarks.userId, userId),
+          eq(pdfBookmarks.bookId, bookId),
+        ),
+      )
+      .orderBy(pdfBookmarks.pageNumber)
+  } catch (err) {
+    // Migration 0004 may not be applied; treat missing table as "no bookmarks"
+    // so the reader still loads gracefully.
+    console.error('[getBookmarks]', err)
+    return []
+  }
+}
+
+/**
+ * Adds a bookmark on (user, book, page) if none exists, otherwise removes
+ * the existing one. Returns the created bookmark on add, null on remove.
+ * Optional label is captured on add only (use updateBookmarkLabel to edit).
+ */
+export async function toggleBookmark(
+  userId: string,
+  bookId: string,
+  pageNumber: number,
+  label?: string | null,
+): Promise<PdfBookmark | null> {
+  if (!Number.isInteger(pageNumber) || pageNumber < 1) return null
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const key = mockBookmarkKey(userId, bookId)
+    const list = store.bookmarks.get(key) ?? []
+    const existingIdx = list.findIndex((b) => b.pageNumber === pageNumber)
+    if (existingIdx >= 0) {
+      list.splice(existingIdx, 1)
+      store.bookmarks.set(key, list)
+      writeStore(store)
+      return null
+    }
+    const created: PdfBookmark = {
+      id:
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `mock-bm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId,
+      bookId,
+      pageNumber,
+      label: label ?? null,
+      createdAt: new Date(),
+    }
+    store.bookmarks.set(key, [...list, created])
+    writeStore(store)
+    return created
+  }
+
+  if (!HAS_DB) return null
+  if (!isUuid(userId) || !isUuid(bookId)) return null
+
+  try {
+    const [existing] = await db
+      .select()
+      .from(pdfBookmarks)
+      .where(
+        and(
+          eq(pdfBookmarks.userId, userId),
+          eq(pdfBookmarks.bookId, bookId),
+          eq(pdfBookmarks.pageNumber, pageNumber),
+        ),
+      )
+      .limit(1)
+
+    if (existing) {
+      await db.delete(pdfBookmarks).where(eq(pdfBookmarks.id, existing.id))
+      return null
+    }
+
+    const [row] = await db
+      .insert(pdfBookmarks)
+      .values({ userId, bookId, pageNumber, label: label ?? null })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    // Missing table or transient error — fail closed (no bookmark created),
+    // log so the operator notices the migration drift. Reader keeps running.
+    console.error('[toggleBookmark]', err)
+    return null
+  }
+}
+
+export async function updateBookmarkLabel(
+  bookmarkId: string,
+  userId: string,
+  label: string | null,
+): Promise<PdfBookmark | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    for (const [key, list] of store.bookmarks.entries()) {
+      const idx = list.findIndex(
+        (b) => b.id === bookmarkId && b.userId === userId,
+      )
+      if (idx >= 0) {
+        const updated = { ...list[idx]!, label }
+        const next = [...list]
+        next[idx] = updated
+        store.bookmarks.set(key, next)
+        writeStore(store)
+        return updated
+      }
+    }
+    return null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(bookmarkId) || !isUuid(userId)) return null
+
+  try {
+    // Ownership check is the eq(userId) clause — UPDATE returns no rows if
+    // the bookmark id exists but belongs to another user.
+    const [row] = await db
+      .update(pdfBookmarks)
+      .set({ label })
+      .where(
+        and(
+          eq(pdfBookmarks.id, bookmarkId),
+          eq(pdfBookmarks.userId, userId),
+        ),
+      )
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[updateBookmarkLabel]', err)
+    return null
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Session items (Phase 1 — content delivery)
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function getSessionItemById(id: string): Promise<SessionItem | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  const [row] = await db
+    .select()
+    .from(sessionItems)
+    .where(eq(sessionItems.id, id))
+    .limit(1)
+  return row ?? null
+}
+
+export async function getSessionItemsBySessionId(
+  sessionId: string,
+): Promise<SessionItem[]> {
+  if (!HAS_DB) return []
+  if (!isUuid(sessionId)) return []
+  return db
+    .select()
+    .from(sessionItems)
+    .where(eq(sessionItems.sessionId, sessionId))
+    .orderBy(sessionItems.sortOrder)
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1230,6 +1633,9 @@ export type {
   Order,
   OrderItem,
   OrderStatus,
+  PdfBookmark,
+  SessionItem,
+  SessionItemType,
   SiteSetting,
   Subscriber,
   SubscriberStatus,

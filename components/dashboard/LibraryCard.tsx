@@ -1,35 +1,82 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { useLocale, useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import { Link } from '@/lib/i18n/navigation'
 
 export type LibraryItem = {
   id: string
   type: 'BOOK' | 'LECTURE'
+  /** UUID of the underlying books row. Used by the access API to mint a
+   * signed download URL for BOOK items. */
+  bookId: string
   titleAr: string
   titleEn: string
   cover: string
+  /** Marketing detail page (public /books/[slug]). */
   href: string
   /** Reading or watch progress, 0–100 */
   progress: number
-  /** Optional file or stream URL for primary action */
+  /** In-app primary CTA target — e.g. /dashboard/library/read/[bookId]. */
   primaryHref?: string
-  /** Optional download URL (for books) */
-  downloadHref?: string
+  /** Set to true for BOOK items that have a downloadable digital file. The
+   * card uses this as the gate for showing the "Download PDF" button; the
+   * actual URL is fetched from /api/content/access on click. */
+  hasDownload?: boolean
 }
 
 export function LibraryCard({ item }: { item: LibraryItem }) {
   const t = useTranslations('dashboard.library_card')
+  // New top-level `library.*` namespace, parallel to the legacy
+  // `dashboard.library_card` keys above. See messages/{ar,en}.json.
+  const tLib = useTranslations('library')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const title = isRtl ? item.titleAr : item.titleEn
+  const [downloading, setDownloading] = useState(false)
 
-  const primaryLabel = item.type === 'BOOK' ? t('open_book') : t('watch_lecture')
+  // CTA label uses the new keys; old keys remain for any callers we missed.
+  const primaryLabel =
+    item.type === 'BOOK' ? tLib('cta.read') : tLib('cta.watch')
   const primaryHref = item.primaryHref ?? item.href
-  const typeLabel = item.type === 'BOOK' ? t('type_book') : t('type_lecture')
-  const progressLabel = item.type === 'BOOK' ? t('progress_label') : t('progress_lecture')
+  const typeLabel =
+    item.type === 'BOOK' ? tLib('type.book') : tLib('type.session')
+  const progressLabel =
+    item.type === 'BOOK' ? t('progress_label') : t('progress_lecture')
   const progress = Math.max(0, Math.min(100, Math.round(item.progress)))
+
+  async function handleDownload() {
+    if (downloading) return
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/content/access', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ productType: 'BOOK', productId: item.bookId }),
+      })
+      if (!res.ok) {
+        toast.error(tLib('download.error'))
+        return
+      }
+      const data = (await res.json()) as { url: string }
+      // Programmatically click an <a download> so the browser treats the
+      // response as a save action rather than a navigation.
+      const a = document.createElement('a')
+      a.href = data.url
+      a.rel = 'noopener'
+      a.setAttribute('download', '')
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    } catch (err) {
+      console.error('[LibraryCard] download failed', err)
+      toast.error(tLib('download.error'))
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <article
@@ -135,19 +182,21 @@ export function LibraryCard({ item }: { item: LibraryItem }) {
           <Link href={primaryHref} className="btn-pill btn-pill-primary flex-1 min-w-0 !py-2 !px-4 !text-[13px] justify-center">
             {primaryLabel}
           </Link>
-          {item.type === 'BOOK' && item.downloadHref && (
-            <a
-              href={item.downloadHref}
-              download
-              className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-fg1)] hover:bg-[var(--color-bg-deep)] transition-colors ${
+          {item.type === 'BOOK' && item.hasDownload && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              aria-busy={downloading}
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold text-[var(--color-fg2)] hover:text-[var(--color-fg1)] hover:bg-[var(--color-bg-deep)] transition-colors disabled:opacity-60 disabled:cursor-progress ${
                 isRtl ? 'font-arabic-body' : 'font-display'
               }`}
             >
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M10 3v10m0 0l-4-4m4 4l4-4M4 17h12" />
               </svg>
-              {t('download')}
-            </a>
+              {downloading ? tLib('download.preparing') : tLib('cta.download_pdf')}
+            </button>
           )}
           <Link
             href={item.href}

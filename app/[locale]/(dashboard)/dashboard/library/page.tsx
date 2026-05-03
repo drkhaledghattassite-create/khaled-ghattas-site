@@ -5,7 +5,7 @@ import { getServerSession } from '@/lib/auth/server'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { LibraryView } from '@/components/dashboard/LibraryView'
 import type { LibraryItem } from '@/components/dashboard/LibraryCard'
-import { getLibraryEntriesByUserId } from '@/lib/db/queries'
+import { getLibraryEntriesByUserId, getReadingProgress } from '@/lib/db/queries'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -26,18 +26,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
   const entries = await getLibraryEntriesByUserId(userId)
-  return entries.map(({ order, item, book }) => {
+  // Per-book progress fetch in parallel for BOOK items only — SESSION
+  // progress lives in media_progress and ships in Phase 4. Mock-mode
+  // and DB-fallback paths inside getReadingProgress make this safe to
+  // call even without DATABASE_URL set; the persisted mock-store keeps
+  // the percentages stable across dev-server restarts.
+  const progresses = await Promise.all(
+    entries.map(({ book }) =>
+      book.productType === 'SESSION'
+        ? Promise.resolve(null)
+        : getReadingProgress(userId, book.id),
+    ),
+  )
+  return entries.map(({ order, item, book }, idx) => {
     const isSession = book.productType === 'SESSION'
+    const progressRow = progresses[idx]
+    const computed =
+      progressRow && progressRow.totalPages > 0
+        ? Math.round((progressRow.lastPage / progressRow.totalPages) * 100)
+        : 0
     return {
       id: `${order.id}:${item.id}`,
       type: isSession ? 'LECTURE' : 'BOOK',
+      bookId: book.id,
       titleAr: book.titleAr,
       titleEn: book.titleEn,
       cover: book.coverImage,
+      // Public marketing detail page — used by the "Details" link.
       href: `/books/${book.slug}`,
-      primaryHref: book.digitalFile ?? `/books/${book.slug}`,
-      downloadHref: book.digitalFile ?? undefined,
-      progress: 0,
+      // In-app reader / viewer route. The placeholder pages render a
+      // "coming in Phase 2/4" notice today; they verify ownership server-side.
+      primaryHref: isSession
+        ? `/dashboard/library/session/${book.id}`
+        : `/dashboard/library/read/${book.id}`,
+      hasDownload: !isSession && Boolean(book.digitalFile),
+      progress: isSession ? 0 : computed,
     }
   })
 }
