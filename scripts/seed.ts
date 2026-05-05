@@ -90,6 +90,7 @@ async function main() {
           coverImage: b.coverImage,
           price: b.price,
           currency: b.currency,
+          digitalFile: b.digitalFile,
           publisher: b.publisher,
           publicationYear: b.publicationYear,
           status: b.status,
