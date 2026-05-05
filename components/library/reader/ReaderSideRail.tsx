@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useTranslations } from 'next-intl'
 import { EASE_EDITORIAL } from '@/lib/motion/variants'
 import { useReducedMotion } from '@/lib/motion/hooks'
-import type { ReaderTheme } from '../hooks/useReaderTheme'
 import type { PdfBookmark } from '@/lib/db/queries'
 import { BookmarksList } from './BookmarksList'
 import { ProgressRing } from './ProgressRing'
@@ -15,37 +14,34 @@ import type { ResolvedOutlineEntry } from '../hooks/useReaderState'
  * Desktop-only collapsible side rail.
  *
  * Top-to-bottom contents:
- *   - Book title (font-display)
- *   - Theme picker (3 swatches)
- *   - Table of Contents (when the PDF has a non-empty outline)
- *   - Bookmarks list
+ *   - Book title
  *   - Progress ring with % + remaining-time estimate
+ *   - Table of Contents (when the PDF has a non-empty outline)
+ *   - Go to page
+ *   - Bookmarks list (with per-row download)
  *
- * The toggle button outside this component (in DesktopReader) controls
- * the `open` state. We render unmounted at width 0 when closed so the
- * surrounding flexbox reflows the spread accordingly.
+ * Reader theme is driven by the site's light/dark toggle (via PdfReader).
+ * No per-reader theme picker; the theme swatches were removed.
  */
 export function ReaderSideRail({
   open,
   title,
-  theme,
-  onThemeChange,
   outlineEntries,
   bookmarks,
   onJump,
   onUpdateLabel,
+  onDownloadBookmarkPage,
   currentPage,
   totalPages,
   isRtl,
 }: {
   open: boolean
   title: string
-  theme: ReaderTheme
-  onThemeChange: (next: ReaderTheme) => void
   outlineEntries: ResolvedOutlineEntry[] | null
   bookmarks: PdfBookmark[]
   onJump: (page: number) => void
   onUpdateLabel: (id: string, label: string | null) => void
+  onDownloadBookmarkPage?: (page: number) => Promise<void>
   currentPage: number
   totalPages: number | null
   isRtl: boolean
@@ -54,9 +50,6 @@ export function ReaderSideRail({
   const reduceMotion = useReducedMotion()
   const [pageInput, setPageInput] = useState(String(currentPage))
 
-  // Keep the input in sync with externally-changed currentPage (next/prev,
-  // arrow keys, scrubber). The user typing into the field overrides until
-  // submit/blur clears, but the next currentPage update wins.
   useEffect(() => {
     setPageInput(String(currentPage))
   }, [currentPage])
@@ -95,11 +88,6 @@ export function ReaderSideRail({
           <div className="flex h-full w-[300px] flex-col">
             {/* Header */}
             <header className="border-b border-[var(--reader-border)] px-5 py-4">
-              <p
-                className={`m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--reader-fg-faint)] ${fontBody}`}
-              >
-                {title.length > 0 ? '' : ''}
-              </p>
               <h2
                 className={`m-0 text-[15px] font-bold leading-[1.3] tracking-[-0.005em] text-[var(--reader-fg)] ${fontHead}`}
               >
@@ -109,13 +97,9 @@ export function ReaderSideRail({
 
             {/*
               data-lenis-prevent: the global Lenis smooth-scroll instance
-              (see components/providers/LenisProvider.tsx) intercepts wheel
-              events on the document. Without this attribute the rail's
-              inner overflow never receives wheel deltas — scrolling
-              appears broken even though the content is taller than the
-              viewport. Same fix used in components/admin/AdminSidebar.tsx.
-              `overscroll-contain` stops scroll-chain rubber-banding from
-              propagating to the body when the rail hits its top/bottom.
+              intercepts wheel events on the document. Without this attribute
+              the rail's inner overflow never receives wheel deltas.
+              `overscroll-contain` stops scroll-chain rubber-banding.
             */}
             <div
               data-lenis-prevent
@@ -131,53 +115,6 @@ export function ReaderSideRail({
                   label={t('progress.title')}
                   remainingLabel={remainingLabel}
                 />
-              </section>
-
-              {/* Theme picker */}
-              <section className="border-b border-[var(--reader-border)] px-5 py-4">
-                <h3
-                  className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--reader-fg-faint)] ${fontBody}`}
-                >
-                  {t('settings.theme_label')}
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['light', 'sepia', 'dark'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => onThemeChange(opt)}
-                      aria-pressed={theme === opt}
-                      title={t(`theme.${opt}`)}
-                      className={`group flex h-9 items-center justify-center rounded-[var(--radius-sm)] border-2 transition-all ${
-                        theme === opt
-                          ? 'border-[var(--reader-accent)]'
-                          : 'border-[var(--reader-border)]'
-                      }`}
-                      style={{
-                        background:
-                          opt === 'light'
-                            ? '#FFFFFF'
-                            : opt === 'sepia'
-                            ? 'hsl(40, 38%, 94%)'
-                            : '#171717',
-                      }}
-                    >
-                      <span
-                        className="text-[10px] font-bold"
-                        style={{
-                          color:
-                            opt === 'light'
-                              ? '#0A0A0A'
-                              : opt === 'sepia'
-                              ? 'hsl(30, 30%, 18%)'
-                              : '#FAFAFA',
-                        }}
-                      >
-                        Aa
-                      </span>
-                    </button>
-                  ))}
-                </div>
               </section>
 
               {/* ToC — only render the heading when entries exist */}
@@ -259,6 +196,7 @@ export function ReaderSideRail({
                   bookmarks={bookmarks}
                   onJump={onJump}
                   onUpdateLabel={onUpdateLabel}
+                  onDownload={onDownloadBookmarkPage}
                   isRtl={isRtl}
                   variant="list"
                 />

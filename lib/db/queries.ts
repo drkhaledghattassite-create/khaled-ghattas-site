@@ -17,9 +17,13 @@ import {
   books,
   contactMessages,
   contentBlocks,
+  corporateClients,
+  corporatePrograms,
+  corporateRequests,
   events,
   gallery,
   interviews,
+  mediaProgress,
   orderItems,
   orders,
   pdfBookmarks,
@@ -33,12 +37,18 @@ import {
   type Book,
   type ContactMessage,
   type ContentBlock,
+  type CorporateClient,
+  type CorporateProgram,
+  type CorporateRequest,
+  type CorporateRequestStatus,
   type Event,
   type GalleryItem,
   type Interview,
   type MessageStatus,
   type NewArticle,
   type NewBook,
+  type NewCorporateClient,
+  type NewCorporateProgram,
   type NewEvent,
   type NewGalleryItem,
   type NewInterview,
@@ -67,6 +77,9 @@ import {
   placeholderBooks,
   placeholderContactMessages,
   placeholderContentBlocks,
+  placeholderCorporateClients,
+  placeholderCorporatePrograms,
+  placeholderCorporateRequests,
   placeholderEvents,
   placeholderGallery,
   placeholderInterviews,
@@ -644,15 +657,34 @@ export async function getLibraryEntriesByUserId(
   // not UUIDs and never exist in any real users table. Querying real
   // Neon for orders by such an id produces nothing (and trips the
   // isUuid guard). So in mock-auth mode we synthesize library entries
-  // from placeholderBooks regardless of whether DATABASE_URL is set —
-  // the bypass is gated by MOCK_AUTH_ENABLED, which is hard-disabled
-  // in production by NODE_ENV !== 'production' (SECURITY [C-2] in
-  // lib/auth/mock.ts). This lets the library / download / placeholder
-  // flows be exercised against a real Neon DB that hasn't been seeded
-  // with paid orders for the mock user.
+  // from the catalog the user can SEE — the same product list the admin
+  // reads via getBooks(). Bypass is gated by MOCK_AUTH_ENABLED, which is
+  // hard-disabled in production by NODE_ENV !== 'production' (SECURITY
+  // [C-2] in lib/auth/mock.ts).
+  //
+  // Catalog precedence: real DB books (when HAS_DB and the books table
+  // returns rows), else placeholderBooks. Filter `status === 'PUBLISHED'`
+  // matches getBooks()'s public filter so admin + library + viewer all
+  // agree on which products exist. Without this, an admin who creates
+  // session content against a real DB book gets a write that the library
+  // viewer (which was synthesizing placeholder-only entries) couldn't
+  // navigate to — admin and library lived in two product universes.
   if (MOCK_AUTH_ENABLED) {
     const now = new Date()
-    return placeholderBooks.map((book) => {
+    let catalog: Book[] = []
+    if (HAS_DB) {
+      try {
+        catalog = await db
+          .select()
+          .from(books)
+          .where(eq(books.status, 'PUBLISHED'))
+          .orderBy(books.orderIndex)
+      } catch (err) {
+        console.error('[getLibraryEntriesByUserId] mock+db fetch failed', err)
+      }
+    }
+    if (catalog.length === 0) catalog = placeholderBooks
+    return catalog.map((book) => {
       const order: Order = {
         id: `mock-order-${book.id}`,
         userId,
@@ -710,12 +742,28 @@ export async function userOwnsProduct(
   userId: string,
   bookId: string,
 ): Promise<boolean> {
-  // Dev-only bypass: same rationale as getLibraryEntriesByUserId — mock
-  // users have non-UUID ids and never appear in real orders, so synthesize
-  // ownership against placeholderBooks. Gated by MOCK_AUTH_ENABLED which
-  // is hard-disabled in production via NODE_ENV.
+  // Dev-only bypass: mock users have non-UUID ids and never appear in real
+  // orders, so we synthesize ownership. Accept placeholder UUIDs first
+  // (cheap synchronous check), else any UUID present in the real `books`
+  // table — keeps admin (which writes real DB books) and the viewer/reader
+  // (which call this gate) in agreement when DATABASE_URL is set in dev.
+  // Gated by MOCK_AUTH_ENABLED which is hard-disabled in production via
+  // NODE_ENV, so this is not a security gap.
   if (MOCK_AUTH_ENABLED) {
-    return placeholderBooks.some((b) => b.id === bookId)
+    if (placeholderBooks.some((b) => b.id === bookId)) return true
+    if (HAS_DB && isUuid(bookId)) {
+      try {
+        const [row] = await db
+          .select({ id: books.id })
+          .from(books)
+          .where(eq(books.id, bookId))
+          .limit(1)
+        return Boolean(row)
+      } catch (err) {
+        console.error('[userOwnsProduct mock+db]', err)
+      }
+    }
+    return false
   }
   if (!HAS_DB) return false
   if (!isUuid(userId) || !isUuid(bookId)) return false
@@ -1055,16 +1103,62 @@ export async function updateBookmarkLabel(
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Session items (Phase 1 — content delivery)
+ * Session items (Phase 1 — content delivery; admin CRUD added Phase 4)
+ *
+ * Two paths per helper, in this order:
+ *   1. MOCK_AUTH_ENABLED — read/write the on-disk mock store. Used in dev
+ *      where the admin can exercise the editor without seeding the DB.
+ *      Mock book ids ('1', '2', …) fail the UUID guard, so the mock branch
+ *      MUST come before isUuid() — same shape as getReadingProgress /
+ *      getBookmarks above.
+ *   2. HAS_DB — real Drizzle path. UUID-guarded so a malformed id from
+ *      the URL doesn't cast-error against a uuid column.
+ *
+ * The schema does not enforce productType='SESSION' on the parent book —
+ * the application invariant lives in the admin route handlers. The query
+ * helpers do not re-validate it (avoids duplicate work + extra round
+ * trips); callers are responsible for ensuring `sessionId` points at a
+ * SESSION-type book before invoking any of the mutations below.
  * ──────────────────────────────────────────────────────────────────────── */
 
-export async function getSessionItemById(id: string): Promise<SessionItem | null> {
+function sortSessionItems(list: SessionItem[]): SessionItem[] {
+  // sortOrder ASC, then createdAt ASC as a deterministic tiebreaker so the
+  // editor list never visibly reshuffles between mutations.
+  return [...list].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+    return a.createdAt.getTime() - b.createdAt.getTime()
+  })
+}
+
+export async function getSessionItemById(
+  id: string,
+  sessionId?: string,
+): Promise<SessionItem | null> {
+  // Optional sessionId narrows the lookup to a specific session — admin
+  // mutations pass it so an attacker who guessed an itemId from another
+  // session can't pivot.
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    if (sessionId) {
+      const list = store.sessionItems.get(sessionId) ?? []
+      return list.find((it) => it.id === id) ?? null
+    }
+    for (const list of store.sessionItems.values()) {
+      const hit = list.find((it) => it.id === id)
+      if (hit) return hit
+    }
+    return null
+  }
   if (!HAS_DB) return null
   if (!isUuid(id)) return null
+  if (sessionId && !isUuid(sessionId)) return null
+  const filters = sessionId
+    ? and(eq(sessionItems.id, id), eq(sessionItems.sessionId, sessionId))
+    : eq(sessionItems.id, id)
   const [row] = await db
     .select()
     .from(sessionItems)
-    .where(eq(sessionItems.id, id))
+    .where(filters)
     .limit(1)
   return row ?? null
 }
@@ -1072,13 +1166,456 @@ export async function getSessionItemById(id: string): Promise<SessionItem | null
 export async function getSessionItemsBySessionId(
   sessionId: string,
 ): Promise<SessionItem[]> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return sortSessionItems(store.sessionItems.get(sessionId) ?? [])
+  }
   if (!HAS_DB) return []
   if (!isUuid(sessionId)) return []
   return db
     .select()
     .from(sessionItems)
     .where(eq(sessionItems.sessionId, sessionId))
-    .orderBy(sessionItems.sortOrder)
+    .orderBy(asc(sessionItems.sortOrder), asc(sessionItems.createdAt))
+}
+
+export type CreateSessionItemInput = {
+  sessionId: string
+  itemType: SessionItem['itemType']
+  title: string
+  description?: string | null
+  storageKey: string
+  durationSeconds?: number | null
+  sortOrder?: number
+}
+
+export async function createSessionItem(
+  input: CreateSessionItemInput,
+): Promise<SessionItem | null> {
+  const {
+    sessionId,
+    itemType,
+    title,
+    description = null,
+    storageKey,
+    durationSeconds = null,
+    sortOrder,
+  } = input
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.sessionItems.get(sessionId) ?? []
+    const nextOrder =
+      sortOrder ??
+      (list.length > 0
+        ? Math.max(...list.map((it) => it.sortOrder)) + 1
+        : 0)
+    const created: SessionItem = {
+      id:
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `mock-si-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sessionId,
+      itemType,
+      title,
+      description,
+      storageKey,
+      durationSeconds,
+      sortOrder: nextOrder,
+      createdAt: new Date(),
+    }
+    store.sessionItems.set(sessionId, [...list, created])
+    writeStore(store)
+    return created
+  }
+
+  if (!HAS_DB) {
+    noDb(`createSessionItem(${sessionId})`)
+    return null
+  }
+  if (!isUuid(sessionId)) return null
+
+  try {
+    let nextOrder = sortOrder
+    if (nextOrder == null) {
+      // Place at the end. Single-statement read — admins are not concurrent,
+      // so the gap-on-race risk here is not worth a SELECT … FOR UPDATE.
+      const [{ max }] = await db
+        .select({ max: sql<number>`coalesce(max(${sessionItems.sortOrder}), -1)` })
+        .from(sessionItems)
+        .where(eq(sessionItems.sessionId, sessionId))
+      nextOrder = (max ?? -1) + 1
+    }
+    const [row] = await db
+      .insert(sessionItems)
+      .values({
+        sessionId,
+        itemType,
+        title,
+        description,
+        storageKey,
+        durationSeconds,
+        sortOrder: nextOrder,
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[createSessionItem]', err)
+    return null
+  }
+}
+
+export type UpdateSessionItemPatch = {
+  itemType?: SessionItem['itemType']
+  title?: string
+  description?: string | null
+  storageKey?: string
+  durationSeconds?: number | null
+}
+
+export async function updateSessionItem(
+  itemId: string,
+  sessionId: string,
+  patch: UpdateSessionItemPatch,
+): Promise<SessionItem | null> {
+  // Reject empty patches — Drizzle's update with no SET columns is an error
+  // and we'd return null below anyway.
+  const hasPatch =
+    patch.itemType !== undefined ||
+    patch.title !== undefined ||
+    patch.description !== undefined ||
+    patch.storageKey !== undefined ||
+    patch.durationSeconds !== undefined
+  if (!hasPatch) return getSessionItemById(itemId, sessionId)
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.sessionItems.get(sessionId) ?? []
+    const idx = list.findIndex((it) => it.id === itemId)
+    if (idx < 0) return null
+    const current = list[idx]!
+    const updated: SessionItem = {
+      ...current,
+      ...(patch.itemType !== undefined ? { itemType: patch.itemType } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.description !== undefined
+        ? { description: patch.description }
+        : {}),
+      ...(patch.storageKey !== undefined
+        ? { storageKey: patch.storageKey }
+        : {}),
+      ...(patch.durationSeconds !== undefined
+        ? { durationSeconds: patch.durationSeconds }
+        : {}),
+    }
+    const next = [...list]
+    next[idx] = updated
+    store.sessionItems.set(sessionId, next)
+    writeStore(store)
+    return updated
+  }
+
+  if (!HAS_DB) return null
+  if (!isUuid(itemId) || !isUuid(sessionId)) return null
+
+  try {
+    const [row] = await db
+      .update(sessionItems)
+      .set(patch)
+      .where(
+        and(
+          eq(sessionItems.id, itemId),
+          eq(sessionItems.sessionId, sessionId),
+        ),
+      )
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[updateSessionItem]', err)
+    return null
+  }
+}
+
+export async function deleteSessionItem(
+  itemId: string,
+  sessionId: string,
+): Promise<boolean> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.sessionItems.get(sessionId) ?? []
+    const next = list.filter((it) => it.id !== itemId)
+    if (next.length === list.length) return false
+    store.sessionItems.set(sessionId, next)
+    writeStore(store)
+    return true
+  }
+
+  if (!HAS_DB) return false
+  if (!isUuid(itemId) || !isUuid(sessionId)) return false
+
+  try {
+    const result = await db
+      .delete(sessionItems)
+      .where(
+        and(
+          eq(sessionItems.id, itemId),
+          eq(sessionItems.sessionId, sessionId),
+        ),
+      )
+      .returning({ id: sessionItems.id })
+    return result.length > 0
+  } catch (err) {
+    console.error('[deleteSessionItem]', err)
+    return false
+  }
+}
+
+/**
+ * Replace the sort order of every item in a session in one batch. Items
+ * appearing in `orderedItemIds` are renumbered 0..N-1 in the order given;
+ * items belonging to the session but missing from the list are left at
+ * their existing sortOrder (graceful degrade if the client UI fell out of
+ * sync — they sink to the end on the next read because the renumbered set
+ * starts from 0). Ids that don't belong to this session are silently
+ * skipped.
+ */
+export async function reorderSessionItems(
+  sessionId: string,
+  orderedItemIds: string[],
+): Promise<boolean> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.sessionItems.get(sessionId) ?? []
+    if (list.length === 0) return orderedItemIds.length === 0
+    const byId = new Map(list.map((it) => [it.id, it]))
+    let pos = 0
+    const seen = new Set<string>()
+    const next: SessionItem[] = []
+    for (const id of orderedItemIds) {
+      const item = byId.get(id)
+      if (!item || seen.has(id)) continue
+      seen.add(id)
+      next.push({ ...item, sortOrder: pos++ })
+    }
+    // Append any unmentioned items at the end, preserving their relative
+    // order. This guards against a partial reorder leaving items orphaned
+    // out of view.
+    for (const item of list) {
+      if (seen.has(item.id)) continue
+      next.push({ ...item, sortOrder: pos++ })
+    }
+    store.sessionItems.set(sessionId, next)
+    writeStore(store)
+    return true
+  }
+
+  if (!HAS_DB) return false
+  if (!isUuid(sessionId)) return false
+
+  try {
+    // The list is admin-bounded (a single session's items — typically <50)
+    // so a per-id UPDATE loop is fine. Postgres doesn't have a one-shot
+    // ordered batch-update primitive without raw SQL, and the gain from
+    // building a CASE expression for ~10 rows is not worth the readability
+    // loss.
+    let pos = 0
+    for (const id of orderedItemIds) {
+      if (!isUuid(id)) continue
+      await db
+        .update(sessionItems)
+        .set({ sortOrder: pos })
+        .where(
+          and(
+            eq(sessionItems.id, id),
+            eq(sessionItems.sessionId, sessionId),
+          ),
+        )
+      pos++
+    }
+    return true
+  } catch (err) {
+    console.error('[reorderSessionItems]', err)
+    return false
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Media progress (Phase 4 — session viewer)
+ *
+ * Per-(user, session_item) progress for VIDEO and AUDIO items inside a
+ * paid session. PDFs inside a session do NOT use this table — those have
+ * no per-item read state in v1; opening one just signs and serves it.
+ *
+ * Mirrors getReadingProgress in shape: dev-only mock store backed by the
+ * shared mock-store file, real Drizzle path for production. Migration
+ * 0004 creates media_progress; the try/catch around each Drizzle call
+ * swallows missing-table errors so an un-applied migration silently
+ * degrades to "no progress" rather than crashing the viewer.
+ *
+ * `getAllMediaProgressForSession` joins through session_items so the
+ * viewer can fetch every item's progress in one round trip — used to
+ * decide which item the user resumes on and to mark completed items
+ * in the playlist.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type MediaProgressEntry = {
+  lastPositionSeconds: number
+  completedAt: Date | null
+  lastWatchedAt: Date
+}
+
+const mockMediaKey = (userId: string, sessionItemId: string) =>
+  `${userId}:${sessionItemId}`
+
+export async function getMediaProgress(
+  userId: string,
+  sessionItemId: string,
+): Promise<MediaProgressEntry | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.mediaProgress.get(mockMediaKey(userId, sessionItemId)) ?? null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(userId) || !isUuid(sessionItemId)) return null
+  try {
+    const [row] = await db
+      .select({
+        lastPositionSeconds: mediaProgress.lastPositionSeconds,
+        completedAt: mediaProgress.completedAt,
+        lastWatchedAt: mediaProgress.lastWatchedAt,
+      })
+      .from(mediaProgress)
+      .where(
+        and(
+          eq(mediaProgress.userId, userId),
+          eq(mediaProgress.sessionItemId, sessionItemId),
+        ),
+      )
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[getMediaProgress]', err)
+    return null
+  }
+}
+
+export async function saveMediaProgress(
+  userId: string,
+  sessionItemId: string,
+  lastPositionSeconds: number,
+  completed?: boolean,
+): Promise<void> {
+  // Coerce to a sane integer floor — clients debounce around float seconds.
+  if (!Number.isFinite(lastPositionSeconds) || lastPositionSeconds < 0) return
+  const positionInt = Math.floor(lastPositionSeconds)
+  const now = new Date()
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const key = mockMediaKey(userId, sessionItemId)
+    const existing = store.mediaProgress.get(key)
+    store.mediaProgress.set(key, {
+      lastPositionSeconds: positionInt,
+      // Once completed, sticky-true. A user re-watching a finished item
+      // should not toggle the badge back to "in progress" just because
+      // their position dropped below the 95% threshold mid-replay.
+      completedAt:
+        completed === true
+          ? (existing?.completedAt ?? now)
+          : (existing?.completedAt ?? null),
+      lastWatchedAt: now,
+    })
+    writeStore(store)
+    return
+  }
+  if (!HAS_DB) return
+  if (!isUuid(userId) || !isUuid(sessionItemId)) return
+  try {
+    // Unique index `media_progress_user_item_idx` on
+    // (user_id, session_item_id) is the conflict target. Don't clobber a
+    // previously-set completedAt if the new save isn't claiming complete.
+    await db
+      .insert(mediaProgress)
+      .values({
+        userId,
+        sessionItemId,
+        lastPositionSeconds: positionInt,
+        completedAt: completed === true ? now : null,
+        lastWatchedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [mediaProgress.userId, mediaProgress.sessionItemId],
+        set: {
+          lastPositionSeconds: positionInt,
+          // sql.coalesce keeps the existing completedAt unless we're
+          // setting one now; a subsequent save with completed=false won't
+          // wipe the prior completion.
+          completedAt:
+            completed === true
+              ? sql`coalesce(${mediaProgress.completedAt}, ${now})`
+              : mediaProgress.completedAt,
+          lastWatchedAt: now,
+        },
+      })
+  } catch (err) {
+    console.error('[saveMediaProgress]', err)
+  }
+}
+
+/**
+ * Returns a map of session_item_id → progress entry for every item in the
+ * given session that this user has touched. Items the user hasn't started
+ * are simply absent from the map; the viewer treats absence as
+ * "not started." Used to power the playlist's progress + completion
+ * indicators and the "continue from" item selection.
+ */
+export async function getAllMediaProgressForSession(
+  userId: string,
+  sessionId: string,
+): Promise<Record<string, MediaProgressEntry>> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const items = store.sessionItems.get(sessionId) ?? []
+    const out: Record<string, MediaProgressEntry> = {}
+    for (const it of items) {
+      const entry = store.mediaProgress.get(mockMediaKey(userId, it.id))
+      if (entry) out[it.id] = entry
+    }
+    return out
+  }
+  if (!HAS_DB) return {}
+  if (!isUuid(userId) || !isUuid(sessionId)) return {}
+  try {
+    const rows = await db
+      .select({
+        sessionItemId: mediaProgress.sessionItemId,
+        lastPositionSeconds: mediaProgress.lastPositionSeconds,
+        completedAt: mediaProgress.completedAt,
+        lastWatchedAt: mediaProgress.lastWatchedAt,
+      })
+      .from(mediaProgress)
+      .innerJoin(
+        sessionItems,
+        eq(mediaProgress.sessionItemId, sessionItems.id),
+      )
+      .where(
+        and(
+          eq(mediaProgress.userId, userId),
+          eq(sessionItems.sessionId, sessionId),
+        ),
+      )
+    const out: Record<string, MediaProgressEntry> = {}
+    for (const row of rows) {
+      out[row.sessionItemId] = {
+        lastPositionSeconds: row.lastPositionSeconds,
+        completedAt: row.completedAt,
+        lastWatchedAt: row.lastWatchedAt,
+      }
+    }
+    return out
+  } catch (err) {
+    console.error('[getAllMediaProgressForSession]', err)
+    return {}
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1619,6 +2156,355 @@ export async function updateOrderStatusByPaymentIntentId(
  * Re-export schema types so pages don't import from `db/schema` directly.
  * ──────────────────────────────────────────────────────────────────────── */
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Corporate programs
+ *
+ * Programs are public listings (read paths fall back to placeholders); clients
+ * are trust-strip logos; requests are submissions from organizations. The
+ * `byOrder` helper is reused for placeholder paths.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function getCorporatePrograms(opts?: {
+  publishedOnly?: boolean
+  limit?: number
+}): Promise<CorporateProgram[]> {
+  const publishedOnly = opts?.publishedOnly ?? true
+  const limit = opts?.limit ?? 100
+
+  if (HAS_DB) {
+    try {
+      const base = db.select().from(corporatePrograms)
+      const filtered = publishedOnly
+        ? base.where(eq(corporatePrograms.status, 'PUBLISHED'))
+        : base
+      return await filtered
+        .orderBy(corporatePrograms.orderIndex, corporatePrograms.createdAt)
+        .limit(limit)
+    } catch (err) {
+      console.error(
+        '[getCorporatePrograms] DB error, falling back to placeholders:',
+        err,
+      )
+    }
+  }
+  const rows = (
+    publishedOnly
+      ? placeholderCorporatePrograms.filter((p) => p.status === 'PUBLISHED')
+      : placeholderCorporatePrograms
+  )
+    .slice()
+    .sort(byOrder)
+  return rows.slice(0, limit)
+}
+
+export async function getCorporateProgram(
+  id: string,
+): Promise<CorporateProgram | null> {
+  if (HAS_DB && isUuid(id)) {
+    try {
+      const [row] = await db
+        .select()
+        .from(corporatePrograms)
+        .where(eq(corporatePrograms.id, id))
+        .limit(1)
+      if (row) return row
+    } catch (err) {
+      console.error('[getCorporateProgram] DB error:', err)
+    }
+  }
+  return placeholderCorporatePrograms.find((p) => p.id === id) ?? null
+}
+
+export async function getCorporateProgramBySlug(
+  slug: string,
+): Promise<CorporateProgram | null> {
+  if (HAS_DB) {
+    try {
+      const [row] = await db
+        .select()
+        .from(corporatePrograms)
+        .where(eq(corporatePrograms.slug, slug))
+        .limit(1)
+      if (row) return row
+    } catch (err) {
+      console.error('[getCorporateProgramBySlug] DB error:', err)
+    }
+  }
+  return placeholderCorporatePrograms.find((p) => p.slug === slug) ?? null
+}
+
+export async function createCorporateProgram(
+  data: NewCorporateProgram,
+): Promise<CorporateProgram | null> {
+  if (!HAS_DB) {
+    noDb(`createCorporateProgram(${data.slug})`)
+    return null
+  }
+  const [row] = await db.insert(corporatePrograms).values(data).returning()
+  return row ?? null
+}
+
+export async function updateCorporateProgram(
+  id: string,
+  data: Partial<NewCorporateProgram>,
+): Promise<CorporateProgram | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateCorporateProgram(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(corporatePrograms)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(corporatePrograms.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteCorporateProgram(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteCorporateProgram(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(corporatePrograms)
+    .where(eq(corporatePrograms.id, id))
+    .returning({ id: corporatePrograms.id })
+  return rows.length > 0
+}
+
+export async function getCorporateClients(opts?: {
+  publishedOnly?: boolean
+}): Promise<CorporateClient[]> {
+  const publishedOnly = opts?.publishedOnly ?? true
+  if (HAS_DB) {
+    try {
+      const base = db.select().from(corporateClients)
+      const filtered = publishedOnly
+        ? base.where(eq(corporateClients.status, 'PUBLISHED'))
+        : base
+      return await filtered.orderBy(
+        corporateClients.orderIndex,
+        corporateClients.createdAt,
+      )
+    } catch (err) {
+      console.error(
+        '[getCorporateClients] DB error, falling back to placeholders:',
+        err,
+      )
+    }
+  }
+  return (
+    publishedOnly
+      ? placeholderCorporateClients.filter((c) => c.status === 'PUBLISHED')
+      : placeholderCorporateClients
+  )
+    .slice()
+    .sort(byOrder)
+}
+
+export async function getCorporateClient(
+  id: string,
+): Promise<CorporateClient | null> {
+  if (HAS_DB && isUuid(id)) {
+    try {
+      const [row] = await db
+        .select()
+        .from(corporateClients)
+        .where(eq(corporateClients.id, id))
+        .limit(1)
+      if (row) return row
+    } catch (err) {
+      console.error('[getCorporateClient] DB error:', err)
+    }
+  }
+  return placeholderCorporateClients.find((c) => c.id === id) ?? null
+}
+
+export async function createCorporateClient(
+  data: NewCorporateClient,
+): Promise<CorporateClient | null> {
+  if (!HAS_DB) {
+    noDb(`createCorporateClient(${data.name})`)
+    return null
+  }
+  const [row] = await db.insert(corporateClients).values(data).returning()
+  return row ?? null
+}
+
+export async function updateCorporateClient(
+  id: string,
+  data: Partial<NewCorporateClient>,
+): Promise<CorporateClient | null> {
+  if (!isUuid(id)) return null
+  if (!HAS_DB) {
+    noDb(`updateCorporateClient(${id})`)
+    return null
+  }
+  const [row] = await db
+    .update(corporateClients)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(corporateClients.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteCorporateClient(id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
+  if (!HAS_DB) {
+    noDb(`deleteCorporateClient(${id})`)
+    return false
+  }
+  const rows = await db
+    .delete(corporateClients)
+    .where(eq(corporateClients.id, id))
+    .returning({ id: corporateClients.id })
+  return rows.length > 0
+}
+
+export type CorporateRequestInput = {
+  name: string
+  email: string
+  phone?: string | null
+  organization: string
+  position?: string | null
+  programId?: string | null
+  preferredDate?: string | null
+  attendeeCount?: number | null
+  message?: string | null
+}
+
+export async function createCorporateRequest(
+  data: CorporateRequestInput,
+): Promise<CorporateRequest | null> {
+  if (!HAS_DB) {
+    // Buffer into the placeholder array so admin pages can preview the new
+    // request in dev, even without a real DB. Resets on dev-server restart.
+    const row: CorporateRequest = {
+      id: `00000000-0000-0000-0000-${Date.now().toString().slice(-12).padStart(12, '0')}`,
+      name: data.name,
+      email: data.email,
+      phone: data.phone ?? null,
+      organization: data.organization,
+      position: data.position ?? null,
+      programId: data.programId ?? null,
+      preferredDate: data.preferredDate ?? null,
+      attendeeCount: data.attendeeCount ?? null,
+      message: data.message ?? null,
+      status: 'NEW',
+      adminNotes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    placeholderCorporateRequests.unshift(row)
+    return row
+  }
+  const [row] = await db
+    .insert(corporateRequests)
+    .values({
+      name: data.name,
+      email: data.email,
+      phone: data.phone ?? null,
+      organization: data.organization,
+      position: data.position ?? null,
+      programId: data.programId ?? null,
+      preferredDate: data.preferredDate ?? null,
+      attendeeCount: data.attendeeCount ?? null,
+      message: data.message ?? null,
+    })
+    .returning()
+  return row ?? null
+}
+
+export async function getCorporateRequests(
+  status?: CorporateRequestStatus,
+  limit = 100,
+): Promise<CorporateRequest[]> {
+  if (HAS_DB) {
+    try {
+      const query = status
+        ? db
+            .select()
+            .from(corporateRequests)
+            .where(eq(corporateRequests.status, status))
+        : db.select().from(corporateRequests)
+      return await query
+        .orderBy(desc(corporateRequests.createdAt))
+        .limit(limit)
+    } catch (err) {
+      console.error(
+        '[getCorporateRequests] DB error, falling back to placeholders:',
+        err,
+      )
+    }
+  }
+  const rows = status
+    ? placeholderCorporateRequests.filter((r) => r.status === status)
+    : placeholderCorporateRequests
+  return rows.slice(0, limit)
+}
+
+export async function getCorporateRequest(
+  id: string,
+): Promise<CorporateRequest | null> {
+  if (HAS_DB && isUuid(id)) {
+    try {
+      const [row] = await db
+        .select()
+        .from(corporateRequests)
+        .where(eq(corporateRequests.id, id))
+        .limit(1)
+      if (row) return row
+    } catch (err) {
+      console.error('[getCorporateRequest] DB error:', err)
+    }
+  }
+  return placeholderCorporateRequests.find((r) => r.id === id) ?? null
+}
+
+export async function updateCorporateRequest(
+  id: string,
+  data: Partial<{
+    status: CorporateRequestStatus
+    adminNotes: string | null
+  }>,
+): Promise<CorporateRequest | null> {
+  if (!HAS_DB) {
+    const idx = placeholderCorporateRequests.findIndex((r) => r.id === id)
+    if (idx === -1) return null
+    const next: CorporateRequest = {
+      ...placeholderCorporateRequests[idx],
+      ...data,
+      updatedAt: new Date(),
+    }
+    placeholderCorporateRequests[idx] = next
+    return next
+  }
+  if (!isUuid(id)) return null
+  const [row] = await db
+    .update(corporateRequests)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(corporateRequests.id, id))
+    .returning()
+  return row ?? null
+}
+
+export async function deleteCorporateRequest(id: string): Promise<boolean> {
+  if (!HAS_DB) {
+    const idx = placeholderCorporateRequests.findIndex((r) => r.id === id)
+    if (idx === -1) return false
+    placeholderCorporateRequests.splice(idx, 1)
+    return true
+  }
+  if (!isUuid(id)) return false
+  const rows = await db
+    .delete(corporateRequests)
+    .where(eq(corporateRequests.id, id))
+    .returning({ id: corporateRequests.id })
+  return rows.length > 0
+}
+
 export type {
   Article,
   ArticleCategory,
@@ -1626,9 +2512,14 @@ export type {
   ContactMessage,
   ContentBlock,
   ContentStatus,
+  CorporateClient,
+  CorporateProgram,
+  CorporateRequest,
+  CorporateRequestStatus,
   Event,
   GalleryItem,
   Interview,
+  MediaProgress,
   MessageStatus,
   Order,
   OrderItem,

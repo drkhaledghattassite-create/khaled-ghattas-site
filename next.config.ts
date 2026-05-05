@@ -94,6 +94,14 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: securityHeaders,
       },
+      // Mock storage serves PDFs at same-origin paths; the global DENY above
+      // would block the PdfInline iframe from loading them in dev. Override to
+      // SAMEORIGIN for this prefix only. In production the real storage adapter
+      // returns external CDN URLs that never see our app's X-Frame-Options.
+      {
+        source: '/placeholder-content/:path*',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
+      },
     ]
   },
 }

@@ -15,7 +15,7 @@
  * Keyboard shortcuts (full set in useReaderShortcuts):
  *   ArrowLeft = next page (RTL: forward = leftward in Arabic)
  *   ArrowRight = previous page
- *   Space = next, b = bookmark, f = fullscreen, t = theme, ? = shortcuts,
+ *   Space = next, b = bookmark, f = fullscreen, ? = shortcuts,
  *   Esc = close overlay or exit fullscreen
  */
 
@@ -29,13 +29,14 @@ import type {
   UseReaderStateResult,
   ResolvedOutlineEntry,
 } from '../hooks/useReaderState'
-import type { ReaderTheme } from '../hooks/useReaderTheme'
 import { useAutoHideChrome } from '../hooks/useAutoHideChrome'
 import { useReaderShortcuts } from '../hooks/useReaderShortcuts'
+import { useDownload } from '../hooks/useDownload'
 import { ReaderTopBar } from './ReaderTopBar'
 import { ReaderBottomBar } from './ReaderBottomBar'
 import { ReaderSideRail } from './ReaderSideRail'
 import { ShortcutsOverlay } from './ShortcutsOverlay'
+import { DownloadDialog } from './DownloadDialog'
 
 const SPREAD_MAX_WIDTH = 1100
 
@@ -43,45 +44,41 @@ export function DesktopReader({
   title,
   isRtl,
   state,
-  theme,
-  onThemeChange,
-  cycleTheme,
   containerWidth,
   outlineEntries,
+  pdfUrl,
+  slug,
 }: {
-  // bookId is read from state via useReaderState; not consumed here.
   title: string
   isRtl: boolean
   state: UseReaderStateResult
-  theme: ReaderTheme
-  onThemeChange: (next: ReaderTheme) => void
-  cycleTheme: () => void
   containerWidth: number
-  // containerHeight reserved for future use (full-height spread sizing).
   outlineEntries: ResolvedOutlineEntry[] | null
+  pdfUrl: string
+  slug: string
 }) {
   const reduceMotion = useReducedMotion()
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  // Side rail: default-open at xl breakpoint (1280px), default-closed below.
-  // We honor the initial state on first mount; subsequent user toggles
-  // override it.
   const [sideRailOpen, setSideRailOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 1280 : false,
+  )
+
+  const { isDownloading, downloadCurrentPage, downloadPages } = useDownload(
+    pdfUrl,
+    slug,
   )
 
   const { visible, bump } = useAutoHideChrome(containerRef, {
     initiallyVisible: true,
     hideMs: 3000,
-    forceVisible: shortcutsOpen,
+    forceVisible: shortcutsOpen || downloadDialogOpen,
   })
 
-  // Track fullscreen state. Browser fullscreen can also be exited via
-  // Esc by the browser itself, so we listen for the change event rather
-  // than only flipping our own state.
   useEffect(() => {
     if (typeof document === 'undefined') return
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -96,17 +93,9 @@ export function DesktopReader({
   const handleToggleFullscreen = useCallback(() => {
     if (typeof document === 'undefined') return
     if (!document.fullscreenElement) {
-      // The reader root is the right element to fullscreen — putting
-      // <body> would also pull in the SiteHeader z-50 layer that the
-      // route's parent layout still mounts.
-      containerRef.current?.requestFullscreen?.().catch(() => {
-        // Fullscreen request can fail (e.g. user gesture not detected,
-        // browser denial). Silently ignore — feature is a nice-to-have.
-      })
+      containerRef.current?.requestFullscreen?.().catch(() => {})
     } else {
-      document.exitFullscreen?.().catch(() => {
-        // Same — silently ignore.
-      })
+      document.exitFullscreen?.().catch(() => {})
     }
   }, [])
 
@@ -115,10 +104,6 @@ export function DesktopReader({
     bump()
   }, [bump, state])
 
-  // RTL keyboard mapping: the brief specifies ArrowLeft = next, ArrowRight =
-  // previous regardless of locale (because forward in Arabic is leftward,
-  // and we want left-arrow = "advance" universally for this reader). We
-  // map them directly here.
   const handleArrowLeft = useCallback(() => {
     state.goToPage(state.currentPage + (isRtl ? 1 : -1))
     bump()
@@ -135,6 +120,10 @@ export function DesktopReader({
   }, [bump, state])
 
   const handleEscape = useCallback(() => {
+    if (downloadDialogOpen) {
+      setDownloadDialogOpen(false)
+      return
+    }
     if (shortcutsOpen) {
       setShortcutsOpen(false)
       return
@@ -142,7 +131,7 @@ export function DesktopReader({
     if (isFullscreen) {
       handleToggleFullscreen()
     }
-  }, [handleToggleFullscreen, isFullscreen, shortcutsOpen])
+  }, [downloadDialogOpen, handleToggleFullscreen, isFullscreen, shortcutsOpen])
 
   useReaderShortcuts({
     onArrowLeft: handleArrowLeft,
@@ -150,7 +139,6 @@ export function DesktopReader({
     onSpace: handleSpace,
     onToggleBookmark: handleToggleBookmark,
     onToggleFullscreen: handleToggleFullscreen,
-    onCycleTheme: cycleTheme,
     onOpenShortcuts: () => setShortcutsOpen(true),
     onEscape: handleEscape,
     enabled: true,
@@ -158,7 +146,6 @@ export function DesktopReader({
 
   const handleScrubberCommit = useCallback(
     (page: number) => {
-      // Instant jump on scrubber commit — no slide animation.
       state.goToPage(page, { animated: false })
       bump()
     },
@@ -175,8 +162,6 @@ export function DesktopReader({
     bump()
   }, [bump, state])
 
-  // Spread sizing. The container wraps the side rail + main area; we
-  // calculate the spread width from the leftover horizontal space.
   const usableWidth = sideRailOpen ? containerWidth - 300 : containerWidth
   const spreadMax = Math.min(SPREAD_MAX_WIDTH, usableWidth - 64)
   const pageWidth = Math.max(280, Math.floor(spreadMax / 2) - 8)
@@ -188,8 +173,6 @@ export function DesktopReader({
   const isAtLast =
     state.totalPages != null && state.currentPage >= state.totalPages
 
-  // Slide direction for the spread. In RTL, advancing slides in from the
-  // right (positive x); LTR mirrors.
   const spreadEnterX = reduceMotion
     ? 0
     : (isRtl ? 1 : -1) * state.pageDirection * 24
@@ -210,12 +193,11 @@ export function DesktopReader({
       <ReaderSideRail
         open={sideRailOpen}
         title={title}
-        theme={theme}
-        onThemeChange={onThemeChange}
         outlineEntries={outlineEntries}
         bookmarks={state.bookmarks}
         onJump={handleJumpFromRail}
         onUpdateLabel={state.updateBookmarkLabel}
+        onDownloadBookmarkPage={downloadCurrentPage}
         currentPage={state.currentPage}
         totalPages={state.totalPages}
         isRtl={isRtl}
@@ -229,14 +211,14 @@ export function DesktopReader({
           isRtl={isRtl}
           saveState={state.saveState}
           onClose={handleClose}
-          // On desktop, settings live INSIDE the side rail (theme picker,
-          // progress ring, bookmarks). The top-bar settings cog opens the
-          // rail rather than a separate sheet.
           onOpenSettings={() => setSideRailOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onToggleFullscreen={handleToggleFullscreen}
           onToggleSideRail={() => setSideRailOpen((v) => !v)}
+          onDownloadPage={() => { void downloadCurrentPage(state.currentPage) }}
+          onOpenDownloadDialog={() => setDownloadDialogOpen(true)}
           isFullscreen={isFullscreen}
+          isDownloading={isDownloading}
           showSideRailToggle
         />
 
@@ -302,6 +284,16 @@ export function DesktopReader({
       <ShortcutsOverlay
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
+        isRtl={isRtl}
+      />
+
+      <DownloadDialog
+        open={downloadDialogOpen}
+        onClose={() => setDownloadDialogOpen(false)}
+        onDownload={downloadPages}
+        isDownloading={isDownloading}
+        currentPage={state.currentPage}
+        totalPages={state.totalPages}
         isRtl={isRtl}
       />
     </div>

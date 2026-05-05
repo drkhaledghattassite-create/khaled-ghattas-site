@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_nav_events: true,
     show_nav_about: true,
     show_nav_contact: true,
+    show_nav_corporate: true,
     show_locale_switcher: true,
   },
   footer: {

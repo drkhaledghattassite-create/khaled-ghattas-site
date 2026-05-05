@@ -28,6 +28,7 @@ type NavToggles = {
   show_nav_events: boolean
   show_nav_about: boolean
   show_nav_contact: boolean
+  show_nav_corporate: boolean
 }
 
 const DEFAULT_FOOTER: FooterToggles = {
@@ -44,6 +45,7 @@ const DEFAULT_NAV: NavToggles = {
   show_nav_events: true,
   show_nav_about: true,
   show_nav_contact: true,
+  show_nav_corporate: true,
 }
 
 type Props = {
@@ -66,6 +68,7 @@ export function SiteFooter({
   const showBooks = nav.show_nav_books
   const showEvents = nav.show_nav_events
   const showContact = nav.show_nav_contact
+  const showCorporate = nav.show_nav_corporate
 
   const allCols: Array<{
     title: string
@@ -91,7 +94,12 @@ export function SiteFooter({
     },
     {
       title: t('column_connect'),
-      items: showContact ? [{ label: tNav('contact'), href: '/contact' }] : [],
+      items: [
+        ...(showCorporate
+          ? [{ label: tNav('corporate'), href: '/corporate' }]
+          : []),
+        ...(showContact ? [{ label: tNav('contact'), href: '/contact' }] : []),
+      ],
     },
   ]
   const cols = allCols.filter((c) => c.items.length > 0)

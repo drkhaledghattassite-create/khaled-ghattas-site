@@ -69,6 +69,14 @@ export const sessionItemType = pgEnum('session_item_type', [
   'PDF',
 ])
 
+export const corporateRequestStatus = pgEnum('corporate_request_status', [
+  'NEW',
+  'CONTACTED',
+  'SCHEDULED',
+  'COMPLETED',
+  'CANCELLED',
+])
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Auth (Better Auth + role)
  * ──────────────────────────────────────────────────────────────────────── */
@@ -525,6 +533,94 @@ export const sessionItems = pgTable(
 )
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Corporate programs
+ *
+ * Three tables behind /corporate:
+ *   - corporate_programs: the catalog of offerings (e.g. "Leadership Essence",
+ *     "Mastering the Art of Influence"). Bilingual.
+ *   - corporate_clients: trust-strip logos (Pepsi, Zain, Tamer, etc.).
+ *   - corporate_requests: form submissions from organizations interested in
+ *     a program. Distinct from contact_messages because the workflow fields
+ *     (organization, programId, attendee count, status enum) don't fit there.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const corporatePrograms = pgTable(
+  'corporate_programs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    titleAr: text('title_ar').notNull(),
+    titleEn: text('title_en').notNull(),
+    descriptionAr: text('description_ar').notNull(),
+    descriptionEn: text('description_en').notNull(),
+    durationAr: text('duration_ar'),
+    durationEn: text('duration_en'),
+    audienceAr: text('audience_ar'),
+    audienceEn: text('audience_en'),
+    coverImage: text('cover_image'),
+    status: contentStatus('status').notNull().default('PUBLISHED'),
+    featured: boolean('featured').notNull().default(false),
+    orderIndex: integer('order_index').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex('corporate_programs_slug_idx').on(t.slug),
+  }),
+)
+
+export const corporateClients = pgTable('corporate_clients', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  nameAr: text('name_ar'),
+  logoUrl: text('logo_url').notNull(),
+  websiteUrl: text('website_url'),
+  status: contentStatus('status').notNull().default('PUBLISHED'),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+export const corporateRequests = pgTable(
+  'corporate_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    phone: text('phone'),
+    organization: text('organization').notNull(),
+    position: text('position'),
+    // Optional FK so a deleted program doesn't take its history with it.
+    programId: uuid('program_id').references(() => corporatePrograms.id, {
+      onDelete: 'set null',
+    }),
+    preferredDate: text('preferred_date'),
+    attendeeCount: integer('attendee_count'),
+    message: text('message'),
+    status: corporateRequestStatus('status').notNull().default('NEW'),
+    adminNotes: text('admin_notes'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    statusIdx: index('corporate_requests_status_idx').on(t.status),
+    programIdx: index('corporate_requests_program_idx').on(t.programId),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -582,6 +678,23 @@ export const mediaProgressRelations = relations(mediaProgress, ({ one }) => ({
   }),
 }))
 
+export const corporateProgramsRelations = relations(
+  corporatePrograms,
+  ({ many }) => ({
+    requests: many(corporateRequests),
+  }),
+)
+
+export const corporateRequestsRelations = relations(
+  corporateRequests,
+  ({ one }) => ({
+    program: one(corporatePrograms, {
+      fields: [corporateRequests.programId],
+      references: [corporatePrograms.id],
+    }),
+  }),
+)
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Type exports — single source of truth used by queries.ts and pages.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -633,6 +746,15 @@ export type NewMediaProgress = InferInsertModel<typeof mediaProgress>
 export type SessionItem = InferSelectModel<typeof sessionItems>
 export type NewSessionItem = InferInsertModel<typeof sessionItems>
 
+export type CorporateProgram = InferSelectModel<typeof corporatePrograms>
+export type NewCorporateProgram = InferInsertModel<typeof corporatePrograms>
+
+export type CorporateClient = InferSelectModel<typeof corporateClients>
+export type NewCorporateClient = InferInsertModel<typeof corporateClients>
+
+export type CorporateRequest = InferSelectModel<typeof corporateRequests>
+export type NewCorporateRequest = InferInsertModel<typeof corporateRequests>
+
 export type UserRole = (typeof userRole.enumValues)[number]
 export type ContentStatus = (typeof contentStatus.enumValues)[number]
 export type OrderStatus = (typeof orderStatus.enumValues)[number]
@@ -642,3 +764,5 @@ export type EventStatus = (typeof eventStatus.enumValues)[number]
 export type ArticleCategory = (typeof articleCategory.enumValues)[number]
 export type ProductType = (typeof productType.enumValues)[number]
 export type SessionItemType = (typeof sessionItemType.enumValues)[number]
+export type CorporateRequestStatus =
+  (typeof corporateRequestStatus.enumValues)[number]

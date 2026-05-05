@@ -50,7 +50,32 @@ function LineWord({
   )
 }
 
-export function ScrollRevealLine({
+// Outer gate: render a plain element on the server and during the first client
+// render, then swap to the active scroll-driven implementation only after
+// hydration. This avoids two failure modes:
+//   1. SSR/CSR tree mismatch when `useReducedMotion()` resolves to a different
+//      value on the client (the conditional ref-bearing <div> would be present
+//      on one side and absent on the other).
+//   2. motion's useScroll seeing `ref.current` set against a DOM element that
+//      isn't yet committed — which surfaces as "Target ref is defined but not
+//      hydrated" during dev Fast Refresh + ViewTransitionsRouter navigations.
+export function ScrollRevealLine(props: ScrollRevealLineProps): ReactNode {
+  const reduced = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || reduced) {
+    const Tag = (props.as ?? 'p') as ElementType
+    return <Tag className={props.className}>{props.children}</Tag>
+  }
+
+  return <ScrollRevealLineActive {...props} />
+}
+
+function ScrollRevealLineActive({
   children,
   as: Tag = 'p',
   className,
@@ -59,7 +84,6 @@ export function ScrollRevealLine({
 }: ScrollRevealLineProps): ReactNode {
   const ref = useRef<HTMLDivElement>(null)
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([])
-  const reduced = useReducedMotion()
 
   const words = useMemo(
     () => children.split(/\s+/).filter((w) => w.length > 0),
@@ -114,11 +138,6 @@ export function ScrollRevealLine({
       window.removeEventListener('resize', recompute)
     }
   }, [children])
-
-  if (reduced) {
-    const Element = Tag as ElementType
-    return <Element className={className}>{children}</Element>
-  }
 
   const Element = Tag as ElementType
   const registerRef = (el: HTMLSpanElement | null, i: number) => {

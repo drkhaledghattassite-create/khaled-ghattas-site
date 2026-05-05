@@ -25,6 +25,18 @@ export type LibraryItem = {
    * card uses this as the gate for showing the "Download PDF" button; the
    * actual URL is fetched from /api/content/access on click. */
   hasDownload?: boolean
+  /** ISO timestamp of when the user purchased this item (order.createdAt).
+   * Used by LibraryView for the "Recently purchased" sort. */
+  purchasedAt: string
+  /** ISO timestamp of the last reading session, or null if never opened.
+   * Used by LibraryView for the "Continue reading" hero card and the
+   * "Recently read" sort. SESSION items default to null until Phase 4. */
+  lastReadAt: string | null
+  /** Last page read. Defaults to 1 when no progress recorded. SESSION
+   * items default to 0 until Phase 4 wires media_progress. */
+  lastPage: number
+  /** Total page count of the PDF. 0 when unknown. */
+  totalPages: number
 }
 
 export function LibraryCard({ item }: { item: LibraryItem }) {

@@ -16,6 +16,10 @@
     "upcoming": "قادم",
     "past": "سابق",
     "cancelled": "ملغى",
+    "new": "جديد",
+    "contacted": "تم التواصل",
+    "scheduled": "محدّد موعد",
+    "completed": "مكتمل",
     "admin": "مسؤول",
     "client": "عميل",
     "user": "مستخدم"
@@ -30,6 +34,7 @@
     "interviews": "المقابلات",
     "contact": "تواصل",
     "events": "الفعاليات",
+    "corporate": "للشركات والمؤسسات",
     "menu": "القائمة",
     "close": "إغلاق",
     "primary": "القائمة الأساسية",
@@ -152,7 +157,14 @@
     "stages_outlets": "منصات وقاعات",
     "spoken_at": "محاضرات في",
     "media_appearances": "حضور إعلامي",
-    "outlets": ["BBC عربي", "الجزيرة", "سكاي نيوز عربية", "LBC", "MTV Lebanon", "العربية"]
+    "outlets": [
+      "BBC عربي",
+      "الجزيرة",
+      "سكاي نيوز عربية",
+      "LBC",
+      "MTV Lebanon",
+      "العربية"
+    ]
   },
   "articles": {
     "meta": {
@@ -300,7 +312,7 @@
     "info": {
       "heading": "معلومات التواصل",
       "description": "يمكنكم التواصل عبر البريد الإلكتروني، أو الهاتف، أو زيارة مكتبة خالد غطاس في برجا، لبنان:",
-      "email": "Team@drkhaledghattass.com",
+      "email": "kamallchhimi@gmail.com",
       "phone": "009613579666",
       "location": "مكتبة خالد غطاس — برجا، لبنان",
       "social": "تابعنا على:",
@@ -324,6 +336,82 @@
     "upcoming": "فعاليات قادمة",
     "past": "أرشيف الفعاليات",
     "register": "سجّل الآن"
+  },
+  "corporate": {
+    "meta": {
+      "title": "للشركات والمؤسسات",
+      "description": "برامج مؤسسية مصمَّمة لتطوير ثقافة العمل والقيادة، يقدّمها الدكتور خالد غطاس للشركات والمؤسسات الحكومية والخاصة."
+    },
+    "page": {
+      "eyebrow": "البرامج المؤسسية",
+      "hero": {
+        "italic": "للشركات",
+        "sans": "والمؤسسات"
+      },
+      "description": "يقدّم الدكتور خالد غطاس مجموعة من البرامج المؤسسية المصمَّمة خصيصًا لتطوير ثقافة العمل والقيادة داخل المؤسسات. تستند هذه البرامج إلى خبرته الأكاديمية والعملية لأكثر من 15 عامًا في بيئة الشركات متعددة الجنسيات، بالإضافة إلى تخصصه في السلوك البشري والقيادة الأصيلة من جامعات عالمية مثل هارفرد وستانفورد.",
+      "folio": "العدد ٠٧",
+      "approach_label": "المنهج",
+      "approach_text": "تتميّز برامجه بالدمج بين العلم والإنسانية، حيث يستخدم أسلوبًا فريدًا يجمع بين السرد القصصي، التجربة الواقعية، والفهم العميق للطبيعة البشرية، بما يتناسب مع الثقافة العربية واحتياجات بيئة العمل الحديثة."
+    },
+    "trust": {
+      "eyebrow": "ثقة المؤسسات",
+      "heading": "موثوق به من قِبَل",
+      "subheading": "شركات ومؤسسات حكومية وخاصة في المنطقة استعانت ببرامج الدكتور خالد."
+    },
+    "programs": {
+      "eyebrow": "أربعة برامج",
+      "heading": "البرامج المؤسسية",
+      "subheading": "برامج مصمَّمة لمستويات مختلفة داخل المؤسسة — من المحاضرات التفاعلية لجميع الموظفين إلى ورش القيادة المكثَّفة لأصحاب القرار.",
+      "duration_label": "المدة",
+      "audience_label": "الفئة المستهدفة",
+      "request_cta": "اطلب هذا البرنامج",
+      "details_cta": "التفاصيل"
+    },
+    "request": {
+      "eyebrow": "تواصل مباشر",
+      "heading": "اطلب برنامجًا مؤسسيًا",
+      "subheading": "املأ النموذج وسنعود إليك خلال أيام عمل قليلة لمناقشة احتياجات مؤسستك وتفاصيل البرنامج.",
+      "form_eyebrow": "نموذج الطلب",
+      "form_heading": "تفاصيل الطلب",
+      "info_heading": "ما الذي يحدث بعد ذلك؟",
+      "info_step_1_title": "نراجع الطلب",
+      "info_step_1_body": "نقرأ تفاصيل مؤسستك خلال يومَي عمل.",
+      "info_step_2_title": "نتواصل معك",
+      "info_step_2_body": "نرتّب مكالمة قصيرة لفهم الأهداف والسياق.",
+      "info_step_3_title": "نُعدّ البرنامج",
+      "info_step_3_body": "نخصّص محاور البرنامج بما يخدم فريقك."
+    },
+    "form": {
+      "section_contact": "بيانات التواصل",
+      "section_organization": "بيانات المؤسسة",
+      "section_program": "تفاصيل البرنامج",
+      "section_message": "تفاصيل إضافية",
+      "name": "الاسم الكامل",
+      "name_placeholder": "اكتب اسمك الكامل",
+      "email": "البريد الإلكتروني",
+      "email_placeholder": "name@company.com",
+      "phone": "رقم الهاتف",
+      "phone_placeholder": "+961 …",
+      "organization": "اسم المؤسسة",
+      "organization_placeholder": "الشركة، الوزارة، أو الجهة",
+      "position": "المنصب الوظيفي",
+      "position_placeholder": "مثلاً: مدير الموارد البشرية",
+      "program": "البرنامج المرغوب",
+      "program_any": "غير محدد بعد — أحتاج المساعدة في الاختيار",
+      "preferred_date": "التاريخ المفضل",
+      "preferred_date_hint": "اختياري — يمكن مناقشة التواريخ لاحقًا.",
+      "attendee_count": "عدد المشاركين المتوقَّع",
+      "attendee_count_placeholder": "مثلاً: 25",
+      "message": "رسالتك",
+      "message_placeholder": "أخبرنا عن أهدافك من البرنامج، حجم الفريق، أو أي تفاصيل تساعدنا على التحضير…",
+      "submit": "أرسل الطلب",
+      "submitting": "جاري الإرسال…",
+      "submitted": "شكرًا — وصل طلبك. سنعود إليك قريبًا.",
+      "error_generic": "تعذّر إرسال الطلب. حاول مرة أخرى.",
+      "error_validation": "تحقّق من البيانات وحاول مرة أخرى.",
+      "error_rate_limited": "محاولات كثيرة. انتظر لحظة من فضلك.",
+      "required_label": "حقل مطلوب"
+    }
   },
   "newsletter": {
     "heading": "ابقَ على تواصل",
@@ -367,18 +455,21 @@
     "heading_events": "الفعاليات قريباً",
     "heading_about": "السيرة قريباً",
     "heading_contact": "صفحة التواصل قريباً",
+    "heading_corporate": "البرامج المؤسسية قريباً",
     "body_books": "نُعدّ المتجر بعناية. ستجد هنا قريباً كتب الدكتور خالد ومحاضراته المسجّلة، يمكن اقتناؤها وتحميلها فور الشراء.",
     "body_articles": "نُنسّق أرشيف المقالات. مجموعة متنامية من المقالات في الفلسفة وعلم النفس والمجتمع ستُنشر هنا قريباً.",
     "body_interviews": "نجمع مختارات من المقابلات التلفزيونية والإذاعية والبودكاست. قريباً ستجد هنا المكتبة الكاملة للحوارات.",
     "body_events": "نُنسّق جدول جولة 2025–2026. ستُدرج هنا قريباً المحاضرات وورش العمل واللقاءات القادمة.",
     "body_about": "نضع اللمسات الأخيرة على صفحة السيرة. عرض كامل لمسيرة الدكتور خالد وكتبه ومبادرة «الورشة» في الطريق.",
-    "body_contact": "ستُفعَّل قناة التواصل قريباً. للاستفسارات العاجلة، تواصلوا عبر Team@drkhaledghattass.com في هذه الأثناء.",
+    "body_contact": "ستُفعَّل قناة التواصل قريباً. للاستفسارات العاجلة، تواصلوا عبر kamallchhimi@gmail.com في هذه الأثناء.",
+    "body_corporate": "نُعدّ صفحة البرامج المؤسسية. للاستفسار المباشر عن برامج القيادة والتأثير وإدارة المواهب، تواصلوا عبر kamallchhimi@gmail.com.",
     "folio_books": "العدد ٠٣",
     "folio_articles": "العدد ٠٢",
     "folio_interviews": "العدد ٠٤",
     "folio_events": "العدد ٠٥",
     "folio_about": "العدد ٠١",
     "folio_contact": "العدد ٠٦",
+    "folio_corporate": "العدد ٠٧",
     "expected_by": "متوقّع بحلول {date}",
     "notify_me": "أعلمني عند الإطلاق"
   },
@@ -397,6 +488,7 @@
       "content": "المحتوى",
       "commerce": "المتجر",
       "audience": "الجمهور",
+      "corporate": "البرامج المؤسسية",
       "site": "الموقع"
     },
     "nav": {
@@ -415,6 +507,9 @@
       "site_settings": "إعدادات الموقع",
       "content": "كتل المحتوى",
       "media": "مكتبة الوسائط",
+      "corporate_programs": "البرامج المؤسسية",
+      "corporate_clients": "شعارات العملاء",
+      "corporate_requests": "طلبات الشركات",
       "new": "جديد",
       "edit": "تعديل"
     },
@@ -486,6 +581,12 @@
       "delete_interview_body": "سيتم حذف «{name}» نهائياً. لا يمكن التراجع عن هذا الإجراء.",
       "delete_gallery_title": "حذف هذه الصورة؟",
       "delete_gallery_body": "سيتم حذف هذه الصورة نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "delete_corporate_program_title": "حذف هذا البرنامج المؤسسي؟",
+      "delete_corporate_program_body": "سيتم حذف «{name}» نهائياً. الطلبات المرتبطة ستبقى لكن دون ربطها بأي برنامج. لا يمكن التراجع.",
+      "delete_corporate_client_title": "حذف هذا الشعار؟",
+      "delete_corporate_client_body": "سيتم إزالة شعار «{name}» من شريط الثقة. لا يمكن التراجع.",
+      "delete_corporate_request_title": "حذف هذا الطلب؟",
+      "delete_corporate_request_body": "سيتم حذف الطلب المُرسَل من «{name}» نهائياً. لا يمكن التراجع.",
       "delete_confirm": "حذف",
       "delete_cancel": "إلغاء"
     },
@@ -601,6 +702,136 @@
       "registration_url": "رابط التسجيل",
       "status": "الحالة",
       "order_index": "الترتيب"
+    },
+    "corporate": {
+      "overview_title": "البرامج المؤسسية",
+      "overview_subtitle": "إدارة البرامج المعروضة، شعارات العملاء، والطلبات الواردة من المؤسسات.",
+      "stats_programs": "البرامج",
+      "stats_clients": "الشعارات",
+      "stats_requests_new": "طلبات جديدة",
+      "go_programs": "إدارة البرامج",
+      "go_clients": "إدارة الشعارات",
+      "go_requests": "مراجعة الطلبات"
+    },
+    "corporate_programs": {
+      "description": "البرامج المعروضة على صفحة /corporate.",
+      "add": "إضافة برنامج"
+    },
+    "corporate_program_form": {
+      "slug": "المعرف",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "description_ar": "الوصف (عربي)",
+      "description_en": "الوصف (إنجليزي)",
+      "duration_ar": "المدة (عربي)",
+      "duration_en": "المدة (إنجليزي)",
+      "audience_ar": "الفئة المستهدفة (عربي)",
+      "audience_en": "الفئة المستهدفة (إنجليزي)",
+      "cover_image": "صورة الغلاف (اختيارية)",
+      "status": "الحالة",
+      "featured": "مميَّز",
+      "order_index": "الترتيب"
+    },
+    "corporate_clients": {
+      "description": "شعارات العملاء التي تظهر في شريط الثقة على صفحة /corporate.",
+      "add": "إضافة شعار",
+      "name": "الاسم",
+      "logo": "الشعار",
+      "website": "الموقع الإلكتروني",
+      "status": "الحالة"
+    },
+    "corporate_client_form": {
+      "name": "الاسم (إنجليزي)",
+      "name_ar": "الاسم (عربي)",
+      "logo_url": "رابط الشعار",
+      "website_url": "رابط الموقع الإلكتروني",
+      "status": "الحالة",
+      "order_index": "الترتيب"
+    },
+    "corporate_requests": {
+      "description": "طلبات البرامج المؤسسية الواردة من النموذج العام.",
+      "filter": {
+        "all": "الكل",
+        "NEW": "جديد",
+        "CONTACTED": "تم التواصل",
+        "SCHEDULED": "محدّد موعد",
+        "COMPLETED": "مكتمل",
+        "CANCELLED": "ملغى"
+      },
+      "status": {
+        "NEW": "جديد",
+        "CONTACTED": "تم التواصل",
+        "SCHEDULED": "محدّد موعد",
+        "COMPLETED": "مكتمل",
+        "CANCELLED": "ملغى"
+      },
+      "name": "الاسم",
+      "organization": "المؤسسة",
+      "email": "البريد",
+      "phone": "الهاتف",
+      "position": "المنصب",
+      "program": "البرنامج",
+      "preferred_date": "التاريخ المفضل",
+      "attendee_count": "عدد المشاركين",
+      "message": "الرسالة",
+      "status_label": "الحالة",
+      "received_at": "تاريخ الاستلام",
+      "back_to_list": "كل الطلبات",
+      "admin_notes": "ملاحظات داخلية",
+      "admin_notes_placeholder": "ملاحظات للفريق — لن تظهر للعميل…",
+      "save_status": "حفظ الحالة والملاحظات",
+      "no_program": "غير محدد",
+      "open_email": "ردّ بالبريد",
+      "open_phone": "اتصل",
+      "empty": "لا توجد طلبات بعد."
+    },
+    "session_content": {
+      "back_to_books": "عودة إلى المنتجات",
+      "page_title": "محتوى المحاضرة — {title}",
+      "page_description": "أضف ورتّب الفيديوهات والصوتيات وملفات PDF التي يراها المشترون داخل هذه المحاضرة المدفوعة.",
+      "manage_aria": "إدارة محتوى {name}",
+      "count": "{count, plural, =0 {لا عناصر بعد} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+      "add": "إضافة عنصر",
+      "empty_title": "لا يوجد محتوى بعد.",
+      "empty_body": "اضغط «إضافة عنصر» لإرفاق أول فيديو أو صوت أو PDF بهذه المحاضرة.",
+      "edit_aria": "تعديل {title}",
+      "delete_aria": "حذف {title}",
+      "move_up_aria": "تحريك {title} للأعلى",
+      "move_down_aria": "تحريك {title} للأسفل",
+      "delete_title": "حذف هذا العنصر؟",
+      "delete_body": "سيتم حذف «{title}» من هذه المحاضرة. لا يمكن التراجع عن هذا الإجراء.",
+      "dialog_create_title": "إضافة عنصر للمحاضرة",
+      "dialog_create_description": "اختر نوع المحتوى، أعطِ عنواناً، وأشِر إلى مفتاح التخزين.",
+      "dialog_edit_title": "تعديل عنصر المحاضرة",
+      "dialog_edit_description": "حدّث النوع أو العنوان أو المرجع لهذا العنصر.",
+      "field_item_type": "النوع",
+      "field_title": "العنوان",
+      "field_title_placeholder": "المحاضرة 1 — مقدمة",
+      "field_description": "الوصف",
+      "field_description_placeholder": "اختياري. يظهر للمشترين فوق المشغّل.",
+      "field_storage_key": "مفتاح التخزين",
+      "field_storage_key_placeholder_video": "dQw4w9WgXcQ",
+      "field_storage_key_placeholder_audio": "sessions/intro/lecture-1.mp3",
+      "field_storage_key_placeholder_pdf": "sessions/intro/handout-1.pdf",
+      "field_storage_key_hint_video": "معرّف فيديو YouTube أو رابط المشاهدة/التضمين الكامل — مزوّد YouTube يقبل كليهما.",
+      "field_storage_key_hint_audio": "مسار الملف الصوتي أو مفتاحه ضمن مزوّد التخزين المُهيّأ. يُولَّد رابط موقَّع عند التشغيل.",
+      "field_storage_key_hint_pdf": "مسار ملف PDF أو مفتاحه ضمن مزوّد التخزين المُهيّأ. يُولَّد رابط موقَّع عند العرض.",
+      "field_duration": "المدة (بالثواني)",
+      "field_duration_placeholder": "0",
+      "field_duration_hint_required": "مطلوب لعناصر الفيديو والصوت لإظهار الطول في القائمة.",
+      "item_type_video": "فيديو",
+      "item_type_audio": "صوت",
+      "item_type_pdf": "PDF",
+      "create_submit": "إضافة العنصر",
+      "save_submit": "حفظ التغييرات",
+      "cancel": "إلغاء",
+      "error_forbidden": "لا تملك الصلاحية لتعديل محتوى المحاضرة.",
+      "error_not_found": "هذا العنصر أو المحاضرة لم يعد موجوداً.",
+      "error_not_session": "هذا المنتج ليس محاضرة — لا يمكن إضافة محتوى إلا للمحاضرات.",
+      "error_validation": "يرجى مراجعة الحقول المظلَّلة والمحاولة مجدداً.",
+      "error_title_required": "العنوان مطلوب.",
+      "error_storage_key_required": "مفتاح التخزين مطلوب.",
+      "error_duration_required": "المدة مطلوبة لعناصر الفيديو والصوت."
     },
     "orders": {
       "description": "طلبات العملاء ومدفوعات Stripe.",
@@ -728,6 +959,7 @@
         "show_nav_events": "الفعاليات",
         "show_nav_about": "عن الدكتور",
         "show_nav_contact": "تواصل",
+        "show_nav_corporate": "للشركات والمؤسسات",
         "show_locale_switcher": "زر تبديل اللغة (AR ⇄ EN)",
         "bottom_nav_note": "شريط الأسفل في الجوال يتبع هذه المفاتيح تلقائياً."
       },
@@ -771,7 +1003,8 @@
         "interviews": "المقابلات",
         "events": "الفعاليات",
         "about": "عن الدكتور",
-        "contact": "تواصل"
+        "contact": "تواصل",
+        "corporate": "للشركات والمؤسسات"
       },
       "unsaved_changes": "تغييرات غير محفوظة",
       "reset": "العودة إلى الافتراضيات",
@@ -1071,8 +1304,26 @@
     },
     "empty": {
       "title": "مكتبتك فارغة",
-      "body": "اكتشف الكتب والجلسات لتبدأ رحلتك",
-      "cta": "تصفح الكتب"
+      "body": "ابدأ رحلتك مع كتب وجلسات د. خالد",
+      "cta": "تصفح الكتب",
+      "cta_books": "تصفح الكتب",
+      "cta_sessions": "تصفح الجلسات"
+    },
+    "continue_reading": {
+      "label": "تابع القراءة",
+      "cta": "تابع",
+      "page_of_total": "الصفحة {current} من {total}"
+    },
+    "filter": {
+      "all": "الكل",
+      "books": "الكتب",
+      "sessions": "الجلسات"
+    },
+    "sort": {
+      "label": "ترتيب",
+      "recent_read": "آخر قراءة",
+      "recent_purchase": "آخر شراء",
+      "title_az": "الاسم: أ-ي"
     },
     "download": {
       "preparing": "نجهز ملفك...",
@@ -1194,6 +1445,72 @@
     "side_rail": {
       "open": "فتح اللوحة",
       "close": "إغلاق اللوحة"
+    },
+    "download": {
+      "dialog_title": "تنزيل الصفحات",
+      "dialog_subtitle": "أدخل أرقام الصفحات (الإجمالي: {total})",
+      "input_label": "الصفحات",
+      "input_placeholder": "مثال: 1، 3، 5-8",
+      "input_hint": "أرقام مفردة أو نطاقات مفصولة بفواصل",
+      "error_invalid": "تنسيق غير صالح. مثال: 1، 3-5",
+      "close": "إغلاق",
+      "cancel": "إلغاء",
+      "download_btn": "تنزيل",
+      "downloading": "جاري التنزيل…",
+      "current_page_aria": "تنزيل الصفحة الحالية",
+      "multi_page_aria": "تنزيل صفحات متعددة",
+      "bookmark_page_aria": "تنزيل هذه الصفحة"
+    }
+  },
+  "session": {
+    "back_to_library": "العودة إلى المكتبة",
+    "empty": {
+      "title": "هذه الجلسة قيد التحضير",
+      "body": "سيظهر محتوى جلستك هنا فور جاهزيته."
+    },
+    "now_playing": "قيد التشغيل",
+    "playlist": {
+      "label": "عناصر الجلسة",
+      "completed_indicator": "مكتمل",
+      "in_progress": "قيد التقدم",
+      "duration_pdf": "PDF",
+      "click_to_play": "شغّل هذا العنصر",
+      "click_to_open_pdf": "افتح ملف PDF",
+      "items_count": "{count} عناصر"
+    },
+    "type": {
+      "video": "فيديو",
+      "audio": "صوت",
+      "pdf": "PDF"
+    },
+    "video": {
+      "loading": "جارٍ تحميل الفيديو…",
+      "error": "تعذّر تحميل الفيديو. يرجى المحاولة مرة أخرى.",
+      "play_overlay": "اضغط للتشغيل"
+    },
+    "audio": {
+      "play": "تشغيل",
+      "pause": "إيقاف مؤقت",
+      "volume": "مستوى الصوت",
+      "mute": "كتم",
+      "unmute": "إلغاء الكتم",
+      "speed": "السرعة",
+      "elapsed": "{elapsed} / {total}",
+      "scrub": "تمرير",
+      "loading": "جارٍ تحميل الصوت…",
+      "error": "تعذّر تحميل الصوت. يرجى المحاولة مرة أخرى."
+    },
+    "pdf": {
+      "loading": "جارٍ تحميل المستند…",
+      "error": "تعذّر تحميل المستند. يرجى المحاولة مرة أخرى.",
+      "open_in_reader": "افتح في القارئ",
+      "iframe_label": "ملف PDF للجلسة"
+    },
+    "continue": {
+      "label": "تابع من حيث توقفت"
+    },
+    "completed": {
+      "label": "الجلسة مكتملة"
     }
   }
 }

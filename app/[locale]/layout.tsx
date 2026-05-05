@@ -10,7 +10,6 @@ import { AppLoader } from '@/components/layout/AppLoader'
 import { MaintenanceBanner } from '@/components/layout/MaintenanceBanner'
 import { ViewTransitionsRouter } from '@/components/motion/ViewTransitionsRouter'
 import { ProximityPrefetch } from '@/components/motion/ProximityPrefetch'
-import { CustomCursor } from '@/components/motion/CustomCursor'
 import { SectionBackgroundCrossfade } from '@/components/motion/SectionBackgroundCrossfade'
 import { OrganizationJsonLd, WebsiteJsonLd } from '@/components/seo/StructuredData'
 import { routing } from '@/lib/i18n/routing'
@@ -125,35 +124,16 @@ type Props = {
 }
 
 export default async function LocaleLayout({ children, params }: Props) {
-  console.log('[LocaleLayout] start')
   const { locale } = await params
-  console.log('[LocaleLayout] locale=', locale)
 
   if (!hasLocale(routing.locales, locale)) {
     notFound()
   }
 
   setRequestLocale(locale)
-  console.log('[LocaleLayout] setRequestLocale done')
-  let messages, t, settings
-  try {
-    messages = await getMessages()
-  } catch (err) {
-    console.error('[LocaleLayout] getMessages() failed:', err)
-    throw err
-  }
-  try {
-    t = await getTranslations({ locale, namespace: 'common' })
-  } catch (err) {
-    console.error('[LocaleLayout] getTranslations() failed:', err)
-    throw err
-  }
-  try {
-    settings = await getCachedSiteSettings()
-  } catch (err) {
-    console.error('[LocaleLayout] getCachedSiteSettings() failed:', err)
-    throw err
-  }
+  const messages = await getMessages()
+  const t = await getTranslations({ locale, namespace: 'common' })
+  const settings = await getCachedSiteSettings()
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
 
   const maintenanceMessage =
@@ -188,7 +168,6 @@ export default async function LocaleLayout({ children, params }: Props) {
           <ViewTransitionsRouter />
           <ProximityPrefetch />
           <SectionBackgroundCrossfade />
-          <CustomCursor />
           <AppLoader />
           <Toaster richColors closeButton position="top-center" />
         </NextIntlClientProvider>

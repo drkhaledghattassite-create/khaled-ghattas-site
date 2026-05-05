@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Eye, Layers, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import {
@@ -26,6 +26,7 @@ export function BooksTable({ books }: { books: Book[] }) {
   const tActions = useTranslations('admin.actions')
   const tConfirm = useTranslations('admin.confirm')
   const tAria = useTranslations('admin.aria')
+  const tContent = useTranslations('admin.session_content')
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   // See ArticlesTable for the rationale on the `pending` shape.
@@ -112,6 +113,15 @@ export function BooksTable({ books }: { books: Book[] }) {
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </Link>
+            {row.original.productType === 'SESSION' && (
+              <Link
+                href={`/admin/books/${row.original.id}/content`}
+                className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
+                aria-label={tContent('manage_aria', { name: displayName })}
+              >
+                <Layers className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            )}
             <button
               type="button"
               aria-label={tAria('delete_item', { name: displayName })}

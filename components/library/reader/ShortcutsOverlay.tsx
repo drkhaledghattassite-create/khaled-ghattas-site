@@ -77,16 +77,11 @@ export function ShortcutsOverlay({
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
   const fontHead = isRtl ? 'font-arabic-display' : 'font-arabic-display'
 
-  // The full shortcut list — mirror of useReaderShortcuts bindings.
-  // RTL convention reverses the keys' "meaning" but the bindings are
-  // fixed (ArrowLeft = next page in any locale because reading-direction
-  // forward in Arabic is leftward). The labels reflect that.
   const items = [
     { keys: [isRtl ? '←' : '→', '⎵'], label: t('next_page') },
     { keys: [isRtl ? '→' : '←'], label: t('previous_page') },
     { keys: ['B'], label: t('toggle_bookmark') },
     { keys: ['F'], label: t('toggle_fullscreen') },
-    { keys: ['T'], label: t('cycle_theme') },
     { keys: ['?'], label: t('open_shortcuts') },
     { keys: ['Esc'], label: t('close_overlay') },
   ]

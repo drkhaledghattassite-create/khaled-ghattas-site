@@ -16,6 +16,7 @@ export const COMING_SOON_PAGES = [
   'events',
   'contact',
   'about',
+  'corporate',
 ] as const
 
 export type ComingSoonPage = (typeof COMING_SOON_PAGES)[number]
@@ -36,6 +37,7 @@ export type SiteSettings = {
     show_nav_events: boolean
     show_nav_about: boolean
     show_nav_contact: boolean
+    show_nav_corporate: boolean
     show_locale_switcher: boolean
   }
   footer: {

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { redirect } from '@/lib/i18n/navigation'
 import { getServerSession } from '@/lib/auth/server'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { LibraryView } from '@/components/dashboard/LibraryView'
+import { LibrarySkeleton } from '@/components/dashboard/LibrarySkeleton'
 import type { LibraryItem } from '@/components/dashboard/LibraryCard'
 import { getLibraryEntriesByUserId, getReadingProgress } from '@/lib/db/queries'
 
@@ -61,8 +63,17 @@ async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
         : `/dashboard/library/read/${book.id}`,
       hasDownload: !isSession && Boolean(book.digitalFile),
       progress: isSession ? 0 : computed,
+      purchasedAt: order.createdAt.toISOString(),
+      lastReadAt: progressRow ? progressRow.lastReadAt.toISOString() : null,
+      lastPage: progressRow ? progressRow.lastPage : 0,
+      totalPages: progressRow ? progressRow.totalPages : 0,
     }
   })
+}
+
+async function LibraryData({ userId }: { userId: string }) {
+  const items = await buildLibraryItems(userId)
+  return <LibraryView items={items} />
 }
 
 export default async function DashboardLibraryPage({ params }: Props) {
@@ -74,11 +85,11 @@ export default async function DashboardLibraryPage({ params }: Props) {
     redirect({ href: '/login', locale })
   }
 
-  const items = await buildLibraryItems(session!.user.id)
-
   return (
     <DashboardLayout activeTab="library" user={session!.user}>
-      <LibraryView items={items} />
+      <Suspense fallback={<LibrarySkeleton />}>
+        <LibraryData userId={session!.user.id} />
+      </Suspense>
     </DashboardLayout>
   )
 }

@@ -32,7 +32,6 @@ export type ReaderShortcuts = {
   onSpace: () => void
   onToggleBookmark: () => void
   onToggleFullscreen: () => void
-  onCycleTheme: () => void
   onOpenShortcuts: () => void
   onEscape: () => void
   enabled?: boolean
@@ -44,7 +43,6 @@ export function useReaderShortcuts({
   onSpace,
   onToggleBookmark,
   onToggleFullscreen,
-  onCycleTheme,
   onOpenShortcuts,
   onEscape,
   enabled = true,
@@ -95,11 +93,6 @@ export function useReaderShortcuts({
           e.preventDefault()
           onToggleFullscreen()
           break
-        case 't':
-        case 'T':
-          e.preventDefault()
-          onCycleTheme()
-          break
         case '?':
           e.preventDefault()
           onOpenShortcuts()
@@ -120,7 +113,6 @@ export function useReaderShortcuts({
     onSpace,
     onToggleBookmark,
     onToggleFullscreen,
-    onCycleTheme,
     onOpenShortcuts,
     onEscape,
   ])

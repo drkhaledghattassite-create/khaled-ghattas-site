@@ -13,6 +13,9 @@ import type {
   Book,
   ContactMessage,
   ContentBlock,
+  CorporateClient,
+  CorporateProgram,
+  CorporateRequest,
   Event,
   GalleryItem,
   Interview,
@@ -741,7 +744,7 @@ export const placeholderSettings: SiteSetting[] = [
   { id: 's-6', key: 'facebook_url',        value: 'https://facebook.com/drkhaledghattas',                                           valueJson: null, updatedAt: NOW },
   { id: 's-7', key: 'youtube_url',         value: 'https://youtube.com/@drkhaledghattass',                                          valueJson: null, updatedAt: NOW },
   { id: 's-8', key: 'instagram_url',       value: 'https://instagram.com/drkhaledghattas',                                          valueJson: null, updatedAt: NOW },
-  { id: 's-9', key: 'contact_email',       value: 'Team@drkhaledghattass.com',                                                      valueJson: null, updatedAt: NOW },
+  { id: 's-9', key: 'contact_email',       value: 'kamallchhimi@gmail.com',                                                      valueJson: null, updatedAt: NOW },
   { id: 's-10', key: 'contact_phone',      value: '009613579666',                                                                   valueJson: null, updatedAt: NOW },
   { id: 's-11', key: 'contact_address_ar', value: 'مكتبة خالد غطاس — برجا، لبنان',                                                  valueJson: null, updatedAt: NOW },
   { id: 's-12', key: 'contact_address_en', value: 'Khaled Ghattass Library — Burja, Lebanon',                                       valueJson: null, updatedAt: NOW },
@@ -990,3 +993,183 @@ export const placeholderContactMessages: ContactMessage[] = [
     createdAt: new Date('2026-04-10T08:30:00Z'),
   },
 ]
+
+/**
+ * Corporate programs — sourced verbatim from drkhaledghattass.com/cooperate.
+ * Four offerings ranging from a 1-hour interactive lecture to a 2-day
+ * leadership program.
+ */
+export const placeholderCorporatePrograms: CorporateProgram[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000c1',
+    slug: 'interactive-lecture',
+    titleAr: 'محاضرة تفاعلية لمدة ساعة',
+    titleEn: 'One-Hour Interactive Lecture',
+    descriptionAr:
+      'مخصصة لجميع الموظفين في المؤسسة. تتناول الجلسة أهم مفاهيم النجاح في بيئة العمل الحديثة، مثل المرونة، وبناء الثقة، وعقلية النمو. وتشمل الحديث عن أسباب رفض الآخرين، والدوافع الإنسانية، وأهم التوازنات في الحياة والعمل، وعلم الأحياء المرتبط بالتوتر، ومتى يجب رفع الموضوع إلى المدير، إضافة إلى مهارات التواصل الفعّال واتخاذ القرارات السليمة. وتختتم الجلسة بحلقة أسئلة وأجوبة لتعزيز الفهم وربط الأفكار بالواقع العملي.',
+    descriptionEn:
+      'Designed for all employees in the organization. The session explores the most important concepts of success in the modern workplace — resilience, trust-building, and the growth mindset. It covers the reasons people reject others, human motivations, the key balances of life and work, the biology of stress, when to escalate to management, and the skills of effective communication and sound decision-making. The session closes with a Q&A to deepen understanding and connect ideas to real-world practice.',
+    durationAr: 'ساعة واحدة',
+    durationEn: '1 hour',
+    audienceAr: 'جميع الموظفين',
+    audienceEn: 'All employees',
+    coverImage: null,
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000c2',
+    slug: 'leadership-essence',
+    titleAr: 'برنامج جوهر القيادة',
+    titleEn: 'The Essence of Leadership',
+    descriptionAr:
+      'برنامج لمدة يومين يهدف إلى مواءمة القيم الشخصية مع الأدوار المهنية، وتعزيز الوعي الذاتي، وتقوية مهارات اتخاذ القرار، من خلال تمارين عملية وتوجيه مهني. يطوّر المشاركون أدوات تساعدهم على إدارة الضغط، وتوضيح الأهداف، وتحسين فعالية القيادة بأسلوب واضح ومتوازن.',
+    descriptionEn:
+      'A two-day program designed to align personal values with professional roles, deepen self-awareness, and sharpen decision-making — through hands-on exercises and professional coaching. Participants develop tools to manage pressure, clarify their goals, and lead with clarity and balance.',
+    durationAr: 'يومان',
+    durationEn: '2 days',
+    audienceAr: 'القادة والمديرون',
+    audienceEn: 'Leaders & managers',
+    coverImage: null,
+    status: 'PUBLISHED',
+    featured: true,
+    orderIndex: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000c3',
+    slug: 'talent-management',
+    titleAr: 'إدارة المواهب',
+    titleEn: 'Talent Management',
+    descriptionAr:
+      'برنامج جلسة مدتها ساعة ونصف إلى ساعتين، مصممة خصيصًا للمديرين التنفيذيين، والمديرين، وأصحاب المناصب القيادية لاكتشاف استراتيجيات ثورية في إدارة المواهب لم يسبق لهم الاطلاع عليها من قبل. سيشارك الحاضرون في جلسات تفاعلية ديناميكية تتحدى الأفكار التقليدية وتُلهم أساليب جديدة لتنمية المواهب داخل مؤسساتهم.',
+    descriptionEn:
+      'A 1.5–2 hour session built specifically for executives, managers, and leadership-track professionals to discover revolutionary talent-management strategies they have not seen before. Attendees take part in dynamic interactive sessions that challenge conventional thinking and inspire new approaches to growing talent inside their organizations.',
+    durationAr: 'من ساعة ونصف إلى ساعتين',
+    durationEn: '1.5–2 hours',
+    audienceAr: 'التنفيذيون والمديرون',
+    audienceEn: 'Executives & managers',
+    coverImage: null,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 2,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000c4',
+    slug: 'art-of-influence',
+    titleAr: 'إتقان فن التأثير',
+    titleEn: 'Mastering the Art of Influence',
+    descriptionAr:
+      'توجيه القرارات لصالحك. يقدّم هذا البرنامج لمدة يوم واحد لقادة الأعمال والمتخصصين في التسويق، ويهدف إلى استكشاف مبادئ الاقتصاد السلوكي وبنية الدماغ لفهم كيفية تأثيرهما في توجيه سلوك المستهلكين وتحقيق الأهداف التجارية بفعالية. يتعرّف المشاركون على أدوات عملية واستراتيجيات تساعدهم على التأثير واتخاذ قرارات مدروسة تخدم أهداف المؤسسة.',
+    descriptionEn:
+      'Guiding decisions in your favor. A one-day program for business leaders and marketing professionals that explores the principles of behavioral economics and brain architecture — and how the two shape consumer behavior and drive commercial outcomes. Participants leave with practical tools and strategies to influence others and make considered decisions that serve the organization\'s goals.',
+    durationAr: 'يوم واحد',
+    durationEn: '1 day',
+    audienceAr: 'قادة الأعمال والتسويق',
+    audienceEn: 'Business & marketing leaders',
+    coverImage: null,
+    status: 'PUBLISHED',
+    featured: false,
+    orderIndex: 3,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+]
+
+/**
+ * Corporate clients — trust-strip logos shown on /corporate. Sourced from
+ * the existing drkhaledghattass.com/cooperate page. Logo paths are placeholders
+ * until real assets land in /public/clients/.
+ */
+export const placeholderCorporateClients: CorporateClient[] = [
+  {
+    id: '00000000-0000-0000-0000-0000000000a1',
+    name: 'Canadian University Dubai',
+    nameAr: 'الجامعة الكندية في دبي',
+    logoUrl: '/clients/canadian-university-dubai.png',
+    websiteUrl: 'https://www.cud.ac.ae',
+    status: 'PUBLISHED',
+    orderIndex: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a2',
+    name: 'Department of Energy — Abu Dhabi',
+    nameAr: 'دائرة الطاقة — أبوظبي',
+    logoUrl: '/clients/department-of-energy-abu-dhabi.png',
+    websiteUrl: 'https://www.doe.gov.ae',
+    status: 'PUBLISHED',
+    orderIndex: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a3',
+    name: 'Al Muhaidib',
+    nameAr: 'المهيدب',
+    logoUrl: '/clients/al-muhaidib.png',
+    websiteUrl: 'https://www.almuhaidib.com',
+    status: 'PUBLISHED',
+    orderIndex: 2,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a4',
+    name: 'PepsiCo',
+    nameAr: 'بيبسيكو',
+    logoUrl: '/clients/pepsico.png',
+    websiteUrl: 'https://www.pepsico.com',
+    status: 'PUBLISHED',
+    orderIndex: 3,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a5',
+    name: 'Zain',
+    nameAr: 'زين',
+    logoUrl: '/clients/zain.png',
+    websiteUrl: 'https://www.zain.com',
+    status: 'PUBLISHED',
+    orderIndex: 4,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a6',
+    name: 'Tamer Group',
+    nameAr: 'مجموعة تامر',
+    logoUrl: '/clients/tamer.png',
+    websiteUrl: 'https://www.tamergroup.com',
+    status: 'PUBLISHED',
+    orderIndex: 5,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: '00000000-0000-0000-0000-0000000000a7',
+    name: 'Department of Community Development',
+    nameAr: 'دائرة تنمية المجتمع',
+    logoUrl: '/clients/department-of-community-development.png',
+    websiteUrl: 'https://www.dcd.gov.ae',
+    status: 'PUBLISHED',
+    orderIndex: 6,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+]
+
+/**
+ * Corporate requests — empty by default in placeholder mode. The /admin/
+ * corporate/requests page renders an empty state until real submissions
+ * land via POST /api/corporate/request.
+ */
+export const placeholderCorporateRequests: CorporateRequest[] = []

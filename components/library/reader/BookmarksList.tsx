@@ -21,16 +21,19 @@ export function BookmarksList({
   bookmarks,
   onJump,
   onUpdateLabel,
+  onDownload,
   isRtl,
   variant = 'list',
 }: {
   bookmarks: PdfBookmark[]
   onJump: (page: number) => void
   onUpdateLabel: (bookmarkId: string, label: string | null) => void
+  onDownload?: (page: number) => Promise<void>
   isRtl: boolean
   variant?: 'list' | 'compact'
 }) {
   const t = useTranslations('reader.bookmarks')
+  const tDownload = useTranslations('reader.download')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftLabel, setDraftLabel] = useState('')
 
@@ -115,16 +118,40 @@ export function BookmarksList({
                       />
                     </form>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(b.id)
-                        setDraftLabel(b.label ?? '')
-                      }}
-                      className={`text-[11px] text-[var(--reader-fg-faint)] hover:text-[var(--reader-fg-muted)] ${fontBody}`}
-                    >
-                      {b.label ? '…' : t('label_placeholder')}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(b.id)
+                          setDraftLabel(b.label ?? '')
+                        }}
+                        className={`text-[11px] text-[var(--reader-fg-faint)] hover:text-[var(--reader-fg-muted)] ${fontBody}`}
+                      >
+                        {b.label ? '…' : t('label_placeholder')}
+                      </button>
+                      {onDownload && (
+                        <button
+                          type="button"
+                          onClick={() => { void onDownload(b.pageNumber) }}
+                          aria-label={tDownload('bookmark_page_aria')}
+                          className="ms-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-[var(--reader-fg-faint)] transition-colors hover:text-[var(--reader-fg)]"
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="M10 3v10M6 9l4 4 4-4M4 17h12" />
+                          </svg>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

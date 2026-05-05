@@ -20,6 +20,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { key: 'articles', href: '/articles' },
   { key: 'interviews', href: '/interviews' },
   { key: 'events', href: '/events' },
+  { key: 'corporate', href: '/corporate' },
   { key: 'contact', href: '/contact' },
 ]
 

@@ -15,6 +15,7 @@ const STATIC_PATHS = [
   '/books',
   '/interviews',
   '/events',
+  '/corporate',
   '/contact',
 ] as const
 
@@ -49,6 +50,7 @@ const PATH_TO_COMING_SOON_KEY: Record<string, ComingSoonPage> = {
   '/interviews': 'interviews',
   '/events': 'events',
   '/contact': 'contact',
+  '/corporate': 'corporate',
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

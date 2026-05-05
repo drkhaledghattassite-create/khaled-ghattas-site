@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, type ElementType, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from 'react'
 import { motion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useReducedMotion } from '@/lib/motion/hooks'
 
@@ -50,7 +50,29 @@ function Word({
   )
 }
 
-export function ScrollReveal({
+// Outer gate: render a plain element on the server and during the first client
+// render, then swap to the active scroll-driven implementation only after
+// hydration. Mirrors ScrollRevealLine — avoids the SSR/CSR tree mismatch when
+// useReducedMotion resolves differently on the two sides, and prevents
+// motion's "Target ref is defined but not hydrated" when the ref-bearing div
+// is conditionally absent.
+export function ScrollReveal(props: ScrollRevealProps): ReactNode {
+  const reduced = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || reduced) {
+    const Tag = (props.as ?? 'p') as ElementType
+    return <Tag className={props.className}>{props.children}</Tag>
+  }
+
+  return <ScrollRevealActive {...props} />
+}
+
+function ScrollRevealActive({
   children,
   as: Tag = 'p',
   className,
@@ -59,7 +81,6 @@ export function ScrollReveal({
   staggerScroll = true,
 }: ScrollRevealProps): ReactNode {
   const ref = useRef<HTMLDivElement>(null)
-  const reduced = useReducedMotion()
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -70,11 +91,6 @@ export function ScrollReveal({
     () => children.split(/\s+/).filter((w) => w.length > 0),
     [children],
   )
-
-  if (reduced) {
-    const Element = Tag as ElementType
-    return <Element className={className}>{children}</Element>
-  }
 
   const Element = Tag as ElementType
 

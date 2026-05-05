@@ -30,9 +30,9 @@ import { Page } from 'react-pdf'
 import { EASE_EDITORIAL } from '@/lib/motion/variants'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import type { UseReaderStateResult } from '../hooks/useReaderState'
-import type { ReaderTheme } from '../hooks/useReaderTheme'
 import { useAutoHideChrome } from '../hooks/useAutoHideChrome'
 import { useSwipeGesture } from '../hooks/useSwipeGesture'
+import { useDownload } from '../hooks/useDownload'
 import { ReaderTopBar } from './ReaderTopBar'
 import { ReaderBottomBar } from './ReaderBottomBar'
 import { ReaderSettingsSheet } from './ReaderSettingsSheet'
@@ -43,23 +43,27 @@ export function MobileReader({
   title,
   isRtl,
   state,
-  theme,
-  onThemeChange,
   containerWidth,
   containerHeight,
+  pdfUrl,
+  slug,
 }: {
-  // bookId is implicit in state.toggleBookmark — not consumed here.
   title: string
   isRtl: boolean
   state: UseReaderStateResult
-  theme: ReaderTheme
-  onThemeChange: (next: ReaderTheme) => void
   containerWidth: number
   containerHeight: number
+  pdfUrl: string
+  slug: string
 }) {
   const reduceMotion = useReducedMotion()
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const { isDownloading, downloadCurrentPage, downloadPages } = useDownload(
+    pdfUrl,
+    slug,
+  )
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Double-tap zoom: 1 = fit width, 2 = zoomed
@@ -272,14 +276,16 @@ export function MobileReader({
       <ReaderSettingsSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        theme={theme}
-        onThemeChange={onThemeChange}
         currentPage={state.currentPage}
         totalPages={state.totalPages}
         onGoToPage={(p) => state.goToPage(p, { animated: false })}
         bookmarks={state.bookmarks}
         onBookmarksJump={(p) => state.goToPage(p, { animated: false })}
         onBookmarksUpdateLabel={state.updateBookmarkLabel}
+        onDownloadCurrentPage={() => downloadCurrentPage(state.currentPage)}
+        onDownloadBookmarkPage={downloadCurrentPage}
+        onDownloadPages={downloadPages}
+        isDownloading={isDownloading}
         isRtl={isRtl}
       />
     </div>

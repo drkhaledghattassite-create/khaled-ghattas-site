@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/lib/i18n/navigation'
 import {
   BookOpen,
+  Briefcase,
+  Building2,
   Calendar,
   FileEdit,
   FileText,
@@ -15,6 +17,7 @@ import {
   Mail,
   MessageSquare,
   Package,
+  Send,
   Settings,
   ShoppingCart,
   SlidersHorizontal,
@@ -68,6 +71,14 @@ const GROUPS: NavGroup[] = [
       { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
       { href: '/admin/messages', key: 'messages', icon: MessageSquare },
       { href: '/admin/users', key: 'users', icon: Users },
+    ],
+  },
+  {
+    key: 'corporate',
+    items: [
+      { href: '/admin/corporate/programs', key: 'corporate_programs', icon: Briefcase },
+      { href: '/admin/corporate/clients', key: 'corporate_clients', icon: Building2 },
+      { href: '/admin/corporate/requests', key: 'corporate_requests', icon: Send },
     ],
   },
   {

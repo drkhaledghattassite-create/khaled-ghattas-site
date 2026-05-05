@@ -16,6 +16,10 @@
     "upcoming": "Upcoming",
     "past": "Past",
     "cancelled": "Cancelled",
+    "new": "New",
+    "contacted": "Contacted",
+    "scheduled": "Scheduled",
+    "completed": "Completed",
     "admin": "Admin",
     "client": "Client",
     "user": "User"
@@ -30,6 +34,7 @@
     "interviews": "Interviews",
     "contact": "Contact",
     "events": "Events",
+    "corporate": "For Corporations",
     "menu": "Menu",
     "close": "Close",
     "primary": "Primary navigation",
@@ -152,7 +157,14 @@
     "stages_outlets": "Stages & Outlets",
     "spoken_at": "Spoken at",
     "media_appearances": "Media appearances",
-    "outlets": ["BBC Arabic", "Al Jazeera", "Sky News Arabia", "LBC", "MTV Lebanon", "Al Arabiya"]
+    "outlets": [
+      "BBC Arabic",
+      "Al Jazeera",
+      "Sky News Arabia",
+      "LBC",
+      "MTV Lebanon",
+      "Al Arabiya"
+    ]
   },
   "articles": {
     "meta": {
@@ -300,7 +312,7 @@
     "info": {
       "heading": "Contact information",
       "description": "Reach us by email, by phone, or in person at the Khaled Ghattass Library in Burja, Lebanon:",
-      "email": "Team@drkhaledghattass.com",
+      "email": "kamallchhimi@gmail.com",
       "phone": "009613579666",
       "location": "Khaled Ghattass Library — Burja, Lebanon",
       "social": "Follow:",
@@ -324,6 +336,82 @@
     "upcoming": "Upcoming events",
     "past": "Past events",
     "register": "Register"
+  },
+  "corporate": {
+    "meta": {
+      "title": "For Corporations & Institutions",
+      "description": "Corporate programs designed to develop workplace culture and leadership, delivered by Dr. Khaled Ghattass to private companies and public institutions across the region."
+    },
+    "page": {
+      "eyebrow": "Corporate Programs",
+      "hero": {
+        "italic": "For corporations",
+        "sans": "& institutions"
+      },
+      "description": "Dr. Khaled Ghattass offers a suite of corporate programs designed specifically to develop workplace culture and leadership inside organizations. The programs draw on more than 15 years of academic and operational experience inside multinational environments, and on his specialization in human behavior and authentic leadership at universities including Harvard and Stanford.",
+      "folio": "Nº 07",
+      "approach_label": "The approach",
+      "approach_text": "His programs are distinctive for blending science with humanity — using a unique method that combines storytelling, lived experience, and a deep understanding of human nature, calibrated for Arab culture and the realities of the modern workplace."
+    },
+    "trust": {
+      "eyebrow": "Trusted by",
+      "heading": "Working with leading organizations",
+      "subheading": "Public and private institutions across the region have engaged Dr. Khaled's programs."
+    },
+    "programs": {
+      "eyebrow": "Four programs",
+      "heading": "The corporate programs",
+      "subheading": "Programs designed for different levels of the organization — from interactive lectures for the whole team to intensive leadership intensives for decision-makers.",
+      "duration_label": "Duration",
+      "audience_label": "Audience",
+      "request_cta": "Request this program",
+      "details_cta": "Details"
+    },
+    "request": {
+      "eyebrow": "Direct contact",
+      "heading": "Request a corporate program",
+      "subheading": "Fill out the form and we'll get back to you within a few business days to discuss your organization's needs and the program details.",
+      "form_eyebrow": "Request form",
+      "form_heading": "Tell us about your engagement",
+      "info_heading": "What happens next?",
+      "info_step_1_title": "We review the request",
+      "info_step_1_body": "We read your organization's details within two business days.",
+      "info_step_2_title": "We get in touch",
+      "info_step_2_body": "We arrange a short call to understand goals and context.",
+      "info_step_3_title": "We tailor the program",
+      "info_step_3_body": "We adapt the program agenda to serve your team."
+    },
+    "form": {
+      "section_contact": "Contact details",
+      "section_organization": "Organization",
+      "section_program": "Program details",
+      "section_message": "Anything else",
+      "name": "Full name",
+      "name_placeholder": "Your full name",
+      "email": "Email",
+      "email_placeholder": "name@company.com",
+      "phone": "Phone",
+      "phone_placeholder": "+961 …",
+      "organization": "Organization name",
+      "organization_placeholder": "Company, ministry, or institution",
+      "position": "Job title",
+      "position_placeholder": "e.g., Head of People",
+      "program": "Program of interest",
+      "program_any": "Not sure yet — I'd like help choosing",
+      "preferred_date": "Preferred date",
+      "preferred_date_hint": "Optional — dates can be discussed later.",
+      "attendee_count": "Expected number of attendees",
+      "attendee_count_placeholder": "e.g., 25",
+      "message": "Your message",
+      "message_placeholder": "Tell us about your goals for the program, the size of the team, or any details that help us prepare…",
+      "submit": "Send the request",
+      "submitting": "Sending…",
+      "submitted": "Thank you — your request has been received. We'll get back to you soon.",
+      "error_generic": "We could not send the request. Please try again.",
+      "error_validation": "Please check the form and try again.",
+      "error_rate_limited": "Too many attempts. Please wait a moment.",
+      "required_label": "Required field"
+    }
   },
   "newsletter": {
     "heading": "STAY CONNECTED",
@@ -367,18 +455,21 @@
     "heading_events": "Events Coming Soon",
     "heading_about": "About Coming Soon",
     "heading_contact": "Contact Coming Soon",
+    "heading_corporate": "Corporate Programs Coming Soon",
     "body_books": "We're preparing the bookstore with care. Soon you'll find Dr. Khaled's books and recorded lectures available for instant digital delivery.",
     "body_articles": "The article archive is being curated. A growing collection of essays on philosophy, psychology, and society will be published here shortly.",
     "body_interviews": "A selection of television, radio, and podcast interviews is being assembled. Watch this space for the full conversation library.",
     "body_events": "The 2025–2026 tour calendar is being finalized. Upcoming lectures, workshops, and engagements will be listed here soon.",
     "body_about": "The biography page is being polished. A full account of Dr. Khaled's career, books, and the Al-Warsheh initiative is on its way.",
-    "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via Team@drkhaledghattass.com in the meantime.",
+    "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via kamallchhimi@gmail.com in the meantime.",
+    "body_corporate": "The corporate programs page is being prepared. For direct inquiries about leadership, influence, or talent-management programs, please reach out via kamallchhimi@gmail.com.",
     "folio_books": "Nº 03",
     "folio_articles": "Nº 02",
     "folio_interviews": "Nº 04",
     "folio_events": "Nº 05",
     "folio_about": "Nº 01",
     "folio_contact": "Nº 06",
+    "folio_corporate": "Nº 07",
     "expected_by": "Expected by {date}",
     "notify_me": "Notify me on launch"
   },
@@ -397,6 +488,7 @@
       "content": "Content",
       "commerce": "Commerce",
       "audience": "Audience",
+      "corporate": "Corporate",
       "site": "Site"
     },
     "nav": {
@@ -415,6 +507,9 @@
       "site_settings": "Site settings",
       "content": "Content blocks",
       "media": "Media library",
+      "corporate_programs": "Corporate programs",
+      "corporate_clients": "Client logos",
+      "corporate_requests": "Corporate requests",
       "new": "New",
       "edit": "Edit"
     },
@@ -486,6 +581,12 @@
       "delete_interview_body": "This will permanently delete \"{name}\". This action cannot be undone.",
       "delete_gallery_title": "Delete photo?",
       "delete_gallery_body": "This will permanently delete this photo. This action cannot be undone.",
+      "delete_corporate_program_title": "Delete this corporate program?",
+      "delete_corporate_program_body": "\"{name}\" will be permanently deleted. Linked requests stay, but their program reference is cleared. This cannot be undone.",
+      "delete_corporate_client_title": "Delete this client logo?",
+      "delete_corporate_client_body": "The \"{name}\" logo will be removed from the trust strip. This cannot be undone.",
+      "delete_corporate_request_title": "Delete this request?",
+      "delete_corporate_request_body": "The request from \"{name}\" will be permanently deleted. This cannot be undone.",
       "delete_confirm": "Delete",
       "delete_cancel": "Cancel"
     },
@@ -601,6 +702,136 @@
       "registration_url": "Registration URL",
       "status": "Status",
       "order_index": "Order"
+    },
+    "corporate": {
+      "overview_title": "Corporate programs",
+      "overview_subtitle": "Manage offered programs, client logos, and incoming requests from organizations.",
+      "stats_programs": "Programs",
+      "stats_clients": "Logos",
+      "stats_requests_new": "New requests",
+      "go_programs": "Manage programs",
+      "go_clients": "Manage logos",
+      "go_requests": "Review requests"
+    },
+    "corporate_programs": {
+      "description": "Programs shown on the public /corporate page.",
+      "add": "Add program"
+    },
+    "corporate_program_form": {
+      "slug": "Slug",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "description_ar": "Description (Arabic)",
+      "description_en": "Description (English)",
+      "duration_ar": "Duration (Arabic)",
+      "duration_en": "Duration (English)",
+      "audience_ar": "Audience (Arabic)",
+      "audience_en": "Audience (English)",
+      "cover_image": "Cover image (optional)",
+      "status": "Status",
+      "featured": "Featured",
+      "order_index": "Order"
+    },
+    "corporate_clients": {
+      "description": "Client logos shown in the trust strip on the /corporate page.",
+      "add": "Add logo",
+      "name": "Name",
+      "logo": "Logo",
+      "website": "Website",
+      "status": "Status"
+    },
+    "corporate_client_form": {
+      "name": "Name (English)",
+      "name_ar": "Name (Arabic)",
+      "logo_url": "Logo URL",
+      "website_url": "Website URL",
+      "status": "Status",
+      "order_index": "Order"
+    },
+    "corporate_requests": {
+      "description": "Corporate program inquiries from the public form.",
+      "filter": {
+        "all": "All",
+        "NEW": "New",
+        "CONTACTED": "Contacted",
+        "SCHEDULED": "Scheduled",
+        "COMPLETED": "Completed",
+        "CANCELLED": "Cancelled"
+      },
+      "status": {
+        "NEW": "New",
+        "CONTACTED": "Contacted",
+        "SCHEDULED": "Scheduled",
+        "COMPLETED": "Completed",
+        "CANCELLED": "Cancelled"
+      },
+      "name": "Name",
+      "organization": "Organization",
+      "email": "Email",
+      "phone": "Phone",
+      "position": "Position",
+      "program": "Program",
+      "preferred_date": "Preferred date",
+      "attendee_count": "Attendees",
+      "message": "Message",
+      "status_label": "Status",
+      "received_at": "Received at",
+      "back_to_list": "All requests",
+      "admin_notes": "Internal notes",
+      "admin_notes_placeholder": "Notes for the team — not shown to the requester…",
+      "save_status": "Save status & notes",
+      "no_program": "Not specified",
+      "open_email": "Reply by email",
+      "open_phone": "Call",
+      "empty": "No requests yet."
+    },
+    "session_content": {
+      "back_to_books": "Back to products",
+      "page_title": "Session content — {title}",
+      "page_description": "Add and order the videos, audios, and PDFs that buyers see inside this paid session.",
+      "manage_aria": "Manage content for {name}",
+      "count": "{count, plural, =0 {No items yet} one {1 item} other {# items}}",
+      "add": "Add item",
+      "empty_title": "No content yet.",
+      "empty_body": "Click \"Add item\" to attach the first video, audio, or PDF to this session.",
+      "edit_aria": "Edit {title}",
+      "delete_aria": "Delete {title}",
+      "move_up_aria": "Move {title} up",
+      "move_down_aria": "Move {title} down",
+      "delete_title": "Delete this item?",
+      "delete_body": "\"{title}\" will be removed from this session. This cannot be undone.",
+      "dialog_create_title": "Add session item",
+      "dialog_create_description": "Pick a content type, give it a title, and point it at the storage key.",
+      "dialog_edit_title": "Edit session item",
+      "dialog_edit_description": "Update the type, title, or pointer for this item.",
+      "field_item_type": "Type",
+      "field_title": "Title",
+      "field_title_placeholder": "Lecture 1 — Introduction",
+      "field_description": "Description",
+      "field_description_placeholder": "Optional. Shown to buyers above the player.",
+      "field_storage_key": "Storage key",
+      "field_storage_key_placeholder_video": "dQw4w9WgXcQ",
+      "field_storage_key_placeholder_audio": "sessions/intro/lecture-1.mp3",
+      "field_storage_key_placeholder_pdf": "sessions/intro/handout-1.pdf",
+      "field_storage_key_hint_video": "YouTube video ID or full watch/embed URL — the YouTube adapter accepts both.",
+      "field_storage_key_hint_audio": "Audio file path or key in the configured storage adapter. A signed URL is minted at playback time.",
+      "field_storage_key_hint_pdf": "PDF file path or key in the configured storage adapter. A signed URL is minted at view time.",
+      "field_duration": "Duration (seconds)",
+      "field_duration_placeholder": "0",
+      "field_duration_hint_required": "Required for video and audio items so the playlist can show length.",
+      "item_type_video": "Video",
+      "item_type_audio": "Audio",
+      "item_type_pdf": "PDF",
+      "create_submit": "Add item",
+      "save_submit": "Save changes",
+      "cancel": "Cancel",
+      "error_forbidden": "You don't have permission to edit session content.",
+      "error_not_found": "That item or session no longer exists.",
+      "error_not_session": "This product is not a session — only sessions can have content items.",
+      "error_validation": "Please check the highlighted fields and try again.",
+      "error_title_required": "Title is required.",
+      "error_storage_key_required": "Storage key is required.",
+      "error_duration_required": "Duration is required for video and audio items."
     },
     "orders": {
       "description": "Customer orders and Stripe payments.",
@@ -728,6 +959,7 @@
         "show_nav_events": "Events",
         "show_nav_about": "About",
         "show_nav_contact": "Contact",
+        "show_nav_corporate": "For Corporations",
         "show_locale_switcher": "Locale switcher (AR ⇄ EN)",
         "bottom_nav_note": "The mobile bottom bar mirrors these toggles automatically."
       },
@@ -771,7 +1003,8 @@
         "interviews": "Interviews",
         "events": "Events",
         "about": "About",
-        "contact": "Contact"
+        "contact": "Contact",
+        "corporate": "For Corporations"
       },
       "unsaved_changes": "Unsaved changes",
       "reset": "Reset to defaults",
@@ -1071,8 +1304,26 @@
     },
     "empty": {
       "title": "Your library is empty",
-      "body": "Discover books and sessions to start your journey",
-      "cta": "Browse books"
+      "body": "Start your journey with Dr. Khaled's books and sessions",
+      "cta": "Browse books",
+      "cta_books": "Browse books",
+      "cta_sessions": "Browse sessions"
+    },
+    "continue_reading": {
+      "label": "Continue reading",
+      "cta": "Continue",
+      "page_of_total": "Page {current} of {total}"
+    },
+    "filter": {
+      "all": "All",
+      "books": "Books",
+      "sessions": "Sessions"
+    },
+    "sort": {
+      "label": "Sort",
+      "recent_read": "Recently read",
+      "recent_purchase": "Recently purchased",
+      "title_az": "Title: A-Z"
     },
     "download": {
       "preparing": "Preparing your file...",
@@ -1194,6 +1445,72 @@
     "side_rail": {
       "open": "Open panel",
       "close": "Close panel"
+    },
+    "download": {
+      "dialog_title": "Download Pages",
+      "dialog_subtitle": "Enter page numbers (total: {total})",
+      "input_label": "Pages",
+      "input_placeholder": "e.g. 1, 3, 5-8",
+      "input_hint": "Single numbers or ranges separated by commas",
+      "error_invalid": "Invalid format. Example: 1, 3-5",
+      "close": "Close",
+      "cancel": "Cancel",
+      "download_btn": "Download",
+      "downloading": "Downloading…",
+      "current_page_aria": "Download current page",
+      "multi_page_aria": "Download multiple pages",
+      "bookmark_page_aria": "Download this page"
+    }
+  },
+  "session": {
+    "back_to_library": "Back to library",
+    "empty": {
+      "title": "This session is being prepared",
+      "body": "Your session content will appear here once it's ready."
+    },
+    "now_playing": "Now playing",
+    "playlist": {
+      "label": "Session items",
+      "completed_indicator": "Completed",
+      "in_progress": "In progress",
+      "duration_pdf": "PDF",
+      "click_to_play": "Play this item",
+      "click_to_open_pdf": "Open PDF",
+      "items_count": "{count} items"
+    },
+    "type": {
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF"
+    },
+    "video": {
+      "loading": "Loading video…",
+      "error": "Video could not be loaded. Please try again.",
+      "play_overlay": "Tap to play"
+    },
+    "audio": {
+      "play": "Play",
+      "pause": "Pause",
+      "volume": "Volume",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "speed": "Speed",
+      "elapsed": "{elapsed} / {total}",
+      "scrub": "Scrub",
+      "loading": "Loading audio…",
+      "error": "Audio could not be loaded. Please try again."
+    },
+    "pdf": {
+      "loading": "Loading document…",
+      "error": "Document could not be loaded. Please try again.",
+      "open_in_reader": "Open in reader",
+      "iframe_label": "Session PDF"
+    },
+    "continue": {
+      "label": "Continue from where you left off"
+    },
+    "completed": {
+      "label": "Session completed"
     }
   }
 }

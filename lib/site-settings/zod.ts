@@ -25,6 +25,7 @@ const navigationSchema = z
     show_nav_events: z.boolean().optional(),
     show_nav_about: z.boolean().optional(),
     show_nav_contact: z.boolean().optional(),
+    show_nav_corporate: z.boolean().optional(),
     show_locale_switcher: z.boolean().optional(),
   })
   .strict()

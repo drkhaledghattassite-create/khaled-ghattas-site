@@ -63,7 +63,13 @@
       "PowerShell(winget install *)",
       "PowerShell(Out-File *)",
       "PowerShell(Remove-Item *)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(node -e \"const en=require\\('./messages/en.json'\\);const ar=require\\('./messages/ar.json'\\);function paths\\(o,p=''\\){const r=[];for\\(const k of Object.keys\\(o\\)\\){const np=p?`${p}.${k}`:k;if\\(o[k]&&typeof o[k]==='object'&&!Array.isArray\\(o[k]\\)\\)r.push\\(...paths\\(o[k],np\\)\\);else r.push\\(np\\)}return r}const e=new Set\\(paths\\(en\\)\\);const a=new Set\\(paths\\(ar\\)\\);const onlyEn=[...e].filter\\(k=>!a.has\\(k\\)\\);const onlyAr=[...a].filter\\(k=>!e.has\\(k\\)\\);console.log\\('en keys:',e.size\\);console.log\\('ar keys:',a.size\\);console.log\\('only in en:',onlyEn\\);console.log\\('only in ar:',onlyAr\\)\")",
+      "PowerShell(node check-i18n-parity.mjs)",
+      "PowerShell($env:NEXT_BUILD_WORKERS = '1'; npm run build 2>&1 | Select-Object -Last 80)",
+      "PowerShell($env:NEXT_BUILD_WORKERS = '1'; \\(npm run build 2>&1\\) | Select-String -Pattern '\\(error|fail|invalid|warn\\)' -CaseSensitive:$false | Select-Object -First 30)",
+      "PowerShell($content = Get-Content \"C:\\\\Users\\\\OATech\\\\.claude\\\\projects\\\\C--Users-OATech-Desktop-drkhaledghattass\\\\0e3ae2a7-ebc3-4c58-ac1d-117736b83ba3\\\\tool-results\\\\bujqd3iml.txt\" -Raw; $lines = $content -split \"`n\"; $total = $lines.Count; Write-Host \"Total lines: $total\"; $lines[\\($total-100\\)..\\($total-1\\)] -join \"`n\")"
     ]
   }
 }

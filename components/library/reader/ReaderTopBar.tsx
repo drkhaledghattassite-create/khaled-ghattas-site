@@ -26,7 +26,10 @@ export function ReaderTopBar({
   onToggleFullscreen,
   onOpenShortcuts,
   onToggleSideRail,
+  onDownloadPage,
+  onOpenDownloadDialog,
   isFullscreen,
+  isDownloading,
   showSideRailToggle,
 }: {
   variant: 'mobile' | 'desktop'
@@ -39,7 +42,10 @@ export function ReaderTopBar({
   onToggleFullscreen?: () => void
   onOpenShortcuts?: () => void
   onToggleSideRail?: () => void
+  onDownloadPage?: () => void
+  onOpenDownloadDialog?: () => void
   isFullscreen?: boolean
+  isDownloading?: boolean
   showSideRailToggle?: boolean
 }) {
   const t = useTranslations('reader')
@@ -196,25 +202,77 @@ export function ReaderTopBar({
         </IconButton>
       )}
 
-      <IconButton
-        onClick={onOpenSettings}
-        ariaLabel={t('aria.open_settings')}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
+      {/* Download — desktop only: single-page direct + multi-page dialog */}
+      {variant === 'desktop' && onDownloadPage && (
+        <IconButton
+          onClick={onDownloadPage}
+          ariaLabel={t('download.current_page_aria')}
+          disabled={isDownloading}
         >
-          <circle cx="10" cy="10" r="2.5" />
-          <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.5 1.5M13.5 13.5L15 15M5 15l1.5-1.5M13.5 6.5L15 5" />
-        </svg>
-      </IconButton>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M10 3v10M6 9l4 4 4-4" />
+            <path d="M4 17h12" />
+          </svg>
+        </IconButton>
+      )}
+
+      {variant === 'desktop' && onOpenDownloadDialog && (
+        <IconButton
+          onClick={onOpenDownloadDialog}
+          ariaLabel={t('download.multi_page_aria')}
+          disabled={isDownloading}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M7 2h9v14H7z" />
+            <path d="M4 5H5M4 8H5M4 11H5" />
+            <path d="M11 6v6M8.5 9.5l2.5 2.5 2.5-2.5" />
+          </svg>
+        </IconButton>
+      )}
+
+      {/* Settings — mobile only. On desktop the side rail toggle (hamburger)
+          already handles everything the settings sheet contained. */}
+      {variant === 'mobile' && (
+        <IconButton
+          onClick={onOpenSettings}
+          ariaLabel={t('aria.open_settings')}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <circle cx="10" cy="10" r="2.5" />
+            <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.5 1.5M13.5 13.5L15 15M5 15l1.5-1.5M13.5 6.5L15 5" />
+          </svg>
+        </IconButton>
+      )}
     </motion.header>
   )
 }
@@ -222,10 +280,12 @@ export function ReaderTopBar({
 function IconButton({
   onClick,
   ariaLabel,
+  disabled,
   children,
 }: {
   onClick: () => void
   ariaLabel: string
+  disabled?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -233,7 +293,8 @@ function IconButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--reader-fg-muted)] transition-colors hover:bg-[var(--reader-surface)] hover:text-[var(--reader-fg)] focus-visible:bg-[var(--reader-surface)] focus-visible:outline-none"
+      disabled={disabled}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--reader-fg-muted)] transition-colors hover:bg-[var(--reader-surface)] hover:text-[var(--reader-fg)] focus-visible:bg-[var(--reader-surface)] focus-visible:outline-none disabled:opacity-40"
     >
       {children}
     </button>

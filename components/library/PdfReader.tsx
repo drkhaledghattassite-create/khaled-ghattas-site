@@ -70,9 +70,9 @@ type PdfDocProxy = {
   numPages: number
   getOutline: () => Promise<unknown[] | null>
 }
+import { useTheme } from 'next-themes'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import { useReaderState, type PdfOutlineNode, type ResolvedOutlineEntry } from './hooks/useReaderState'
-import { useReaderTheme } from './hooks/useReaderTheme'
 import { useViewport } from './hooks/useViewport'
 import { LoadingState } from './reader/LoadingState'
 import { MobileReader } from './reader/MobileReader'
@@ -114,7 +114,9 @@ export function PdfReader({
   const isRtl = locale === 'ar'
 
   const { variant, mounted } = useViewport(768)
-  const { theme, setTheme, cycleTheme } = useReaderTheme()
+  const { resolvedTheme } = useTheme()
+  // Mirror the site's light/dark toggle — no separate reader theme picker.
+  const readerTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
 
   // Reader state owns: page, bookmarks, save flow, ToC outline.
   const state = useReaderState({
@@ -270,7 +272,7 @@ export function PdfReader({
   return (
     <div
       ref={shellRef}
-      data-reader-theme={theme}
+      data-reader-theme={readerTheme}
       dir={isRtl ? 'rtl' : 'ltr'}
       className="absolute inset-0 overflow-hidden bg-[var(--reader-surface)] text-[var(--reader-fg)]"
     >
@@ -314,21 +316,20 @@ export function PdfReader({
                 title={title}
                 isRtl={isRtl}
                 state={state}
-                theme={theme}
-                onThemeChange={setTheme}
                 containerWidth={containerSize.width}
                 containerHeight={containerSize.height}
+                pdfUrl={pdfUrl}
+                slug={bookId}
               />
             ) : (
               <DesktopReader
                 title={title}
                 isRtl={isRtl}
                 state={state}
-                theme={theme}
-                onThemeChange={setTheme}
-                cycleTheme={cycleTheme}
                 containerWidth={containerSize.width}
                 outlineEntries={outlineEntries}
+                pdfUrl={pdfUrl}
+                slug={bookId}
               />
             )}
           </motion.div>

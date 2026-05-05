@@ -29,7 +29,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import type { PdfBookmark } from './schema'
+import type { PdfBookmark, SessionItem } from './schema'
 
 export type MockProgressEntry = {
   lastPage: number
@@ -37,9 +37,26 @@ export type MockProgressEntry = {
   lastReadAt: Date
 }
 
+export type MockMediaProgressEntry = {
+  lastPositionSeconds: number
+  completedAt: Date | null
+  lastWatchedAt: Date
+}
+
 export type MockStore = {
   progress: Map<string, MockProgressEntry>
   bookmarks: Map<string, PdfBookmark[]>
+  // Keyed by sessionId (a books.id with productType='SESSION'). Mock-mode
+  // store for the admin session-content editor; mirrors the schema's
+  // session_items table closely enough that swapping in the real DB is a
+  // one-branch flip in the query helpers.
+  sessionItems: Map<string, SessionItem[]>
+  // Phase 4 — keyed by `${userId}:${sessionItemId}`. Mock-mode store for
+  // session-viewer playback progress. Mirrors media_progress table shape:
+  // lastPositionSeconds + completedAt + lastWatchedAt. Same disk file as
+  // reading_progress + bookmarks + sessionItems so a single readStore call
+  // hydrates everything the dev workflow needs.
+  mediaProgress: Map<string, MockMediaProgressEntry>
 }
 
 // JSON shape on disk — Maps serialised as [key, value][].
@@ -51,9 +68,19 @@ type SerializedProgressEntry = {
 type SerializedBookmark = Omit<PdfBookmark, 'createdAt'> & {
   createdAt: string
 }
+type SerializedSessionItem = Omit<SessionItem, 'createdAt'> & {
+  createdAt: string
+}
+type SerializedMediaProgressEntry = {
+  lastPositionSeconds: number
+  completedAt: string | null
+  lastWatchedAt: string
+}
 type SerializedStore = {
   progress: Array<[string, SerializedProgressEntry]>
   bookmarks: Array<[string, SerializedBookmark[]]>
+  sessionItems?: Array<[string, SerializedSessionItem[]]>
+  mediaProgress?: Array<[string, SerializedMediaProgressEntry]>
 }
 
 const STORE_FILE = join(
@@ -64,7 +91,12 @@ const STORE_FILE = join(
 )
 
 function emptyStore(): MockStore {
-  return { progress: new Map(), bookmarks: new Map() }
+  return {
+    progress: new Map(),
+    bookmarks: new Map(),
+    sessionItems: new Map(),
+    mediaProgress: new Map(),
+  }
 }
 
 /**
@@ -106,7 +138,48 @@ export function readStore(): MockStore {
       }
       bookmarks.set(key, next)
     }
-    return { progress, bookmarks }
+    const sessionItemsMap = new Map<string, SessionItem[]>()
+    for (const [key, list] of parsed.sessionItems ?? []) {
+      const next: SessionItem[] = []
+      for (const it of list) {
+        const createdAt = new Date(it.createdAt)
+        if (Number.isNaN(createdAt.getTime())) continue
+        next.push({
+          id: it.id,
+          sessionId: it.sessionId,
+          itemType: it.itemType,
+          title: it.title,
+          description: it.description ?? null,
+          storageKey: it.storageKey,
+          durationSeconds:
+            it.durationSeconds != null ? Number(it.durationSeconds) : null,
+          sortOrder: Number(it.sortOrder) || 0,
+          createdAt,
+        })
+      }
+      sessionItemsMap.set(key, next)
+    }
+    const mediaProgressMap = new Map<string, MockMediaProgressEntry>()
+    for (const [key, entry] of parsed.mediaProgress ?? []) {
+      const lastWatchedAt = new Date(entry.lastWatchedAt)
+      if (Number.isNaN(lastWatchedAt.getTime())) continue
+      const completedAt =
+        entry.completedAt != null ? new Date(entry.completedAt) : null
+      mediaProgressMap.set(key, {
+        lastPositionSeconds: Number(entry.lastPositionSeconds) || 0,
+        completedAt:
+          completedAt != null && !Number.isNaN(completedAt.getTime())
+            ? completedAt
+            : null,
+        lastWatchedAt,
+      })
+    }
+    return {
+      progress,
+      bookmarks,
+      sessionItems: sessionItemsMap,
+      mediaProgress: mediaProgressMap,
+    }
   } catch (err) {
     console.warn(
       '[mock-store] failed to read reader-mock-store.json — returning empty store',
@@ -143,6 +216,28 @@ export function writeStore(store: MockStore): void {
         label: b.label ?? null,
         createdAt: b.createdAt.toISOString(),
       })),
+    ]),
+    sessionItems: Array.from(store.sessionItems.entries()).map(([k, list]) => [
+      k,
+      list.map((it) => ({
+        id: it.id,
+        sessionId: it.sessionId,
+        itemType: it.itemType,
+        title: it.title,
+        description: it.description ?? null,
+        storageKey: it.storageKey,
+        durationSeconds: it.durationSeconds ?? null,
+        sortOrder: it.sortOrder,
+        createdAt: it.createdAt.toISOString(),
+      })),
+    ]),
+    mediaProgress: Array.from(store.mediaProgress.entries()).map(([k, v]) => [
+      k,
+      {
+        lastPositionSeconds: v.lastPositionSeconds,
+        completedAt: v.completedAt ? v.completedAt.toISOString() : null,
+        lastWatchedAt: v.lastWatchedAt.toISOString(),
+      },
     ]),
   }
   try {

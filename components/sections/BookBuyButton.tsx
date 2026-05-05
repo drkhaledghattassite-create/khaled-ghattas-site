@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/lib/i18n/navigation'
 import { showNavLoader } from '@/lib/motion/nav-transition'
 import { useSession } from '@/lib/auth/client'
@@ -20,6 +20,7 @@ type Props = {
 
 export function BookBuyButton({ bookId, className, owned = false, children }: Props) {
   const t = useTranslations('book.checkout')
+  const locale = useLocale()
   const [loading, setLoading] = useState(false)
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const { data: session, isPending } = useSession()
@@ -44,7 +45,7 @@ export function BookBuyButton({ bookId, className, owned = false, children }: Pr
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ bookId }),
+        body: JSON.stringify({ bookId, locale }),
       })
       const json = (await res.json().catch(() => ({}))) as {
         url?: string

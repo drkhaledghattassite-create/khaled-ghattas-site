@@ -41,7 +41,7 @@ export function OrganizationJsonLd({ locale }: LocaleProps) {
     contactPoint: [
       {
         '@type': 'ContactPoint',
-        email: 'Team@drkhaledghattass.com',
+        email: 'kamallchhimi@gmail.com',
         telephone: '+9613579666',
         contactType: 'general',
         areaServed: 'LB',

@@ -133,7 +133,8 @@ export function useReaderState({
   // parent rerender that happens to change it.
   useEffect(() => {
     if (initialPage > 1) {
-      toast(t('resume.toast', { page: initialPage }))
+      // id deduplicates the toast when React Strict Mode double-invokes this effect in dev
+      toast(t('resume.toast', { page: initialPage }), { id: 'reader-resume' })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

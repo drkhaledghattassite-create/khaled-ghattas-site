@@ -10,7 +10,26 @@ import { SITE_URL } from '@/lib/constants'
 
 const checkoutSchema = z.object({
   bookId: z.string().min(1).max(64),
+  // Buyer's current site locale, forwarded into the Stripe Checkout
+  // metadata so the post-purchase email can render in the same language
+  // the user just paid in. The webhook reads it back as
+  // `session.metadata.locale`. Permissive on input — any unrecognised
+  // value is normalised to the site default at use-site rather than
+  // blocking the entire checkout (an unexpected locale string is not a
+  // reason to refuse a payment). Cap length to keep the metadata field
+  // bounded — Stripe metadata values max at 500 chars but we don't need
+  // anywhere near that.
+  locale: z.string().max(8).optional(),
 })
+
+const SUPPORTED_EMAIL_LOCALES = ['ar', 'en'] as const
+type EmailLocale = (typeof SUPPORTED_EMAIL_LOCALES)[number]
+
+function normaliseEmailLocale(raw: string | undefined): EmailLocale {
+  return SUPPORTED_EMAIL_LOCALES.includes(raw as EmailLocale)
+    ? (raw as EmailLocale)
+    : 'ar'
+}
 
 export async function POST(req: Request) {
   const originErr = assertSameOrigin(req)
@@ -98,6 +117,7 @@ export async function POST(req: Request) {
         bookId: book.id,
         bookSlug: book.slug,
         userId: session.user.id,
+        locale: normaliseEmailLocale(body.data.locale),
       },
     })
 

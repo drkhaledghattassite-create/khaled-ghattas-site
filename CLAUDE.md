@@ -47,8 +47,10 @@ What works in dev:
   Toggled OFF in `.env.local` once real Better Auth is configured.
 - Without `DATABASE_URL`, all data reads fall back to `lib/placeholder-data.ts`.
 - Admin CRUD UIs are live for articles, books, interviews, events, gallery,
-  orders, users, settings, content-blocks. The structured site-settings
-  toggle panel lives at `/admin/settings/site`.
+  orders, users, settings, content-blocks, plus the **corporate-programs
+  suite** (programs · client logos · incoming requests, see Corporate section
+  below). The structured site-settings toggle panel lives at
+  `/admin/settings/site`.
 - Purchase flow is gated client-side (via `useSession`) AND server-side
   (`/api/checkout` returns 401 without a session). Unauthenticated buy
   attempts open `AuthRequiredDialog`, which sends users to
@@ -128,31 +130,40 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`).
 - Neon Postgres (serverless).
-- Schema in `lib/db/schema.ts`. **19 tables**: `users`, `sessions`, `accounts`,
+- Schema in `lib/db/schema.ts`. **22 tables**: `users`, `sessions`, `accounts`,
   `verifications`, `articles`, `books`, `interviews`, `gallery`, `events`,
   `orders`, `orderItems`, `subscribers`, `contactMessages`, `siteSettings`,
-  `contentBlocks`, plus the four Phase-1 content-delivery tables
-  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`.
-  **9 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
+  `contentBlocks`, the four Phase-1 content-delivery tables
+  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`, and
+  the three Phase-3 corporate tables `corporatePrograms`,
+  `corporateClients`, `corporateRequests`.
+  **10 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
   (DRAFT/PUBLISHED/ARCHIVED), `orderStatus` (PENDING/PAID/FULFILLED/REFUNDED/
   FAILED), `messageStatus` (UNREAD/READ/ARCHIVED), `subscriberStatus` (ACTIVE/
   UNSUBSCRIBED/BOUNCED), `eventStatus` (UPCOMING/PAST/CANCELLED),
   `articleCategory` (PHILOSOPHY/PSYCHOLOGY/SOCIETY/POLITICS/CULTURE/OTHER),
-  `productType` (BOOK/SESSION), `sessionItemType` (VIDEO/AUDIO/PDF).
+  `productType` (BOOK/SESSION), `sessionItemType` (VIDEO/AUDIO/PDF),
+  `corporateRequestStatus` (NEW/CONTACTED/SCHEDULED/COMPLETED/CANCELLED).
   `sessionItems.sessionId` references `books.id` (sessions live in the
   `books` table with `productType='SESSION'`); the application enforces the
   productType invariant — the FK does not.
-- Migrations in `lib/db/migrations/`. **Six** migrations exist:
+  `corporateRequests.programId` references `corporatePrograms.id` with
+  `ON DELETE SET NULL` so deleting a program preserves the request history
+  but clears the FK.
+- Migrations in `lib/db/migrations/`. **Seven** migrations exist:
   `0000_blue_adam_warlock.sql`, `0001_remarkable_toad_men.sql`,
   `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last in that
   group adds the `value_json` jsonb column on `site_settings` for the
   structured-settings blob), `0004_overjoyed_red_wolf.sql` (Phase 1 —
   adds `session_item_type` enum + the four content-delivery tables with
   their FKs and indexes; fully additive, no ALTER on existing tables),
-  and `0005_dizzy_luckman.sql` (Phase 2 — adds `total_pages integer NOT
+  `0005_dizzy_luckman.sql` (Phase 2 — adds `total_pages integer NOT
   NULL DEFAULT 0` to `reading_progress` so the library card can render
-  a real progress percentage; additive only). Apply with
-  `npm run db:migrate`.
+  a real progress percentage; additive only), and
+  `0006_corporate_programs.sql` (Phase 3 — adds `corporate_request_status`
+  enum and the three corporate tables `corporate_programs`,
+  `corporate_clients`, `corporate_requests` with their FK + indexes;
+  fully additive). Apply with `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point. It
   uses Drizzle when `DATABASE_URL` is set to a real Neon URL, and falls back
   to `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
@@ -178,6 +189,36 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
   not-yet-applied migration 0004 silently degrades to "no bookmarks"
   rather than crashing the reader. UX treats one bookmark per page as
   a toggle; the schema permits multiple.
+- **Session-content CRUD (Phase 4 — admin)**: `getSessionItemById(id, sessionId?)`
+  (the optional second arg adds a cross-session guard for admin
+  mutations), `getSessionItemsBySessionId(sessionId)`,
+  `createSessionItem({ sessionId, itemType, title, description?, storageKey, durationSeconds?, sortOrder? })`
+  (auto-places at end when sortOrder is omitted),
+  `updateSessionItem(itemId, sessionId, patch)`,
+  `deleteSessionItem(itemId, sessionId)`,
+  `reorderSessionItems(sessionId, orderedItemIds[])` in `lib/db/queries.ts`,
+  fronted by the four server actions in
+  `app/[locale]/(admin)/admin/books/[id]/content/actions.ts`. Same
+  MOCK_AUTH_ENABLED-first → HAS_DB-second pattern as reading progress;
+  the mock store extends `lib/db/mock-store.ts` with a `sessionItems`
+  Map keyed by sessionId and serialised alongside progress + bookmarks
+  in `.next/cache/reader-mock-store.json`.
+- **Media progress (Phase 4 — customer session viewer)**:
+  `getMediaProgress(userId, sessionItemId)`,
+  `saveMediaProgress(userId, sessionItemId, lastPositionSeconds,
+  completed?)`, and
+  `getAllMediaProgressForSession(userId, sessionId)` in
+  `lib/db/queries.ts`. The third helper joins through `session_items`
+  so the viewer can fetch every item's progress in a single round trip
+  (used to mark completion + render in-progress percentages on the
+  playlist + pick the resume item). Same MOCK_AUTH_ENABLED-first →
+  HAS_DB-second pattern; mock store keyed by `${userId}:${itemId}`,
+  serialised in `.next/cache/reader-mock-store.json`. Sticky-completion
+  invariant: `saveMediaProgress` with `completed=false` will NEVER
+  clear a previously-set `completedAt` — both the mock branch and the
+  Drizzle branch (`onConflictDoUpdate` with `coalesce`) preserve the
+  existing value. A user re-watching a finished item shouldn't toggle
+  the playlist badge back to "in progress."
 
 ### Site settings (structured)
 
@@ -195,9 +236,11 @@ Stored as a single JSON blob in `site_settings.value_json` under the
   `requireAdmin(req)` and per-admin rate-limited.
 - Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
 
-Toggle groups: `homepage`, `navigation`, `footer`, `hero_ctas`, `featured`,
+Toggle groups: `homepage`, `navigation` (now includes `show_nav_corporate`),
+`footer`, `hero_ctas`, `featured`,
 `features` (auth_enabled, newsletter_form_enabled, maintenance_mode),
-`maintenance` (message + until date), `coming_soon_pages`.
+`maintenance` (message + until date), `coming_soon_pages` (now includes
+`'corporate'`).
 
 **Coming Soon ≠ Hide.** Two independent concerns:
 - A page in `coming_soon_pages` renders the `ComingSoon` placeholder instead
@@ -268,7 +311,7 @@ Toggle groups: `homepage`, `navigation`, `footer`, `hero_ctas`, `featured`,
   `useIsTouchDevice`, `useScrollReveal`, `useScrollVelocity`,
   `useScrollProgress`.
 - Motion components in `components/motion/`: `AnimatedText`, `CountUp`,
-  `CustomCursor`, `FocusModeToggle`, `PageTransition`, `ProximityPrefetch`,
+  `FocusModeToggle`, `PageTransition`, `ProximityPrefetch`,
   `PullQuote`, `ReadingProgress`, `ScrollReveal`, `ScrollRevealLine`,
   `SectionBackgroundCrossfade`, `Tilt3D`, `ViewTransitionsRouter`.
 - `ViewTransitionsRouter` is a global capture-phase anchor-click interceptor
@@ -465,6 +508,10 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `/interviews` — listing
 - `/interviews/[slug]` — detail
 - `/events` — listing only (no detail page yet)
+- `/corporate` — corporate programs + trust strip + request form (the
+  in-page anchor `#request` is wired to per-card "Request this program"
+  CTAs, which dispatch a `kg:corporate:select-program` event so the form's
+  program select pre-populates without a route change)
 - `/contact`
 - `/checkout/success`
 
@@ -496,14 +543,77 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
   Unmount/tab-close flush → `fetch('/api/reader/progress', { keepalive: true })`
   (the keepalive flag is what survives tab-close; server actions can't
   be invoked with it).
-- `/dashboard/library/session/[sessionId]` — Phase-1 placeholder; session
-  viewer lands in Phase 4. Same server-side ownership gate.
+- `/dashboard/library/session/[sessionId]` — **Phase 4** customer-facing
+  session viewer. Server-verifies ownership via `userOwnsProduct`; on
+  miss redirects to `/dashboard/library` rather than 404 to avoid
+  leaking catalog membership. Wraps the page in `DashboardLayout` (the
+  reader is full-bleed by contrast; the session viewer keeps the
+  dashboard chrome because the playlist + surrounding navigation feel
+  natural alongside it). Empty `session_items` list renders
+  `SessionEmptyState` ("This session is being prepared") instead of
+  crashing or 404ing — the user owns the product; admin just hasn't
+  populated content yet.
+  **Layout** (in `components/library/session/SessionViewer.tsx`): mobile
+  stacks media → header → playlist; lg+ (1024px) goes two-column with
+  the playlist sticky in the trailing column (RTL trailing edge).
+  **Initial item selection** (server-side): most-recently-watched
+  non-completed item → first not-yet-started item by sortOrder → first
+  item (replay UX when everything's completed). Computed in
+  `pickInitialItemId` on the page server component.
+  **Media area** picks the player by item type:
+    - VIDEO → `VideoPlayer` (provider-agnostic wrapper) →
+      `YouTubeEmbedPlayer` (today's only adapter; see "Video adapter
+      abstraction" below). Embed URL minted at component mount via
+      `videoProvider.getEmbedConfig({ storageKey }, { origin, startSeconds })`
+      with origin from `window.location.origin` (NOT from
+      `NEXT_PUBLIC_APP_URL` — env-driven origin breaks dev's
+      postMessage origin check). YouTube IFrame API loaded via a
+      module-scoped singleton-Promise so concurrent mounts don't race
+      `window.onYouTubeIframeAPIReady`.
+    - AUDIO → `AudioPlayer` (HTML5 `<audio>` engine + custom Qalem
+      controls; play/pause, scrub, volume + mute, playback speed
+      1×/1.25×/1.5×/2× for educational content). Source URL is
+      minted on demand via `POST /api/content/access`
+      (`{ productType: 'SESSION_ITEM', productId }`), cached in a
+      ref keyed by sessionItemId until ~5min before expiry.
+    - PDF → `PdfInline` (browser-native iframe, NOT the Phase 2 react-pdf
+      reader). Same on-demand `/api/content/access` URL fetch as audio.
+      Why native iframe: react-pdf's pdfjs-dist machinery (worker,
+      cMaps, fonts, ssr:false wrapper) is overkill for short workshop
+      handouts; the browser's built-in PDF viewer renders them fine
+      with native zoom/print/download. The "no iframe in
+      SessionViewer" rule is specifically about VIDEO providers (which
+      MUST go through the swappable VideoPlayer wrapper) — PDFs have
+      no swappable-provider concern. Trivial to swap to the premium
+      reader later by replacing one component.
+  **Progress save flow** (mirrors Phase 2 reader's two-path pattern):
+  in-page debounced save (1.5s) via the
+  `saveSessionItemProgressAction` server action; unmount/tab-close
+  flush via `fetch('/api/session/progress', { keepalive: true })`.
+  Server actions can't be invoked with `keepalive`, so the API route
+  twin is required. `handleComplete` bypasses the debounce — completion
+  is rare and the playlist's check-mark feedback should be immediate.
+  **Item switch** flushes the outgoing item's progress (fire-and-forget
+  via the action) before swapping, so a half-watched item that the
+  user navigated away from is durable. Replays of completed items
+  start at position 0, not the saved last-position (which would pin
+  the player at the very end).
+  **Completion** is dual-signal: YouTube `PlayerState.ENDED` OR
+  position/duration ≥ 0.95, whichever fires first. A ref guards the
+  second fire so the server save isn't sent twice.
+  Mock-mode (`MOCK_AUTH_ENABLED=true`) persists media progress to
+  `.next/cache/reader-mock-store.json` via `lib/db/mock-store.ts` — the
+  same file already used by reading_progress + bookmarks +
+  sessionItems. Keyed by `${userId}:${sessionItemId}`. Mock-mode
+  AUDIO/PDF will surface error states because
+  `/placeholder-content/<key>` 404s — by design; matches every other
+  Phase-1 signed-URL flow.
 - `/dashboard/settings`
 
 ### Admin (`app/[locale]/(admin)/`)
 - `/admin` — overview with charts (Recharts)
 - `/admin/articles` · `/admin/articles/new` · `/admin/articles/[id]/edit`
-- `/admin/books` · `/admin/books/new` · `/admin/books/[id]/edit`
+- `/admin/books` · `/admin/books/new` · `/admin/books/[id]/edit` · `/admin/books/[id]/content` (SESSION rows only — manages `session_items` for paid sessions: add/edit/reorder/delete videos, audios, PDFs. The "Manage content" link in `BooksTable` is gated on `productType === 'SESSION'`. Server actions in `app/[locale]/(admin)/admin/books/[id]/content/actions.ts` — `createSessionItemAction`, `updateSessionItemAction`, `deleteSessionItemAction`, `reorderSessionItemsAction`. Each action does its own admin role check inline (server actions can't call `requireAdmin(req)` without a Request); CSRF is covered by Next's encrypted action ids. Mutations call `revalidatePath` on the editor and edit routes. The parent's productType=SESSION invariant is enforced at the action layer via `getBookById`. Storage keys are free-text in this phase — the storage adapter is mocked.)
 - `/admin/interviews` · `/admin/interviews/new` · `/admin/interviews/[id]/edit`
 - `/admin/events` · `/admin/events/new` · `/admin/events/[id]/edit`
 - `/admin/gallery` · `/admin/gallery/new` (no edit page yet — gallery edits inline)
@@ -517,6 +627,10 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
   hero CTAs, featured items, features, maintenance, coming-soon pages)
 - `/admin/content` (content-blocks editor)
 - `/admin/media` (media library)
+- `/admin/corporate` (overview — counts + jump links)
+- `/admin/corporate/programs` · `/admin/corporate/programs/new` · `/admin/corporate/programs/[id]/edit`
+- `/admin/corporate/clients` · `/admin/corporate/clients/new` · `/admin/corporate/clients/[id]/edit`
+- `/admin/corporate/requests` · `/admin/corporate/requests/[id]` (status + admin-notes update)
 
 ### Special / framework files
 - `app/[locale]/layout.tsx` — locale root, fonts, providers, Toaster, JSON-LD,
@@ -532,6 +646,13 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 ### API (`app/api/`)
 - `auth/[...all]` — Better Auth catch-all.
 - `contact` — POST, zod-validated, IP rate-limited.
+- `corporate/request` — POST, zod-validated (`corporateRequestSchema`),
+  IP rate-limited (`corporate-request:<ip>`). On success, persists to
+  `corporate_requests` and best-effort-sends an internal notification email
+  via `lib/email/templates/corporate-request.ts` (target inbox: env
+  `CORPORATE_INBOX_EMAIL` → fallback `Team@drkhaledghattass.com`). Email
+  failures are swallowed — the user-facing flow never 500s because Resend
+  is unconfigured.
 - `newsletter` — POST, zod-validated, IP rate-limited.
 - `revalidate` — bearer-token-protected (`REVALIDATE_TOKEN`).
 - `checkout` — POST. Requires session (returns 401 otherwise). Creates a
@@ -553,13 +674,26 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
   (`reader-progress:<userId>`). `force-dynamic`. Idempotent — `saveReadingProgress`
   uses `onConflictDoUpdate`, so duplicate writes from racing in-flight
   saves and unmount flushes are safe.
+- `session/progress` — POST. Authenticated, origin-checked,
+  ownership-gated, cross-session-item-guarded (`getSessionItemById(itemId,
+  sessionId)` rejects when itemId belongs to a different session).
+  Mirrors `saveSessionItemProgressAction` so the session viewer can flush
+  its last play position on unmount/tab-close via
+  `fetch(..., { keepalive: true })`. Same rate-limit pattern as
+  reader/progress (`session-progress:<userId>`). `force-dynamic`.
+  Idempotent via `onConflictDoUpdate` on
+  `media_progress_user_item_idx`. Sticky completion — once
+  `completedAt` is set, subsequent saves with `completed=false` do NOT
+  clear it (replay shouldn't unwind the badge).
 - `user/profile` — PATCH, DELETE (account self-edit / self-delete).
 - `user/preferences` — PATCH.
 - `admin/articles[/id]`, `admin/books[/id]`, `admin/interviews[/id]`,
   `admin/events[/id]`, `admin/gallery[/id]`, `admin/orders/[id]`,
   `admin/users/[id]`, `admin/settings`, `admin/site-settings` (structured),
-  `admin/content-blocks[/key]`, `admin/revalidate` — all gated by
-  `requireAdmin(req)` (origin + role).
+  `admin/content-blocks[/key]`, `admin/revalidate`,
+  `admin/corporate/programs[/id]`, `admin/corporate/clients[/id]`,
+  `admin/corporate/requests/[id]` (PATCH for status/adminNotes, DELETE) —
+  all gated by `requireAdmin(req)` (origin + role).
 
 ## API conventions
 
@@ -660,7 +794,18 @@ so explicitly rather than implying success.
 
 ### File organization
 - `app/` — routes (Next.js App Router).
-- `components/admin/` — admin-only components (incl. `SiteSettingsForm`).
+- `components/admin/` — admin-only components (incl. `SiteSettingsForm`,
+  `CorporateProgramForm`, `CorporateProgramsTable`, `CorporateClientForm`,
+  `CorporateClientsTable`, `CorporateRequestsTable`,
+  `CorporateRequestStatusForm`, `SessionContentEditor`,
+  `SessionContentItemDialog`). The shared `StatusBadge` was extended
+  with `NEW`/`CONTACTED`/`SCHEDULED`/`COMPLETED` (corporate request
+  lifecycle) and the `status.*` translations were extended in lockstep.
+  `StatusBadge` also accepts optional `tone` (`neutral` | `accent` |
+  `positive` | `warning` | `negative` | `info`) and `label` overrides
+  so non-status enums (e.g. session-item types — VIDEO=info,
+  AUDIO=warning, PDF=positive) can render in the same chip without
+  ad-hoc CSS clones.
 - `components/dashboard/` — dashboard-only components.
 - `components/auth/` — `LoginForm`, `SignupForm`, `ForgotPasswordForm`,
   `ResetPasswordForm`, `AuthAside`, `AuthRequiredDialog`.
@@ -671,12 +816,31 @@ so explicitly rather than implying success.
   hamburger in `SiteHeader` opens `MobileMenu` directly on mobile.
 - `components/sections/` — homepage and listing-page sections, plus
   `BookBuyButton` (purchase trigger; gated on session via `useSession`).
-- `components/dashboard/` — dashboard-only components, including the Phase-1
-  `ContentPlaceholder` ("PDF reader / session viewer coming soon" stub —
-  still used for the session viewer until Phase 4) and the Phase-1
-  download flow added to `LibraryCard.tsx` (button → fetch
-  `/api/content/access` → programmatic `<a download>` click → `sonner` toast
-  on error).
+- `components/corporate/` — the public `/corporate` page sections:
+  `CorporateClientStrip` (trust-strip logos), `CorporateProgramsGrid`
+  (4-card alternating dark/light grid), `CorporateRequestForm` (zod-
+  validated form, dispatches/listens to `kg:corporate:select-program`
+  CustomEvent for per-card prefill).
+- `components/dashboard/` — dashboard-only components, including the legacy
+  Phase-1 `ContentPlaceholder` (no longer mounted — Phase 2 replaced the
+  read placeholder, Phase 4 replaced the session placeholder; keeping
+  the file around as a small empty-state primitive for future "owned
+  but not ready" shells) and the Phase-1 download flow added to
+  `LibraryCard.tsx` (button → fetch `/api/content/access` →
+  programmatic `<a download>` click → `sonner` toast on error).
+- `components/library/session/` — **Phase 4** customer session viewer:
+  `SessionViewer` (orchestrator — layout, state, signed-URL cache,
+  progress save flow), `SessionPlaylist` (item rows with type chip,
+  duration, progress bar, "now playing" + "completed" indicators),
+  `SessionEmptyState` (no-items-yet shell), `VideoPlayer` (provider-
+  agnostic wrapper that consults `videoProvider` from `lib/video/`),
+  `YouTubeEmbedPlayer` (the only file on the site that touches the
+  YouTube IFrame Player API — module-scoped singleton-Promise loader
+  shared across mounts), `AudioPlayer` (HTML5 `<audio>` engine + Qalem
+  custom controls including 1×/1.25×/1.5×/2× playback speed), and
+  `PdfInline` (browser-native iframe for short workshop PDFs — see
+  `/dashboard/library/session/[sessionId]` notes for why this is NOT
+  the Phase 2 react-pdf reader).
 - `components/library/` — Phase-2 premium reader. `PdfReader.tsx` is the
   orchestrator component mounted (via `next/dynamic` from
   `PdfReaderClient.tsx`) by `/dashboard/library/read/[bookId]`. It owns
@@ -735,6 +899,31 @@ so explicitly rather than implying success.
   `mock-adapter.ts` is the dev placeholder; the real adapter (Netlify Blobs,
   R2, Cloudflare Stream — TBD per Dr. Khaled's storage decision) drops in
   by editing the single import in `lib/storage/index.ts`. Nothing else moves.
+- `lib/video/` — **Phase-4 video provider abstraction** (mirrors the
+  storage abstraction). `index.ts` exports a single `videoProvider:
+  VideoAdapter` that the session viewer's `VideoPlayer` wrapper calls
+  via `videoProvider.getEmbedConfig({ storageKey }, { origin,
+  startSeconds })`. `youtube-adapter.ts` is today's default — free dev
+  hosting, accepts video-id/watch-URL/short-URL/embed-URL formats in
+  `storageKey`, normalizes to a `youtube-nocookie.com` embed URL with
+  `rel=0 modestbranding=1 playsinline=1 enablejsapi=1 origin=…` query
+  params. YouTube branding (logo watermark, "More videos" panel on
+  pause) cannot be fully removed — that's an inherent constraint
+  acceptable for dev. Production will swap to a cleaner provider
+  (Cloudflare Stream / Vimeo / Mux — pending Dr. Khaled's decision)
+  by: (1) adding a sibling adapter file implementing `VideoAdapter`,
+  (2) adding a sibling player component under
+  `components/library/session/<Provider>Player.tsx` that knows the
+  provider's runtime API, (3) extending `VideoPlayer.tsx`'s switch on
+  `providerName`, (4) replacing the import in `lib/video/index.ts`. No
+  other files change. The session viewer's UI stays put.
+  The YouTube IFrame Player API is loaded ONLY inside
+  `components/library/session/YouTubeEmbedPlayer.tsx` via a module-
+  scoped singleton-Promise — concurrent player mounts share the same
+  load instead of racing `window.onYouTubeIframeAPIReady`. That file
+  is the only place on the site that touches `window.YT` /
+  `iframe_api`; any future provider's runtime code stays inside its
+  own sibling component.
 - `lib/email/` — Resend wrapper. `index.ts` exports `getResend()` (returns
   `null` and warns once when `RESEND_API_KEY` is missing — never throws at
   module load). `send.ts` is the canonical send wrapper used by templates;
@@ -746,7 +935,20 @@ so explicitly rather than implying success.
   download / placeholder copy. Phase 2 adds the top-level `reader.*`
   namespace (loading, error, controls, resume, unavailable) consumed by
   `components/library/PdfReader.tsx` and the read-page server component.
-  Both files maintain identical key paths (currently 821 keys each).
+  Phase 3 adds the top-level `corporate.*` namespace (meta, page, trust,
+  programs, request, form) and the `admin.corporate*`,
+  `admin.corporate_program_form`, `admin.corporate_client_form`,
+  `admin.corporate_requests` admin namespaces — plus
+  `nav.corporate`, four new `status.*` keys (`new`, `contacted`,
+  `scheduled`, `completed`), and the
+  `coming_soon.{heading|body|folio}_corporate` triple. Phase 4 adds the
+  `admin.session_content.*` namespace consumed by `SessionContentEditor`
+  and `SessionContentItemDialog` (page chrome, item-type labels, dialog
+  copy, error codes), plus the top-level `session.*` namespace consumed
+  by the customer-facing session viewer (`empty`, `now_playing`,
+  `playlist.*`, `type.*`, `video.*`, `audio.*`, `pdf.*`, `continue.*`,
+  `completed.*`, `back_to_library`). Both files maintain identical key
+  paths — current count: 1124/1124.
 - `public/` — static assets. `public/placeholder-content/` is the Phase-1
   mock storage sandbox (gitignored content; tracked README). Phase 2 adds
   `public/pdf.worker.min.mjs`, `public/cmaps/`, and `public/standard_fonts/`
@@ -808,6 +1010,13 @@ Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED` is dev-on
 - **Interviews**: all 8 are placeholders. `videoUrl` is empty; detail pages
   show a "Video coming soon" overlay until real URLs arrive.
 - **Gallery**: deleted from the public site; admin CRUD remains.
+- **Corporate programs**: 4 real programs (text sourced from the existing
+  drkhaledghattass.com/cooperate page) + 7 real client logos referenced by
+  name (Canadian University Dubai, Department of Energy Abu Dhabi, Al
+  Muhaidib, PepsiCo, Zain, Tamer Group, Department of Community
+  Development). Logo image files are NOT yet in `public/clients/` — the
+  `CorporateClientStrip` falls back to text when the image fails to load.
+  Real PNGs need to be dropped into `public/clients/` before launch.
 
 Real assets in `public/`:
 - `dr khaled photo.jpeg` — hero portrait
@@ -829,6 +1038,10 @@ Pending real content (track in `CONTENT-NEEDED.md`):
 - Real `public/favicon.ico` (multi-resolution)
 - Book PDFs (or `externalUrl` for store-fulfilled titles)
 - Confirmation: native Stripe checkout vs external WP shop integration
+- Real client-logo PNGs at `public/clients/{canadian-university-dubai,
+  department-of-energy-abu-dhabi, al-muhaidib, pepsico, zain, tamer,
+  department-of-community-development}.png` for the `/corporate` trust
+  strip
 
 ## Environment variables
 
@@ -849,6 +1062,7 @@ Optional / feature-gated:
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 6 |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limiting |
 | `RESEND_API_KEY` | Transactional email |
+| `CORPORATE_INBOX_EMAIL` | Inbox that receives `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. |
 | `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
 | `GOOGLE_SITE_VERIFICATION` | Search Console |
 
@@ -904,7 +1118,7 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
 ## Reference
 
 - Design tokens: `app/globals.css` (`@theme inline { ... }` block).
-- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0004`.
+- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0006`.
 - Unified queries: `lib/db/queries.ts`.
 - Site settings: `lib/site-settings/{types,defaults,zod,get}.ts`.
 - Auth: `lib/auth/{index,server,client,admin-guard,mock,redirect}.ts`.
@@ -913,9 +1127,32 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
   `mockAdapter` is wired today; the real adapter is pending Dr. Khaled's
   storage-provider decision. Swap by editing the single import in
   `lib/storage/index.ts`.
+- Video provider abstraction: `lib/video/{index,types,youtube-adapter}.ts`
+  — `youtubeAdapter` is wired today as the dev default; production will
+  swap to a cleaner provider (Cloudflare Stream / Vimeo / Mux pending Dr.
+  Khaled's decision) by adding a sibling adapter + sibling player
+  component and editing the single import in `lib/video/index.ts`. The
+  YouTube IFrame Player API is touched ONLY inside
+  `components/library/session/YouTubeEmbedPlayer.tsx` (singleton-Promise
+  loader). See "Video adapter abstraction" notes near the storage
+  abstraction in this file.
 - Email: `lib/email/{index,send}.ts` (lazy Resend; never throws at module
   load) and `lib/email/templates/post-purchase.ts` (bilingual order email).
-- Validators: `lib/validators/*`.
+- Session-content admin: `app/[locale]/(admin)/admin/books/[id]/content/{page.tsx,actions.ts}`,
+  `components/admin/{SessionContentEditor,SessionContentItemDialog}.tsx`,
+  query helpers in `lib/db/queries.ts` (`getSessionItemsBySessionId`,
+  `createSessionItem`, `updateSessionItem`, `deleteSessionItem`,
+  `reorderSessionItems`).
+- Customer session viewer (Phase 4):
+  `app/[locale]/(dashboard)/dashboard/library/session/[sessionId]/{page.tsx,actions.ts}`,
+  `components/library/session/{SessionViewer,SessionPlaylist,SessionEmptyState,VideoPlayer,YouTubeEmbedPlayer,AudioPlayer,PdfInline}.tsx`,
+  keepalive twin route `app/api/session/progress/route.ts`,
+  query helpers in `lib/db/queries.ts` (`getMediaProgress`,
+  `saveMediaProgress`, `getAllMediaProgressForSession`).
+- Validators: `lib/validators/*` (incl. `corporate.ts` exporting
+  `corporateProgramSchema`, `corporateClientSchema`,
+  `corporateRequestSchema`, `corporateRequestUpdateSchema`, and the
+  `CORPORATE_REQUEST_STATUSES` tuple).
 - Agents: `.claude/agents/` (eight project-scoped agents — see Agent team).
 - Pending content: `CONTENT-NEEDED.md`.
 - Launch checklist: `LAUNCH-CHECKLIST.md`.

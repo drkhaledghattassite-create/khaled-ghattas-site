@@ -232,6 +232,11 @@ export function SiteSettingsForm({
             onCheckedChange={(v) => update('navigation', { show_nav_contact: v })}
           />
           <ToggleRow
+            label={t('navigation.show_nav_corporate')}
+            checked={settings.navigation.show_nav_corporate}
+            onCheckedChange={(v) => update('navigation', { show_nav_corporate: v })}
+          />
+          <ToggleRow
             label={t('navigation.show_locale_switcher')}
             checked={settings.navigation.show_locale_switcher}
             onCheckedChange={(v) => update('navigation', { show_locale_switcher: v })}

@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useTranslations } from 'next-intl'
 import { EASE_EDITORIAL } from '@/lib/motion/variants'
 import { useReducedMotion } from '@/lib/motion/hooks'
-import type { ReaderTheme } from '../hooks/useReaderTheme'
 import type { PdfBookmark } from '@/lib/db/queries'
 import { BookmarksList } from './BookmarksList'
+import { DownloadDialog } from './DownloadDialog'
 
 /**
  * Mobile settings bottom sheet — slides up from the bottom of the screen.
@@ -21,32 +21,37 @@ import { BookmarksList } from './BookmarksList'
 export function ReaderSettingsSheet({
   open,
   onClose,
-  theme,
-  onThemeChange,
   currentPage,
   totalPages,
   onGoToPage,
   bookmarks,
   onBookmarksJump,
   onBookmarksUpdateLabel,
+  onDownloadCurrentPage,
+  onDownloadBookmarkPage,
+  onDownloadPages,
+  isDownloading,
   isRtl,
 }: {
   open: boolean
   onClose: () => void
-  theme: ReaderTheme
-  onThemeChange: (next: ReaderTheme) => void
   currentPage: number
   totalPages: number | null
   onGoToPage: (page: number) => void
   bookmarks: PdfBookmark[]
   onBookmarksJump: (page: number) => void
   onBookmarksUpdateLabel: (bookmarkId: string, label: string | null) => void
+  onDownloadCurrentPage?: () => Promise<void>
+  onDownloadBookmarkPage?: (page: number) => Promise<void>
+  onDownloadPages?: (pages: number[]) => Promise<void>
+  isDownloading?: boolean
   isRtl: boolean
 }) {
   const t = useTranslations('reader')
   const reduceMotion = useReducedMotion()
   const [tab, setTab] = useState<'settings' | 'bookmarks'>('settings')
   const [pageInput, setPageInput] = useState(String(currentPage))
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -164,27 +169,6 @@ export function ReaderSettingsSheet({
             <div className="overflow-y-auto px-5 pb-6">
               {tab === 'settings' ? (
                 <div className="flex flex-col gap-6 pt-2">
-                  {/* Theme picker */}
-                  <section>
-                    <h3
-                      className={`mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--reader-fg-faint)] ${fontBody}`}
-                    >
-                      {t('settings.theme_label')}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['light', 'sepia', 'dark'] as const).map((opt) => (
-                        <ThemeSwatch
-                          key={opt}
-                          value={opt}
-                          active={theme === opt}
-                          label={t(`theme.${opt}`)}
-                          onClick={() => onThemeChange(opt)}
-                          fontBody={fontBody}
-                        />
-                      ))}
-                    </div>
-                  </section>
-
                   {/* Reading info */}
                   <section>
                     <h3
@@ -257,6 +241,66 @@ export function ReaderSettingsSheet({
                     </form>
                   </section>
 
+                  {/* Download */}
+                  {(onDownloadCurrentPage || onDownloadPages) && (
+                    <section>
+                      <h3
+                        className={`mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--reader-fg-faint)] ${fontBody}`}
+                      >
+                        {t('download.input_label')}
+                      </h3>
+                      <div className="flex gap-2">
+                        {onDownloadCurrentPage && (
+                          <button
+                            type="button"
+                            onClick={() => { void onDownloadCurrentPage() }}
+                            disabled={isDownloading}
+                            className={`flex items-center gap-1.5 rounded-full border border-[var(--reader-border)] px-3 py-1.5 text-[13px] font-semibold text-[var(--reader-fg)] transition-opacity disabled:opacity-50 ${fontBody}`}
+                          >
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                            >
+                              <path d="M10 3v10M6 9l4 4 4-4M4 17h12" />
+                            </svg>
+                            {t('download.current_page_aria')}
+                          </button>
+                        )}
+                        {onDownloadPages && (
+                          <button
+                            type="button"
+                            onClick={() => setDownloadDialogOpen(true)}
+                            disabled={isDownloading}
+                            className={`flex items-center gap-1.5 rounded-full border border-[var(--reader-border)] px-3 py-1.5 text-[13px] font-semibold text-[var(--reader-fg)] transition-opacity disabled:opacity-50 ${fontBody}`}
+                          >
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 20 20"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                            >
+                              <path d="M7 2h9v14H7zM4 5H5M4 8H5M4 11H5" />
+                              <path d="M11 6v6M8.5 9.5l2.5 2.5 2.5-2.5" />
+                            </svg>
+                            {t('download.multi_page_aria')}
+                          </button>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
                   {/* Switch to bookmarks tab — also reachable via the tab buttons */}
                   <button
                     type="button"
@@ -275,6 +319,7 @@ export function ReaderSettingsSheet({
                       onClose()
                     }}
                     onUpdateLabel={onBookmarksUpdateLabel}
+                    onDownload={onDownloadBookmarkPage}
                     isRtl={isRtl}
                   />
                 </div>
@@ -283,71 +328,19 @@ export function ReaderSettingsSheet({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
-  )
-}
 
-function ThemeSwatch({
-  value,
-  active,
-  label,
-  onClick,
-  fontBody,
-}: {
-  value: 'light' | 'sepia' | 'dark'
-  active: boolean
-  label: string
-  onClick: () => void
-  fontBody: string
-}) {
-  // Inline tints — these MUST match the values added to globals.css under
-  // [data-reader-theme="..."] selectors. Keeping them locally as static
-  // CSS would require new global classes; inline keeps the swatch source
-  // of truth in one component.
-  const bg =
-    value === 'light'
-      ? '#FFFFFF'
-      : value === 'sepia'
-      ? 'hsl(40, 38%, 94%)'
-      : '#171717'
-  const fg =
-    value === 'light'
-      ? '#0A0A0A'
-      : value === 'sepia'
-      ? 'hsl(30, 30%, 18%)'
-      : '#FAFAFA'
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`group flex flex-col items-stretch gap-1 rounded-[var(--radius-md)] border-2 p-2 transition-all ${
-        active
-          ? 'border-[var(--reader-accent)] [box-shadow:var(--shadow-card)]'
-          : 'border-[var(--reader-border)]'
-      }`}
-    >
-      <div
-        className="flex h-12 items-end justify-end rounded-sm border border-[var(--reader-border)] p-1.5"
-        style={{ background: bg }}
-      >
-        <span
-          className="block text-[10px] font-bold leading-none"
-          style={{ color: fg }}
-        >
-          Aa
-        </span>
-      </div>
-      <span
-        className={`text-[12px] font-semibold ${
-          active
-            ? 'text-[var(--reader-accent)]'
-            : 'text-[var(--reader-fg-muted)]'
-        } ${fontBody}`}
-      >
-        {label}
-      </span>
-    </button>
+      {onDownloadPages && (
+        <DownloadDialog
+          open={downloadDialogOpen}
+          onClose={() => setDownloadDialogOpen(false)}
+          onDownload={onDownloadPages}
+          isDownloading={isDownloading ?? false}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isRtl={isRtl}
+        />
+      )}
+    </AnimatePresence>
   )
 }
 

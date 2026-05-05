@@ -27,6 +27,8 @@ import {
   placeholderArticles,
   placeholderBooks,
   placeholderContentBlocks,
+  placeholderCorporateClients,
+  placeholderCorporatePrograms,
   placeholderEvents,
   placeholderGallery,
   placeholderInterviews,
@@ -179,6 +181,50 @@ async function main() {
           valueAr: cb.valueAr,
           valueEn: cb.valueEn,
           description: cb.description,
+          updatedAt: new Date(),
+        },
+      })
+  }
+
+  console.log('[seed] Inserting corporate programs…')
+  for (const p of placeholderCorporatePrograms) {
+    await db
+      .insert(schema.corporatePrograms)
+      .values({ ...p, id: undefined })
+      .onConflictDoUpdate({
+        target: schema.corporatePrograms.slug,
+        set: {
+          titleAr: p.titleAr,
+          titleEn: p.titleEn,
+          descriptionAr: p.descriptionAr,
+          descriptionEn: p.descriptionEn,
+          durationAr: p.durationAr,
+          durationEn: p.durationEn,
+          audienceAr: p.audienceAr,
+          audienceEn: p.audienceEn,
+          coverImage: p.coverImage,
+          status: p.status,
+          featured: p.featured,
+          orderIndex: p.orderIndex,
+          updatedAt: new Date(),
+        },
+      })
+  }
+
+  console.log('[seed] Inserting corporate clients…')
+  for (const c of placeholderCorporateClients) {
+    await db
+      .insert(schema.corporateClients)
+      .values(c)
+      .onConflictDoUpdate({
+        target: schema.corporateClients.id,
+        set: {
+          name: c.name,
+          nameAr: c.nameAr,
+          logoUrl: c.logoUrl,
+          websiteUrl: c.websiteUrl,
+          status: c.status,
+          orderIndex: c.orderIndex,
           updatedAt: new Date(),
         },
       })
