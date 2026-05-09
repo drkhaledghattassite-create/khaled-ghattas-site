@@ -57,6 +57,18 @@ function progressPercent(
   return Math.max(0, Math.min(100, Math.round((positionSeconds / durationSeconds) * 100)))
 }
 
+// Phase 6.1 — playlist aria-label keys split per item type so screen
+// readers get a localised "Video. Title. Item N of M." sentence.
+// Centralised here to keep the JSX call site readable.
+const PLAYLIST_ITEM_KEY: Record<
+  SessionItemType,
+  'playlist_item_video' | 'playlist_item_audio' | 'playlist_item_pdf'
+> = {
+  VIDEO: 'playlist_item_video',
+  AUDIO: 'playlist_item_audio',
+  PDF: 'playlist_item_pdf',
+}
+
 export function SessionPlaylist({
   items,
   activeItemId,
@@ -72,6 +84,7 @@ export function SessionPlaylist({
 }) {
   const t = useTranslations('session')
   const tType = useTranslations('session.type')
+  const tAria = useTranslations('session.aria')
   const isRtl = locale === 'ar'
   const reduceMotion = useReducedMotion()
   const fontDisplay = isRtl ? 'font-arabic-body' : 'font-display'
@@ -109,6 +122,29 @@ export function SessionPlaylist({
                 item.durationSeconds ?? null,
               )
           const inProgress = !completed && percent > 0
+          // Phase 6.1 aria-label enrichment.
+          // Format: "{type}. {title}. Item {n} of {total}.{suffix}"
+          //   completed → " Completed."
+          //   inProgress → " In progress at {time}."
+          //   else → "" (not started — no suffix)
+          // The visible chip badges already convey type/completion to
+          // sighted users; the enriched aria-label gives AT users the
+          // same context in one announcement instead of three.
+          const baseAria = tAria(PLAYLIST_ITEM_KEY[item.itemType], {
+            title: item.title,
+            position: index + 1,
+            total: items.length,
+          })
+          const stateAria = completed
+            ? tAria('playlist_item_completed')
+            : inProgress
+              ? tAria('playlist_item_in_progress', {
+                  time:
+                    formatDuration(itemProgress?.lastPositionSeconds ?? 0) ||
+                    '0:00',
+                })
+              : ''
+          const ariaLabel = `${baseAria}${stateAria}`
           const interactionLabel =
             item.itemType === 'PDF'
               ? t('playlist.click_to_open_pdf')
@@ -131,7 +167,7 @@ export function SessionPlaylist({
                 type="button"
                 onClick={() => onSelect(item.id)}
                 aria-current={isActive ? 'true' : undefined}
-                aria-label={`${item.title} — ${interactionLabel}`}
+                aria-label={`${ariaLabel} ${interactionLabel}`}
                 className={`group relative flex w-full items-start gap-3 rounded-[var(--radius-sm)] px-3 py-3 text-start transition-colors border-s-2 ${
                   isActive
                     ? 'bg-[var(--color-accent-soft)] border-s-[var(--color-accent)]'

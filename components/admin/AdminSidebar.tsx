@@ -8,12 +8,18 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  CalendarDays,
+  CreditCard,
   FileEdit,
   FileText,
+  HelpCircle,
+  Heart,
   Image as ImageIcon,
   Images,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
+  MapPin,
   Mail,
   MessageSquare,
   Package,
@@ -39,6 +45,11 @@ type NavItem = {
    *  whose sub-routes have their own sidebar entry (e.g. /admin/settings vs.
    *  /admin/settings/site). */
   exact?: boolean
+  /** Optional count badge rendered after the label. Used by the Questions
+   *  entry to surface the pending queue size at a glance. Falsy values
+   *  (0, null, undefined) hide the badge — we don't want a "0" chip
+   *  shouting on an empty queue. */
+  badgeCount?: number
 }
 
 type NavGroup = {
@@ -46,42 +57,81 @@ type NavGroup = {
   items: NavItem[]
 }
 
-const GROUPS: NavGroup[] = [
-  {
-    key: 'content',
-    items: [
-      { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
-      { href: '/admin/articles', key: 'articles', icon: FileText },
-      { href: '/admin/books', key: 'books', icon: BookOpen },
-      { href: '/admin/interviews', key: 'interviews', icon: Video },
-      { href: '/admin/gallery', key: 'gallery', icon: Images },
-      { href: '/admin/events', key: 'events', icon: Calendar },
-    ],
-  },
-  {
-    key: 'commerce',
-    items: [
-      { href: '/admin/orders', key: 'orders', icon: ShoppingCart },
-      { href: '/admin/products', key: 'products', icon: Package },
-    ],
-  },
-  {
-    key: 'audience',
-    items: [
-      { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
-      { href: '/admin/messages', key: 'messages', icon: MessageSquare },
-      { href: '/admin/users', key: 'users', icon: Users },
-    ],
-  },
-  {
-    key: 'corporate',
-    items: [
-      { href: '/admin/corporate/programs', key: 'corporate_programs', icon: Briefcase },
-      { href: '/admin/corporate/clients', key: 'corporate_clients', icon: Building2 },
-      { href: '/admin/corporate/requests', key: 'corporate_requests', icon: Send },
-    ],
-  },
-  {
+// The booking group is split out so it can be conditionally inserted based on
+// the show_admin_booking site-setting. Default visibility is true (see
+// lib/site-settings/defaults.ts) — the group ALWAYS renders unless an admin
+// has explicitly toggled it off.
+const BOOKING_GROUP: NavGroup = {
+  key: 'booking',
+  items: [
+    { href: '/admin/booking/tours', key: 'booking_tours', icon: MapPin },
+    { href: '/admin/booking/bookings', key: 'booking_bookings', icon: CalendarDays },
+    {
+      href: '/admin/booking/tour-suggestions',
+      key: 'booking_tour_suggestions',
+      icon: Lightbulb,
+    },
+    { href: '/admin/booking/interest', key: 'booking_interest', icon: Heart },
+    { href: '/admin/booking/orders', key: 'booking_orders', icon: CreditCard },
+  ],
+}
+
+function buildGroups(
+  showBooking: boolean,
+  showQuestions: boolean,
+  pendingQuestionCount: number,
+): NavGroup[] {
+  const audienceItems: NavItem[] = [
+    { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
+    { href: '/admin/messages', key: 'messages', icon: MessageSquare },
+    { href: '/admin/users', key: 'users', icon: Users },
+  ]
+  // Questions entry sits alongside Messages/Subscribers — it's another
+  // inbound channel from the audience. The badge surfaces the pending
+  // queue size; rendering is gated on the show_admin_questions setting.
+  if (showQuestions) {
+    audienceItems.push({
+      href: '/admin/questions',
+      key: 'questions',
+      icon: HelpCircle,
+      badgeCount: pendingQuestionCount,
+    })
+  }
+
+  const groups: NavGroup[] = [
+    {
+      key: 'content',
+      items: [
+        { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
+        { href: '/admin/articles', key: 'articles', icon: FileText },
+        { href: '/admin/books', key: 'books', icon: BookOpen },
+        { href: '/admin/interviews', key: 'interviews', icon: Video },
+        { href: '/admin/gallery', key: 'gallery', icon: Images },
+        { href: '/admin/events', key: 'events', icon: Calendar },
+      ],
+    },
+    {
+      key: 'commerce',
+      items: [
+        { href: '/admin/orders', key: 'orders', icon: ShoppingCart },
+        { href: '/admin/products', key: 'products', icon: Package },
+      ],
+    },
+    {
+      key: 'audience',
+      items: audienceItems,
+    },
+    {
+      key: 'corporate',
+      items: [
+        { href: '/admin/corporate/programs', key: 'corporate_programs', icon: Briefcase },
+        { href: '/admin/corporate/clients', key: 'corporate_clients', icon: Building2 },
+        { href: '/admin/corporate/requests', key: 'corporate_requests', icon: Send },
+      ],
+    },
+  ]
+  if (showBooking) groups.push(BOOKING_GROUP)
+  groups.push({
     key: 'site',
     items: [
       { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
@@ -89,21 +139,49 @@ const GROUPS: NavGroup[] = [
       { href: '/admin/content', key: 'content', icon: FileEdit },
       { href: '/admin/media', key: 'media', icon: ImageIcon },
     ],
-  },
-]
+  })
+  return groups
+}
 
 export function AdminSidebarContent({
   user,
   onNavigate,
+  showAdminBooking = true,
+  showAdminQuestions = true,
+  pendingQuestionCount = 0,
 }: {
   user: ServerSessionUser
   onNavigate?: () => void
+  /**
+   * Gates the Booking group's visibility. Sourced from the
+   * `admin.show_admin_booking` site-setting in the layout. Defaults to
+   * `true` for backward-compat with any caller that doesn't pass it
+   * (e.g., Storybook or a future test renderer).
+   */
+  showAdminBooking?: boolean
+  /**
+   * Phase B2 — gates the Questions entry in the audience group. Sourced
+   * from `admin.show_admin_questions`. Same back-compat default as
+   * showAdminBooking.
+   */
+  showAdminQuestions?: boolean
+  /**
+   * Phase B2 — number of PENDING user questions awaiting review. Drives
+   * the count badge on the Questions sidebar entry. 0 hides the badge.
+   * Sourced from getPendingQuestionCount() in the layout.
+   */
+  pendingQuestionCount?: number
 }) {
   const pathname = usePathname()
   const tNav = useTranslations('admin.nav')
   const tGroups = useTranslations('admin.groups')
   const tCommon = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
+  const groups = buildGroups(
+    showAdminBooking,
+    showAdminQuestions,
+    pendingQuestionCount,
+  )
 
   return (
     <>
@@ -130,7 +208,7 @@ export function AdminSidebarContent({
         data-lenis-prevent
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]"
       >
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.key} className="mb-5">
             <p className="px-2 pb-2 text-[10px] uppercase tracking-[0.12em] text-fg3 font-display font-semibold">
               {tGroups(group.key)}
@@ -157,9 +235,20 @@ export function AdminSidebarContent({
                     >
                       <Icon className="h-4 w-4 shrink-0" aria-hidden />
                       <span>{tNav(item.key)}</span>
-                      {active && (
+                      {/* Count badge first (e.g., pending questions); active
+                          dot only when the entry has no badge to show.
+                          Both can't be useful at once — the badge already
+                          implies meaningful state. */}
+                      {item.badgeCount && item.badgeCount > 0 ? (
+                        <span
+                          className="ms-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-display font-bold leading-none text-accent-fg [font-feature-settings:'tnum']"
+                          aria-label={`${item.badgeCount}`}
+                        >
+                          {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                        </span>
+                      ) : active ? (
                         <span aria-hidden className="ms-auto h-1.5 w-1.5 rounded-full bg-accent" />
-                      )}
+                      ) : null}
                     </Link>
                   </li>
                 )
@@ -193,10 +282,25 @@ export function AdminSidebarContent({
   )
 }
 
-export function AdminSidebar({ user }: { user: ServerSessionUser }) {
+export function AdminSidebar({
+  user,
+  showAdminBooking = true,
+  showAdminQuestions = true,
+  pendingQuestionCount = 0,
+}: {
+  user: ServerSessionUser
+  showAdminBooking?: boolean
+  showAdminQuestions?: boolean
+  pendingQuestionCount?: number
+}) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
-      <AdminSidebarContent user={user} />
+      <AdminSidebarContent
+        user={user}
+        showAdminBooking={showAdminBooking}
+        showAdminQuestions={showAdminQuestions}
+        pendingQuestionCount={pendingQuestionCount}
+      />
     </aside>
   )
 }

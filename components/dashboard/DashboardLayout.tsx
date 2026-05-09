@@ -5,12 +5,41 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link, usePathname } from '@/lib/i18n/navigation'
 import type { ServerSessionUser } from '@/lib/auth/server'
+import type { SiteSettings } from '@/lib/site-settings/types'
+
+type TabKey = 'account' | 'library' | 'bookings' | 'ask' | 'settings'
+
+// Maps each tab key to the site-settings flag that gates its visibility.
+// Adding a new tab? Add the flag to `SiteSettings.dashboard` first, then
+// extend this map and the TABS array below — no other call sites change.
+const TAB_VISIBILITY_KEY: Record<TabKey, keyof SiteSettings['dashboard']> = {
+  account: 'show_account_tab',
+  library: 'show_library_tab',
+  bookings: 'show_bookings_tab',
+  ask: 'show_ask_tab',
+  settings: 'show_settings_tab',
+}
 
 const TABS = [
-  { key: 'account', href: '/dashboard' },
-  { key: 'library', href: '/dashboard/library' },
-  { key: 'settings', href: '/dashboard/settings' },
+  { key: 'account' as const, href: '/dashboard' },
+  { key: 'library' as const, href: '/dashboard/library' },
+  { key: 'bookings' as const, href: '/dashboard/bookings' },
+  // 'ask' is positioned between bookings and settings — content-creation
+  // surface (creator-side) sits between consumption (bookings) and account
+  // chrome (settings).
+  { key: 'ask' as const, href: '/dashboard/ask' },
+  { key: 'settings' as const, href: '/dashboard/settings' },
 ] as const
+
+// Back-compat fallback when a caller forgets to pass dashboardSettings —
+// every tab visible. Should only fire from Storybook or pre-A3 callers.
+const ALL_TABS_VISIBLE: SiteSettings['dashboard'] = {
+  show_account_tab: true,
+  show_library_tab: true,
+  show_bookings_tab: true,
+  show_ask_tab: true,
+  show_settings_tab: true,
+}
 
 const initialOf = (name: string) =>
   name.trim().split(/\s+/)[0]?.charAt(0).toUpperCase() ?? 'U'
@@ -19,10 +48,19 @@ export function DashboardLayout({
   children,
   activeTab,
   user,
+  dashboardSettings = ALL_TABS_VISIBLE,
 }: {
   children: ReactNode
-  activeTab: 'account' | 'library' | 'settings'
+  activeTab: TabKey
   user: ServerSessionUser
+  /**
+   * Threaded from `getCachedSiteSettings().dashboard`. Each tab's visibility
+   * is gated by its corresponding `show_*_tab` flag. Hiding a tab DOES NOT
+   * block the route — deep links still resolve. Hiding the tab the user is
+   * currently ON is harmless (the layout still renders the page; the nav
+   * just shows the OTHER tabs).
+   */
+  dashboardSettings?: SiteSettings['dashboard']
 }) {
   const t = useTranslations('dashboard.tabs')
   const locale = useLocale()
@@ -76,7 +114,7 @@ export function DashboardLayout({
       <div className="sticky top-[52px] md:top-[60px] z-30 bg-[var(--color-bg)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none min-w-max">
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => dashboardSettings[TAB_VISIBILITY_KEY[tab.key]]).map((tab) => {
               const isActive =
                 tab.key === activeTab ||
                 tab.href === pathname ||

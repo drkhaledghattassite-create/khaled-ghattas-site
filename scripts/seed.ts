@@ -25,6 +25,7 @@ import { neon } from '@neondatabase/serverless'
 import * as schema from '../lib/db/schema'
 import {
   placeholderArticles,
+  placeholderBookings,
   placeholderBooks,
   placeholderContentBlocks,
   placeholderCorporateClients,
@@ -33,6 +34,7 @@ import {
   placeholderGallery,
   placeholderInterviews,
   placeholderSettings,
+  placeholderTours,
 } from '../lib/placeholder-data'
 
 const url = process.env.DATABASE_URL
@@ -226,6 +228,72 @@ async function main() {
           websiteUrl: c.websiteUrl,
           status: c.status,
           orderIndex: c.orderIndex,
+          updatedAt: new Date(),
+        },
+      })
+  }
+
+  // ── Booking domain — tours + bookings (Reconsider course + 8 sessions) ──
+  console.log('[seed] Inserting tours…')
+  for (const t of placeholderTours) {
+    await db
+      .insert(schema.tours)
+      .values({ ...t, id: undefined })
+      .onConflictDoUpdate({
+        target: schema.tours.slug,
+        set: {
+          titleAr: t.titleAr,
+          titleEn: t.titleEn,
+          cityAr: t.cityAr,
+          cityEn: t.cityEn,
+          countryAr: t.countryAr,
+          countryEn: t.countryEn,
+          regionAr: t.regionAr,
+          regionEn: t.regionEn,
+          date: t.date,
+          venueAr: t.venueAr,
+          venueEn: t.venueEn,
+          descriptionAr: t.descriptionAr,
+          descriptionEn: t.descriptionEn,
+          externalBookingUrl: t.externalBookingUrl,
+          coverImage: t.coverImage,
+          attendedCount: t.attendedCount,
+          isActive: t.isActive,
+          displayOrder: t.displayOrder,
+          updatedAt: new Date(),
+        },
+      })
+  }
+
+  console.log('[seed] Inserting bookings (Reconsider + online sessions)…')
+  for (const b of placeholderBookings) {
+    await db
+      .insert(schema.bookings)
+      .values({ ...b, id: undefined })
+      .onConflictDoUpdate({
+        target: schema.bookings.slug,
+        set: {
+          productType: b.productType,
+          titleAr: b.titleAr,
+          titleEn: b.titleEn,
+          descriptionAr: b.descriptionAr,
+          descriptionEn: b.descriptionEn,
+          coverImage: b.coverImage,
+          priceUsd: b.priceUsd,
+          currency: b.currency,
+          nextCohortDate: b.nextCohortDate,
+          cohortLabelAr: b.cohortLabelAr,
+          cohortLabelEn: b.cohortLabelEn,
+          durationMinutes: b.durationMinutes,
+          formatAr: b.formatAr,
+          formatEn: b.formatEn,
+          maxCapacity: b.maxCapacity,
+          // bookedCount intentionally NOT overwritten on conflict — preserves
+          // any production seat counts. Re-running seed locally is harmless;
+          // re-running on a deployed DB won't reset capacity counters.
+          bookingState: b.bookingState,
+          displayOrder: b.displayOrder,
+          isActive: b.isActive,
           updatedAt: new Date(),
         },
       })

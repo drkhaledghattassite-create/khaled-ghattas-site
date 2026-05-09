@@ -9,11 +9,15 @@
  * `placeholder-data.ts`.
  */
 
-import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { db } from '.'
 import {
   articles,
+  bookingInterest,
+  bookingOrders,
+  bookings,
+  bookingsPendingHolds,
   books,
   contactMessages,
   contentBlocks,
@@ -31,10 +35,18 @@ import {
   sessionItems,
   siteSettings,
   subscribers,
+  tours,
+  tourSuggestions,
+  userQuestions,
   users,
   type Article,
   type ArticleCategory,
   type Book,
+  type Booking,
+  type BookingInterest,
+  type BookingOrder,
+  type BookingProductType,
+  type BookingState,
   type ContactMessage,
   type ContentBlock,
   type CorporateClient,
@@ -58,8 +70,12 @@ import {
   type SessionItem,
   type SiteSetting,
   type Subscriber,
+  type Tour,
+  type TourSuggestion,
   type User,
+  type UserQuestion,
   type UserRole,
+  type QuestionStatus,
 } from './schema'
 import {
   coerceSettings,
@@ -74,6 +90,9 @@ import {
 import type { SiteSettingsPatch } from '../site-settings/zod'
 import {
   placeholderArticles,
+  placeholderBookingInterest,
+  placeholderBookingOrders,
+  placeholderBookings,
   placeholderBooks,
   placeholderContactMessages,
   placeholderContentBlocks,
@@ -86,6 +105,8 @@ import {
   placeholderOrders,
   placeholderSettings,
   placeholderSubscribers,
+  placeholderTourSuggestions,
+  placeholderTours,
   placeholderUsers,
 } from '../placeholder-data'
 import { MOCK_AUTH_ENABLED } from '../auth/mock'
@@ -509,6 +530,44 @@ export async function getOrderById(id: string): Promise<Order | null> {
     return row ?? null
   }
   return placeholderOrders.find((o) => o.id === id) ?? null
+}
+
+/**
+ * Phase 5.2 — resolve a Stripe Checkout session id to its persisted order.
+ *
+ * The post-purchase success page receives `?session_id=cs_xxx` from Stripe
+ * (set in `success_url` at checkout creation time). The webhook
+ * `checkout.session.completed` handler will have already inserted the
+ * order with this id as the `stripeSessionId` foreign-ish key. This
+ * helper is the read-side counterpart used by the success page to derive
+ * the "Start now" deep link.
+ *
+ * Returns null when:
+ *   - HAS_DB is false (no DB → no orders to look up).
+ *   - The id is empty / oversized / clearly malformed.
+ *   - The webhook hasn't fired yet (rare race; the success page falls
+ *     back to a generic "Go to library" CTA in that case).
+ *   - Any DB error — caller treats null as "render generic CTAs".
+ */
+export async function getOrderByStripeSessionId(
+  stripeSessionId: string,
+): Promise<Order | null> {
+  if (!HAS_DB) return null
+  // Stripe session ids are short prefixed strings ("cs_test_..." /
+  // "cs_live_..."). Reject anything outside a sane size band before
+  // hitting the DB so a junk URL parameter doesn't probe the index.
+  if (!stripeSessionId || stripeSessionId.length > 200) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.stripeSessionId, stripeSessionId))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[getOrderByStripeSessionId]', err)
+    return null
+  }
 }
 
 export async function getOrdersByUserId(userId: string): Promise<Order[]> {
@@ -1619,6 +1678,455 @@ export async function getAllMediaProgressForSession(
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Phase 5 — unified continue-activity surface
+ *
+ * The library landing page used to surface only BOOK reading-progress in the
+ * "Continue" hero. Sessions (Phase 4) had their own resume-from-position
+ * logic inside the viewer but never bubbled up to the library overview, so a
+ * user with an in-flight book AND an in-flight session only saw the book.
+ *
+ * `getMostRecentActivity` is the single source of truth for that surface:
+ * it considers BOTH content types and returns the one the user touched
+ * most recently. The hero card now renders either a book-resume or a
+ * session-item-resume affordance from the same return value — no callsite
+ * needs to merge two queries.
+ *
+ * Defensive filters (must match the visual gates):
+ *   - BOOK candidate must have `lastPage > 1` (matches the legacy
+ *     pickHeroCandidate gate — a freshly-opened book that never paged
+ *     forward shouldn't pin the hero).
+ *   - BOOK candidate must not be finished (`totalPages > 0` ⇒ `lastPage <
+ *     totalPages`; `totalPages === 0` is treated as "unknown total" and
+ *     allowed through).
+ *   - SESSION candidate must have `completedAt IS NULL` and the parent
+ *     session must still exist with `productType = 'SESSION'` (admins can
+ *     delete a session out from under a user; orphan media_progress rows
+ *     are skipped rather than crash the hero).
+ *
+ * Tiebreak when timestamps match: prefer SESSION. Sessions tend to play
+ * continuously, so an exact timestamp tie usually means the session was
+ * actively running while the user opened the library in another tab.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type RecentActivity =
+  | {
+      type: 'BOOK'
+      bookId: string
+      lastPage: number
+      totalPages: number
+      lastReadAt: Date
+      book: Book
+    }
+  | {
+      type: 'SESSION'
+      sessionId: string
+      sessionItemId: string
+      lastPositionSeconds: number
+      /** Duration of the SPECIFIC item the user was on. 0 when unknown
+       * (the column is nullable in session_items; the hero treats 0 as
+       * "skip the total in the timestamp display"). */
+      durationSeconds: number
+      lastWatchedAt: Date
+      session: Book
+      item: SessionItem
+    }
+
+export async function getMostRecentActivity(
+  userId: string,
+): Promise<RecentActivity | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+
+    // Catalog hydration matches getLibraryEntriesByUserId — DB books take
+    // precedence when present so admin-created sessions resolve correctly,
+    // else fall through to placeholders.
+    let catalog: Book[] = []
+    if (HAS_DB) {
+      try {
+        catalog = await db
+          .select()
+          .from(books)
+          .where(eq(books.status, 'PUBLISHED'))
+      } catch (err) {
+        console.error('[getMostRecentActivity mock+db] catalog fetch failed', err)
+      }
+    }
+    if (catalog.length === 0) catalog = [...placeholderBooks]
+    const bookById = new Map<string, Book>(catalog.map((b) => [b.id, b]))
+
+    // Most-recent BOOK candidate from the persisted reading-progress map.
+    const userPrefix = `${userId}:`
+    let bookCandidate: {
+      bookId: string
+      lastPage: number
+      totalPages: number
+      lastReadAt: Date
+    } | null = null
+    for (const [key, entry] of store.progress.entries()) {
+      if (!key.startsWith(userPrefix)) continue
+      const bookId = key.slice(userPrefix.length)
+      if (entry.lastPage <= 1) continue
+      if (entry.totalPages > 0 && entry.lastPage >= entry.totalPages) continue
+      const book = bookById.get(bookId)
+      if (!book || book.productType !== 'BOOK') continue
+      if (
+        !bookCandidate ||
+        entry.lastReadAt.getTime() > bookCandidate.lastReadAt.getTime()
+      ) {
+        bookCandidate = {
+          bookId,
+          lastPage: entry.lastPage,
+          totalPages: entry.totalPages,
+          lastReadAt: entry.lastReadAt,
+        }
+      }
+    }
+
+    // session_item_id → (session_id, item) lookup, built from the mock
+    // sessionItems map so we can resolve orphan rows in O(1).
+    const itemToSession = new Map<
+      string,
+      { sessionId: string; item: SessionItem }
+    >()
+    for (const [sessionId, items] of store.sessionItems.entries()) {
+      for (const item of items) {
+        itemToSession.set(item.id, { sessionId, item })
+      }
+    }
+
+    let sessionCandidate: {
+      sessionId: string
+      sessionItemId: string
+      lastPositionSeconds: number
+      durationSeconds: number
+      lastWatchedAt: Date
+      item: SessionItem
+    } | null = null
+    for (const [key, entry] of store.mediaProgress.entries()) {
+      if (!key.startsWith(userPrefix)) continue
+      if (entry.completedAt != null) continue
+      const sessionItemId = key.slice(userPrefix.length)
+      const lookup = itemToSession.get(sessionItemId)
+      if (!lookup) continue // Orphan — item deleted from admin.
+      const session = bookById.get(lookup.sessionId)
+      if (!session || session.productType !== 'SESSION') continue
+      if (
+        !sessionCandidate ||
+        entry.lastWatchedAt.getTime() > sessionCandidate.lastWatchedAt.getTime()
+      ) {
+        sessionCandidate = {
+          sessionId: lookup.sessionId,
+          sessionItemId,
+          lastPositionSeconds: entry.lastPositionSeconds,
+          durationSeconds: lookup.item.durationSeconds ?? 0,
+          lastWatchedAt: entry.lastWatchedAt,
+          item: lookup.item,
+        }
+      }
+    }
+
+    return resolveCandidate(bookCandidate, sessionCandidate, bookById)
+  }
+
+  if (!HAS_DB) return null
+  if (!isUuid(userId)) return null
+
+  try {
+    // Two parallel single-row reads — the DB indexes already cover both
+    // (reading_progress_user_book_idx + media_progress_user_item_idx),
+    // and pulling each table's latest separately is cheaper than a
+    // UNION ALL with conditional joins.
+    const [bookRows, sessionRows] = await Promise.all([
+      db
+        .select({
+          bookId: readingProgress.bookId,
+          lastPage: readingProgress.lastPage,
+          totalPages: readingProgress.totalPages,
+          lastReadAt: readingProgress.lastReadAt,
+          book: books,
+        })
+        .from(readingProgress)
+        .innerJoin(books, eq(readingProgress.bookId, books.id))
+        .where(
+          and(
+            eq(readingProgress.userId, userId),
+            eq(books.productType, 'BOOK'),
+            sql`${readingProgress.lastPage} > 1`,
+            or(
+              eq(readingProgress.totalPages, 0),
+              sql`${readingProgress.lastPage} < ${readingProgress.totalPages}`,
+            ),
+          ),
+        )
+        .orderBy(desc(readingProgress.lastReadAt))
+        .limit(1),
+      db
+        .select({
+          sessionItemId: mediaProgress.sessionItemId,
+          sessionId: sessionItems.sessionId,
+          lastPositionSeconds: mediaProgress.lastPositionSeconds,
+          durationSeconds: sessionItems.durationSeconds,
+          lastWatchedAt: mediaProgress.lastWatchedAt,
+          session: books,
+          item: sessionItems,
+        })
+        .from(mediaProgress)
+        .innerJoin(sessionItems, eq(mediaProgress.sessionItemId, sessionItems.id))
+        .innerJoin(books, eq(sessionItems.sessionId, books.id))
+        .where(
+          and(
+            eq(mediaProgress.userId, userId),
+            eq(books.productType, 'SESSION'),
+            sql`${mediaProgress.completedAt} IS NULL`,
+          ),
+        )
+        .orderBy(desc(mediaProgress.lastWatchedAt))
+        .limit(1),
+    ])
+
+    const bookRow = bookRows[0]
+    const sessionRow = sessionRows[0]
+    if (!bookRow && !sessionRow) return null
+    if (!bookRow) {
+      const sr = sessionRow!
+      return {
+        type: 'SESSION',
+        sessionId: sr.sessionId,
+        sessionItemId: sr.sessionItemId,
+        lastPositionSeconds: sr.lastPositionSeconds,
+        durationSeconds: sr.durationSeconds ?? 0,
+        lastWatchedAt: sr.lastWatchedAt,
+        session: sr.session,
+        item: sr.item,
+      }
+    }
+    if (!sessionRow) {
+      return {
+        type: 'BOOK',
+        bookId: bookRow.bookId,
+        lastPage: bookRow.lastPage,
+        totalPages: bookRow.totalPages,
+        lastReadAt: bookRow.lastReadAt,
+        book: bookRow.book,
+      }
+    }
+    const bookTs = bookRow.lastReadAt.getTime()
+    const sessionTs = sessionRow.lastWatchedAt.getTime()
+    // Tiebreak on equal timestamps: SESSION wins.
+    if (sessionTs >= bookTs) {
+      return {
+        type: 'SESSION',
+        sessionId: sessionRow.sessionId,
+        sessionItemId: sessionRow.sessionItemId,
+        lastPositionSeconds: sessionRow.lastPositionSeconds,
+        durationSeconds: sessionRow.durationSeconds ?? 0,
+        lastWatchedAt: sessionRow.lastWatchedAt,
+        session: sessionRow.session,
+        item: sessionRow.item,
+      }
+    }
+    return {
+      type: 'BOOK',
+      bookId: bookRow.bookId,
+      lastPage: bookRow.lastPage,
+      totalPages: bookRow.totalPages,
+      lastReadAt: bookRow.lastReadAt,
+      book: bookRow.book,
+    }
+  } catch (err) {
+    console.error('[getMostRecentActivity]', err)
+    return null
+  }
+}
+
+// Mock-mode tiebreak helper. Pure function — kept at module scope so the
+// MOCK_AUTH_ENABLED branch above stays linear.
+function resolveCandidate(
+  bookCandidate: {
+    bookId: string
+    lastPage: number
+    totalPages: number
+    lastReadAt: Date
+  } | null,
+  sessionCandidate: {
+    sessionId: string
+    sessionItemId: string
+    lastPositionSeconds: number
+    durationSeconds: number
+    lastWatchedAt: Date
+    item: SessionItem
+  } | null,
+  bookById: Map<string, Book>,
+): RecentActivity | null {
+  if (!bookCandidate && !sessionCandidate) return null
+  if (!bookCandidate) {
+    const sc = sessionCandidate!
+    const session = bookById.get(sc.sessionId)
+    if (!session) return null
+    return {
+      type: 'SESSION',
+      sessionId: sc.sessionId,
+      sessionItemId: sc.sessionItemId,
+      lastPositionSeconds: sc.lastPositionSeconds,
+      durationSeconds: sc.durationSeconds,
+      lastWatchedAt: sc.lastWatchedAt,
+      session,
+      item: sc.item,
+    }
+  }
+  if (!sessionCandidate) {
+    const book = bookById.get(bookCandidate.bookId)
+    if (!book) return null
+    return {
+      type: 'BOOK',
+      bookId: bookCandidate.bookId,
+      lastPage: bookCandidate.lastPage,
+      totalPages: bookCandidate.totalPages,
+      lastReadAt: bookCandidate.lastReadAt,
+      book,
+    }
+  }
+  const sessionTs = sessionCandidate.lastWatchedAt.getTime()
+  const bookTs = bookCandidate.lastReadAt.getTime()
+  if (sessionTs >= bookTs) {
+    const session = bookById.get(sessionCandidate.sessionId)
+    if (!session) return null
+    return {
+      type: 'SESSION',
+      sessionId: sessionCandidate.sessionId,
+      sessionItemId: sessionCandidate.sessionItemId,
+      lastPositionSeconds: sessionCandidate.lastPositionSeconds,
+      durationSeconds: sessionCandidate.durationSeconds,
+      lastWatchedAt: sessionCandidate.lastWatchedAt,
+      session,
+      item: sessionCandidate.item,
+    }
+  }
+  const book = bookById.get(bookCandidate.bookId)
+  if (!book) return null
+  return {
+    type: 'BOOK',
+    bookId: bookCandidate.bookId,
+    lastPage: bookCandidate.lastPage,
+    totalPages: bookCandidate.totalPages,
+    lastReadAt: bookCandidate.lastReadAt,
+    book,
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase 5 — session aggregate progress (library card surface)
+ *
+ * For a session card on the library grid, the user wants an at-a-glance
+ * "I'm 2 of 5 items into this session" indicator. The viewer already has
+ * per-item progress; this helper rolls it up.
+ *
+ * `percent` is computed as `completedItems / totalItems` (rounded). Items
+ * that are partially watched but not completed are surfaced separately
+ * via `partiallyWatchedItems` so the card UI can decide whether to show a
+ * "continue" affordance even when nothing is fully complete.
+ *
+ * Performance: this is per-session, so the library page calls it N times
+ * for N session items. Each call is two cheap indexed reads (count items,
+ * count progress for those items). Acceptable at the realistic scale
+ * (~10-50 sessions per user). If we ever ship a "trending sessions" view
+ * with 100+ sessions, batch this into a single GROUP-BY query — see the
+ * TODO in buildLibraryItems.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type SessionAggregateProgress = {
+  totalItems: number
+  completedItems: number
+  partiallyWatchedItems: number
+  /** Percentage 0-100 — rounded `completedItems / totalItems`. PDF items
+   * inside a session don't have media_progress rows so they never count
+   * as completed here (acceptable for v1; the user thinks of session
+   * "completion" in terms of the video/audio they watched). */
+  percent: number
+}
+
+const EMPTY_AGGREGATE: SessionAggregateProgress = {
+  totalItems: 0,
+  completedItems: 0,
+  partiallyWatchedItems: 0,
+  percent: 0,
+}
+
+export async function getSessionAggregateProgress(
+  userId: string,
+  sessionId: string,
+): Promise<SessionAggregateProgress> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const items = store.sessionItems.get(sessionId) ?? []
+    if (items.length === 0) return EMPTY_AGGREGATE
+    let completed = 0
+    let partial = 0
+    for (const item of items) {
+      const entry = store.mediaProgress.get(`${userId}:${item.id}`)
+      if (!entry) continue
+      if (entry.completedAt != null) {
+        completed++
+      } else if (entry.lastPositionSeconds > 0) {
+        partial++
+      }
+    }
+    return {
+      totalItems: items.length,
+      completedItems: completed,
+      partiallyWatchedItems: partial,
+      percent: Math.round((completed / items.length) * 100),
+    }
+  }
+
+  if (!HAS_DB) return EMPTY_AGGREGATE
+  if (!isUuid(userId) || !isUuid(sessionId)) return EMPTY_AGGREGATE
+
+  try {
+    const [itemRows, progressRows] = await Promise.all([
+      db
+        .select({ id: sessionItems.id })
+        .from(sessionItems)
+        .where(eq(sessionItems.sessionId, sessionId)),
+      db
+        .select({
+          completedAt: mediaProgress.completedAt,
+          lastPositionSeconds: mediaProgress.lastPositionSeconds,
+        })
+        .from(mediaProgress)
+        .innerJoin(sessionItems, eq(mediaProgress.sessionItemId, sessionItems.id))
+        .where(
+          and(
+            eq(mediaProgress.userId, userId),
+            eq(sessionItems.sessionId, sessionId),
+          ),
+        ),
+    ])
+
+    const totalItems = itemRows.length
+    if (totalItems === 0) return EMPTY_AGGREGATE
+    let completed = 0
+    let partial = 0
+    for (const row of progressRows) {
+      if (row.completedAt != null) {
+        completed++
+      } else if (row.lastPositionSeconds > 0) {
+        partial++
+      }
+    }
+    return {
+      totalItems,
+      completedItems: completed,
+      partiallyWatchedItems: partial,
+      percent: Math.round((completed / totalItems) * 100),
+    }
+  } catch (err) {
+    console.error('[getSessionAggregateProgress]', err)
+    return EMPTY_AGGREGATE
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Subscribers
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -2505,10 +3013,1778 @@ export async function deleteCorporateRequest(id: string): Promise<boolean> {
   return rows.length > 0
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Booking — Services for Individuals (Phase A1)
+ *
+ * Read helpers return enriched shapes: bookings come with `activeHoldsCount`
+ * computed via LEFT JOIN bookings_pending_holds h ON h.booking_id = b.id AND
+ * h.expires_at > NOW(). Effective seat math is then maxCapacity - bookedCount
+ * - activeHoldsCount.
+ *
+ * Write helpers (createBookingHold) are transactional with a SELECT FOR UPDATE
+ * on the booking row to serialise concurrent Reserve clicks.
+ *
+ * Mock-mode: bookings + tours come from placeholder-data; bookingInterest +
+ * tourSuggestions live in the on-disk mock-store so re-submissions exercise
+ * the idempotent upsert. Holds and Stripe-driven booking_orders are not
+ * mocked (the createBookingCheckoutAction returns 'stripe_unconfigured' in
+ * mock mode, so the hold path is never entered).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type BookingWithHolds = Booking & {
+  activeHoldsCount: number
+}
+
+export async function getActiveTours(): Promise<Tour[]> {
+  if (!HAS_DB) {
+    return [...placeholderTours]
+      .filter((t) => t.isActive)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+  }
+  try {
+    return await db
+      .select()
+      .from(tours)
+      .where(eq(tours.isActive, true))
+      .orderBy(asc(tours.date))
+  } catch (err) {
+    console.error('[queries.getActiveTours]', err)
+    return []
+  }
+}
+
+/**
+ * Cleans up expired holds. Cheap, idempotent — uses the
+ * (booking_id, expires_at) index. Safe to call before any read or at the top
+ * of the createBookingHold transaction.
+ *
+ * Pass a bookingId to scope the cleanup; pass undefined to sweep globally.
+ */
+async function cleanupExpiredHolds(bookingId?: string): Promise<void> {
+  if (!HAS_DB) return
+  try {
+    const where = bookingId
+      ? and(
+          eq(bookingsPendingHolds.bookingId, bookingId),
+          lte(bookingsPendingHolds.expiresAt, sql`now()`),
+        )
+      : lte(bookingsPendingHolds.expiresAt, sql`now()`)
+    await db.delete(bookingsPendingHolds).where(where)
+  } catch (err) {
+    console.error('[queries.cleanupExpiredHolds]', err)
+  }
+}
+
+/**
+ * Read helper: returns the bookings rows enriched with `activeHoldsCount`.
+ * One query, not N. Lazy-cleans expired holds first so the count is precise.
+ */
+async function getBookingsByProductType(
+  productType: BookingProductType,
+): Promise<BookingWithHolds[]> {
+  if (!HAS_DB) {
+    return placeholderBookings
+      .filter((b) => b.isActive && b.productType === productType)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((b) => ({ ...b, activeHoldsCount: 0 }))
+  }
+  await cleanupExpiredHolds()
+  try {
+    const rows = await db
+      .select({
+        booking: bookings,
+        activeHoldsCount: sql<number>`COALESCE(COUNT(${bookingsPendingHolds.id}) FILTER (WHERE ${bookingsPendingHolds.expiresAt} > now()), 0)::int`,
+      })
+      .from(bookings)
+      .leftJoin(
+        bookingsPendingHolds,
+        eq(bookingsPendingHolds.bookingId, bookings.id),
+      )
+      .where(
+        and(eq(bookings.isActive, true), eq(bookings.productType, productType)),
+      )
+      .groupBy(bookings.id)
+      .orderBy(asc(bookings.displayOrder))
+    return rows.map((r) => ({
+      ...r.booking,
+      activeHoldsCount: Number(r.activeHoldsCount) || 0,
+    }))
+  } catch (err) {
+    console.error('[queries.getBookingsByProductType]', err)
+    return []
+  }
+}
+
+/**
+ * Returns the Reconsider course row, or null if not seeded.
+ *
+ * Defensive on >1: if admin accidentally created multiple RECONSIDER_COURSE
+ * rows, log a warning and return the lowest displayOrder (tiebreak: createdAt
+ * asc). Behavior is deterministic across requests; doesn't 500 on bad data.
+ */
+export async function getReconsiderCourse(): Promise<BookingWithHolds | null> {
+  const rows = await getBookingsByProductType('RECONSIDER_COURSE')
+  if (rows.length === 0) return null
+  if (rows.length > 1) {
+    console.warn(
+      `[queries.getReconsiderCourse] expected 1 row, found ${rows.length}; returning lowest displayOrder.`,
+    )
+  }
+  // getBookingsByProductType already orders by displayOrder asc; take first.
+  return rows[0]!
+}
+
+export async function getActiveOnlineSessions(): Promise<BookingWithHolds[]> {
+  return getBookingsByProductType('ONLINE_SESSION')
+}
+
+export async function getBookingById(
+  id: string,
+): Promise<BookingWithHolds | null> {
+  if (!HAS_DB) {
+    const found = placeholderBookings.find((b) => b.id === id)
+    return found ? { ...found, activeHoldsCount: 0 } : null
+  }
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .select({
+        booking: bookings,
+        activeHoldsCount: sql<number>`COALESCE(COUNT(${bookingsPendingHolds.id}) FILTER (WHERE ${bookingsPendingHolds.expiresAt} > now()), 0)::int`,
+      })
+      .from(bookings)
+      .leftJoin(
+        bookingsPendingHolds,
+        eq(bookingsPendingHolds.bookingId, bookings.id),
+      )
+      .where(eq(bookings.id, id))
+      .groupBy(bookings.id)
+      .limit(1)
+    if (!row) return null
+    return {
+      ...row.booking,
+      activeHoldsCount: Number(row.activeHoldsCount) || 0,
+    }
+  } catch (err) {
+    console.error('[queries.getBookingById]', err)
+    return null
+  }
+}
+
+/* ── Tour suggestions ──────────────────────────────────────────────────── */
+
+export async function createTourSuggestion(input: {
+  userId: string
+  suggestedCity: string
+  suggestedCountry: string
+  additionalNotes?: string | null
+}): Promise<TourSuggestion | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const row: TourSuggestion = {
+      id: `00000000-0000-0000-0000-${Date.now().toString().slice(-12).padStart(12, '0')}`,
+      userId: input.userId,
+      suggestedCity: input.suggestedCity,
+      suggestedCountry: input.suggestedCountry,
+      additionalNotes: input.additionalNotes ?? null,
+      createdAt: new Date(),
+      reviewedAt: null,
+    }
+    store.tourSuggestions.unshift(row)
+    writeStore(store)
+    placeholderTourSuggestions.unshift(row)
+    return row
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.userId)) return null
+  try {
+    const [row] = await db
+      .insert(tourSuggestions)
+      .values({
+        userId: input.userId,
+        suggestedCity: input.suggestedCity,
+        suggestedCountry: input.suggestedCountry,
+        additionalNotes: input.additionalNotes ?? null,
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createTourSuggestion]', err)
+    return null
+  }
+}
+
+/* ── Booking interest (waitlist) ───────────────────────────────────────── */
+
+/**
+ * Idempotent upsert on (user_id, booking_id). Re-submissions update the
+ * additionalNotes; no duplicate row, no error.
+ */
+export async function upsertBookingInterest(input: {
+  userId: string
+  bookingId: string
+  additionalNotes?: string | null
+}): Promise<BookingInterest | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const key = `${input.userId}:${input.bookingId}`
+    const store = readStore()
+    const existing = store.bookingInterest.get(key)
+    const now = new Date()
+    if (existing) {
+      const updated: BookingInterest = {
+        ...existing,
+        additionalNotes: input.additionalNotes ?? null,
+      }
+      store.bookingInterest.set(key, updated)
+      writeStore(store)
+      return updated
+    }
+    const row: BookingInterest = {
+      id: `00000000-0000-0000-0000-${Date.now().toString().slice(-12).padStart(12, '0')}`,
+      userId: input.userId,
+      bookingId: input.bookingId,
+      additionalNotes: input.additionalNotes ?? null,
+      createdAt: now,
+      contactedAt: null,
+    }
+    store.bookingInterest.set(key, row)
+    writeStore(store)
+    placeholderBookingInterest.unshift(row)
+    return row
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.userId) || !isUuid(input.bookingId)) return null
+  try {
+    const [row] = await db
+      .insert(bookingInterest)
+      .values({
+        userId: input.userId,
+        bookingId: input.bookingId,
+        additionalNotes: input.additionalNotes ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [bookingInterest.userId, bookingInterest.bookingId],
+        set: { additionalNotes: input.additionalNotes ?? null },
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.upsertBookingInterest]', err)
+    return null
+  }
+}
+
+/* ── Holds (capacity guard) ────────────────────────────────────────────── */
+
+/**
+ * Result type for createBookingHold. Discriminated so callers don't need to
+ * inspect a `null` row.
+ */
+export type CreateBookingHoldResult =
+  | { ok: true; holdId: string; expiresAt: Date }
+  | {
+      ok: false
+      error:
+        | 'booking_not_found'
+        | 'not_open'
+        | 'no_capacity'
+        | 'invalid_input'
+        | 'db_unavailable'
+    }
+
+/**
+ * Race-free hold creation. Inside ONE transaction:
+ *   1. Lazy-clean expired holds for this booking
+ *   2. Delete any prior hold the same user has on this booking (re-click UX)
+ *   3. SELECT booked_count, max_capacity, booking_state FOR UPDATE
+ *   4. If state != OPEN → not_open
+ *   5. Count active holds (the count of others' holds — the user's own was
+ *      already deleted in step 2)
+ *   6. If booked_count + active_holds + 1 > max_capacity → no_capacity
+ *      (the +1 accounts for the hold we're about to insert)
+ *   7. INSERT hold and return its id + expiresAt
+ *
+ * If MOCK_AUTH_ENABLED, returns 'db_unavailable' — the action layer treats
+ * this the same as 'stripe_unconfigured' since the Stripe path is also
+ * unavailable in mock mode.
+ */
+export async function createBookingHold(input: {
+  userId: string
+  bookingId: string
+}): Promise<CreateBookingHoldResult> {
+  if (!HAS_DB) {
+    return { ok: false, error: 'db_unavailable' }
+  }
+  if (!isUuid(input.userId) || !isUuid(input.bookingId)) {
+    return { ok: false, error: 'invalid_input' }
+  }
+  try {
+    return await db.transaction(async (tx) => {
+      await tx.delete(bookingsPendingHolds).where(
+        and(
+          eq(bookingsPendingHolds.bookingId, input.bookingId),
+          lte(bookingsPendingHolds.expiresAt, sql`now()`),
+        ),
+      )
+      // Re-click handling: drop any existing hold the same user has for this
+      // booking. The orphan Stripe session (if any) will be cleaned up by
+      // the checkout.session.expired webhook later.
+      await tx.delete(bookingsPendingHolds).where(
+        and(
+          eq(bookingsPendingHolds.userId, input.userId),
+          eq(bookingsPendingHolds.bookingId, input.bookingId),
+        ),
+      )
+      const [bookingRow] = await tx
+        .select({
+          bookedCount: bookings.bookedCount,
+          maxCapacity: bookings.maxCapacity,
+          bookingState: bookings.bookingState,
+        })
+        .from(bookings)
+        .where(eq(bookings.id, input.bookingId))
+        .for('update')
+        .limit(1)
+      if (!bookingRow) {
+        return { ok: false, error: 'booking_not_found' as const }
+      }
+      if (bookingRow.bookingState !== 'OPEN') {
+        return { ok: false, error: 'not_open' as const }
+      }
+      const [{ count }] = await tx
+        .select({
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(bookingsPendingHolds)
+        .where(
+          and(
+            eq(bookingsPendingHolds.bookingId, input.bookingId),
+            gt(bookingsPendingHolds.expiresAt, sql`now()`),
+          ),
+        )
+      const activeHolds = Number(count) || 0
+      // The +1 accounts for the hold we're about to insert.
+      if (bookingRow.bookedCount + activeHolds + 1 > bookingRow.maxCapacity) {
+        return { ok: false, error: 'no_capacity' as const }
+      }
+      const [hold] = await tx
+        .insert(bookingsPendingHolds)
+        .values({
+          userId: input.userId,
+          bookingId: input.bookingId,
+        })
+        .returning({
+          id: bookingsPendingHolds.id,
+          expiresAt: bookingsPendingHolds.expiresAt,
+        })
+      return {
+        ok: true as const,
+        holdId: hold!.id,
+        expiresAt: hold!.expiresAt,
+      }
+    })
+  } catch (err) {
+    console.error('[queries.createBookingHold]', err)
+    return { ok: false, error: 'db_unavailable' }
+  }
+}
+
+export async function setHoldStripeSessionId(
+  holdId: string,
+  stripeSessionId: string,
+): Promise<boolean> {
+  if (!HAS_DB) return false
+  if (!isUuid(holdId)) return false
+  try {
+    const rows = await db
+      .update(bookingsPendingHolds)
+      .set({ stripeSessionId })
+      .where(eq(bookingsPendingHolds.id, holdId))
+      .returning({ id: bookingsPendingHolds.id })
+    return rows.length > 0
+  } catch (err) {
+    console.error('[queries.setHoldStripeSessionId]', err)
+    return false
+  }
+}
+
+export async function deleteHoldByStripeSessionId(
+  stripeSessionId: string,
+): Promise<void> {
+  if (!HAS_DB) return
+  try {
+    await db
+      .delete(bookingsPendingHolds)
+      .where(eq(bookingsPendingHolds.stripeSessionId, stripeSessionId))
+  } catch (err) {
+    console.error('[queries.deleteHoldByStripeSessionId]', err)
+  }
+}
+
+export async function deleteHoldById(holdId: string): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(holdId)) return
+  try {
+    await db
+      .delete(bookingsPendingHolds)
+      .where(eq(bookingsPendingHolds.id, holdId))
+  } catch (err) {
+    console.error('[queries.deleteHoldById]', err)
+  }
+}
+
+/* ── Booking orders ────────────────────────────────────────────────────── */
+
+export async function createBookingOrder(input: {
+  userId: string | null
+  bookingId: string
+  stripeSessionId: string
+  amountPaid: number
+  currency: string
+}): Promise<BookingOrder | null> {
+  if (!HAS_DB) return null
+  if (input.userId && !isUuid(input.userId)) return null
+  if (!isUuid(input.bookingId)) return null
+  try {
+    const [row] = await db
+      .insert(bookingOrders)
+      .values({
+        userId: input.userId,
+        bookingId: input.bookingId,
+        stripeSessionId: input.stripeSessionId,
+        amountPaid: input.amountPaid,
+        currency: input.currency,
+        status: 'PENDING',
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createBookingOrder]', err)
+    return null
+  }
+}
+
+export async function getBookingOrderByStripeSessionId(
+  stripeSessionId: string,
+): Promise<BookingOrder | null> {
+  if (!HAS_DB) return null
+  if (!stripeSessionId || stripeSessionId.length > 200) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(bookingOrders)
+      .where(eq(bookingOrders.stripeSessionId, stripeSessionId))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getBookingOrderByStripeSessionId]', err)
+    return null
+  }
+}
+
+/**
+ * Webhook handler: completed payment.
+ * Atomically: marks order PAID + increments bookedCount + flips SOLD_OUT if
+ * we just hit max + deletes the hold by stripeSessionId.
+ */
+export async function markBookingOrderPaid(input: {
+  stripeSessionId: string
+  stripePaymentIntentId: string | null
+  amountPaid: number
+}): Promise<{
+  bookingOrder: BookingOrder
+  bookingId: string
+  newBookedCount: number
+  flippedToSoldOut: boolean
+} | null> {
+  if (!HAS_DB) return null
+  try {
+    return await db.transaction(async (tx) => {
+      const [order] = await tx
+        .update(bookingOrders)
+        .set({
+          status: 'PAID',
+          stripePaymentIntentId: input.stripePaymentIntentId,
+          amountPaid: input.amountPaid,
+          confirmedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookingOrders.stripeSessionId, input.stripeSessionId))
+        .returning()
+      if (!order) return null
+      const [b] = await tx
+        .update(bookings)
+        .set({
+          bookedCount: sql`${bookings.bookedCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, order.bookingId))
+        .returning({
+          id: bookings.id,
+          bookedCount: bookings.bookedCount,
+          maxCapacity: bookings.maxCapacity,
+          bookingState: bookings.bookingState,
+        })
+      let flippedToSoldOut = false
+      if (b && b.bookedCount >= b.maxCapacity && b.bookingState === 'OPEN') {
+        await tx
+          .update(bookings)
+          .set({ bookingState: 'SOLD_OUT', updatedAt: new Date() })
+          .where(eq(bookings.id, b.id))
+        flippedToSoldOut = true
+      }
+      await tx
+        .delete(bookingsPendingHolds)
+        .where(eq(bookingsPendingHolds.stripeSessionId, input.stripeSessionId))
+      return {
+        bookingOrder: order,
+        bookingId: order.bookingId,
+        newBookedCount: b?.bookedCount ?? 0,
+        flippedToSoldOut,
+      }
+    })
+  } catch (err) {
+    console.error('[queries.markBookingOrderPaid]', err)
+    return null
+  }
+}
+
+export async function markBookingOrderFailed(input: {
+  stripeSessionId?: string
+  stripePaymentIntentId?: string
+}): Promise<BookingOrder | null> {
+  if (!HAS_DB) return null
+  if (!input.stripeSessionId && !input.stripePaymentIntentId) return null
+  try {
+    const where = input.stripeSessionId
+      ? eq(bookingOrders.stripeSessionId, input.stripeSessionId)
+      : eq(bookingOrders.stripePaymentIntentId, input.stripePaymentIntentId!)
+    const [row] = await db
+      .update(bookingOrders)
+      .set({ status: 'FAILED', updatedAt: new Date() })
+      .where(where)
+      .returning()
+    if (row) {
+      // Best-effort: clear the matching hold too.
+      await db
+        .delete(bookingsPendingHolds)
+        .where(
+          eq(bookingsPendingHolds.stripeSessionId, row.stripeSessionId),
+        )
+    }
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.markBookingOrderFailed]', err)
+    return null
+  }
+}
+
+/**
+ * Refund handler. Decrements bookedCount with floor at 0. Does NOT auto-revert
+ * SOLD_OUT → OPEN — admin tooling (Phase A2) is responsible for that decision.
+ */
+export async function markBookingOrderRefunded(input: {
+  stripePaymentIntentId: string
+}): Promise<BookingOrder | null> {
+  if (!HAS_DB) return null
+  try {
+    return await db.transaction(async (tx) => {
+      const [order] = await tx
+        .update(bookingOrders)
+        .set({ status: 'REFUNDED', updatedAt: new Date() })
+        .where(
+          eq(
+            bookingOrders.stripePaymentIntentId,
+            input.stripePaymentIntentId,
+          ),
+        )
+        .returning()
+      if (!order) return null
+      // GREATEST clamp at 0 so a double-refund webhook doesn't underflow.
+      await tx
+        .update(bookings)
+        .set({
+          bookedCount: sql`GREATEST(${bookings.bookedCount} - 1, 0)`,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, order.bookingId))
+      // Note: bookingState left alone. Per Decision 11, SOLD_OUT → OPEN auto-
+      // revert is deferred to Phase A2 admin tooling.
+      return order
+    })
+  } catch (err) {
+    console.error('[queries.markBookingOrderRefunded]', err)
+    return null
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Booking admin (Phase A2)
+ *
+ * All queries below are intended for admin-only callers. They DO NOT filter
+ * by isActive=true — admin sees archived/inactive rows. They DO accept
+ * optional admin-only filters (status, date range, etc.).
+ *
+ * Capacity-reduction guard:
+ *   updateBookingAdmin / updateBookingCapacityAdmin both honour the
+ *   "newMax >= bookedCount + activeHolds" invariant. If the new capacity
+ *   would put the booking under-water, the helper returns
+ *   { ok: false, error: 'capacity_below_commitment' } so the caller can
+ *   surface a precise UI message. The webhook + the public-action code
+ *   path are unchanged; this guard is admin-only.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Tour admin reads / writes ───────────────────────────────────────── */
+
+export async function getAllToursAdmin(): Promise<Tour[]> {
+  if (!HAS_DB) {
+    return [...placeholderTours].sort(
+      (a, b) => a.date.getTime() - b.date.getTime(),
+    )
+  }
+  try {
+    return await db.select().from(tours).orderBy(asc(tours.date))
+  } catch (err) {
+    console.error('[queries.getAllToursAdmin]', err)
+    return []
+  }
+}
+
+export async function getTourById(id: string): Promise<Tour | null> {
+  if (!HAS_DB) {
+    return placeholderTours.find((t) => t.id === id) ?? null
+  }
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(tours)
+      .where(eq(tours.id, id))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getTourById]', err)
+    return null
+  }
+}
+
+export type CreateTourAdminInput = {
+  slug: string
+  titleAr: string
+  titleEn: string
+  cityAr: string
+  cityEn: string
+  countryAr: string
+  countryEn: string
+  regionAr: string | null
+  regionEn: string | null
+  date: Date
+  venueAr: string | null
+  venueEn: string | null
+  descriptionAr: string | null
+  descriptionEn: string | null
+  externalBookingUrl: string | null
+  coverImage: string | null
+  attendedCount: number | null
+  isActive: boolean
+  displayOrder: number
+}
+
+export async function createTour(
+  input: CreateTourAdminInput,
+): Promise<Tour | null> {
+  if (!HAS_DB) {
+    noDb('createTour')
+    return null
+  }
+  try {
+    const [row] = await db.insert(tours).values(input).returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createTour]', err)
+    return null
+  }
+}
+
+export async function updateTour(
+  id: string,
+  patch: Partial<CreateTourAdminInput>,
+): Promise<Tour | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .update(tours)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(tours.id, id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.updateTour]', err)
+    return null
+  }
+}
+
+export async function deleteTour(id: string): Promise<boolean> {
+  if (!HAS_DB) return false
+  if (!isUuid(id)) return false
+  try {
+    const rows = await db
+      .delete(tours)
+      .where(eq(tours.id, id))
+      .returning({ id: tours.id })
+    return rows.length > 0
+  } catch (err) {
+    console.error('[queries.deleteTour]', err)
+    return false
+  }
+}
+
+export async function toggleTourActive(
+  id: string,
+  isActive: boolean,
+): Promise<Tour | null> {
+  return updateTour(id, { isActive })
+}
+
+/* ── Booking admin reads / writes ────────────────────────────────────── */
+
+export async function getAllBookingsAdmin(): Promise<BookingWithHolds[]> {
+  if (!HAS_DB) {
+    return placeholderBookings
+      .slice()
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((b) => ({ ...b, activeHoldsCount: 0 }))
+  }
+  await cleanupExpiredHolds()
+  try {
+    const rows = await db
+      .select({
+        booking: bookings,
+        activeHoldsCount: sql<number>`COALESCE(COUNT(${bookingsPendingHolds.id}) FILTER (WHERE ${bookingsPendingHolds.expiresAt} > now()), 0)::int`,
+      })
+      .from(bookings)
+      .leftJoin(
+        bookingsPendingHolds,
+        eq(bookingsPendingHolds.bookingId, bookings.id),
+      )
+      .groupBy(bookings.id)
+      .orderBy(asc(bookings.displayOrder))
+    return rows.map((r) => ({
+      ...r.booking,
+      activeHoldsCount: Number(r.activeHoldsCount) || 0,
+    }))
+  } catch (err) {
+    console.error('[queries.getAllBookingsAdmin]', err)
+    return []
+  }
+}
+
+export type CreateBookingAdminInput = {
+  slug: string
+  productType: BookingProductType
+  titleAr: string
+  titleEn: string
+  descriptionAr: string
+  descriptionEn: string
+  coverImage: string | null
+  priceUsd: number
+  currency: string
+  nextCohortDate: Date | null
+  cohortLabelAr: string | null
+  cohortLabelEn: string | null
+  durationMinutes: number | null
+  formatAr: string | null
+  formatEn: string | null
+  maxCapacity: number
+  bookingState: BookingState
+  displayOrder: number
+  isActive: boolean
+}
+
+export async function createBookingAdmin(
+  input: CreateBookingAdminInput,
+): Promise<Booking | null> {
+  if (!HAS_DB) {
+    noDb('createBookingAdmin')
+    return null
+  }
+  try {
+    const [row] = await db.insert(bookings).values(input).returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createBookingAdmin]', err)
+    return null
+  }
+}
+
+export type UpdateBookingAdminResult =
+  | { ok: true; booking: Booking }
+  | {
+      ok: false
+      error:
+        | 'not_found'
+        | 'capacity_below_commitment'
+        | 'invalid_input'
+        | 'db_unavailable'
+      data?: { currentBookings: number; currentHolds: number }
+    }
+
+/**
+ * Capacity-aware booking update. If the patch contains `maxCapacity`, this
+ * runs inside a transaction with a SELECT FOR UPDATE on the booking row,
+ * counts active holds, and rejects with `capacity_below_commitment` if the
+ * new max would put the booking under water (committed seats > capacity).
+ *
+ * Without this guard, an admin could over-sell by mistake — the public
+ * Reserve flow would then start failing with no_capacity even on rows that
+ * "should" have seats.
+ *
+ * Other fields (slug, title, etc.) update without the lock since they don't
+ * affect capacity invariants.
+ */
+export async function updateBookingAdmin(
+  id: string,
+  patch: Partial<CreateBookingAdminInput>,
+): Promise<UpdateBookingAdminResult> {
+  if (!HAS_DB) return { ok: false, error: 'db_unavailable' }
+  if (!isUuid(id)) return { ok: false, error: 'invalid_input' }
+  try {
+    return await db.transaction(async (tx) => {
+      // Lazy-clean expired holds for this booking so the active count below
+      // reflects only live commitments.
+      await tx.delete(bookingsPendingHolds).where(
+        and(
+          eq(bookingsPendingHolds.bookingId, id),
+          lte(bookingsPendingHolds.expiresAt, sql`now()`),
+        ),
+      )
+
+      // Lock the booking row so concurrent admin edits + Reserve clicks
+      // don't race against the capacity check.
+      const [current] = await tx
+        .select({
+          bookedCount: bookings.bookedCount,
+          maxCapacity: bookings.maxCapacity,
+        })
+        .from(bookings)
+        .where(eq(bookings.id, id))
+        .for('update')
+        .limit(1)
+      if (!current) return { ok: false, error: 'not_found' as const }
+
+      if (patch.maxCapacity !== undefined) {
+        const [{ count }] = await tx
+          .select({ count: sql<number>`COUNT(*)::int` })
+          .from(bookingsPendingHolds)
+          .where(
+            and(
+              eq(bookingsPendingHolds.bookingId, id),
+              gt(bookingsPendingHolds.expiresAt, sql`now()`),
+            ),
+          )
+        const activeHolds = Number(count) || 0
+        const committed = current.bookedCount + activeHolds
+        if (patch.maxCapacity < committed) {
+          return {
+            ok: false,
+            error: 'capacity_below_commitment' as const,
+            data: {
+              currentBookings: current.bookedCount,
+              currentHolds: activeHolds,
+            },
+          }
+        }
+      }
+
+      const [row] = await tx
+        .update(bookings)
+        .set({ ...patch, updatedAt: new Date() })
+        .where(eq(bookings.id, id))
+        .returning()
+      if (!row) return { ok: false, error: 'not_found' as const }
+      return { ok: true as const, booking: row }
+    })
+  } catch (err) {
+    console.error('[queries.updateBookingAdmin]', err)
+    return { ok: false, error: 'db_unavailable' }
+  }
+}
+
+export async function updateBookingState(
+  id: string,
+  bookingState: BookingState,
+): Promise<Booking | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .update(bookings)
+      .set({ bookingState, updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.updateBookingState]', err)
+    return null
+  }
+}
+
+export async function deleteBookingAdmin(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: 'not_found' | 'has_orders' | 'db_unavailable' }> {
+  if (!HAS_DB) return { ok: false, error: 'db_unavailable' }
+  if (!isUuid(id)) return { ok: false, error: 'not_found' }
+  try {
+    const [orderCheck] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(bookingOrders)
+      .where(eq(bookingOrders.bookingId, id))
+    if ((orderCheck?.count ?? 0) > 0) {
+      return { ok: false, error: 'has_orders' }
+    }
+    const rows = await db
+      .delete(bookings)
+      .where(eq(bookings.id, id))
+      .returning({ id: bookings.id })
+    if (rows.length === 0) return { ok: false, error: 'not_found' }
+    return { ok: true }
+  } catch (err) {
+    console.error('[queries.deleteBookingAdmin]', err)
+    return { ok: false, error: 'db_unavailable' }
+  }
+}
+
+/* ── Tour suggestions admin ──────────────────────────────────────────── */
+
+export type TourSuggestionWithUser = TourSuggestion & {
+  userName: string | null
+  userEmail: string
+}
+
+export async function getAllTourSuggestions(): Promise<TourSuggestionWithUser[]> {
+  if (!HAS_DB) {
+    return placeholderTourSuggestions.map((s) => ({
+      ...s,
+      userName: null,
+      userEmail: '',
+    }))
+  }
+  try {
+    const rows = await db
+      .select({
+        suggestion: tourSuggestions,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(tourSuggestions)
+      .leftJoin(users, eq(users.id, tourSuggestions.userId))
+      .orderBy(desc(tourSuggestions.createdAt))
+    return rows.map((r) => ({
+      ...r.suggestion,
+      userName: r.userName ?? null,
+      userEmail: r.userEmail ?? '',
+    }))
+  } catch (err) {
+    console.error('[queries.getAllTourSuggestions]', err)
+    return []
+  }
+}
+
+export type TourSuggestionAggregate = {
+  country: string
+  city: string
+  count: number
+}
+
+export async function getTourSuggestionAggregates(): Promise<
+  TourSuggestionAggregate[]
+> {
+  if (!HAS_DB) return []
+  try {
+    const rows = await db
+      .select({
+        country: tourSuggestions.suggestedCountry,
+        city: tourSuggestions.suggestedCity,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(tourSuggestions)
+      .groupBy(tourSuggestions.suggestedCountry, tourSuggestions.suggestedCity)
+      .orderBy(desc(sql`COUNT(*)`))
+    return rows.map((r) => ({
+      country: r.country,
+      city: r.city,
+      count: Number(r.count) || 0,
+    }))
+  } catch (err) {
+    console.error('[queries.getTourSuggestionAggregates]', err)
+    return []
+  }
+}
+
+export async function markSuggestionReviewed(
+  id: string,
+  reviewed: boolean,
+): Promise<TourSuggestion | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .update(tourSuggestions)
+      .set({ reviewedAt: reviewed ? new Date() : null })
+      .where(eq(tourSuggestions.id, id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.markSuggestionReviewed]', err)
+    return null
+  }
+}
+
+/* ── Booking interest admin ──────────────────────────────────────────── */
+
+export type BookingInterestWithMeta = BookingInterest & {
+  userName: string | null
+  userEmail: string
+  bookingTitleAr: string
+  bookingTitleEn: string
+  bookingProductType: BookingProductType
+}
+
+export async function getAllBookingInterest(): Promise<BookingInterestWithMeta[]> {
+  if (!HAS_DB) {
+    return placeholderBookingInterest.map((i) => {
+      const booking = placeholderBookings.find((b) => b.id === i.bookingId)
+      return {
+        ...i,
+        userName: null,
+        userEmail: '',
+        bookingTitleAr: booking?.titleAr ?? '',
+        bookingTitleEn: booking?.titleEn ?? '',
+        bookingProductType: booking?.productType ?? 'ONLINE_SESSION',
+      }
+    })
+  }
+  try {
+    const rows = await db
+      .select({
+        interest: bookingInterest,
+        userName: users.name,
+        userEmail: users.email,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        bookingProductType: bookings.productType,
+      })
+      .from(bookingInterest)
+      .leftJoin(users, eq(users.id, bookingInterest.userId))
+      .leftJoin(bookings, eq(bookings.id, bookingInterest.bookingId))
+      .orderBy(desc(bookingInterest.createdAt))
+    return rows.map((r) => ({
+      ...r.interest,
+      userName: r.userName ?? null,
+      userEmail: r.userEmail ?? '',
+      bookingTitleAr: r.bookingTitleAr ?? '',
+      bookingTitleEn: r.bookingTitleEn ?? '',
+      bookingProductType: r.bookingProductType ?? 'ONLINE_SESSION',
+    }))
+  } catch (err) {
+    console.error('[queries.getAllBookingInterest]', err)
+    return []
+  }
+}
+
+export type BookingInterestCount = {
+  bookingId: string
+  bookingTitleAr: string
+  bookingTitleEn: string
+  totalCount: number
+  pendingCount: number
+}
+
+export async function getBookingInterestCounts(): Promise<
+  BookingInterestCount[]
+> {
+  if (!HAS_DB) return []
+  try {
+    const rows = await db
+      .select({
+        bookingId: bookingInterest.bookingId,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        totalCount: sql<number>`COUNT(${bookingInterest.id})::int`,
+        pendingCount: sql<number>`COUNT(${bookingInterest.id}) FILTER (WHERE ${bookingInterest.contactedAt} IS NULL)::int`,
+      })
+      .from(bookingInterest)
+      .leftJoin(bookings, eq(bookings.id, bookingInterest.bookingId))
+      .groupBy(
+        bookingInterest.bookingId,
+        bookings.titleAr,
+        bookings.titleEn,
+      )
+      .orderBy(desc(sql`COUNT(*)`))
+    return rows.map((r) => ({
+      bookingId: r.bookingId,
+      bookingTitleAr: r.bookingTitleAr ?? '',
+      bookingTitleEn: r.bookingTitleEn ?? '',
+      totalCount: Number(r.totalCount) || 0,
+      pendingCount: Number(r.pendingCount) || 0,
+    }))
+  } catch (err) {
+    console.error('[queries.getBookingInterestCounts]', err)
+    return []
+  }
+}
+
+export async function markInterestContacted(
+  id: string,
+  contacted: boolean,
+): Promise<BookingInterest | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .update(bookingInterest)
+      .set({ contactedAt: contacted ? new Date() : null })
+      .where(eq(bookingInterest.id, id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.markInterestContacted]', err)
+    return null
+  }
+}
+
+export async function bulkMarkInterestContacted(
+  ids: string[],
+  contacted: boolean,
+): Promise<number> {
+  if (!HAS_DB) return 0
+  const validIds = ids.filter(isUuid)
+  if (validIds.length === 0) return 0
+  try {
+    const rows = await db
+      .update(bookingInterest)
+      .set({ contactedAt: contacted ? new Date() : null })
+      .where(inArray(bookingInterest.id, validIds))
+      .returning({ id: bookingInterest.id })
+    return rows.length
+  } catch (err) {
+    console.error('[queries.bulkMarkInterestContacted]', err)
+    return 0
+  }
+}
+
+/* ── Booking orders admin ────────────────────────────────────────────── */
+
+export type BookingOrderWithMeta = BookingOrder & {
+  userName: string | null
+  userEmail: string
+  bookingTitleAr: string
+  bookingTitleEn: string
+  bookingProductType: BookingProductType | null
+}
+
+export async function getAllBookingOrders(): Promise<BookingOrderWithMeta[]> {
+  if (!HAS_DB) {
+    return placeholderBookingOrders.map((o) => {
+      const booking = placeholderBookings.find((b) => b.id === o.bookingId)
+      return {
+        ...o,
+        userName: null,
+        userEmail: '',
+        bookingTitleAr: booking?.titleAr ?? '',
+        bookingTitleEn: booking?.titleEn ?? '',
+        bookingProductType: booking?.productType ?? null,
+      }
+    })
+  }
+  try {
+    const rows = await db
+      .select({
+        order: bookingOrders,
+        userName: users.name,
+        userEmail: users.email,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        bookingProductType: bookings.productType,
+      })
+      .from(bookingOrders)
+      .leftJoin(users, eq(users.id, bookingOrders.userId))
+      .leftJoin(bookings, eq(bookings.id, bookingOrders.bookingId))
+      .orderBy(desc(bookingOrders.createdAt))
+    return rows.map((r) => ({
+      ...r.order,
+      userName: r.userName ?? null,
+      userEmail: r.userEmail ?? '',
+      bookingTitleAr: r.bookingTitleAr ?? '',
+      bookingTitleEn: r.bookingTitleEn ?? '',
+      bookingProductType: r.bookingProductType ?? null,
+    }))
+  } catch (err) {
+    console.error('[queries.getAllBookingOrders]', err)
+    return []
+  }
+}
+
+export async function getBookingOrderById(
+  id: string,
+): Promise<BookingOrderWithMeta | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .select({
+        order: bookingOrders,
+        userName: users.name,
+        userEmail: users.email,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        bookingProductType: bookings.productType,
+      })
+      .from(bookingOrders)
+      .leftJoin(users, eq(users.id, bookingOrders.userId))
+      .leftJoin(bookings, eq(bookings.id, bookingOrders.bookingId))
+      .where(eq(bookingOrders.id, id))
+      .limit(1)
+    if (!row) return null
+    return {
+      ...row.order,
+      userName: row.userName ?? null,
+      userEmail: row.userEmail ?? '',
+      bookingTitleAr: row.bookingTitleAr ?? '',
+      bookingTitleEn: row.bookingTitleEn ?? '',
+      bookingProductType: row.bookingProductType ?? null,
+    }
+  } catch (err) {
+    console.error('[queries.getBookingOrderById]', err)
+    return null
+  }
+}
+
+/**
+ * Stale-PENDING purge. Deletes booking_orders rows that are still PENDING
+ * AND older than 24 hours. Returns the number deleted. Idempotent — safe
+ * to run on a schedule or button click.
+ *
+ * These rows represent abandoned Stripe Checkouts where the user never
+ * completed payment. The hold protecting their seat already expired at
+ * 15-min TTL, so capacity isn't a concern; this is purely a cleanup of
+ * dead audit rows.
+ */
+export async function purgeStaleBookingOrders(): Promise<number> {
+  if (!HAS_DB) return 0
+  try {
+    const rows = await db
+      .delete(bookingOrders)
+      .where(
+        and(
+          eq(bookingOrders.status, 'PENDING'),
+          lte(bookingOrders.createdAt, sql`now() - interval '24 hours'`),
+        ),
+      )
+      .returning({ id: bookingOrders.id })
+    return rows.length
+  } catch (err) {
+    console.error('[queries.purgeStaleBookingOrders]', err)
+    return 0
+  }
+}
+
+/* ── Customer-facing: a user's own booking orders ────────────────────── */
+
+/**
+ * Dashboard projection — joins the booking metadata the /dashboard/bookings
+ * page actually renders (cohort label, format, next cohort date). Returns
+ * the most-recent first. Used by the dashboard list page and the dashboard
+ * root's "Your bookings" recap card.
+ *
+ * Mock branch returns [] (placeholderBookingOrders is empty by design — the
+ * post-purchase flow can't run without a real Stripe webhook). This is
+ * intentional: dev mode shows the empty state, which exercises that surface.
+ */
+export type UserBookingOrder = BookingOrder & {
+  bookingTitleAr: string
+  bookingTitleEn: string
+  bookingProductType: BookingProductType | null
+  cohortLabelAr: string | null
+  cohortLabelEn: string | null
+  nextCohortDate: Date | null
+  formatAr: string | null
+  formatEn: string | null
+}
+
+export async function getBookingOrdersByUserId(
+  userId: string,
+): Promise<UserBookingOrder[]> {
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    const rows = await db
+      .select({
+        order: bookingOrders,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        bookingProductType: bookings.productType,
+        cohortLabelAr: bookings.cohortLabelAr,
+        cohortLabelEn: bookings.cohortLabelEn,
+        nextCohortDate: bookings.nextCohortDate,
+        formatAr: bookings.formatAr,
+        formatEn: bookings.formatEn,
+      })
+      .from(bookingOrders)
+      .leftJoin(bookings, eq(bookings.id, bookingOrders.bookingId))
+      .where(eq(bookingOrders.userId, userId))
+      .orderBy(desc(bookingOrders.createdAt))
+    return rows.map((r) => ({
+      ...r.order,
+      bookingTitleAr: r.bookingTitleAr ?? '',
+      bookingTitleEn: r.bookingTitleEn ?? '',
+      bookingProductType: r.bookingProductType ?? null,
+      cohortLabelAr: r.cohortLabelAr ?? null,
+      cohortLabelEn: r.cohortLabelEn ?? null,
+      nextCohortDate: r.nextCohortDate ?? null,
+      formatAr: r.formatAr ?? null,
+      formatEn: r.formatEn ?? null,
+    }))
+  } catch (err) {
+    console.error('[queries.getBookingOrdersByUserId]', err)
+    return []
+  }
+}
+
+/**
+ * Set of bookingIds the user has a *currently-active* booking_orders row for.
+ * Used by the public /booking page + createBookingCheckoutAction to gate the
+ * "already booked" state — a user shouldn't be able to re-buy a session
+ * they already paid for.
+ *
+ * Filter rationale:
+ *   - PAID / FULFILLED   → blocked: user already has a seat
+ *   - PENDING            → NOT blocked: mid-checkout; the holds machinery
+ *                          handles re-click by replacing the prior hold.
+ *                          Blocking would strand the user if their first
+ *                          attempt stalled at Stripe.
+ *   - REFUNDED / FAILED  → NOT blocked: re-book is the expected behaviour.
+ *
+ * Cohort-identity caveat: this gates by `bookings.id`, which is the row
+ * representing the offering. If admin reuses the same row for a future
+ * cohort, a previous-cohort buyer will still see "already booked." v1 ask
+ * is to direct the user to support via the dashboard Manage CTA. Phase B
+ * can introduce cohort-instance tracking if needed.
+ *
+ * Returns plain string[] — Set<string> would warn at the React Server →
+ * Client boundary on serialisation. Callers convert to Set if O(1) lookup
+ * matters; with ~1 reconsider + ~8 sessions per page, .includes() is fine.
+ */
+export async function getPaidBookingIdsForUser(
+  userId: string,
+): Promise<string[]> {
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    const rows = await db
+      .select({ bookingId: bookingOrders.bookingId })
+      .from(bookingOrders)
+      .where(
+        and(
+          eq(bookingOrders.userId, userId),
+          inArray(bookingOrders.status, ['PAID', 'FULFILLED']),
+        ),
+      )
+    return rows.map((r) => r.bookingId)
+  } catch (err) {
+    console.error('[queries.getPaidBookingIdsForUser]', err)
+    return []
+  }
+}
+
+/* ── User questions ("Ask Dr. Khaled") ─────────────────────────────────── */
+
+/**
+ * Phase B1 — return a user's own question history, ordered by createdAt DESC.
+ *
+ * Mock-mode (`MOCK_AUTH_ENABLED=true`) reads from the disk-backed mock store;
+ * real-DB mode hits the `user_questions` table. The optional `status` filter
+ * lets callers narrow to PENDING / ANSWERED / ARCHIVED — the filter pills on
+ * the dashboard page do this client-side after the initial server fetch, but
+ * the helper accepts it so admin queue queries (Phase B2) can reuse it.
+ *
+ * Default status filter is `'all'`, which returns every status. The customer
+ * UI then chooses to hide ARCHIVED from the default "All" tab — that's a UI
+ * decision, not a data-layer one.
+ */
+export async function getUserQuestionsByUserId(
+  userId: string,
+  options?: { limit?: number; status?: QuestionStatus | 'all' },
+): Promise<UserQuestion[]> {
+  const limit = options?.limit ?? 50
+  const status = options?.status ?? 'all'
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.userQuestions.filter((q) => q.userId === userId)
+    const filtered = status === 'all' ? list : list.filter((q) => q.status === status)
+    // Mock store stores newest-first via `unshift`, but be defensive — sort
+    // by createdAt DESC explicitly so callers don't depend on insertion order.
+    return filtered
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit)
+  }
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    const where =
+      status === 'all'
+        ? eq(userQuestions.userId, userId)
+        : and(eq(userQuestions.userId, userId), eq(userQuestions.status, status))
+    const rows = await db
+      .select()
+      .from(userQuestions)
+      .where(where)
+      .orderBy(desc(userQuestions.createdAt))
+      .limit(limit)
+    return rows
+  } catch (err) {
+    console.error('[queries.getUserQuestionsByUserId]', err)
+    return []
+  }
+}
+
+/**
+ * Phase B1 — insert a new question. Status starts at 'PENDING'; admin
+ * transitions it to ANSWERED / ARCHIVED in Phase B2.
+ *
+ * `isAnonymous` is dormant — the user-facing toggle was removed. The
+ * column stays in migration 0009 with a `false` default and we honour
+ * that default here. Callers can still pass `true` if the feature is
+ * ever reintroduced, but no surface in the app does today.
+ *
+ * Returns null when the DB write fails so the action layer can surface a
+ * `database_error` code instead of throwing past the server-action boundary.
+ */
+export async function createUserQuestion(input: {
+  userId: string
+  subject: string
+  body: string
+  category: string | null
+  isAnonymous?: boolean
+}): Promise<UserQuestion | null> {
+  const isAnonymous = input.isAnonymous ?? false
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const now = new Date()
+    const row: UserQuestion = {
+      id: `00000000-0000-0000-0000-${Date.now().toString().slice(-12).padStart(12, '0')}`,
+      userId: input.userId,
+      subject: input.subject,
+      body: input.body,
+      category: input.category,
+      isAnonymous,
+      status: 'PENDING',
+      answerReference: null,
+      answeredAt: null,
+      archivedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    store.userQuestions.unshift(row)
+    writeStore(store)
+    return row
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.userId)) return null
+  try {
+    const [row] = await db
+      .insert(userQuestions)
+      .values({
+        userId: input.userId,
+        subject: input.subject,
+        body: input.body,
+        category: input.category,
+        isAnonymous,
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createUserQuestion]', err)
+    return null
+  }
+}
+
+/* ── Admin: user questions queue (Phase B2) ─────────────────────────────── */
+
+/**
+ * The shape returned by admin queue reads — the question row joined with the
+ * minimum identity fields the table needs (name + email). Email is required
+ * for outbound notifications; name is shown in the table even when the user
+ * preferred anonymity (the anonymity flag was a public-display preference,
+ * never a private-comms one). Note: the user-facing toggle was removed
+ * pre-launch; `isAnonymous` will be `false` on every new row but legacy
+ * data may still be `true`.
+ */
+export type AdminQuestion = UserQuestion & {
+  user: {
+    id: string
+    name: string | null
+    email: string
+  }
+}
+
+/**
+ * Paginated admin queue read. Joins users for the asker identity. Uses the
+ * `user_questions_status_idx` (status, created_at DESC) when status is
+ * concrete; falls back to the createdAt order when 'all'.
+ */
+export async function getAdminQuestions(input: {
+  status?: QuestionStatus | 'all'
+  page?: number
+  pageSize?: number
+}): Promise<{
+  rows: AdminQuestion[]
+  total: number
+  page: number
+  pageSize: number
+}> {
+  const status = input.status ?? 'all'
+  const page = Math.max(1, input.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 50))
+  const offset = (page - 1) * pageSize
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const all = store.userQuestions
+      .filter((q) => status === 'all' || q.status === status)
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    const sliced = all.slice(offset, offset + pageSize)
+    const userById = new Map(placeholderUsers.map((u) => [u.id, u]))
+    const rows: AdminQuestion[] = sliced.map((q) => {
+      const u = userById.get(q.userId)
+      return {
+        ...q,
+        user: {
+          id: q.userId,
+          name: u?.name ?? null,
+          email: u?.email ?? '',
+        },
+      }
+    })
+    return { rows, total: all.length, page, pageSize }
+  }
+  if (!HAS_DB) return { rows: [], total: 0, page, pageSize }
+  try {
+    const where =
+      status === 'all'
+        ? undefined
+        : eq(userQuestions.status, status)
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(userQuestions)
+      .where(where ?? sql`TRUE`)
+    const dbRows = await db
+      .select({
+        question: userQuestions,
+        userId: users.id,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(userQuestions)
+      .leftJoin(users, eq(users.id, userQuestions.userId))
+      .where(where ?? sql`TRUE`)
+      .orderBy(desc(userQuestions.createdAt))
+      .limit(pageSize)
+      .offset(offset)
+    const rows: AdminQuestion[] = dbRows.map((r) => ({
+      ...r.question,
+      user: {
+        id: r.userId ?? r.question.userId,
+        name: r.userName ?? null,
+        email: r.userEmail ?? '',
+      },
+    }))
+    return { rows, total: Number(count) || 0, page, pageSize }
+  } catch (err) {
+    console.error('[queries.getAdminQuestions]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+/**
+ * Single-question lookup. Used by `updateQuestionStatusAction` to determine
+ * the recipient + locale for the outbound notification email. Returns null
+ * when the row is missing.
+ */
+export async function getQuestionById(
+  id: string,
+): Promise<AdminQuestion | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const q = store.userQuestions.find((row) => row.id === id)
+    if (!q) return null
+    const userById = new Map(placeholderUsers.map((u) => [u.id, u]))
+    const u = userById.get(q.userId)
+    return {
+      ...q,
+      user: { id: q.userId, name: u?.name ?? null, email: u?.email ?? '' },
+    }
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .select({
+        question: userQuestions,
+        userId: users.id,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(userQuestions)
+      .leftJoin(users, eq(users.id, userQuestions.userId))
+      .where(eq(userQuestions.id, id))
+      .limit(1)
+    if (!row) return null
+    return {
+      ...row.question,
+      user: {
+        id: row.userId ?? row.question.userId,
+        name: row.userName ?? null,
+        email: row.userEmail ?? '',
+      },
+    }
+  } catch (err) {
+    console.error('[queries.getQuestionById]', err)
+    return null
+  }
+}
+
+/**
+ * Atomic status update with timestamp side-effects per the Phase B2 spec:
+ *   - status='ANSWERED'  → answeredAt=now, archivedAt=null,
+ *                          answerReference=input.answerReference
+ *   - status='ARCHIVED'  → archivedAt=now, answeredAt=null,
+ *                          answerReference=null
+ *   - status='PENDING'   → answeredAt=null, archivedAt=null,
+ *                          answerReference=null  (revert state)
+ * `updatedAt` is always set to now.
+ *
+ * Returns the updated row, or null if the row was missing or the write
+ * failed. Caller (`updateQuestionStatusAction`) maps null to a `not_found`
+ * or `database_error` response shape.
+ */
+export async function updateQuestionStatus(input: {
+  id: string
+  status: QuestionStatus
+  answerReference: string | null
+}): Promise<UserQuestion | null> {
+  const now = new Date()
+  const patch = ((): Partial<UserQuestion> => {
+    if (input.status === 'ANSWERED') {
+      return {
+        status: 'ANSWERED',
+        answeredAt: now,
+        archivedAt: null,
+        answerReference: input.answerReference,
+        updatedAt: now,
+      }
+    }
+    if (input.status === 'ARCHIVED') {
+      return {
+        status: 'ARCHIVED',
+        archivedAt: now,
+        answeredAt: null,
+        answerReference: null,
+        updatedAt: now,
+      }
+    }
+    return {
+      status: 'PENDING',
+      answeredAt: null,
+      archivedAt: null,
+      answerReference: null,
+      updatedAt: now,
+    }
+  })()
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.userQuestions.findIndex((q) => q.id === input.id)
+    if (idx === -1) return null
+    const updated: UserQuestion = {
+      ...store.userQuestions[idx]!,
+      ...patch,
+    } as UserQuestion
+    store.userQuestions[idx] = updated
+    writeStore(store)
+    return updated
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.id)) return null
+  try {
+    const [row] = await db
+      .update(userQuestions)
+      .set(patch)
+      .where(eq(userQuestions.id, input.id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.updateQuestionStatus]', err)
+    return null
+  }
+}
+
+/**
+ * Hard delete. Idempotent — no error if the row is already gone. Used only
+ * for spam/abuse cleanup; ARCHIVED is the soft-removal path.
+ */
+export async function deleteQuestion(id: string): Promise<void> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const before = store.userQuestions.length
+    store.userQuestions = store.userQuestions.filter((q) => q.id !== id)
+    if (store.userQuestions.length !== before) writeStore(store)
+    return
+  }
+  if (!HAS_DB) return
+  if (!isUuid(id)) return
+  try {
+    await db.delete(userQuestions).where(eq(userQuestions.id, id))
+  } catch (err) {
+    console.error('[queries.deleteQuestion]', err)
+  }
+}
+
+/**
+ * Lightweight count for the sidebar badge. Sized at 1 row so the index hit
+ * is cheap; we only need the total. Returns 0 in all failure modes so a
+ * broken count never blocks the admin layout from rendering.
+ */
+export async function getPendingQuestionCount(): Promise<number> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.userQuestions.filter((q) => q.status === 'PENDING').length
+  }
+  if (!HAS_DB) return 0
+  try {
+    const [row] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(userQuestions)
+      .where(eq(userQuestions.status, 'PENDING'))
+    return Number(row?.count) || 0
+  } catch (err) {
+    console.error('[queries.getPendingQuestionCount]', err)
+    return 0
+  }
+}
+
 export type {
   Article,
   ArticleCategory,
   Book,
+  Booking,
+  BookingInterest,
+  BookingOrder,
+  BookingProductType,
+  BookingState,
   ContactMessage,
   ContentBlock,
   ContentStatus,
@@ -2530,8 +4806,12 @@ export type {
   SiteSetting,
   Subscriber,
   SubscriberStatus,
+  Tour,
+  TourSuggestion,
   User,
+  UserQuestion,
   UserRole,
+  QuestionStatus,
 } from './schema'
 
 /** Whether the unified queries layer is talking to a real database. */

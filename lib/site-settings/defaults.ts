@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_nav_about: true,
     show_nav_contact: true,
     show_nav_corporate: true,
+    show_nav_booking: true,
     show_locale_switcher: true,
   },
   footer: {
@@ -54,6 +55,17 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     message_en: '',
     until: null,
   },
+  admin: {
+    show_admin_booking: true,
+    show_admin_questions: true,
+  },
+  dashboard: {
+    show_account_tab: true,
+    show_library_tab: true,
+    show_bookings_tab: true,
+    show_ask_tab: true,
+    show_settings_tab: true,
+  },
   coming_soon_pages: [],
 }
 
@@ -74,6 +86,11 @@ export function mergeSettings(
     featured: { ...base.featured, ...patch.featured },
     features: { ...base.features, ...patch.features },
     maintenance: { ...base.maintenance, ...patch.maintenance },
+    admin: { ...base.admin, ...patch.admin },
+    // Account tab is the /dashboard landing surface — same always-on
+    // treatment as `show_hero`. Trailing override defends against a
+    // patch that tries to set it false.
+    dashboard: { ...base.dashboard, ...patch.dashboard, show_account_tab: true },
     coming_soon_pages: patch.coming_soon_pages ?? base.coming_soon_pages,
   }
 }

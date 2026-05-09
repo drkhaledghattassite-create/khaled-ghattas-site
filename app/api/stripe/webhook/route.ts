@@ -3,8 +3,14 @@ import type Stripe from 'stripe'
 import { getStripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe'
 import {
   createOrderFromStripeSession,
+  deleteHoldByStripeSessionId,
+  getBookingById,
+  getBookingOrderByStripeSessionId,
   getOrderByPaymentIntentId,
   getOrderItemsWithBooks,
+  markBookingOrderFailed,
+  markBookingOrderPaid,
+  markBookingOrderRefunded,
   updateOrderStatusByPaymentIntentId,
 } from '@/lib/db/queries'
 import { sendEmail } from '@/lib/email/send'
@@ -16,6 +22,12 @@ import {
   type PostPurchaseLocale,
   type PostPurchaseSessionEntry,
 } from '@/lib/email/templates/post-purchase'
+import {
+  buildBookingConfirmationHtml,
+  buildBookingConfirmationSubject,
+  buildBookingConfirmationText,
+  type BookingConfirmationLocale,
+} from '@/lib/email/templates/booking-confirmation'
 import { storage } from '@/lib/storage'
 import { SITE_URL } from '@/lib/constants'
 
@@ -85,6 +97,16 @@ export async function POST(req: Request) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
+
+      // BOOKING product type — early return BEFORE the books/sessions path.
+      // The existing path reads `metadata.bookId` and calls
+      // createOrderFromStripeSession() which has no notion of booking_orders.
+      // Falling through would either crash or write a malformed `orders` row.
+      if (session.metadata?.productType === 'BOOKING') {
+        await handleBookingCheckoutCompleted(session)
+        break
+      }
+
       const userId = session.metadata?.userId ?? null
       const bookId = session.metadata?.bookId ?? null
 
@@ -164,7 +186,41 @@ export async function POST(req: Request) {
       break
     }
 
+    // BOOKING-only: Stripe Checkout Session expired without payment. Clean up
+    // the hold so the seat returns to the available pool. The booking_orders
+    // row stays as PENDING — admin tooling (Phase A2) can purge stale PENDING
+    // rows. Idempotent: if the hold or order is already gone, the queries
+    // are no-ops.
+    case 'checkout.session.expired': {
+      const session = event.data.object as Stripe.Checkout.Session
+      if (session.metadata?.productType !== 'BOOKING') {
+        // Not a booking — current books/sessions flow doesn't handle this
+        // event. Log + skip.
+        console.info(
+          '[stripe/webhook] checkout.session.expired (non-BOOKING); skipping',
+          { sessionId: session.id },
+        )
+        break
+      }
+      try {
+        await deleteHoldByStripeSessionId(session.id)
+        await markBookingOrderFailed({ stripeSessionId: session.id })
+        console.info(
+          '[stripe/webhook] checkout.session.expired (BOOKING) — hold released, order marked FAILED',
+          { sessionId: session.id },
+        )
+      } catch (err) {
+        console.error(
+          '[stripe/webhook] failed to clean up expired BOOKING checkout',
+          err,
+        )
+      }
+      break
+    }
+
     // Stripe-side refund (manual via dashboard, or echo of an admin-panel refund).
+    // Routes to BOOKING handler if the paymentIntent matches a booking_order;
+    // otherwise falls through to the existing books/sessions handler.
     // Idempotent: if already REFUNDED locally, the SQL UPDATE is a no-op.
     case 'charge.refunded': {
       const charge = event.data.object as Stripe.Charge
@@ -176,6 +232,24 @@ export async function POST(req: Request) {
         })
         break
       }
+
+      // BOOKING-flavored branch first. markBookingOrderRefunded returns null
+      // when no booking_orders row matches this paymentIntentId — falls
+      // through to the books/sessions path. Per Decision 11, bookingState is
+      // NOT auto-flipped from SOLD_OUT → OPEN on refund (admin tooling
+      // territory; deferred to Phase A2).
+      const refundedBooking = await markBookingOrderRefunded({
+        stripePaymentIntentId: paymentIntentId,
+      })
+      if (refundedBooking) {
+        console.info(
+          '[stripe/webhook] charge.refunded → BOOKING REFUNDED, bookedCount decremented',
+          { bookingOrderId: refundedBooking.id },
+        )
+        break
+      }
+
+      // Existing books/sessions path.
       const existing = await getOrderByPaymentIntentId(paymentIntentId)
       if (!existing) {
         console.warn('[stripe/webhook] charge.refunded for unknown order', {
@@ -206,6 +280,22 @@ export async function POST(req: Request) {
 
     case 'payment_intent.payment_failed': {
       const pi = event.data.object as Stripe.PaymentIntent
+      // Try BOOKING first. We don't currently store paymentIntentId on
+      // booking_orders before completion, so this only matches if the PI
+      // was already linked (via a prior succeeded then failed sequence — rare
+      // for our card-only flow, but handled defensively). If no booking_order
+      // matches, fall through to the books/sessions handler.
+      const failedBooking = await markBookingOrderFailed({
+        stripePaymentIntentId: pi.id,
+      })
+      if (failedBooking) {
+        console.info(
+          '[stripe/webhook] payment_intent.payment_failed → BOOKING FAILED',
+          { bookingOrderId: failedBooking.id },
+        )
+        break
+      }
+
       const existing = await getOrderByPaymentIntentId(pi.id)
       if (!existing) {
         // Most failures happen before we ever wrote an order row. Nothing to do.
@@ -385,4 +475,165 @@ async function sendPostPurchaseEmail(args: {
     orderId: args.orderId,
     emailId: result.id,
   })
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * BOOKING — Phase A1
+ *
+ * Handles the BOOKING-flavored checkout.session.completed:
+ *   1. Mark booking_orders PAID (atomic; updates confirmedAt, paymentIntentId)
+ *   2. Atomically increment bookings.bookedCount; if at capacity, flip
+ *      bookingState to SOLD_OUT
+ *   3. Delete the matching hold by stripeSessionId
+ *   4. Send the booking-confirmation email (best-effort; same try/catch
+ *      semantics as the existing post-purchase email)
+ *
+ * Steps 1-3 happen in a single DB transaction inside markBookingOrderPaid.
+ * The webhook is idempotent: re-delivery hits an already-PAID row; the
+ * UPDATE bookedCount += 1 part would over-increment, so we guard against
+ * re-entry by checking order.status === 'PENDING' before doing the work.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+async function handleBookingCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const sessionId = session.id
+  const customerEmail =
+    session.customer_details?.email ?? session.customer_email ?? ''
+  const customerName = session.customer_details?.name ?? null
+  const paymentIntentId =
+    typeof session.payment_intent === 'string' ? session.payment_intent : null
+  const totalCents = session.amount_total ?? 0
+
+  // Idempotency guard: re-delivered webhooks would over-increment bookedCount.
+  // Read the existing row; if it's already PAID, no-op.
+  const existing = await getBookingOrderByStripeSessionId(sessionId)
+  if (!existing) {
+    console.warn(
+      '[stripe/webhook] BOOKING completed but no booking_orders row',
+      { sessionId },
+    )
+    // Best-effort: still try to delete the orphaned hold.
+    await deleteHoldByStripeSessionId(sessionId)
+    return
+  }
+  if (existing.status === 'PAID') {
+    console.info('[stripe/webhook] BOOKING already PAID — skipping', {
+      bookingOrderId: existing.id,
+    })
+    // Defensive: still drop the hold in case it was missed.
+    await deleteHoldByStripeSessionId(sessionId)
+    return
+  }
+
+  const result = await markBookingOrderPaid({
+    stripeSessionId: sessionId,
+    stripePaymentIntentId: paymentIntentId,
+    amountPaid: totalCents,
+  })
+  if (!result) {
+    console.error('[stripe/webhook] markBookingOrderPaid failed', {
+      sessionId,
+    })
+    return
+  }
+  console.info('[stripe/webhook] BOOKING checkout.session.completed processed', {
+    bookingOrderId: result.bookingOrder.id,
+    bookingId: result.bookingId,
+    newBookedCount: result.newBookedCount,
+    flippedToSoldOut: result.flippedToSoldOut,
+  })
+
+  if (!customerEmail) {
+    console.warn('[stripe/webhook] BOOKING confirmation: no customer email', {
+      sessionId,
+    })
+    return
+  }
+
+  // Booking confirmation email. Best-effort — the order is already recorded
+  // and capacity already adjusted; an email failure shouldn't return non-200
+  // to Stripe.
+  try {
+    const booking = await getBookingById(result.bookingId)
+    if (!booking) {
+      console.error(
+        '[stripe/webhook] BOOKING confirmation: booking row missing',
+        { bookingId: result.bookingId },
+      )
+      return
+    }
+    const rawLocale = session.metadata?.locale
+    const locale: BookingConfirmationLocale = rawLocale === 'en' ? 'en' : 'ar'
+
+    const html = buildBookingConfirmationHtml({
+      locale,
+      customerName,
+      customerEmail,
+      orderId: result.bookingOrder.id,
+      booking: {
+        titleAr: booking.titleAr,
+        titleEn: booking.titleEn,
+        productType: booking.productType,
+        cohortLabelAr: booking.cohortLabelAr,
+        cohortLabelEn: booking.cohortLabelEn,
+        nextCohortDate: booking.nextCohortDate,
+        durationMinutes: booking.durationMinutes,
+        formatAr: booking.formatAr,
+        formatEn: booking.formatEn,
+      },
+      amountPaid: result.bookingOrder.amountPaid,
+      currency: result.bookingOrder.currency,
+      bookingsUrl: `${SITE_URL}/dashboard/bookings`,
+      supportEmail: SUPPORT_EMAIL,
+    })
+    const text = buildBookingConfirmationText({
+      locale,
+      customerName,
+      customerEmail,
+      orderId: result.bookingOrder.id,
+      booking: {
+        titleAr: booking.titleAr,
+        titleEn: booking.titleEn,
+        productType: booking.productType,
+        cohortLabelAr: booking.cohortLabelAr,
+        cohortLabelEn: booking.cohortLabelEn,
+        nextCohortDate: booking.nextCohortDate,
+        durationMinutes: booking.durationMinutes,
+        formatAr: booking.formatAr,
+        formatEn: booking.formatEn,
+      },
+      amountPaid: result.bookingOrder.amountPaid,
+      currency: result.bookingOrder.currency,
+      bookingsUrl: `${SITE_URL}/dashboard/bookings`,
+      supportEmail: SUPPORT_EMAIL,
+    })
+
+    const sendResult = await sendEmail({
+      to: customerEmail,
+      subject: buildBookingConfirmationSubject(locale),
+      html,
+      text,
+      previewLabel: 'booking-confirmation',
+    })
+    if (!sendResult.ok) {
+      if (sendResult.reason === 'preview-only') {
+        console.info('[stripe/webhook] booking-confirmation previewed (dev)', {
+          bookingOrderId: result.bookingOrder.id,
+        })
+        return
+      }
+      console.warn('[stripe/webhook] booking-confirmation not sent', {
+        bookingOrderId: result.bookingOrder.id,
+        reason: sendResult.reason,
+      })
+      return
+    }
+    console.info('[stripe/webhook] booking-confirmation email sent', {
+      bookingOrderId: result.bookingOrder.id,
+      emailId: sendResult.id,
+    })
+  } catch (err) {
+    console.error('[stripe/webhook] booking-confirmation email failed', err)
+  }
 }

@@ -17,6 +17,7 @@ export const COMING_SOON_PAGES = [
   'contact',
   'about',
   'corporate',
+  'booking',
 ] as const
 
 export type ComingSoonPage = (typeof COMING_SOON_PAGES)[number]
@@ -38,6 +39,7 @@ export type SiteSettings = {
     show_nav_about: boolean
     show_nav_contact: boolean
     show_nav_corporate: boolean
+    show_nav_booking: boolean
     show_locale_switcher: boolean
   }
   footer: {
@@ -59,6 +61,40 @@ export type SiteSettings = {
     auth_enabled: boolean
     newsletter_form_enabled: boolean
     maintenance_mode: boolean
+  }
+  admin: {
+    /**
+     * When false, the booking admin section is hidden from the sidebar.
+     * Useful when Dr. Khaled wants the public /booking page suspended
+     * (via coming_soon_pages) AND wants the operator UI hidden too.
+     */
+    show_admin_booking: boolean
+    /**
+     * Phase B2 — when false, the "Questions" admin sidebar entry is
+     * hidden. The /admin/questions route still resolves via deep link.
+     * Mirrors `show_admin_booking`'s pattern: a section-scoped toggle.
+     */
+    show_admin_questions: boolean
+  }
+  dashboard: {
+    /**
+     * Per-tab visibility for the customer dashboard nav. Each toggle hides
+     * the tab from the sticky tab bar but DOES NOT block the route — the
+     * page is still reachable via direct URL, by design (mirrors the
+     * `admin.show_admin_booking` pattern).
+     *
+     * `show_account_tab` is a literal-true (always-on) — same pattern as
+     * `homepage.show_hero`. The Account tab IS the /dashboard landing
+     * surface (profile editor); hiding it leaves users without a path
+     * back to their own info from sister tabs. The form renders it as
+     * disabled+checked; mergeSettings forces it true even if a patch
+     * tries to flip it.
+     */
+    show_account_tab: true
+    show_library_tab: boolean
+    show_bookings_tab: boolean
+    show_ask_tab: boolean
+    show_settings_tab: boolean
   }
   maintenance: {
     message_ar: string

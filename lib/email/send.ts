@@ -24,6 +24,10 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
 import { getResend } from './index'
+import {
+  buildQuestionAnsweredEmail,
+  type QuestionAnsweredLocale,
+} from './templates/question-answered'
 
 export type SendEmailInput = {
   to: string
@@ -130,4 +134,58 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     console.error('[email/send] threw', err)
     return { ok: false, reason: 'send-failed', error: err }
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase B2 — admin-triggered "Your question has been answered" notification.
+ *
+ * Wraps `sendEmail` so the caller (updateQuestionStatusAction) gets a flat
+ * { ok, reason } shape that matches its toast mapping. NEVER throws —
+ * status updates must succeed even when email infra is unavailable. The
+ * `'preview-only'` reason from dev-preview mode is normalised to ok=false
+ * so the admin UI surfaces "no email sent" honestly in dev.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const DEFAULT_SUPPORT_EMAIL = 'Team@drkhaledghattass.com'
+
+export type AnsweredEmailUser = {
+  email: string
+  name: string | null
+  /** Asker's preferred locale. The User table doesn't carry a locale today,
+   *  so this is typically passed as 'ar' (the site primary). When the field
+   *  is added (Phase B3 or beyond), thread it through here. */
+  locale?: QuestionAnsweredLocale
+}
+
+export type AnsweredEmailResult =
+  | { ok: true; id: string | null }
+  | { ok: false; reason: 'no-api-key' | 'send-failed' | 'preview-only' | 'invalid-recipient' }
+
+export async function sendAnsweredNotificationEmail(args: {
+  user: AnsweredEmailUser
+  question: { subject: string }
+  answerUrl: string
+}): Promise<AnsweredEmailResult> {
+  const recipient = args.user.email?.trim()
+  if (!recipient) {
+    console.warn('[email/sendAnsweredNotification] missing recipient email')
+    return { ok: false, reason: 'invalid-recipient' }
+  }
+  const locale: QuestionAnsweredLocale = args.user.locale ?? 'ar'
+  const built = buildQuestionAnsweredEmail({
+    locale,
+    recipientName: args.user.name,
+    questionSubject: args.question.subject,
+    answerUrl: args.answerUrl,
+    supportEmail: process.env.CORPORATE_INBOX_EMAIL ?? DEFAULT_SUPPORT_EMAIL,
+  })
+  const result = await sendEmail({
+    to: recipient,
+    subject: built.subject,
+    html: built.html,
+    text: built.text,
+    previewLabel: 'question-answered',
+  })
+  if (result.ok) return { ok: true, id: result.id }
+  return { ok: false, reason: result.reason }
 }

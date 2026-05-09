@@ -237,6 +237,11 @@ export function SiteSettingsForm({
             onCheckedChange={(v) => update('navigation', { show_nav_corporate: v })}
           />
           <ToggleRow
+            label={t('navigation.show_nav_booking')}
+            checked={settings.navigation.show_nav_booking}
+            onCheckedChange={(v) => update('navigation', { show_nav_booking: v })}
+          />
+          <ToggleRow
             label={t('navigation.show_locale_switcher')}
             checked={settings.navigation.show_locale_switcher}
             onCheckedChange={(v) => update('navigation', { show_locale_switcher: v })}
@@ -374,6 +379,58 @@ export function SiteSettingsForm({
             description={t('features.maintenance_mode_desc')}
             checked={settings.features.maintenance_mode}
             onCheckedChange={(v) => update('features', { maintenance_mode: v })}
+          />
+        </div>
+      </Card>
+
+      <Card title={t('groups.admin_title')} description={t('groups.admin_desc')}>
+        <div className="grid gap-3 md:grid-cols-2">
+          <ToggleRow
+            label={t('admin.show_admin_booking')}
+            description={t('admin.show_admin_booking_desc')}
+            checked={settings.admin.show_admin_booking}
+            onCheckedChange={(v) => update('admin', { show_admin_booking: v })}
+          />
+          <ToggleRow
+            label={t('admin.show_admin_questions')}
+            description={t('admin.show_admin_questions_desc')}
+            checked={settings.admin.show_admin_questions}
+            onCheckedChange={(v) => update('admin', { show_admin_questions: v })}
+          />
+        </div>
+      </Card>
+
+      <Card title={t('groups.dashboard_title')} description={t('groups.dashboard_desc')}>
+        <div className="grid gap-3 md:grid-cols-2">
+          <ToggleRow
+            label={t('dashboard.show_account_tab')}
+            description={t('dashboard.show_account_tab_desc')}
+            checked
+            disabled
+          />
+          <ToggleRow
+            label={t('dashboard.show_library_tab')}
+            description={t('dashboard.show_library_tab_desc')}
+            checked={settings.dashboard.show_library_tab}
+            onCheckedChange={(v) => update('dashboard', { show_library_tab: v })}
+          />
+          <ToggleRow
+            label={t('dashboard.show_bookings_tab')}
+            description={t('dashboard.show_bookings_tab_desc')}
+            checked={settings.dashboard.show_bookings_tab}
+            onCheckedChange={(v) => update('dashboard', { show_bookings_tab: v })}
+          />
+          <ToggleRow
+            label={t('dashboard.show_ask_tab')}
+            description={t('dashboard.show_ask_tab_desc')}
+            checked={settings.dashboard.show_ask_tab}
+            onCheckedChange={(v) => update('dashboard', { show_ask_tab: v })}
+          />
+          <ToggleRow
+            label={t('dashboard.show_settings_tab')}
+            description={t('dashboard.show_settings_tab_desc')}
+            checked={settings.dashboard.show_settings_tab}
+            onCheckedChange={(v) => update('dashboard', { show_settings_tab: v })}
           />
         </div>
       </Card>

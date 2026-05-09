@@ -35,6 +35,7 @@
     "contact": "تواصل",
     "events": "الفعاليات",
     "corporate": "للشركات والمؤسسات",
+    "booking": "خدمات للأفراد",
     "menu": "القائمة",
     "close": "إغلاق",
     "primary": "القائمة الأساسية",
@@ -42,7 +43,8 @@
     "dashboard": "لوحة التحكم",
     "account": "حسابي",
     "admin": "إدارة",
-    "signout": "تسجيل خروج"
+    "signout": "تسجيل خروج",
+    "continue_indicator_aria": "تابع من حيث توقفت"
   },
   "common": {
     "back": "عودة",
@@ -413,6 +415,169 @@
       "required_label": "حقل مطلوب"
     }
   },
+  "booking": {
+    "meta": {
+      "title": "خدمات للأفراد — جولات، دورة Reconsider، جلسات أونلاين",
+      "description": "ثلاث طرق للحضور: جولات حضورية في مدن مختارة، دورة Reconsider، وثماني جلسات أونلاين مستقلة."
+    },
+    "page": {
+      "eyebrow": "حجوزات",
+      "hero_italic": "احجز",
+      "hero_sans": "مكانك",
+      "lead": "ثلاث طرق للحضور: جولات حضورية في مدن مختارة، دورة «Reconsider»، وثماني جلسات أونلاين مستقلة. ادخل بهدوء، اقرأ بتأنٍّ، واختر ما يناسبك."
+    },
+    "status_strip": {
+      "tours_open_one": "{count} جولة حضورية مفتوحة للتسجيل",
+      "tours_open_other": "{count} جولات حضورية مفتوحة للتسجيل",
+      "tours_none": "لا جولات حضورية حالياً",
+      "reconsider_open": "دورة Reconsider — الدفعة القادمة {date}",
+      "reconsider_closed": "دورة Reconsider — التسجيل مغلق",
+      "reconsider_sold_out": "دورة Reconsider — اكتمل العدد",
+      "sessions_open": "{open} من ٨ جلسات أونلاين متاحة"
+    },
+    "subnav": {
+      "tours": "جولات",
+      "reconsider": "Reconsider",
+      "sessions": "جلسات أونلاين",
+      "aria_label": "الانتقال إلى قسم"
+    },
+    "tours": {
+      "label": "٠١ — جولات",
+      "title": "جولات في مدن مختارة",
+      "lead": "لقاءات حضورية محدودة العدد، يقوم الناشر المحلي أو الجهة المضيفة بإدارة التسجيل والحجز.",
+      "meta_upcoming": "قادمة",
+      "meta_past": "مضت",
+      "venue_tba": "سيُعلن عن القاعة قريباً",
+      "book_cta": "احجز عبر المنظّم",
+      "booking_soon": "ستُفتح الحجوزات قريباً",
+      "past_show": "عرض الجولات السابقة",
+      "past_hide": "إخفاء الجولات السابقة",
+      "past_attended_one": "{count} حضوراً",
+      "past_attended_other": "{count} حضوراً"
+    },
+    "suggest": {
+      "eyebrow": "لم نصل إلى مدينتك بعد؟",
+      "title": "اقترح مدينة أو دولة",
+      "body": "سجّل اهتمامك، وسنخبرك حين نخطّط لزيارة قريبة منك. لا نشارك بريدك مع أحد.",
+      "cta": "اقترح مدينتك",
+      "modal_title": "اقترح مدينة أو دولة",
+      "modal_desc": "إذا كان هناك اهتمام كافٍ في منطقتك، سنُدرجها ضمن خطة الجولات القادمة.",
+      "field_country": "الدولة",
+      "field_country_placeholder": "مثلاً: لبنان",
+      "field_city": "المدينة",
+      "field_city_placeholder": "مثلاً: بيروت",
+      "field_notes": "سياق إضافي (اختياري)",
+      "field_notes_placeholder": "هل تمثّل جهة، نادي قراءة، جامعة؟ أخبرنا قليلاً.",
+      "submit": "إرسال",
+      "submitting": "جارٍ الإرسال…",
+      "submitted_title": "تم التسجيل",
+      "submitted_body": "سجّلنا اهتمامك. سنتواصل حين تتبلور خطة قريبة منك.",
+      "login_required_title": "سجّل الدخول لاقتراح مدينة",
+      "login_required_body": "اقتراحك يُحفظ مع حسابك حتى نتمكّن من التواصل معك حين نخطّط لجولة قريبة."
+    },
+    "reconsider": {
+      "label": "٠٢ — دورة",
+      "title": "Reconsider",
+      "name": "Reconsider",
+      "tagline": "دورة مكثّفة في التفكير، الكتابة، والتأمّل المنهجي — على مدى ثمانية أسابيع.",
+      "positioning": "ليست محاضرات تُلقى وتُنسى. Reconsider مساحة تعمل فيها على نصّك، وأفكارك، وقراءاتك. تلتقي مع الدكتور خالد ومجموعة صغيرة من المنخرطين أسبوعياً، وتغادر كلّ جلسة بشيء كتبتَه أنت.",
+      "block_who_for": "لمن هذه الدورة",
+      "block_curriculum": "المحاور",
+      "block_format": "التنسيق",
+      "block_schedule": "الجدول",
+      "block_outcomes": "ما الذي ستحصل عليه",
+      "block_note": "كلمة من الدكتور خالد",
+      "block_faq": "أسئلة شائعة",
+      "panel_next_cohort": "الدفعة القادمة",
+      "panel_duration": "المدة",
+      "panel_delivery": "التقديم",
+      "panel_price": "السعر",
+      "panel_seats_remaining_one": "{n} مقعد متبقٍ",
+      "panel_seats_remaining_other": "{n} مقاعد متبقية",
+      "panel_seats_remaining_few": "لم يتبقَّ سوى {n} مقاعد",
+      "panel_of_capacity": "من أصل {cap}",
+      "panel_sold_out": "اكتمل العدد",
+      "panel_reserve_cta": "احجز مقعدك",
+      "panel_reserve_foot": "دفع آمن عبر Stripe — يتطلّب تسجيل الدخول",
+      "panel_join_waitlist": "انضم إلى قائمة الانتظار",
+      "panel_join_waitlist_foot": "سنُبلغك حين يتوفر مقعد",
+      "panel_notify_me": "أبلغني حين يُفتح التسجيل",
+      "closed_heading": "التسجيل مغلق حالياً",
+      "closed_body": "سجّل اهتمامك، وسنُبلّغك بمجرد فتح الدفعة القادمة.",
+      "module_n": "الوحدة {n}",
+      "week_n": "الأسبوع {n}"
+    },
+    "sessions": {
+      "label": "٠٣ — جلسات أونلاين",
+      "title": "ثماني جلسات أونلاين",
+      "lead": "كلّ جلسة قائمة بذاتها — موضوعها، تاريخها، سعرها. اختر ما يهمّك، وانضم.",
+      "filter_all": "الكل",
+      "filter_open": "متاحة",
+      "filter_sold_out": "مكتملة",
+      "filter_closed": "مغلقة",
+      "session_n": "الجلسة {n}",
+      "next_cohort": "الدفعة القادمة",
+      "reserve": "احجز",
+      "remaining_short": "{n} متبقية",
+      "meta_open": "متاحة",
+      "meta_sold_out_closed": "{soldOut} مكتملة · {closed} مغلقة",
+      "empty_state": "لا توجد جلسات مجدولة حالياً."
+    },
+    "reserve_modal": {
+      "title": "مراجعة الحجز",
+      "desc": "تأكّد من التفاصيل قبل الانتقال إلى الدفع.",
+      "summary_item": "البند",
+      "summary_cohort": "الدفعة",
+      "summary_when": "الموعد",
+      "summary_total": "الإجمالي",
+      "fine_print": "بالضغط على «المتابعة إلى الدفع»، ستُحوَّل إلى Stripe لإتمام الدفع بأمان. لا نخزّن بيانات بطاقتك على خوادمنا.",
+      "continue": "المتابعة إلى الدفع",
+      "redirecting_title": "جارٍ التحويل إلى Stripe…",
+      "redirecting_sub": "لا تُغلق هذه النافذة. ستُحوَّل خلال ثوانٍ.",
+      "stripe_mark": "Powered by Stripe"
+    },
+    "interest_modal": {
+      "title": "سجّل اهتمامك",
+      "desc": "سنحفظ اسمك ونتواصل معك قبل فتح الباب للحجز.",
+      "field_notes": "لماذا يهمّك هذا؟ (اختياري)",
+      "field_notes_placeholder": "أي شيء تودّ إخبارنا به…",
+      "submit": "إرسال",
+      "submitting": "جارٍ الإرسال…",
+      "submitted_title": "سُجِّل اهتمامك",
+      "submitted_body": "سجّلنا اهتمامك. سنراسلك حين نفتح التسجيل.",
+      "sold_out_title": "اكتمل عدد هذه الدفعة",
+      "sold_out_body": "انضم إلى قائمة انتظار الدفعة القادمة — سنُبلغك بمجرد فتحها.",
+      "closed_title": "التسجيل مغلق",
+      "closed_body": "أعلمنا باهتمامك وسنتواصل معك قبل فتح الدفعة القادمة."
+    },
+    "shared": {
+      "cancel": "إلغاء",
+      "close": "إغلاق",
+      "login_required_cta": "سجّل الدخول للمتابعة",
+      "network_error": "تعذّر الاتصال — يبدو أنّ الإنترنت متعثّر. حاول مجدداً.",
+      "error_generic": "حدث خطأ. حاول مرة أخرى.",
+      "error_no_capacity": "اكتمل العدد للتو — انضم إلى قائمة انتظار الدفعة القادمة.",
+      "error_not_open": "التسجيل غير متاح حالياً.",
+      "error_already_booked": "أنت محجوز مسبقاً في هذه الدفعة. افتحها من لوحة التحكم.",
+      "error_rate_limited": "طلبات كثيرة جداً. يرجى الانتظار قليلاً والمحاولة مرة أخرى.",
+      "error_stripe_unconfigured": "الدفع غير متاح حالياً. حاول لاحقاً.",
+      "error_db_unavailable": "تعذّر الاتصال بقاعدة البيانات. حاول بعد لحظات.",
+      "error_validation": "تحقّق من البيانات وحاول مرة أخرى.",
+      "already_booked": "محجوز مسبقاً",
+      "already_booked_body": "لقد حجزت مقعداً في هذه الدفعة مسبقاً. أدِر حجزك من لوحة التحكم.",
+      "view_in_dashboard": "افتح في لوحة التحكم"
+    },
+    "success": {
+      "heading": "تمّ الحجز",
+      "body": "تلقّيت المقعد. ستصلك تفاصيل الدفعة عبر البريد خلال دقائق.",
+      "order_ref_label": "رقم الحجز",
+      "go_to_dashboard": "الذهاب إلى لوحة التحكم",
+      "browse_more": "العودة إلى الحجوزات",
+      "pending_heading": "قيد التأكيد",
+      "pending_body": "دفعتك قيد المعالجة. تحقّق من بريدك للتأكيد، أو حدّث الصفحة بعد لحظات.",
+      "confirming": "جارٍ تأكيد حجزك..."
+    }
+  },
   "newsletter": {
     "heading": "ابقَ على تواصل",
     "description": "احصل على أحدث المقالات والإصدارات في بريدك",
@@ -456,6 +621,7 @@
     "heading_about": "السيرة قريباً",
     "heading_contact": "صفحة التواصل قريباً",
     "heading_corporate": "البرامج المؤسسية قريباً",
+    "heading_booking": "الحجوزات تُفتح قريباً",
     "body_books": "نُعدّ المتجر بعناية. ستجد هنا قريباً كتب الدكتور خالد ومحاضراته المسجّلة، يمكن اقتناؤها وتحميلها فور الشراء.",
     "body_articles": "نُنسّق أرشيف المقالات. مجموعة متنامية من المقالات في الفلسفة وعلم النفس والمجتمع ستُنشر هنا قريباً.",
     "body_interviews": "نجمع مختارات من المقابلات التلفزيونية والإذاعية والبودكاست. قريباً ستجد هنا المكتبة الكاملة للحوارات.",
@@ -463,6 +629,7 @@
     "body_about": "نضع اللمسات الأخيرة على صفحة السيرة. عرض كامل لمسيرة الدكتور خالد وكتبه ومبادرة «الورشة» في الطريق.",
     "body_contact": "ستُفعَّل قناة التواصل قريباً. للاستفسارات العاجلة، تواصلوا عبر kamallchhimi@gmail.com في هذه الأثناء.",
     "body_corporate": "نُعدّ صفحة البرامج المؤسسية. للاستفسار المباشر عن برامج القيادة والتأثير وإدارة المواهب، تواصلوا عبر kamallchhimi@gmail.com.",
+    "body_booking": "نضع اللمسات الأخيرة على مواعيد الجولات والدفعة القادمة من Reconsider والجلسات الأونلاين. ستُفتح الحجوزات هنا قريباً — للاستفسار المباشر تواصلوا عبر kamallchhimi@gmail.com.",
     "folio_books": "العدد ٠٣",
     "folio_articles": "العدد ٠٢",
     "folio_interviews": "العدد ٠٤",
@@ -470,6 +637,7 @@
     "folio_about": "العدد ٠١",
     "folio_contact": "العدد ٠٦",
     "folio_corporate": "العدد ٠٧",
+    "folio_booking": "العدد ٠٨",
     "expected_by": "متوقّع بحلول {date}",
     "notify_me": "أعلمني عند الإطلاق"
   },
@@ -489,6 +657,7 @@
       "commerce": "المتجر",
       "audience": "الجمهور",
       "corporate": "البرامج المؤسسية",
+      "booking": "الحجوزات",
       "site": "الموقع"
     },
     "nav": {
@@ -510,6 +679,12 @@
       "corporate_programs": "البرامج المؤسسية",
       "corporate_clients": "شعارات العملاء",
       "corporate_requests": "طلبات الشركات",
+      "questions": "الأسئلة",
+      "booking_tours": "الجولات",
+      "booking_bookings": "الحجوزات",
+      "booking_tour_suggestions": "اقتراحات الجولات",
+      "booking_interest": "قائمة الاهتمام",
+      "booking_orders": "طلبات الحجز",
       "new": "جديد",
       "edit": "تعديل"
     },
@@ -568,7 +743,8 @@
     "aria": {
       "delete_item": "حذف {name}",
       "edit_item": "تعديل {name}",
-      "view_item": "عرض {name}"
+      "view_item": "عرض {name}",
+      "row_actions": "إجراءات الصف"
     },
     "confirm": {
       "delete_article_title": "حذف هذا المقال؟",
@@ -860,6 +1036,85 @@
         "cancel_confirm": "نعم، تحديده كفاشل"
       }
     },
+    "questions": {
+      "description": "راجع الأسئلة الواردة، حدّد الأجوبة، أو أرشف.",
+      "filter": {
+        "status_all": "الكل",
+        "status_pending": "قيد المراجعة",
+        "status_answered": "تمّت الإجابة",
+        "status_archived": "الأرشيف"
+      },
+      "table": {
+        "col_created": "تاريخ الإرسال",
+        "col_asker": "السائل",
+        "col_subject": "الموضوع",
+        "col_category": "الفئة",
+        "col_status": "الحالة",
+        "empty_title": "لا توجد أسئلة في هذه الفئة",
+        "empty_body": "جرّب فئة أخرى أو انتظر أسئلة جديدة."
+      },
+      "actions": {
+        "mark_answered": "وضع علامة كمُجاب",
+        "edit_answer": "تعديل الإجابة",
+        "archive": "أرشفة",
+        "revert_to_pending": "إعادة إلى قيد المراجعة",
+        "restore": "استعادة إلى قيد المراجعة",
+        "delete": "حذف"
+      },
+      "modal": {
+        "shared": {
+          "question_eyebrow": "السؤال"
+        },
+        "mark_answered": {
+          "title": "وضع علامة كمُجاب",
+          "description": "أضف رابط الإجابة. الرابط يُرسل إشعارًا بالبريد إلى السائل؛ النص الحرّ يُحفظ بصمت دون إرسال بريد.",
+          "reference_label": "مرجع الإجابة",
+          "reference_help": "ألصق رابطًا (إنستغرام، يوتيوب، مقال) لإرسال إشعار بالبريد إلى السائل، أو اكتب ملاحظة نصية حرة (لن يُرسل بريد).",
+          "reference_placeholder": "https://instagram.com/reel/… أو ملاحظة قصيرة",
+          "submit": "وضع علامة كمُجاب"
+        },
+        "archive": {
+          "title": "أرشفة السؤال",
+          "body": "سيُخفى «{subject}» من قائمة المراجعة الفعلية لكنه يبقى محفوظًا. سيراه السائل بحالة «مؤرشف» في لوحته.",
+          "cancel": "إلغاء",
+          "confirm": "أرشفة"
+        },
+        "revert": {
+          "title_from_answered": "إعادة إلى قيد المراجعة",
+          "title_from_archived": "استعادة إلى قيد المراجعة",
+          "body_from_answered": "سيُحذف مرجع الإجابة وتاريخ الإجابة من «{subject}».",
+          "body_from_archived": "سيعود «{subject}» إلى قائمة المراجعة الفعلية.",
+          "cancel": "إلغاء",
+          "confirm_revert": "إعادة",
+          "confirm_restore": "استعادة"
+        },
+        "delete": {
+          "title": "حذف نهائي",
+          "body": "لا يمكن استعادة «{subject}». استخدم «أرشفة» إلا إذا كان السؤال إعلانًا أو إساءة.",
+          "confirm_word": "حذف",
+          "confirm_label": "اكتب {word} للتأكيد",
+          "cancel": "إلغاء",
+          "confirm": "حذف"
+        }
+      },
+      "toast": {
+        "answered_with_email": "تمّ التحديد كمُجاب وأُرسل الإشعار بالبريد.",
+        "answered_text_note": "تمّ التحديد كمُجاب. لم يُرسل بريد (ملاحظة نصية).",
+        "answered_email_failed": "تمّ التحديد كمُجاب لكن تعذّر إرسال البريد — أبلغ السائل يدويًا من فضلك.",
+        "archived": "تمّت أرشفة السؤال.",
+        "reverted": "أُعيد السؤال إلى قيد المراجعة.",
+        "deleted": "حُذف السؤال.",
+        "error_forbidden": "لا تملك الصلاحية لهذا الإجراء.",
+        "error_not_found": "هذا السؤال لم يعد موجودًا.",
+        "error_validation": "يرجى مراجعة المُدخل.",
+        "error_generic": "تعذّر تنفيذ الإجراء. يرجى المحاولة مرة أخرى."
+      },
+      "pagination": {
+        "previous": "السابق",
+        "next": "التالي",
+        "page_of": "صفحة {current} من {total}"
+      }
+    },
     "subscribers": {
       "description": "مشتركو النشرة البريدية.",
       "email": "البريد",
@@ -896,6 +1151,320 @@
       "reply_placeholder": "اكتب ردك…",
       "reply_sent": "تم وضع الرد في قائمة الانتظار (تجريبي).",
       "send_reply": "إرسال الرد"
+    },
+    "booking_overview": {
+      "page_title": "الحجوزات",
+      "description": "إدارة الجولات والحجوزات وقائمة الاهتمام والاقتراحات وطلبات الحجز عبر Stripe.",
+      "stats_tours": "الجولات",
+      "stats_bookings": "الحجوزات",
+      "stats_suggestions_pending": "اقتراحات قيد المراجعة",
+      "stats_interest_pending": "اهتمام قيد التواصل",
+      "stats_orders_paid": "طلبات مدفوعة",
+      "go_tours": "إدارة الجولات",
+      "go_bookings": "إدارة الحجوزات",
+      "go_suggestions": "مراجعة الاقتراحات",
+      "go_interest": "فتح قائمة الاهتمام",
+      "go_orders": "فتح الطلبات"
+    },
+    "booking_tours": {
+      "page_title": "الجولات",
+      "page_description": "الجولات الحضورية المعروضة في صفحة الحجوزات. الحجز نفسه يديره منظّم محلي.",
+      "add": "إضافة جولة",
+      "filter_all": "الكل",
+      "filter_upcoming": "قادمة",
+      "filter_past": "سابقة",
+      "col_cover": "الغلاف",
+      "col_title": "العنوان",
+      "col_city": "المدينة",
+      "col_country": "الدولة",
+      "col_date": "التاريخ",
+      "col_external_url": "رابط الحجز",
+      "col_active": "نشط",
+      "col_actions": "إجراءات",
+      "url_set": "موجود",
+      "url_unset": "غير محدد",
+      "pill_upcoming": "قادمة",
+      "pill_past": "سابقة",
+      "empty_title": "لا توجد جولات بعد",
+      "empty_body": "أنشئ أول جولة لعرضها في الصفحة العامة."
+    },
+    "booking_tour_form": {
+      "create_title": "جولة جديدة",
+      "edit_title": "تعديل الجولة",
+      "section_basics": "البيانات الأساسية",
+      "section_location": "الموقع",
+      "section_schedule": "الموعد",
+      "section_extras": "إضافات",
+      "slug": "المعرّف",
+      "slug_hint": "حروف صغيرة وأرقام وشرطات فقط.",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "city_ar": "المدينة (عربي)",
+      "city_en": "المدينة (إنجليزي)",
+      "country_ar": "الدولة (عربي)",
+      "country_en": "الدولة (إنجليزي)",
+      "region_ar": "المنطقة (عربي، اختياري)",
+      "region_en": "المنطقة (إنجليزي، اختياري)",
+      "region_option_mena": "الشرق الأوسط وشمال إفريقيا",
+      "region_option_gcc": "الخليج",
+      "region_option_europe": "أوروبا",
+      "region_option_north_america": "أمريكا الشمالية",
+      "region_option_asia": "آسيا",
+      "region_option_africa": "إفريقيا",
+      "region_option_other": "أخرى",
+      "date": "التاريخ والوقت",
+      "venue_ar": "المكان (عربي، اختياري)",
+      "venue_en": "المكان (إنجليزي، اختياري)",
+      "description_ar": "الوصف (عربي، اختياري)",
+      "description_en": "الوصف (إنجليزي، اختياري)",
+      "external_booking_url": "رابط الحجز الخارجي",
+      "external_booking_url_hint": "رابط https إلى موقع المنظّم. اتركه فارغاً لإظهار «الحجوزات تُفتح قريباً».",
+      "cover_image": "رابط صورة الغلاف",
+      "attended_count": "عدد الحضور (للجولات السابقة فقط)",
+      "is_active": "نشط",
+      "is_active_hint": "الجولات غير النشطة تختفي من الصفحة العامة.",
+      "display_order": "ترتيب العرض",
+      "save_create": "إنشاء الجولة",
+      "save_update": "حفظ التغييرات",
+      "delete_button": "حذف الجولة"
+    },
+    "booking_bookings": {
+      "page_title": "الحجوزات",
+      "page_description": "دورة Reconsider والثماني جلسات الأونلاين. السعة والحالة والسعر.",
+      "add": "إضافة حجز",
+      "filter_all": "الكل",
+      "filter_reconsider": "Reconsider",
+      "filter_sessions": "جلسات أونلاين",
+      "col_cover": "الغلاف",
+      "col_title": "العنوان",
+      "col_type": "النوع",
+      "col_price": "السعر",
+      "col_capacity": "السعة",
+      "col_state": "الحالة",
+      "col_next_cohort": "الدفعة القادمة",
+      "col_active": "نشط",
+      "col_actions": "إجراءات",
+      "type_reconsider": "دورة Reconsider",
+      "type_session": "جلسة أونلاين",
+      "capacity_with_holds": "{booked}/{max} · {holds} محجوز مؤقتاً",
+      "capacity_no_holds": "{booked}/{max}",
+      "edit_capacity": "تعديل السعة",
+      "edit_state": "تعديل الحالة",
+      "view_interest": "عرض المهتمين",
+      "empty_title": "لا توجد حجوزات بعد",
+      "empty_body": "أنشئ دورة Reconsider أو جلسة أونلاين لقبول الحجوزات."
+    },
+    "booking_booking_form": {
+      "create_title": "حجز جديد",
+      "edit_title": "تعديل الحجز",
+      "section_basics": "البيانات الأساسية",
+      "section_pricing": "السعر",
+      "section_schedule": "الموعد",
+      "section_capacity": "السعة والحالة",
+      "section_visibility": "الظهور",
+      "slug": "المعرّف",
+      "slug_hint": "حروف صغيرة وأرقام وشرطات فقط.",
+      "product_type": "نوع المنتج",
+      "product_type_reconsider": "دورة Reconsider",
+      "product_type_session": "جلسة أونلاين",
+      "title_ar": "العنوان (عربي)",
+      "title_en": "العنوان (إنجليزي)",
+      "description_ar": "وصف قصير (عربي)",
+      "description_en": "وصف قصير (إنجليزي)",
+      "cover_image": "رابط صورة الغلاف (اختياري)",
+      "price_usd": "السعر",
+      "price_usd_hint": "بالسنتات. ${dollars} = {cents}¢ — أدخل القيمة بالسنتات.",
+      "currency": "العملة",
+      "next_cohort_date": "تاريخ الدفعة القادمة",
+      "next_cohort_date_hint": "اتركه فارغاً إذا لم يُحدَّد بعد.",
+      "cohort_label_ar": "تسمية الدفعة (عربي)",
+      "cohort_label_en": "تسمية الدفعة (إنجليزي)",
+      "duration_minutes": "المدة (بالدقائق)",
+      "format_ar": "التنسيق (عربي)",
+      "format_en": "التنسيق (إنجليزي)",
+      "max_capacity": "الحد الأقصى للسعة",
+      "max_capacity_hint": "إجمالي المقاعد المتاحة، بما فيها المحجوزة.",
+      "max_capacity_edit_hint": "للقراءة فقط هنا. استخدم بطاقة السعة في الأسفل للتحديث — يتحقق الإجراء من المقاعد الملتزم بها.",
+      "booking_state": "الحالة",
+      "booking_state_open": "مفتوح",
+      "booking_state_closed": "مغلق",
+      "booking_state_sold_out": "اكتمل العدد",
+      "booking_state_edit_hint": "للقراءة فقط هنا. استخدم بطاقة السعة في الأسفل لتغيير الحالة.",
+      "booking_state_revert_hint": "إعادة الفتح اليدوي تسمح بحجوزات جديدة حتى لو كانت الحالة \"اكتمل العدد\" قد تفعّلت تلقائياً.",
+      "display_order": "ترتيب العرض",
+      "is_active": "نشط",
+      "is_active_hint": "الحجوزات غير النشطة تختفي من الصفحة العامة لكن الحجوزات القائمة محفوظة.",
+      "save_create": "إنشاء الحجز",
+      "save_update": "حفظ التغييرات",
+      "delete_button": "حذف الحجز"
+    },
+    "booking_capacity_modal": {
+      "title": "تعديل السعة",
+      "description": "{title}",
+      "current_label": "الحالي",
+      "current_value": "{booked} محجوز + {holds} محجوز مؤقتاً = {committed} ملتزم",
+      "stat_max": "الحد الأقصى",
+      "stat_booked": "محجوز",
+      "stat_holds": "محجوز مؤقتاً",
+      "max_capacity": "الحد الأقصى الجديد",
+      "save": "حفظ",
+      "cancel": "إلغاء"
+    },
+    "booking_state_modal": {
+      "title": "تغيير الحالة",
+      "description": "{title}",
+      "current_label": "الحالي",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "revert_warning": "إعادة الفتح يدوياً ستسمح بحجوزات جديدة رغم أن الحجز كان قد علِم بـ\"اكتمل العدد\" تلقائياً."
+    },
+    "booking_tour_suggestions": {
+      "page_title": "اقتراحات الجولات",
+      "page_description": "طلبات المستخدمين بإضافة مدن أو دول من صفحة الحجوزات.",
+      "view_list": "قائمة",
+      "view_aggregate": "تجميع",
+      "col_user": "المستخدم",
+      "col_city": "المدينة",
+      "col_country": "الدولة",
+      "col_notes": "ملاحظات",
+      "col_created_at": "تاريخ الإرسال",
+      "col_status": "الحالة",
+      "col_actions": "إجراءات",
+      "agg_col_country": "الدولة",
+      "agg_col_city": "المدينة",
+      "agg_col_count": "عدد الاقتراحات",
+      "status_pending": "قيد المراجعة",
+      "status_reviewed": "تمت المراجعة",
+      "mark_reviewed": "تمت المراجعة",
+      "unmark_reviewed": "إعادة لقيد المراجعة",
+      "open_user": "فتح ملف المستخدم",
+      "empty_title": "لا اقتراحات بعد",
+      "filter_all": "الكل",
+      "filter_pending": "قيد المراجعة",
+      "filter_reviewed": "تمت المراجعة",
+      "notes_empty": "—",
+      "aggregate_panel_title": "تجميع حسب الطلب",
+      "aggregate_panel_description": "أكثر المواقع طلبًا، مرتبة حسب عدد الاقتراحات. استخدم هذه القائمة لترتيب أولويات الجولات القادمة.",
+      "aggregate_empty": "لا توجد بيانات تجميعية بعد."
+    },
+    "booking_interest": {
+      "page_title": "قائمة الاهتمام",
+      "page_description": "المستخدمون الذين سجّلوا اهتمامهم أثناء إغلاق الحجز أو اكتمال العدد.",
+      "filter_all": "الكل",
+      "filter_pending": "قيد التواصل",
+      "filter_contacted": "تم التواصل",
+      "view_list": "قائمة",
+      "view_grouped": "تجميع",
+      "col_user": "المستخدم",
+      "col_booking": "الحجز",
+      "col_notes": "ملاحظات",
+      "col_created_at": "تاريخ الإرسال",
+      "col_status": "الحالة",
+      "col_actions": "إجراءات",
+      "group_col_booking": "الحجز",
+      "group_col_pending": "قيد التواصل",
+      "group_col_total": "الإجمالي",
+      "status_pending": "قيد التواصل",
+      "status_contacted": "تم التواصل",
+      "mark_contacted": "تم التواصل",
+      "unmark_contacted": "إعادة لقيد التواصل",
+      "send_email": "إرسال بريد",
+      "open_user": "فتح ملف المستخدم",
+      "bulk_select": "اختيار",
+      "bulk_selected": "{count} مختار",
+      "bulk_mark_contacted": "تم التواصل مع الجميع",
+      "bulk_unmark_contacted": "إعادة الجميع لقيد التواصل",
+      "bulk_clear_selection": "إلغاء التحديد",
+      "bulk_confirm_title": "تحديد {count} عنصراً كتمّ التواصل؟",
+      "bulk_confirm_body": "سيتم ضبط contactedAt = الآن على الصفوف المحددة. ستنتقل من قائمة قيد التواصل.",
+      "bulk_confirm_action": "تم التواصل",
+      "notes_empty": "—",
+      "empty_title": "لا توجد طلبات اهتمام بعد"
+    },
+    "booking_orders": {
+      "page_title": "طلبات الحجز",
+      "page_description": "سجلات الدفع عبر Stripe لعمليات الحجز.",
+      "filter_all": "الكل",
+      "filter_pending": "قيد الدفع",
+      "filter_paid": "مدفوع",
+      "filter_refunded": "مُستردّ",
+      "filter_failed": "فشل",
+      "col_id": "الطلب",
+      "col_customer": "العميل",
+      "col_booking": "الحجز",
+      "col_amount": "المبلغ",
+      "col_status": "الحالة",
+      "col_created_at": "تاريخ الإنشاء",
+      "col_confirmed_at": "تاريخ التأكيد",
+      "col_actions": "إجراءات",
+      "view_detail": "عرض",
+      "refund": "استرداد",
+      "purge_stale": "حذف الطلبات المعلّقة القديمة",
+      "empty_title": "لا توجد طلبات بعد",
+      "back_to_list": "العودة إلى الطلبات",
+      "section_order": "الطلب",
+      "section_customer": "العميل والحجز",
+      "field_order_id": "معرّف الطلب",
+      "field_status": "الحالة",
+      "field_amount": "المبلغ المدفوع",
+      "field_currency": "العملة",
+      "field_created": "تاريخ الإنشاء",
+      "field_confirmed": "تاريخ التأكيد",
+      "field_session_id": "جلسة Stripe",
+      "field_payment_intent": "Payment intent",
+      "field_customer_name": "الاسم",
+      "field_customer_email": "البريد الإلكتروني",
+      "field_user_id": "معرّف المستخدم",
+      "field_booking": "الحجز",
+      "field_product_type": "نوع المنتج",
+      "edit_booking": "فتح الحجز",
+      "not_set": "—",
+      "type_reconsider": "دورة Reconsider",
+      "type_session": "جلسة أونلاين"
+    },
+    "booking_actions": {
+      "success_created": "تم الإنشاء",
+      "success_saved": "تم الحفظ",
+      "success_deleted": "تم الحذف",
+      "success_state_updated": "تم تحديث الحالة",
+      "success_capacity_updated": "تم تحديث السعة",
+      "success_marked_reviewed": "تمت المراجعة",
+      "success_marked_pending": "أُعيد لقيد المراجعة",
+      "success_marked_contacted": "تم تسجيل التواصل",
+      "success_bulk_contacted": "تم تسجيل التواصل مع {count}",
+      "success_refund_initiated": "تم بدء الاسترداد. ستظهر النتيجة خلال ثوانٍ.",
+      "success_purge": "تم حذف {count} من الطلبات المعلّقة القديمة",
+      "error_unauthorized": "سجّل الدخول للمتابعة.",
+      "error_forbidden": "صلاحيات الإدارة مطلوبة.",
+      "error_validation": "تحقّق من البيانات وحاول مرة أخرى.",
+      "error_db_failed": "فشل الحفظ. حاول بعد لحظات.",
+      "error_has_orders": "لا يمكن الحذف: هناك طلبات على هذا الحجز. استرد المبالغ أو اجعل الحجز غير نشط بدلاً من الحذف.",
+      "error_invalid_refund_target": "يمكن استرداد الطلبات المدفوعة فقط التي لديها معرّف دفعة من Stripe.",
+      "error_stripe_unconfigured": "Stripe غير مهيّأ. اضبط STRIPE_SECRET_KEY وأعد تشغيل خادم التطوير.",
+      "error_stripe_refund_failed": "رفض Stripe الاسترداد: {message}",
+      "error_order_not_found": "لم يُعثر على الطلب.",
+      "error_capacity_below_commitment_title": "تعذّر تخفيض السعة",
+      "error_capacity_below_commitment_body": "هناك {committed} مقعداً ملتزماً به ({booked} محجوز + {holds} محجوز مؤقتاً). ارفع السعة إلى {committed} على الأقل أو استرد بعض الحجوزات أولاً."
+    },
+    "booking_confirm": {
+      "delete_tour_title": "حذف هذه الجولة؟",
+      "delete_tour_body": "سيؤدي هذا إلى إزالة «{title}» من قاعدة البيانات. لا يمكن التراجع.",
+      "delete_tour_confirm": "حذف",
+      "delete_booking_title": "حذف هذا الحجز؟",
+      "delete_booking_body": "سيؤدي هذا إلى إزالة «{title}» من قاعدة البيانات. لا يمكن حذف الحجوزات التي لها طلبات قائمة — اجعلها غير نشطة بدلاً من ذلك.",
+      "delete_booking_confirm": "حذف",
+      "refund_title": "استرداد هذا الطلب؟",
+      "refund_body": "استرداد {amount} إلى {email}؟ سيؤدي ذلك إلى:\n• تنفيذ استرداد عبر Stripe (لا يمكن التراجع عنه)\n• إنقاص bookedCount واحدًا (عبر webhook)\n• تحديث حالة الطلب المحلية إلى \"مُستردّ\"\n\nملاحظة: حالة \"اكتمل العدد\" لن تتغيّر تلقائياً.",
+      "refund_confirm": "استرداد",
+      "purge_title": "حذف الطلبات المعلّقة القديمة؟",
+      "purge_body": "حذف كل صفوف booking_orders ذات الحالة 'PENDING' وعمر أكثر من 24 ساعة. هذه عمليات Stripe Checkout مهجورة لم يكتمل دفعها.",
+      "purge_confirm": "حذف",
+      "back": "رجوع",
+      "busy": "جارٍ التنفيذ…"
+    },
+    "booking_site_settings": {
+      "show_admin_booking": "إظهار قسم الحجوزات في الإدارة",
+      "show_admin_booking_hint": "إخفاء قسم الحجوزات بأكمله من الشريط الجانبي للإدارة."
     },
     "settings": {
       "tabs": {
@@ -938,6 +1507,10 @@
         "featured_desc": "ثبّت عنصراً معيّناً ليتصدّر كل قسم في الرئيسية. الافتراضي هو أحدث عنصر منشور.",
         "features_title": "ميزات وقت التشغيل",
         "features_desc": "مفاتيح عامة تؤثّر على سلوك الموقع، وليست فقط على المظهر.",
+        "admin_title": "لوحة الإدارة",
+        "admin_desc": "تحكّم في ظهور أقسام الشريط الجانبي في /admin. الصفحات تبقى متاحة عبر الرابط المباشر — هذه المفاتيح تخفي عناصر القائمة فقط.",
+        "dashboard_title": "لوحة المستخدم",
+        "dashboard_desc": "تحكّم في ظهور التبويبات في /dashboard للعملاء. الصفحات تبقى متاحة عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
         "maintenance_title": "شريط الصيانة",
         "maintenance_desc": "يظهر عند تفعيل وضع الصيانة. اترك الحقول فارغة لاستخدام الرسالة الافتراضية.",
         "coming_soon_title": "صفحات قيد الإنجاز",
@@ -960,6 +1533,7 @@
         "show_nav_about": "عن الدكتور",
         "show_nav_contact": "تواصل",
         "show_nav_corporate": "للشركات والمؤسسات",
+        "show_nav_booking": "خدمات للأفراد",
         "show_locale_switcher": "زر تبديل اللغة (AR ⇄ EN)",
         "bottom_nav_note": "شريط الأسفل في الجوال يتبع هذه المفاتيح تلقائياً."
       },
@@ -989,6 +1563,24 @@
         "maintenance_mode": "وضع الصيانة",
         "maintenance_mode_desc": "إظهار شريط أعلى كل الصفحات."
       },
+      "admin": {
+        "show_admin_booking": "قسم الحجوزات في الإدارة",
+        "show_admin_booking_desc": "إظهار مجموعة الحجوزات بالكامل (الجولات، الحجوزات، الاقتراحات، قائمة الاهتمام، الطلبات) في الشريط الجانبي للإدارة.",
+        "show_admin_questions": "إدخال الأسئلة في الإدارة",
+        "show_admin_questions_desc": "إظهار إدخال «الأسئلة» (مع شارة عدد المعلَّقة) ضمن مجموعة الجمهور في الشريط الجانبي للإدارة."
+      },
+      "dashboard": {
+        "show_account_tab": "تبويب «حسابي» (دائماً ظاهر)",
+        "show_account_tab_desc": "صفحة استقبال لوحة التحكم (محرّر الملف الشخصي والنبذة). لا يمكن إخفاؤه — المستخدم يحتاج دائماً إلى مسار للعودة إلى معلوماته.",
+        "show_library_tab": "تبويب «مكتبتي»",
+        "show_library_tab_desc": "إظهار تبويب «مكتبتي» (الكتب والجلسات المُشتراة). مسار /dashboard/library يبقى متاحاً عند الإخفاء.",
+        "show_bookings_tab": "تبويب «حجوزاتي»",
+        "show_bookings_tab_desc": "إظهار تبويب «حجوزاتي» (الجلسات والدورات المؤكَّدة). مسار /dashboard/bookings يبقى متاحاً عند الإخفاء.",
+        "show_ask_tab": "تبويب «اسأل د. خالد»",
+        "show_ask_tab_desc": "إظهار تبويب «اسأل» في لوحة العملاء. مسار /dashboard/ask يبقى متاحاً عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
+        "show_settings_tab": "تبويب «الإعدادات»",
+        "show_settings_tab_desc": "إظهار تبويب «الإعدادات» (التفضيلات، حذف الحساب). مسار /dashboard/settings يبقى متاحاً عند الإخفاء."
+      },
       "maintenance": {
         "message_ar": "نص الشريط (عربي)",
         "message_en": "نص الشريط (إنجليزي)",
@@ -1004,7 +1596,8 @@
         "events": "الفعاليات",
         "about": "عن الدكتور",
         "contact": "تواصل",
-        "corporate": "للشركات والمؤسسات"
+        "corporate": "للشركات والمؤسسات",
+        "booking": "خدمات للأفراد"
       },
       "unsaved_changes": "تغييرات غير محفوظة",
       "reset": "العودة إلى الافتراضيات",
@@ -1196,7 +1789,13 @@
     "tabs": {
       "account": "حسابي",
       "library": "مكتبتي",
+      "bookings": "حجوزاتي",
+      "ask": "اسأل د. خالد",
       "settings": "الإعدادات"
+    },
+    "recent_bookings": {
+      "heading": "حجوزاتك",
+      "view_all": "عرض كل الحجوزات"
     },
     "account": {
       "meta": {
@@ -1290,6 +1889,92 @@
       "logout_everywhere": "تسجيل الخروج من جميع الأجهزة",
       "save": "حفظ التغييرات",
       "saved": "تم الحفظ"
+    },
+    "ask": {
+      "meta": {
+        "title": "اسأل د. خالد",
+        "description": "أرسل سؤالك. قد يجيب عليه عبر قنواته."
+      },
+      "hero": {
+        "greeting_named": "سؤال إلى الأستاذ، {name}",
+        "greeting_generic": "سؤال إلى الأستاذ",
+        "title_a": "اسأل الدكتور",
+        "title_b": "خالد",
+        "lede": "مساحة هادئة لتُلقي سؤالك. الدكتور يقرأ ما يصله بعنايةٍ، ويختار بين الأسئلة ما يجيب عنه عبر قنواته — في فيديوهات إنستغرام والقصص. إجاباته جماعية بطبيعتها، لكنها تبدأ من سؤالٍ واحد كسؤالك.",
+        "note_aria": "رسالة من الدكتور خالد",
+        "note_name": "د. خالد غطاس",
+        "note_role": "الأستاذ",
+        "note_body": "أهلًا بك. حين تكتب سؤالك، اكتبه كما تكتب رسالةً إلى صديق: واضحًا، صادقًا، وقريبًا من الحياة. لن أردّ على كلّ سؤال خاصةً، لكنّي أقرأ الجميع. وحين أجد في السؤال ما يستحقّ مشاركته، أُجيب عنه عبر قنواتي العامة — فيُصبح السؤال درسًا للجميع.",
+        "channels": "القنوات: إنستغرام · يوتيوب · القصص"
+      },
+      "guide": {
+        "title": "قبل أن ترسل",
+        "point_one_question": "سؤالٌ واحد يكفي — السؤال الواضح أفضل من ثلاثة أسئلة متشعّبة.",
+        "point_set_context": "اكتب السياق بإيجاز: من أنت في هذا الموقف، وما الذي جرّبتَه.",
+        "point_personal_ok": "الأسئلة الشخصية محترمة — يمكنك الإبقاء على اسمك مخفيًّا.",
+        "point_no_clinical": "لا نُجيب عن استشارات طبية أو نفسية فردية. نُجيب عن المعنى والفهم.",
+        "foot": "الإجابات حين تأتي تكون عامّة — في فيديو أو قصّة. هذه طبيعة المساحة: سؤالك ينفع غيرك."
+      },
+      "form": {
+        "section_eyebrow": "اكتب سؤالك",
+        "section_sub": "سيراه الدكتور خالد فقط. يمكنه اختيار الإجابة عنه علنًا — وحينها نُخطرك ونرسل الرابط.",
+        "subject_label": "موضوع السؤال",
+        "subject_hint": "سطر واحد",
+        "subject_placeholder": "عنوان قصير يلخّص ما تريد سؤاله",
+        "body_label": "نصّ السؤال",
+        "body_placeholder": "اشرح السياق بإيجاز ثم اكتب السؤال الذي يشغلك. كلّما كان السؤال محدّدًا، كانت الإجابة أعمق.",
+        "body_counter": "{count} / {max}",
+        "category_label": "الفئة",
+        "category_hint": "اختياري",
+        "category_placeholder": "اختر فئة (اختياري)",
+        "category_psychology": "علم النفس",
+        "category_education": "التعليم والتربية",
+        "category_relationships": "العلاقات",
+        "category_society": "المجتمع",
+        "category_career": "العمل والمسيرة",
+        "category_general": "عام",
+        "foot_note": "بإرسال السؤال، أنت توافق على شروط النشر.",
+        "submit": "أرسل السؤال",
+        "submitting": "جارٍ الإرسال…",
+        "success_toast": "تم إرسال سؤالك.",
+        "error_unauthorized": "يرجى تسجيل الدخول من جديد لإرسال سؤالك.",
+        "error_validation": "يرجى مراجعة سؤالك والمحاولة مرة أخرى.",
+        "error_rate_limited": "أرسلت أسئلة كثيرة مؤخرًا. يرجى الانتظار ساعة.",
+        "error_generic": "تعذّر الإرسال. يرجى المحاولة مرة أخرى."
+      },
+      "shared": {
+        "subject_too_short": "يرجى كتابة عنوان قصير (٥ أحرف على الأقل).",
+        "subject_too_long": "العنوان تجاوز الحدّ الأقصى (١٢٠ حرفًا).",
+        "body_too_short": "السؤال قصير جدًّا — أضف بعض السياق.",
+        "body_too_long": "تجاوزت الحدّ الأقصى المسموح به (١٠٠٠ حرف)."
+      },
+      "success": {
+        "title": "وصل سؤالك إلى الأستاذ.",
+        "body": "سيقرأه الدكتور خالد بنفسه. إن اختاره ليجيب عنه علنًا، سنُرسل لك إشعارًا برابط الإجابة. شكرًا على ثقتك.",
+        "ask_another": "اسأل سؤالًا آخر",
+        "view_list": "عرض أسئلتي"
+      },
+      "list": {
+        "eyebrow": "أسئلتي",
+        "heading": "أسئلتي",
+        "subheading": "كلّ ما أرسلتَه — والإجابات حين تأتي.",
+        "filter_aria": "تصفية الأسئلة بحسب الحالة",
+        "filter_all": "الكلّ",
+        "filter_pending": "قيد المراجعة",
+        "filter_answered": "تمّت الإجابة",
+        "filter_archived": "الأرشيف",
+        "empty_filter": "لا توجد أسئلة في هذه الفئة بعد.",
+        "status_pending": "قيد المراجعة",
+        "status_answered": "تمّت الإجابة",
+        "status_archived": "مؤرشف",
+        "answer_eyebrow": "إجابة الدكتور خالد",
+        "view_answer": "مشاهدة الإجابة"
+      },
+      "empty": {
+        "title": "لم ترسل أي سؤال بعد.",
+        "body": "حين يخطر ببالك سؤال يستحقّ التأمّل، اكتبه. الدكتور خالد يقرأ ما يصله — وقد يُجيب علنًا في إحدى قنواته.",
+        "cta": "اكتب سؤالك الأول"
+      }
     }
   },
   "library": {
@@ -1313,6 +1998,31 @@
       "label": "تابع القراءة",
       "cta": "تابع",
       "page_of_total": "الصفحة {current} من {total}"
+    },
+    "continue_watching": {
+      "label": "تابع المشاهدة",
+      "cta": "تابع",
+      "timestamp": "{elapsed} / {total}",
+      "item_subtitle": "{item_title}"
+    },
+    "back_to_library": "المكتبة",
+    "session": {
+      "next_item_label": "التالي",
+      "completion_title": "أتممت هذه الجلسة",
+      "completion_cta": "العودة للمكتبة",
+      "auto_advance": {
+        "label": "التالي خلال {seconds}",
+        "cancel": "إلغاء الانتقال التلقائي",
+        "play_now": "تشغيل الآن"
+      }
+    },
+    "session_progress": {
+      "completed": "مكتمل"
+    },
+    "continue_pill": {
+      "label": "تابع",
+      "aria_book": "تابع قراءة {title}",
+      "aria_session": "تابع مشاهدة {title}"
     },
     "filter": {
       "all": "الكل",
@@ -1498,7 +2208,15 @@
       "elapsed": "{elapsed} / {total}",
       "scrub": "تمرير",
       "loading": "جارٍ تحميل الصوت…",
-      "error": "تعذّر تحميل الصوت. يرجى المحاولة مرة أخرى."
+      "error": "تعذّر تحميل الصوت. يرجى المحاولة مرة أخرى.",
+      "aria": {
+        "elapsed_announcement": "تم تشغيل {elapsed} من أصل {total}"
+      },
+      "shortcut": {
+        "play_pause": "مفتاح المسافة: تشغيل أو إيقاف مؤقت",
+        "scrub": "أسهم لوحة المفاتيح: تخطّي 5 ثوانٍ",
+        "mute": "M: كتم أو إلغاء الكتم"
+      }
     },
     "pdf": {
       "loading": "جارٍ تحميل المستند…",
@@ -1511,6 +2229,48 @@
     },
     "completed": {
       "label": "الجلسة مكتملة"
+    },
+    "aria": {
+      "playlist_region": "قائمة عناصر الجلسة",
+      "playlist_item_video": "فيديو. {title}. العنصر {position} من {total}.",
+      "playlist_item_audio": "صوت. {title}. العنصر {position} من {total}.",
+      "playlist_item_pdf": "ملف PDF. {title}. العنصر {position} من {total}.",
+      "playlist_item_completed": " مكتمل.",
+      "playlist_item_in_progress": " قيد التقدم عند {time}."
     }
+  },
+  "home": {
+    "welcome_back": {
+      "greeting": "أهلاً بعودتك، {name}",
+      "no_activity_cta": "تصفح مكتبتك"
+    }
+  },
+  "dashboard_root": {
+    "activity_heading": "تابع من حيث توقفت",
+    "view_all": "عرض الكل في المكتبة"
+  },
+  "dashboard_bookings": {
+    "title": "حجوزاتي",
+    "subtitle": "الجلسات والدورات التي حجزت فيها مقعداً.",
+    "empty": {
+      "title": "لا توجد حجوزات بعد",
+      "body": "تصفح دوراتنا وجلساتنا لتحجز مكانك.",
+      "cta": "تصفح الحجوزات"
+    },
+    "list": {
+      "confirmed": "مؤكد",
+      "pending": "قيد التأكيد",
+      "refunded": "مُسترد",
+      "failed": "فشل الدفع",
+      "cohort_date": "الدفعة: {date}",
+      "format": "الصيغة: {format}",
+      "amount_paid": "مدفوع {amount}",
+      "manage_cta": "إدارة الحجز",
+      "manage_subject": "طلب تعديل حجز"
+    }
+  },
+  "checkout_success": {
+    "start_now_cta": "ابدأ الآن",
+    "go_to_library_cta": "اذهب إلى المكتبة"
   }
 }

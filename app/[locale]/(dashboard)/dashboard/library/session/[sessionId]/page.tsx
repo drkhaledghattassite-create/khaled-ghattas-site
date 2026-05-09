@@ -11,6 +11,7 @@ import {
   type MediaProgress,
   type SessionItem,
 } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { SessionViewer } from '@/components/library/session/SessionViewer'
 import { SessionEmptyState } from '@/components/library/session/SessionEmptyState'
@@ -107,8 +108,13 @@ export default async function LibrarySessionPage({ params }: Props) {
   // empty state inside the dashboard chrome rather than crashing or 404ing
   // (the user owns the product; the content is just being prepared).
   if (items.length === 0) {
+    const settings = await getCachedSiteSettings()
     return (
-      <DashboardLayout activeTab="library" user={session!.user}>
+      <DashboardLayout
+        activeTab="library"
+        user={session!.user}
+        dashboardSettings={settings.dashboard}
+      >
         <SessionEmptyState
           locale={viewerLocale}
           title={t('empty.title')}
@@ -141,8 +147,14 @@ export default async function LibrarySessionPage({ params }: Props) {
     }
   }
 
+  const settings = await getCachedSiteSettings()
+
   return (
-    <DashboardLayout activeTab="library" user={session!.user}>
+    <DashboardLayout
+      activeTab="library"
+      user={session!.user}
+      dashboardSettings={settings.dashboard}
+    >
       <SessionViewer
         sessionId={book.id}
         sessionTitle={sessionTitle}

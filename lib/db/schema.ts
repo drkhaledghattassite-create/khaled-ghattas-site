@@ -77,6 +77,30 @@ export const corporateRequestStatus = pgEnum('corporate_request_status', [
   'CANCELLED',
 ])
 
+// Booking domain enums. Scoped to the bookings table — we deliberately do NOT
+// extend the existing productType (which is on books), since bookings have a
+// fundamentally different lifecycle (capacity, cohort dates, holds).
+export const bookingProductType = pgEnum('booking_product_type', [
+  'RECONSIDER_COURSE',
+  'ONLINE_SESSION',
+])
+
+export const bookingState = pgEnum('booking_state', [
+  'OPEN',
+  'CLOSED',
+  'SOLD_OUT',
+])
+
+// Phase B1 — "Ask Dr. Khaled" Q&A queue. PENDING = submitted, awaiting review.
+// ANSWERED = Dr. Khaled (or team) addressed the question (optionally with an
+// answerReference URL/note pointing at the public reply). ARCHIVED = removed
+// from the active queue without deletion (preserves audit trail).
+export const questionStatus = pgEnum('question_status', [
+  'PENDING',
+  'ANSWERED',
+  'ARCHIVED',
+])
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Auth (Better Auth + role)
  * ──────────────────────────────────────────────────────────────────────── */
@@ -621,6 +645,301 @@ export const corporateRequests = pgTable(
 )
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Booking — Services for Individuals
+ *
+ * Six tables behind /booking:
+ *   - tours: external in-person events (no internal Stripe path; the booking
+ *     URL points at the host's site).
+ *   - tour_suggestions: form submissions when a user wants a city we don't
+ *     visit yet.
+ *   - bookings: umbrella for the Reconsider course (productType =
+ *     RECONSIDER_COURSE) and the 8 Online Sessions (ONLINE_SESSION). Each row
+ *     has its own capacity, state, and price. Reconsider is one row; sessions
+ *     are eight rows.
+ *   - booking_interest: waitlist for closed/sold-out bookings. Idempotent
+ *     (unique on user_id + booking_id).
+ *   - bookings_pending_holds: 15-min TTL seat holds bridging "user clicked
+ *     Reserve" and "Stripe webhook confirmed payment". Solves the capacity
+ *     race — see createBookingCheckoutAction in app/[locale]/(public)/booking/
+ *     actions.ts for the FOR UPDATE flow that protects against overbooking.
+ *   - booking_orders: persistent Stripe purchase records for bookings.
+ *     Separate from `orders` because the lifecycle differs (cohort dates,
+ *     capacity, no library access — just a confirmation email + admin
+ *     audit trail).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const tours = pgTable(
+  'tours',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    titleAr: text('title_ar').notNull(),
+    titleEn: text('title_en').notNull(),
+    cityAr: text('city_ar').notNull(),
+    cityEn: text('city_en').notNull(),
+    countryAr: text('country_ar').notNull(),
+    countryEn: text('country_en').notNull(),
+    // Region label shown as a chip on the card ("MENA", "GCC", "EUROPE").
+    // Bilingual so admin can localise (ar might prefer "الخليج" over "GCC").
+    regionAr: text('region_ar'),
+    regionEn: text('region_en'),
+    date: timestamp('date', { withTimezone: true }).notNull(),
+    venueAr: text('venue_ar'),
+    venueEn: text('venue_en'),
+    descriptionAr: text('description_ar'),
+    descriptionEn: text('description_en'),
+    // null = "Booking opens soon" (host site not ready yet).
+    externalBookingUrl: text('external_booking_url'),
+    coverImage: text('cover_image'),
+    // Only meaningful for past tours; design surfaces this as "240 attended".
+    attendedCount: integer('attended_count'),
+    isActive: boolean('is_active').notNull().default(true),
+    displayOrder: integer('display_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex('tours_slug_idx').on(t.slug),
+    activeDateIdx: index('tours_active_date_idx').on(t.isActive, t.date),
+  }),
+)
+
+export const tourSuggestions = pgTable(
+  'tour_suggestions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    suggestedCity: text('suggested_city').notNull(),
+    suggestedCountry: text('suggested_country').notNull(),
+    additionalNotes: text('additional_notes'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Admin marks this when a suggestion has been triaged (added to the
+    // tour roadmap, intentionally skipped, or merged with another). Nullable
+    // because the default is "untouched". Ships in migration 0008.
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    userIdx: index('tour_suggestions_user_idx').on(t.userId),
+  }),
+)
+
+export const bookings = pgTable(
+  'bookings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    productType: bookingProductType('product_type').notNull(),
+    titleAr: text('title_ar').notNull(),
+    titleEn: text('title_en').notNull(),
+    descriptionAr: text('description_ar').notNull(),
+    descriptionEn: text('description_en').notNull(),
+    coverImage: text('cover_image'),
+    // Price in CENTS — integer. Existing `books.price` is numeric(10,2) for
+    // legacy reasons; bookings use the cleaner integer-cents convention so
+    // amount math (Stripe expects cents anyway) is round-trip exact.
+    priceUsd: integer('price_usd').notNull(),
+    currency: text('currency').notNull().default('USD'),
+    nextCohortDate: timestamp('next_cohort_date', { withTimezone: true }),
+    // Human-readable cohort label, e.g. "March 15 — May 10, 2026". Bilingual
+    // because Arabic uses different month names + Arabic-Indic numerals.
+    cohortLabelAr: text('cohort_label_ar'),
+    cohortLabelEn: text('cohort_label_en'),
+    durationMinutes: integer('duration_minutes'),
+    formatAr: text('format_ar'),
+    formatEn: text('format_en'),
+    maxCapacity: integer('max_capacity').notNull(),
+    bookedCount: integer('booked_count').notNull().default(0),
+    bookingState: bookingState('booking_state').notNull().default('CLOSED'),
+    displayOrder: integer('display_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex('bookings_slug_idx').on(t.slug),
+    activeIdx: index('bookings_active_idx').on(
+      t.productType,
+      t.bookingState,
+      t.displayOrder,
+    ),
+  }),
+)
+
+export const bookingInterest = pgTable(
+  'booking_interest',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id, { onDelete: 'cascade' }),
+    additionalNotes: text('additional_notes'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    contactedAt: timestamp('contacted_at', { withTimezone: true }),
+  },
+  (t) => ({
+    // Unique → enforces idempotency at the DB level. The action does
+    // onConflictDoUpdate so re-submissions land cleanly.
+    userBookingIdx: uniqueIndex('booking_interest_user_booking_idx').on(
+      t.userId,
+      t.bookingId,
+    ),
+    createdIdx: index('booking_interest_created_idx').on(t.createdAt),
+  }),
+)
+
+// Holds bridge "user clicked Reserve" → "Stripe webhook confirmed payment".
+// 15-minute TTL. Effective seat math:
+//   remaining = max_capacity - booked_count - COUNT(holds WHERE expires_at > NOW())
+// The action's transaction does SELECT FOR UPDATE on the booking row + count
+// of active holds; if booked + holds < cap, INSERT a hold. Webhook deletes the
+// hold on completion / expiry / payment failure. Lazy cleanup runs at the
+// top of the transaction and inside read helpers.
+export const bookingsPendingHolds = pgTable(
+  'bookings_pending_holds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id, { onDelete: 'cascade' }),
+    // Set immediately after the Stripe Checkout Session is created, so the
+    // webhook can DELETE WHERE stripe_session_id = $1.
+    stripeSessionId: text('stripe_session_id'),
+    expiresAt: timestamp('expires_at', { withTimezone: true })
+      .notNull()
+      .default(sql`(now() + interval '15 minutes')`),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    bookingExpiresIdx: index('bookings_pending_holds_booking_expires_idx').on(
+      t.bookingId,
+      t.expiresAt,
+    ),
+    userBookingIdx: index('bookings_pending_holds_user_booking_idx').on(
+      t.userId,
+      t.bookingId,
+    ),
+    stripeSessionIdx: index('bookings_pending_holds_stripe_session_idx').on(
+      t.stripeSessionId,
+    ),
+  }),
+)
+
+export const bookingOrders = pgTable(
+  'booking_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Nullable + ON DELETE SET NULL — matches the existing `orders.userId`
+    // pattern. Preserves order history when a user deletes their account.
+    // (NOT NULL + SET NULL would be a Postgres invariant violation.)
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id, { onDelete: 'restrict' }),
+    stripeSessionId: text('stripe_session_id').notNull(),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    // Cents.
+    amountPaid: integer('amount_paid').notNull(),
+    currency: text('currency').notNull().default('USD'),
+    // Reuses the project-canonical `orderStatus` lifecycle.
+    status: orderStatus('status').notNull().default('PENDING'),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    stripeSessionIdx: uniqueIndex('booking_orders_stripe_session_idx').on(
+      t.stripeSessionId,
+    ),
+    userBookingIdx: index('booking_orders_user_booking_idx').on(
+      t.userId,
+      t.bookingId,
+    ),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase B1 — "Ask Dr. Khaled" Q&A
+ *
+ * Logged-in users submit a question for Dr. Khaled to answer publicly via his
+ * social channels (Instagram videos, stories, …). Submissions land in a
+ * PENDING queue Dr. Khaled (or his team) reviews offline. Answering itself
+ * happens off-platform; the site is the intake channel.
+ *
+ * `category` is a free-text column (not a pgEnum) so the admin can adjust the
+ * vocabulary without a migration. The application enforces the allowed values
+ * via a zod tuple in `lib/validators/user-question.ts`.
+ *
+ * `isAnonymous` is a USER PREFERENCE expressed at submit time — not a hard
+ * privacy guarantee. Admin still sees the user's identity in the queue (Phase
+ * B2). Dr. Khaled chooses whether to honor the anonymity when answering
+ * publicly. The form helper text spells this out.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const userQuestions = pgTable(
+  'user_questions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    subject: text('subject').notNull(),
+    body: text('body').notNull(),
+    // Free-text — vocabulary enforced at the validator layer, NOT in DB.
+    category: text('category'),
+    isAnonymous: boolean('is_anonymous').notNull().default(false),
+    status: questionStatus('status').notNull().default('PENDING'),
+    // Admin field. URL pointing at the public reply (Instagram reel, story,
+    // …) OR a free-text note. The card UI auto-detects URL vs note.
+    answerReference: text('answer_reference'),
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    // User-history page — order by most-recent first.
+    userIdx: index('user_questions_user_idx').on(t.userId, t.createdAt.desc()),
+    // Admin queue (Phase B2).
+    statusIdx: index('user_questions_status_idx').on(
+      t.status,
+      t.createdAt.desc(),
+    ),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -695,6 +1014,68 @@ export const corporateRequestsRelations = relations(
   }),
 )
 
+export const tourSuggestionsRelations = relations(
+  tourSuggestions,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [tourSuggestions.userId],
+      references: [users.id],
+    }),
+  }),
+)
+
+export const userQuestionsRelations = relations(userQuestions, ({ one }) => ({
+  user: one(users, {
+    fields: [userQuestions.userId],
+    references: [users.id],
+  }),
+}))
+
+export const bookingsRelations = relations(bookings, ({ many }) => ({
+  interest: many(bookingInterest),
+  holds: many(bookingsPendingHolds),
+  orders: many(bookingOrders),
+}))
+
+export const bookingInterestRelations = relations(
+  bookingInterest,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [bookingInterest.userId],
+      references: [users.id],
+    }),
+    booking: one(bookings, {
+      fields: [bookingInterest.bookingId],
+      references: [bookings.id],
+    }),
+  }),
+)
+
+export const bookingsPendingHoldsRelations = relations(
+  bookingsPendingHolds,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [bookingsPendingHolds.userId],
+      references: [users.id],
+    }),
+    booking: one(bookings, {
+      fields: [bookingsPendingHolds.bookingId],
+      references: [bookings.id],
+    }),
+  }),
+)
+
+export const bookingOrdersRelations = relations(bookingOrders, ({ one }) => ({
+  user: one(users, {
+    fields: [bookingOrders.userId],
+    references: [users.id],
+  }),
+  booking: one(bookings, {
+    fields: [bookingOrders.bookingId],
+    references: [bookings.id],
+  }),
+}))
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Type exports — single source of truth used by queries.ts and pages.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -766,3 +1147,30 @@ export type ProductType = (typeof productType.enumValues)[number]
 export type SessionItemType = (typeof sessionItemType.enumValues)[number]
 export type CorporateRequestStatus =
   (typeof corporateRequestStatus.enumValues)[number]
+
+export type Tour = InferSelectModel<typeof tours>
+export type NewTour = InferInsertModel<typeof tours>
+
+export type TourSuggestion = InferSelectModel<typeof tourSuggestions>
+export type NewTourSuggestion = InferInsertModel<typeof tourSuggestions>
+
+export type Booking = InferSelectModel<typeof bookings>
+export type NewBooking = InferInsertModel<typeof bookings>
+
+export type BookingInterest = InferSelectModel<typeof bookingInterest>
+export type NewBookingInterest = InferInsertModel<typeof bookingInterest>
+
+export type BookingsPendingHold = InferSelectModel<typeof bookingsPendingHolds>
+export type NewBookingsPendingHold = InferInsertModel<
+  typeof bookingsPendingHolds
+>
+
+export type BookingOrder = InferSelectModel<typeof bookingOrders>
+export type NewBookingOrder = InferInsertModel<typeof bookingOrders>
+
+export type BookingProductType = (typeof bookingProductType.enumValues)[number]
+export type BookingState = (typeof bookingState.enumValues)[number]
+
+export type UserQuestion = InferSelectModel<typeof userQuestions>
+export type NewUserQuestion = InferInsertModel<typeof userQuestions>
+export type QuestionStatus = (typeof questionStatus.enumValues)[number]

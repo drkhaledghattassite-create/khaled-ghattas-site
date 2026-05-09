@@ -39,6 +39,11 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
+      {/* Phase A3.2 — WelcomeBackBanner unmounted. Continue-content
+          affordances live on tab-specific surfaces in the dashboard
+          (/dashboard/library, /dashboard/bookings) — the public homepage
+          showing them duplicated those surfaces for logged-in visitors.
+          Component file kept on disk for potential future use. */}
       <Hero
         showCtaBooks={hero_ctas.show_hero_cta_books}
         showCtaArticles={hero_ctas.show_hero_cta_articles}

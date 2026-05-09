@@ -43,11 +43,14 @@ export function SessionEmptyState({
       >
         <Hourglass className="h-7 w-7" strokeWidth={1.6} />
       </div>
-      <h1
+      {/* Phase 6.1 a11y — demoted from h1 → h2 to match the rest of
+          the session viewer surface. DashboardLayout's user-name h1
+          stays the page-primary; this empty-state title is secondary. */}
+      <h2
         className={`m-0 mb-3 text-[clamp(24px,3.5vw,34px)] leading-[1.15] font-bold tracking-[-0.015em] text-[var(--color-fg1)] ${fontHeading}`}
       >
         {title}
-      </h1>
+      </h2>
       <p
         className={`m-0 mb-8 max-w-[440px] text-[16px] leading-[1.7] text-[var(--color-fg2)] ${fontBody}`}
       >

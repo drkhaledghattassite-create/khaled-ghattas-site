@@ -8,7 +8,10 @@ import { BookOpen } from 'lucide-react'
 import { Link, usePathname, useRouter } from '@/lib/i18n/navigation'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import { LibraryCard, type LibraryItem } from './LibraryCard'
-import { ContinueReadingHero } from './ContinueReadingHero'
+import {
+  ContinueReadingHero,
+  type HeroActivity,
+} from './ContinueReadingHero'
 import {
   LibrarySortDropdown,
   type LibrarySort,
@@ -46,27 +49,19 @@ function parseSort(
   return hasAnyProgress ? 'recent_read' : 'recent_purchase'
 }
 
-function pickHeroCandidate(items: LibraryItem[]): LibraryItem | null {
-  // Hero is BOOK-only (sessions don't have last-page progress yet — Phase 4
-  // owns media_progress). Spec gates on lastPage > 1 so a book that was
-  // opened but never paged forward doesn't pin the hero.
-  const candidates = items
-    .filter(
-      (i) =>
-        i.type === 'BOOK' && i.lastReadAt != null && i.lastPage > 1,
-    )
-    .sort((a, b) => {
-      const aTs = a.lastReadAt ? Date.parse(a.lastReadAt) : 0
-      const bTs = b.lastReadAt ? Date.parse(b.lastReadAt) : 0
-      return bTs - aTs
-    })
-  return candidates[0] ?? null
-}
-
 export function LibraryView({
   items: initialItems = [],
+  activity = null,
 }: {
   items?: LibraryItem[]
+  /**
+   * Phase 5 — unified continue-activity. Server picks the most-recent
+   * BOOK or SESSION item via `getMostRecentActivity`; the hero card
+   * renders whichever (or hides when null). The legacy client-side
+   * `pickHeroCandidate` is gone — that helper was BOOK-only and didn't
+   * see Phase 4 media progress.
+   */
+  activity?: HeroActivity | null
 }) {
   const t = useTranslations('dashboard.library')
   const tLib = useTranslations('library')
@@ -103,11 +98,6 @@ export function LibraryView({
     }
     return { books, lectures, total: initialItems.length }
   }, [initialItems])
-
-  const heroCandidate = useMemo(
-    () => pickHeroCandidate(initialItems),
-    [initialItems],
-  )
 
   const updateParam = useCallback(
     (key: 'type' | 'sort', value: string | null) => {
@@ -273,8 +263,8 @@ export function LibraryView({
         </p>
       </motion.header>
 
-      {/* Continue reading hero — only when a candidate exists */}
-      {heroCandidate && <ContinueReadingHero item={heroCandidate} />}
+      {/* Continue activity hero — BOOK or SESSION, picked server-side. */}
+      {activity && <ContinueReadingHero activity={activity} />}
 
       {/* Filter chips + sort row.
           Filter chips on leading edge, sort dropdown on trailing edge. */}

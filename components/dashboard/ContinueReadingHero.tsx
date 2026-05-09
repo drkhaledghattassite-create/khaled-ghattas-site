@@ -5,37 +5,132 @@ import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import { Link } from '@/lib/i18n/navigation'
-import type { LibraryItem } from './LibraryCard'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 /**
- * "Continue reading" hero card. Rendered above the library grid when at
- * least one BOOK item has reading progress past page 1. The candidate
- * (chosen in LibraryView) is the most recently-read item by lastReadAt.
+ * Phase 5 — unified continue-activity surface.
  *
- * Layout is RTL-first via logical properties (start/end, ms/me) and uses
- * the main-site palette tokens (--color-accent, --color-fg1, …) — these
- * cards live outside the reader root so they cannot use --reader-* tokens.
+ * One hero card, two content shapes:
+ *   - BOOK: shows book cover, title, "Continue reading", page X of Y,
+ *     progress ring of pages-read percent, CTA → reader.
+ *   - SESSION: shows session cover, session title, "Continue watching",
+ *     a subtitle with the SPECIFIC item the user was on, "elapsed / total"
+ *     timestamp for that item, progress ring of that item's playback
+ *     percent, CTA → session viewer (auto-resumes the right item via
+ *     pickInitialItemId on the page server component).
+ *
+ * Visual treatment is shared deliberately — same layout, same accent
+ * gradient bleed, same progress ring geometry, same CTA pill. Only the
+ * label, the secondary line, and the route target swap. Don't fork this
+ * into two components.
  */
-export function ContinueReadingHero({ item }: { item: LibraryItem }) {
-  const t = useTranslations('library.continue_reading')
+export type HeroActivity =
+  | {
+      type: 'BOOK'
+      bookId: string
+      titleAr: string
+      titleEn: string
+      cover: string
+      primaryHref: string
+      lastPage: number
+      totalPages: number
+    }
+  | {
+      type: 'SESSION'
+      sessionId: string
+      sessionTitleAr: string
+      sessionTitleEn: string
+      itemTitle: string
+      cover: string
+      primaryHref: string
+      lastPositionSeconds: number
+      /** 0 when unknown — the timestamp display drops the "/ total" part. */
+      durationSeconds: number
+    }
+
+function formatTimestamp(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00'
+  const total = Math.floor(seconds)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`
+  return `${m}:${pad(s)}`
+}
+
+export function ContinueReadingHero({ activity }: { activity: HeroActivity }) {
+  // Translation namespaces split: BOOK uses the existing `continue_reading`
+  // namespace (label + cta + page_of_total), SESSION uses the new
+  // `continue_watching` namespace (label + cta). The two share visual
+  // treatment but not copy.
+  const tBook = useTranslations('library.continue_reading')
+  const tSession = useTranslations('library.continue_watching')
   const locale = useLocale()
   const isRtl = locale === 'ar'
   const reduceMotion = useReducedMotion()
 
-  const title = isRtl ? item.titleAr : item.titleEn
   const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
 
-  const progress =
-    item.totalPages > 0
-      ? Math.min(100, Math.max(0, Math.round((item.lastPage / item.totalPages) * 100)))
-      : Math.max(0, Math.min(100, Math.round(item.progress)))
-  const primaryHref = item.primaryHref ?? item.href
+  const isSession = activity.type === 'SESSION'
+  const title = isSession
+    ? isRtl
+      ? activity.sessionTitleAr
+      : activity.sessionTitleEn
+    : isRtl
+      ? activity.titleAr
+      : activity.titleEn
+  const label = isSession ? tSession('label') : tBook('label')
+  const cta = isSession ? tSession('cta') : tBook('cta')
+  const ariaLabel = label
 
-  // Progress ring geometry — sized to fit the trailing column comfortably
-  // on both mobile (compact) and desktop (full).
+  // Progress percent — pages-read for BOOK, position-of-duration for SESSION.
+  // Both clamp 0-100 and round to a whole percent for the ring + readout.
+  const progress = isSession
+    ? activity.durationSeconds > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              (activity.lastPositionSeconds / activity.durationSeconds) * 100,
+            ),
+          ),
+        )
+      : 0
+    : activity.totalPages > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round((activity.lastPage / activity.totalPages) * 100),
+          ),
+        )
+      : 0
+
+  // Secondary line: page-of-total for BOOK, item-title for SESSION.
+  const secondary = isSession
+    ? activity.itemTitle
+    : activity.totalPages > 0
+      ? tBook('page_of_total', {
+          current: activity.lastPage,
+          total: activity.totalPages,
+        })
+      : null
+
+  // Timestamp readout for SESSION only — the page-of-total line is BOOK's
+  // equivalent. Skip the "/ total" portion when duration is unknown.
+  const timestampReadout = isSession
+    ? activity.durationSeconds > 0
+      ? tSession('timestamp', {
+          elapsed: formatTimestamp(activity.lastPositionSeconds),
+          total: formatTimestamp(activity.durationSeconds),
+        })
+      : formatTimestamp(activity.lastPositionSeconds)
+    : null
+
   const size = 64
   const stroke = 5
   const radius = (size - stroke) / 2
@@ -47,7 +142,7 @@ export function ContinueReadingHero({ item }: { item: LibraryItem }) {
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: EASE }}
-      aria-label={t('label')}
+      aria-label={ariaLabel}
       dir={isRtl ? 'rtl' : 'ltr'}
       className="relative w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)]"
     >
@@ -60,14 +155,20 @@ export function ContinueReadingHero({ item }: { item: LibraryItem }) {
       />
 
       <div className="relative grid items-center gap-4 p-4 sm:gap-6 sm:p-6 grid-cols-[80px_1fr] md:grid-cols-[120px_1fr_auto] md:p-7">
-        {/* Cover */}
+        {/* Cover. Sessions use a 16:10 thumbnail-shaped cover (matches the
+            playlist + library card aspect for sessions); books keep the
+            2:3 portrait. */}
         <Link
-          href={primaryHref}
+          href={activity.primaryHref}
           aria-label={title}
-          className="relative block overflow-hidden rounded-[var(--radius-sm)] bg-[var(--color-bg-deep)] aspect-[2/3] w-[80px] md:w-[120px] [box-shadow:0_8px_24px_-12px_rgba(0,0,0,0.25)]"
+          className={`relative block overflow-hidden rounded-[var(--radius-sm)] bg-[var(--color-bg-deep)] [box-shadow:0_8px_24px_-12px_rgba(0,0,0,0.25)] ${
+            isSession
+              ? 'aspect-video w-[80px] md:w-[120px]'
+              : 'aspect-[2/3] w-[80px] md:w-[120px]'
+          }`}
         >
           <Image
-            src={item.cover}
+            src={activity.cover}
             alt=""
             fill
             sizes="(min-width: 768px) 120px, 80px"
@@ -82,24 +183,41 @@ export function ContinueReadingHero({ item }: { item: LibraryItem }) {
               isRtl ? `${fontBody} !text-[12px] !tracking-normal !normal-case !font-bold` : 'font-display'
             }`}
           >
-            {t('label')}
+            {label}
           </span>
           <h2
             className={`m-0 text-[clamp(18px,2.4vw,24px)] leading-[1.2] font-bold tracking-[-0.01em] text-[var(--color-fg1)] [text-wrap:balance] ${fontDisplay}`}
           >
             <Link
-              href={primaryHref}
+              href={activity.primaryHref}
               className="hover:text-[var(--color-accent)] transition-colors"
             >
               {title}
             </Link>
           </h2>
-          {item.totalPages > 0 && (
+          {/* Subtitle row — item title for SESSION, page-of-total for BOOK. */}
+          {secondary != null && (
             <p
-              className={`m-0 text-[13px] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${fontBody}`}
+              className={`m-0 truncate text-[13px] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${fontBody}`}
+            >
+              {isSession ? (
+                <span className="block truncate">{secondary}</span>
+              ) : (
+                <span dir="ltr" className="num-latn">
+                  {secondary}
+                </span>
+              )}
+            </p>
+          )}
+          {/* Timestamp readout (SESSION only). Sits below the item-title
+              subtitle so the eye reads: session-title → item-title →
+              elapsed/total. */}
+          {timestampReadout != null && (
+            <p
+              className={`m-0 text-[12px] text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${fontBody}`}
             >
               <span dir="ltr" className="num-latn">
-                {t('page_of_total', { current: item.lastPage, total: item.totalPages })}
+                {timestampReadout}
               </span>
             </p>
           )}
@@ -114,7 +232,7 @@ export function ContinueReadingHero({ item }: { item: LibraryItem }) {
             aria-valuenow={progress}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={t('label')}
+            aria-label={ariaLabel}
           >
             <svg
               width={size}
@@ -159,10 +277,10 @@ export function ContinueReadingHero({ item }: { item: LibraryItem }) {
           </div>
 
           <Link
-            href={primaryHref}
+            href={activity.primaryHref}
             className={`btn-pill btn-pill-primary inline-flex !text-[13px] !py-2.5 !px-5 ${fontBody}`}
           >
-            {t('cta')}
+            {cta}
           </Link>
         </div>
       </div>

@@ -46,15 +46,29 @@ export function PdfInline({
   return (
     <div className="relative h-full w-full bg-black">
       {phase === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+        // Polite live region — a "loading PDF" announcement isn't
+        // urgent; the user already knows they clicked the playlist row
+        // and is waiting for it.
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-0 flex items-center justify-center bg-black/60"
+        >
           <span className="inline-flex items-center gap-2 text-[13px] text-white/85">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
             {t('loading')}
           </span>
         </div>
       )}
       {phase === 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+        // role=alert auto-implies aria-live=assertive — a PDF that
+        // can't load (signed URL expired, X-Frame-Options block, etc.)
+        // is recoverable but blocks the user's task, so it earns the
+        // assertive announcement.
+        <div
+          role="alert"
+          className="absolute inset-0 flex items-center justify-center bg-black/80"
+        >
           <span className="inline-flex items-center gap-2 text-[13px] text-white">
             <AlertCircle className="h-4 w-4" aria-hidden />
             {t('error')}

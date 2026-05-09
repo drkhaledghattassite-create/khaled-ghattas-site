@@ -84,6 +84,15 @@ function buildEmbedUrl(videoId: string, options: GetEmbedConfigOptions): string 
   //   modestbranding=1  — reduce YouTube logo prominence (does not remove it)
   //   playsinline=1     — iOS Safari plays inline instead of forcing fullscreen
   //   enablejsapi=1     — allow postMessage control via the IFrame Player API
+  //   cc_load_policy=1  — Phase 6.1 a11y win: starts the embed with captions
+  //                       enabled IF the source video has captions. Most of
+  //                       Dr. Khaled's Arabic content has AR captions, so
+  //                       defaulting them on is the right call for hearing-
+  //                       impaired Arabic speakers. The toggle is still
+  //                       reachable via YouTube's CC button. NB: when the
+  //                       production provider is decided (Cloudflare Stream
+  //                       / Vimeo / Mux), this maps to that provider's
+  //                       caption-default flag — see CLAUDE.md.
   //   origin=…          — postMessage origin allowlist (security recommendation)
   //   start=…           — initial seek position (seconds), only when > 0
   // Order is stable so URLs are deterministic across renders, which avoids
@@ -93,6 +102,7 @@ function buildEmbedUrl(videoId: string, options: GetEmbedConfigOptions): string 
     modestbranding: '1',
     playsinline: '1',
     enablejsapi: '1',
+    cc_load_policy: '1',
   })
   if (options.origin) params.set('origin', options.origin)
   if (options.startSeconds && options.startSeconds > 0) {

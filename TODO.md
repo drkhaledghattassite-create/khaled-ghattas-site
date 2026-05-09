@@ -66,3 +66,37 @@ Wire a `/search` page that fans out to `searchArticles`,
 ## Analytics, cookie banner, PWA manifest
 
 Out of scope for the current pass. Track separately.
+
+## fg3 contrast bump (Phase 6.1 deferral)
+
+The `--color-fg3` token (`#737373` in both `:root` and `.dark`) is
+consumed by ~88 source files. Light-mode contrast on `#FAFAFA` is
+~4.52:1 (just above WCAG AA). **Dark-mode contrast on `#0A0A0A` is
+~4.26:1 — fails AA**.
+
+Why deferred from Phase 6.1: blast radius is well above the >10
+surface threshold. The fix also has an asymmetry the brief didn't
+account for — the suggested `#595959` only works for light mode; in
+dark mode it would drop to ~2.89:1.
+
+Plan to ship cleanly:
+1. Edit `app/globals.css`:
+   - `:root` `--color-fg3: #595959` (light: ~6.67:1 on `#FAFAFA`).
+   - `.dark` `--color-fg3: #9C9C9C` (dark: ~5.3:1 on `#0A0A0A`).
+2. Visual audit in both modes for the surfaces with the highest
+   semantic risk (text on accent-soft, text on bg-deep, text on the
+   reader-only theme tokens, footer link tertiary copy, admin table
+   cell secondary text, dashboard library card metadata, session
+   playlist time/progress text). Spot-check 10–15 callsites; the
+   rest follow from the same token.
+3. Confirm `--color-ink-muted` and `--color-muted-foreground` (both
+   alias `--color-fg3`) propagate the new values — those aliases
+   feed shadcn primitives.
+4. Confirm `::-webkit-scrollbar-thumb:hover` and `.section-eyebrow`
+   in `globals.css` (both consume `--color-fg3` directly) still read
+   correctly with the new asymmetric values.
+5. Run a lighthouse / axe pass on a logged-out homepage, the library
+   tab, and the session viewer to verify AA across the board.
+
+Estimated effort: 1–2 hours including audit. Not a code-change
+constraint — a verification constraint.

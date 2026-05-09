@@ -26,6 +26,7 @@ const navigationSchema = z
     show_nav_about: z.boolean().optional(),
     show_nav_contact: z.boolean().optional(),
     show_nav_corporate: z.boolean().optional(),
+    show_nav_booking: z.boolean().optional(),
     show_locale_switcher: z.boolean().optional(),
   })
   .strict()
@@ -70,6 +71,26 @@ const maintenanceSchema = z
   })
   .strict()
 
+const adminSchema = z
+  .object({
+    show_admin_booking: z.boolean().optional(),
+    show_admin_questions: z.boolean().optional(),
+  })
+  .strict()
+
+const dashboardSchema = z
+  .object({
+    // Always-on like homepage.show_hero — accepts only `true` from a
+    // patch payload. Defends against a malicious or buggy patch attempting
+    // to hide the dashboard's landing surface.
+    show_account_tab: z.literal(true).optional(),
+    show_library_tab: z.boolean().optional(),
+    show_bookings_tab: z.boolean().optional(),
+    show_ask_tab: z.boolean().optional(),
+    show_settings_tab: z.boolean().optional(),
+  })
+  .strict()
+
 const comingSoonPagesSchema = z
   .array(z.enum(COMING_SOON_PAGES))
   .max(COMING_SOON_PAGES.length)
@@ -83,6 +104,8 @@ export const siteSettingsPatchSchema = z
     featured: featuredSchema.optional(),
     features: featuresSchema.optional(),
     maintenance: maintenanceSchema.optional(),
+    admin: adminSchema.optional(),
+    dashboard: dashboardSchema.optional(),
     coming_soon_pages: comingSoonPagesSchema.optional(),
   })
   .strict()

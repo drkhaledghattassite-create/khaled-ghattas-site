@@ -55,6 +55,35 @@ What works in dev:
   (`/api/checkout` returns 401 without a session). Unauthenticated buy
   attempts open `AuthRequiredDialog`, which sends users to
   `/login?redirect=<original-path>` and bounces them back after sign-in.
+- **Phase 5.2 — cross-content "Continue" surfaces** originally extended
+  the unified `getMostRecentActivity` helper to three additional
+  surfaces. After Phase A3 (booking domain integration + Account-tab
+  cleanup), only ONE of those surfaces is still mounted:
+  1. ~~**Public homepage Welcome back banner**~~ — UNMOUNTED in Phase
+     A3.2. The continue affordance lives on tab-specific surfaces in
+     the dashboard (`/dashboard/library`, `/dashboard/bookings`); the
+     public homepage showing it for logged-in visitors duplicated those
+     surfaces. Component files (`components/sections/WelcomeBackBanner.tsx`
+     + `WelcomeBackCard.tsx`) kept on disk for potential future use.
+  2. ~~**Dashboard root activity strip**~~ — UNMOUNTED in Phase A3.1.
+     Same reasoning — the Library tab's `ContinueReadingHero` is the
+     right home for "resume" affordances. Account tab is profile-only
+     now. Component (`components/dashboard/AccountActivityStrip.tsx`)
+     kept on disk.
+  3. **Post-purchase "Start now" CTA** on `/checkout/success` — STILL
+     LIVE. Resolves the Stripe `?session_id=cs_xxx` query param to the
+     persisted order via `getOrderByStripeSessionId(id)`, picks a
+     deterministic first item (BOOK before SESSION, then alphabetical
+     by `book.slug`), and emits a primary CTA deep-linking to
+     `/dashboard/library/read/{bookId}` or
+     `/dashboard/library/session/{sessionId}`. The pre-5.2 "Go to
+     library" link demotes to secondary. Falls back to the pre-5.2
+     two-CTA shape when the session_id is missing/invalid OR the
+     webhook hasn't persisted the order yet.
+  Surface 4 (a "Continue" indicator dot in the AuthMenu trigger) was
+  considered and **skipped**: AuthMenu sits in the public layout, so
+  every public-page navigation would pay an extra
+  `getMostRecentActivity` query just to power a small dot.
 - **Phase 2 — premium PDF reader is live** at
   `/dashboard/library/read/[bookId]`. Built on `react-pdf@9` (which
   pins `pdfjs-dist@4.8.69`, the LEGACY build — see "PDF.js — pinned to
@@ -130,27 +159,38 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`).
 - Neon Postgres (serverless).
-- Schema in `lib/db/schema.ts`. **22 tables**: `users`, `sessions`, `accounts`,
+- Schema in `lib/db/schema.ts`. **29 tables**: `users`, `sessions`, `accounts`,
   `verifications`, `articles`, `books`, `interviews`, `gallery`, `events`,
   `orders`, `orderItems`, `subscribers`, `contactMessages`, `siteSettings`,
   `contentBlocks`, the four Phase-1 content-delivery tables
-  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`, and
+  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`,
   the three Phase-3 corporate tables `corporatePrograms`,
-  `corporateClients`, `corporateRequests`.
-  **10 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
+  `corporateClients`, `corporateRequests`, the six Phase-A1/A2 booking
+  domain tables `tours`, `tourSuggestions`, `bookings`,
+  `bookingInterest`, `bookingsPendingHolds`, `bookingOrders`, and the
+  Phase-B1 `userQuestions` table for the "Ask Dr. Khaled" surface.
+  **13 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
   (DRAFT/PUBLISHED/ARCHIVED), `orderStatus` (PENDING/PAID/FULFILLED/REFUNDED/
   FAILED), `messageStatus` (UNREAD/READ/ARCHIVED), `subscriberStatus` (ACTIVE/
   UNSUBSCRIBED/BOUNCED), `eventStatus` (UPCOMING/PAST/CANCELLED),
   `articleCategory` (PHILOSOPHY/PSYCHOLOGY/SOCIETY/POLITICS/CULTURE/OTHER),
   `productType` (BOOK/SESSION), `sessionItemType` (VIDEO/AUDIO/PDF),
-  `corporateRequestStatus` (NEW/CONTACTED/SCHEDULED/COMPLETED/CANCELLED).
+  `corporateRequestStatus` (NEW/CONTACTED/SCHEDULED/COMPLETED/CANCELLED),
+  `bookingProductType` (RECONSIDER_COURSE/ONLINE_SESSION),
+  `bookingState` (OPEN/CLOSED/SOLD_OUT),
+  `questionStatus` (PENDING/ANSWERED/ARCHIVED).
   `sessionItems.sessionId` references `books.id` (sessions live in the
   `books` table with `productType='SESSION'`); the application enforces the
   productType invariant — the FK does not.
   `corporateRequests.programId` references `corporatePrograms.id` with
   `ON DELETE SET NULL` so deleting a program preserves the request history
   but clears the FK.
-- Migrations in `lib/db/migrations/`. **Seven** migrations exist:
+  `bookingOrders.userId` is nullable with `ON DELETE SET NULL` so order
+  history survives account deletion (matches the `orders` precedent).
+  `bookingOrders.status` reuses the canonical `orderStatus` enum;
+  `bookingOrders.bookingId` uses `ON DELETE RESTRICT` so admin can't
+  delete a booking with existing orders.
+- Migrations in `lib/db/migrations/`. **Ten** migrations exist:
   `0000_blue_adam_warlock.sql`, `0001_remarkable_toad_men.sql`,
   `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last in that
   group adds the `value_json` jsonb column on `site_settings` for the
@@ -159,11 +199,16 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
   their FKs and indexes; fully additive, no ALTER on existing tables),
   `0005_dizzy_luckman.sql` (Phase 2 — adds `total_pages integer NOT
   NULL DEFAULT 0` to `reading_progress` so the library card can render
-  a real progress percentage; additive only), and
+  a real progress percentage; additive only),
   `0006_corporate_programs.sql` (Phase 3 — adds `corporate_request_status`
   enum and the three corporate tables `corporate_programs`,
   `corporate_clients`, `corporate_requests` with their FK + indexes;
-  fully additive). Apply with `npm run db:migrate`.
+  fully additive), `0007_booking_tables.sql` and
+  `0008_admin_booking_additions.sql` (Phase A1/A2 — booking domain), and
+  `0009_user_questions.sql` (Phase B1 — adds `question_status` enum and
+  the `user_questions` table with `(user_id, created_at DESC)` and
+  `(status, created_at DESC)` indexes; fully additive). Apply with
+  `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point. It
   uses Drizzle when `DATABASE_URL` is set to a real Neon URL, and falls back
   to `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
@@ -239,8 +284,10 @@ Stored as a single JSON blob in `site_settings.value_json` under the
 Toggle groups: `homepage`, `navigation` (now includes `show_nav_corporate`),
 `footer`, `hero_ctas`, `featured`,
 `features` (auth_enabled, newsletter_form_enabled, maintenance_mode),
-`maintenance` (message + until date), `coming_soon_pages` (now includes
-`'corporate'`).
+`maintenance` (message + until date), `admin` (`show_admin_booking`),
+`dashboard` (`show_ask_tab` — Phase B1, hides the Ask tab from the
+dashboard nav; route still resolves via deep link),
+`coming_soon_pages` (now includes `'corporate'`).
 
 **Coming Soon ≠ Hide.** Two independent concerns:
 - A page in `coming_soon_pages` renders the `ComingSoon` placeholder instead
@@ -512,6 +559,18 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
   in-page anchor `#request` is wired to per-card "Request this program"
   CTAs, which dispatch a `kg:corporate:select-program` event so the form's
   program select pre-populates without a route change)
+- `/booking` — **Phase A1** "Services for Individuals" / «خدمات للأفراد» —
+  three-section page (Tours · Reconsider course · 8 Online Sessions) with
+  capacity-safe holds, sub-nav scroll-spy, mobile sticky-bottom Reserve
+  CTA, and the already-booked guard (Phase A3.1) that swaps Reserve for
+  "view in dashboard" when the user already paid for that booking. Page
+  refreshes on window-focus return (throttled 30s) so a user coming back
+  from Stripe sees fresh hold/capacity numbers. See "Booking domain"
+  in "What works in dev."
+- `/booking/success` — Stripe success landing. Resolves
+  `?session_id=cs_xxx` to a `booking_orders` row; renders confirmation
+  with order ref + dashboard CTA when PAID, or a polling state
+  (`PendingPoller`) when still PENDING (~10s ceiling, then falls back).
 - `/contact`
 - `/checkout/success`
 
@@ -527,6 +586,23 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 
 ### Dashboard (`app/[locale]/(dashboard)/`)
 - `/dashboard` — account view
+- `/dashboard/ask` — **Phase B1** "Ask Dr. Khaled" Q&A submission +
+  history surface. Logged-in users send a question (subject + body +
+  optional category + optional anonymity preference); the question lands
+  in the `user_questions` queue with status `PENDING`. Dr. Khaled (or his
+  team) reviews offline; answering happens on his social channels
+  (Instagram videos, stories) — the site is intake-only, never a
+  consultation channel. The page composes an editorial hero + signed
+  note from Dr. Khaled, a sticky "Before you send" guide, the form
+  itself, and a history list with segmented filter pills (All /
+  Pending / Answered / Archived). "All" excludes ARCHIVED to keep the
+  active queue front and centre. v1 is intake-only — no user-facing
+  edit/delete/archive affordances; admin (Phase B2) handles status
+  transitions. The form rate-limits to 5 questions per hour per user
+  via `tryRateLimit('user-question:${userId}', { limit: 5, window: '60 m' })`
+  (fails OPEN when Upstash isn't configured). Visibility is gated on
+  the `dashboard.show_ask_tab` site-setting; route still resolves via
+  deep link when the tab is hidden.
 - `/dashboard/library` — purchased content
 - `/dashboard/library/read/[bookId]` — **Phase 2** in-browser PDF reader.
   Server-verifies ownership (`userOwnsProduct`); on miss redirects to
@@ -608,6 +684,72 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
   AUDIO/PDF will surface error states because
   `/placeholder-content/<key>` 404s — by design; matches every other
   Phase-1 signed-URL flow.
+- `/dashboard/bookings` — **Phase A3** customer-facing list of the
+  user's confirmed bookings (Reconsider + online sessions). Server
+  component, auth-gated, `force-dynamic`. Fetches via
+  `getBookingOrdersByUserId(userId)`; renders status pills (Confirmed
+  / Pending / Refunded / Failed) and a "Manage booking" mailto: CTA.
+  Empty state CTAs back to `/booking`.
+
+- **Phase A — Booking domain (services for individuals)** is live at
+  `/booking`. Three sections share one route:
+  - **Tours** — externally-booked in-person events; "suggest a city"
+    form when no tour matches.
+  - **Reconsider** — flagship paid 8-week course with internal Stripe
+    checkout when OPEN, waitlist signup when CLOSED/SOLD_OUT.
+  - **8 Online Sessions** — standalone paid recordings with the same
+    OPEN/CLOSED/SOLD_OUT pattern.
+  **Capacity-race solution** lives in the `bookings_pending_holds`
+  table. A 15-min TTL hold is created inside a `db.transaction` that
+  locks the booking row via `SELECT … FOR UPDATE` and counts active
+  holds via `WHERE expires_at > NOW()` BEFORE the Stripe Checkout
+  Session is opened. Effective remaining seats =
+  `maxCapacity - bookedCount - activeHoldsCount`. Re-clicks delete the
+  user's prior hold and create a fresh one (orphan Stripe sessions
+  clean themselves up via `checkout.session.expired`).
+  **Already-booked guard** (Phase A3.1) — `getPaidBookingIdsForUser`
+  in `lib/db/queries.ts` returns bookingIds with PAID/FULFILLED orders
+  for the current user. The `/booking` page hides the Reserve UI for
+  those (replaced with "Already booked → view in dashboard"); the
+  `createBookingCheckoutAction` server action also defends with
+  `error: 'already_booked'` for stale-tab bypass attempts.
+  **Rate limiting** (Phase A3.3) — `createBookingCheckoutAction`
+  capped at 10/min/user (default `tryRateLimit` shape);
+  `createBookingInterestAction` capped at 20/min/user via the new
+  optional `{ limit, window }` config on `tryRateLimit`. Custom
+  configs use `rl:<limit>:<window>` Redis prefixes; the default
+  `'rl'` prefix is preserved so existing limit-counters don't reset.
+  Helper fails open without Upstash creds.
+  **Webhook integration** — `app/api/stripe/webhook/route.ts` has
+  BOOKING-flavoured branches in `checkout.session.completed`,
+  `checkout.session.expired`, `payment_intent.payment_failed`, and
+  `charge.refunded`. The completed branch is an early-return BEFORE
+  the existing books/sessions logic (the existing path reads
+  `metadata.bookId` which BOOKING sessions don't have). The refunded
+  branch decrements `bookings.bookedCount` with a `GREATEST(...-1, 0)`
+  floor and deliberately leaves `bookingState` alone — admin manually
+  reverts SOLD_OUT → OPEN if needed (Decision 11; see
+  `docs/decisions/booking-domain.md` if it exists, otherwise the Phase
+  A1 plan).
+  **Customer-facing dashboard** — `/dashboard/bookings` lists the
+  user's `booking_orders` with status pills (Confirmed / Pending /
+  Refunded / Failed) and a "Manage booking" CTA that opens
+  `mailto:Team@drkhaledghattass.com` for v1 (admin handles changes
+  manually until Phase B self-service flows ship). Empty state CTAs
+  back to `/booking`.
+  **Admin tooling (Phase A2)** at `/admin/booking/*` — five surfaces:
+  Tours, Bookings, Tour Suggestions, Booking Interest, Booking Orders.
+  Capacity-reduction guard runs server-side inside `updateBookingAdmin`
+  (rejects when `newMaxCapacity < bookedCount + activeHolds` with an
+  explicit `capacity_below_commitment` error code carrying the live
+  numbers). Stripe refund flow: admin clicks → action calls
+  `stripe.refunds.create({ payment_intent })` → action returns success
+  → webhook fires `charge.refunded` → DB state syncs (admin doesn't
+  mutate `booking_orders` directly). Visibility flag
+  `admin.show_admin_booking` (default `true`) gates the sidebar entry
+  but NOT the routes themselves — deep links still work for admins.
+  Stale-PENDING purge button on the orders surface deletes `booking_orders`
+  rows with `status='PENDING'` AND `createdAt < now() - interval '24 hours'`.
 - `/dashboard/settings`
 
 ### Admin (`app/[locale]/(admin)/`)
@@ -631,6 +773,18 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `/admin/corporate/programs` · `/admin/corporate/programs/new` · `/admin/corporate/programs/[id]/edit`
 - `/admin/corporate/clients` · `/admin/corporate/clients/new` · `/admin/corporate/clients/[id]/edit`
 - `/admin/corporate/requests` · `/admin/corporate/requests/[id]` (status + admin-notes update)
+- `/admin/booking` (Phase A2 overview — 5-card stat grid: tours, bookings,
+  pending suggestions, pending interest, paid orders)
+- `/admin/booking/tours` · `/admin/booking/tours/new` · `/admin/booking/tours/[id]/edit`
+- `/admin/booking/bookings` · `/admin/booking/bookings/new` ·
+  `/admin/booking/bookings/[id]/edit` (capacity card with separate
+  `updateBookingCapacityAction` + `updateBookingStateAction` modals)
+- `/admin/booking/tour-suggestions` (list + top-10 country/city aggregate panel)
+- `/admin/booking/interest` (list + bulk-mark-contacted with AlertDialog confirm)
+- `/admin/booking/orders` · `/admin/booking/orders/[id]` (refund button on
+  PAID orders with stripePaymentIntentId; stale-PENDING purge button on
+  the list page)
+  Sidebar visibility gated on `admin.show_admin_booking` (default true).
 
 ### Special / framework files
 - `app/[locale]/layout.tsx` — locale root, fonts, providers, Toaster, JSON-LD,
@@ -798,7 +952,11 @@ so explicitly rather than implying success.
   `CorporateProgramForm`, `CorporateProgramsTable`, `CorporateClientForm`,
   `CorporateClientsTable`, `CorporateRequestsTable`,
   `CorporateRequestStatusForm`, `SessionContentEditor`,
-  `SessionContentItemDialog`). The shared `StatusBadge` was extended
+  `SessionContentItemDialog`, plus the **Phase A2 booking suite**:
+  `ToursAdminTable`, `TourForm`, `BookingsAdminTable`, `BookingForm`,
+  `BookingCapacityCard`, `TourSuggestionsTable`, `BookingInterestTable`,
+  `BookingOrdersTable`, `BookingOrdersPurgeButton`,
+  `BookingOrderRefundButton`). The shared `StatusBadge` was extended
   with `NEW`/`CONTACTED`/`SCHEDULED`/`COMPLETED` (corporate request
   lifecycle) and the `status.*` translations were extended in lockstep.
   `StatusBadge` also accepts optional `tone` (`neutral` | `accent` |
@@ -806,6 +964,14 @@ so explicitly rather than implying success.
   so non-status enums (e.g. session-item types — VIDEO=info,
   AUDIO=warning, PDF=positive) can render in the same chip without
   ad-hoc CSS clones.
+- `components/booking/` — public `/booking` page (Phase A1):
+  `BookingPage` (client orchestrator with sub-nav scroll-spy + auth gate
+  + focus-refresh throttle + already-booked-set), `BookingPageHeader`,
+  `BookingSubNav`, `ToursSection`, `ReconsiderSection` (with mobile
+  sticky-bottom Reserve CTA + already-booked panel state),
+  `SessionsSection` (already-booked card swap), `ReserveModal`,
+  `SuggestCityModal`, `InterestModal`. All use the existing Qalem-skinned
+  `Dialog` primitive; no custom modal chrome.
 - `components/dashboard/` — dashboard-only components.
 - `components/auth/` — `LoginForm`, `SignupForm`, `ForgotPasswordForm`,
   `ResetPasswordForm`, `AuthAside`, `AuthRequiredDialog`.
@@ -947,8 +1113,22 @@ so explicitly rather than implying success.
   copy, error codes), plus the top-level `session.*` namespace consumed
   by the customer-facing session viewer (`empty`, `now_playing`,
   `playlist.*`, `type.*`, `video.*`, `audio.*`, `pdf.*`, `continue.*`,
-  `completed.*`, `back_to_library`). Both files maintain identical key
-  paths — current count: 1124/1124.
+  `completed.*`, `back_to_library`). Phase 6.1 a11y pass adds 9 new
+  leaves: `session.aria.playlist_item_{video,audio,pdf}` (with `{title,
+  position, total}` placeholders), `session.aria.playlist_item_completed`
+  / `session.aria.playlist_item_in_progress` (suffix fragments
+  concatenated onto the base label by `SessionPlaylist`),
+  `session.audio.aria.elapsed_announcement` (with `{elapsed, total}` —
+  the throttled SR-only live region in `AudioPlayer`), and
+  `session.audio.shortcut.{play_pause,scrub,mute}` (documentation strings
+  surfaced via `aria-keyshortcuts` + `title` on the audio controls).
+  Phase 5.2 adds 7 leaves per locale: `nav.continue_indicator_aria`
+  (kept even though Surface 4 is skipped — translation parity for the
+  string is cheap insurance against re-implementing it later), three
+  top-level namespaces `home.welcome_back.{greeting,no_activity_cta}`,
+  `dashboard_root.{activity_heading,view_all}`, and
+  `checkout_success.{start_now_cta,go_to_library_cta}`.
+  Both files maintain identical key paths — current count: 1161/1161.
 - `public/` — static assets. `public/placeholder-content/` is the Phase-1
   mock storage sandbox (gitignored content; tracked README). Phase 2 adds
   `public/pdf.worker.min.mjs`, `public/cmaps/`, and `public/standard_fonts/`
@@ -1118,7 +1298,7 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
 ## Reference
 
 - Design tokens: `app/globals.css` (`@theme inline { ... }` block).
-- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0006`.
+- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0009`.
 - Unified queries: `lib/db/queries.ts`.
 - Site settings: `lib/site-settings/{types,defaults,zod,get}.ts`.
 - Auth: `lib/auth/{index,server,client,admin-guard,mock,redirect}.ts`.
@@ -1149,6 +1329,58 @@ Full readiness checklist: `LAUNCH-CHECKLIST.md`.
   keepalive twin route `app/api/session/progress/route.ts`,
   query helpers in `lib/db/queries.ts` (`getMediaProgress`,
   `saveMediaProgress`, `getAllMediaProgressForSession`).
+- "Ask Dr. Khaled" Q&A (Phase B1):
+  `app/[locale]/(dashboard)/dashboard/ask/{page.tsx,actions.ts}`,
+  `components/dashboard/ask/{AskDrKhaledPage,AskHero,AskGuide,QuestionForm,QuestionList,QuestionCard,AskEmptyState,SubmitSuccessCard}.tsx`,
+  validator `lib/validators/user-question.ts` (exports
+  `createUserQuestionSchema`, `QUESTION_CATEGORIES`,
+  `QUESTION_BODY_MAX/MIN`, `QUESTION_SUBJECT_MAX/MIN`),
+  query helpers in `lib/db/queries.ts` (`getUserQuestionsByUserId`,
+  `createUserQuestion`). Dashboard tab visibility flag is
+  `dashboard.show_ask_tab` in site-settings; the `DashboardLayout`
+  client component accepts a `showAskTab` prop threaded from each
+  dashboard page that mounts it. Categories are stored as plain text
+  (not a `pgEnum`) so admin can adjust the vocabulary without a
+  migration — the validator's tuple guard is the single source of
+  truth for allowed values. **Dormant column:** the
+  `is_anonymous boolean` column on `user_questions` (migration 0009)
+  is preserved but unused — the user-facing toggle was removed
+  pre-launch and every insert writes the DB default (`false`).
+  Reintroducing the toggle would re-add `isAnonymous` to the
+  validator + form + admin table; no schema change needed.
+- "Ask Dr. Khaled" admin queue (Phase B2):
+  `app/[locale]/(admin)/admin/questions/{page.tsx,actions.ts}`,
+  `components/admin/questions/{AdminQuestionsPage,QuestionsTable,MarkAnsweredModal,ArchiveModal,RevertModal,DeleteModal}.tsx`,
+  email template `lib/email/templates/question-answered.ts`
+  (bilingual, inline string-map per the post-purchase pattern), send
+  wrapper `sendAnsweredNotificationEmail` in `lib/email/send.ts`.
+  Validators extended in `lib/validators/user-question.ts` with
+  `updateQuestionStatusSchema` (refines that ANSWERED requires a
+  non-empty answerReference), `deleteQuestionSchema`, and
+  `adminQuestionListSchema`. Query helpers in `lib/db/queries.ts`:
+  `getAdminQuestions` (paginated + joined with users),
+  `getQuestionById` (single row + user join),
+  `updateQuestionStatus` (atomic timestamp side-effects per status),
+  `deleteQuestion` (idempotent hard delete),
+  `getPendingQuestionCount` (sidebar badge).
+  **Email semantics:** the notification email fires ONLY on a
+  PENDING → ANSWERED transition AND only when the answerReference is
+  an http(s) URL. Free-text notes save quietly with no email;
+  non-PENDING source states (e.g., editing an already-ANSWERED
+  row's reference) also skip the email so admins aren't surprised
+  by re-sends. Email send NEVER blocks the status update — Resend
+  missing/down maps to a warning toast, the DB write still
+  succeeds.
+  **Sidebar:** Questions entry sits in the Audience group with a
+  pending-count badge powered by `getPendingQuestionCount()` in
+  the admin layout. Visibility is gated on
+  `admin.show_admin_questions` site-setting (default true). Layout
+  passes `showAdminQuestions` + `pendingQuestionCount` to both
+  `AdminSidebar` and `AdminTopbar`.
+  **User locale fallback:** the `users` table has no `locale`
+  column, so the answered-notification email defaults to `'ar'`
+  (the site's primary locale). Adding a `users.locale` column is
+  a Phase B3 concern.
 - Validators: `lib/validators/*` (incl. `corporate.ts` exporting
   `corporateProgramSchema`, `corporateClientSchema`,
   `corporateRequestSchema`, `corporateRequestUpdateSchema`, and the

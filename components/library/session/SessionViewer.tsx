@@ -45,8 +45,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useTranslations } from 'next-intl'
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Link } from '@/lib/i18n/navigation'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import { fadeUp, EASE_EDITORIAL } from '@/lib/motion/variants'
@@ -56,6 +57,15 @@ import { SessionPlaylist, type PlaylistProgress } from './SessionPlaylist'
 import { VideoPlayer } from './VideoPlayer'
 import { AudioPlayer } from './AudioPlayer'
 import { PdfInline } from './PdfInline'
+
+/**
+ * Phase 5.1 — auto-advance countdown.
+ * 5 seconds is long enough that "did I really want to skip?" registers,
+ * short enough that a user expecting the next lecture isn't bored.
+ * Mirroring YouTube/Netflix's auto-play prompt durations.
+ */
+const COUNTDOWN_TOTAL_SECONDS = 5
+const COUNTDOWN_TOTAL_MS = COUNTDOWN_TOTAL_SECONDS * 1000
 
 type SerializedProgress = {
   lastPositionSeconds: number
@@ -128,6 +138,59 @@ export function SessionViewer({
   const activeItem = useMemo(
     () => items.find((i) => i.id === activeItemId) ?? items[0]!,
     [items, activeItemId],
+  )
+
+  // Phase 5 — inter-item navigation surface.
+  //   currentIndex: position in the playlist (sortOrder-sorted upstream)
+  //   nextItem: the item the user would advance to, or null at the end
+  //   isLastItemCompleted: drives the celebration completion state
+  // Phase 5.1 upgraded the v1 manual-advance to an auto-advance with
+  // 5-second countdown — the user can cancel mid-count or click "Play
+  // now" to skip the wait. Last-item completion still falls through to
+  // the celebration card; the countdown only fires when nextItem exists.
+  const currentIndex = useMemo(
+    () => items.findIndex((i) => i.id === activeItemId),
+    [items, activeItemId],
+  )
+  const nextItem =
+    currentIndex >= 0 && currentIndex < items.length - 1
+      ? items[currentIndex + 1]!
+      : null
+  const isCurrentCompleted = progress[activeItemId]?.completedAt != null
+  const isLastItem = nextItem == null
+  const showCompletionState = isLastItem && isCurrentCompleted
+
+  // ─── Phase 5.1 auto-advance countdown ────────────────────────────────
+  // Three pieces of state:
+  //   countdownTarget: the item id we'll advance to when timer fires;
+  //                    null = no countdown active
+  //   countdownSeconds: the visible "5, 4, 3, 2, 1" digit
+  //   countdownStartTs: a cache-buster for AnimatePresence so cancel-
+  //                     then-recomplete remounts the section (drains the
+  //                     ring fresh instead of reusing the stale instance)
+  const [countdownTarget, setCountdownTarget] = useState<string | null>(null)
+  const [countdownSeconds, setCountdownSeconds] = useState(COUNTDOWN_TOTAL_SECONDS)
+  const [countdownStartTs, setCountdownStartTs] = useState<number | null>(null)
+  const countdownActive = countdownTarget != null
+  // Snapshot of the title at countdown start — protects the live-region
+  // announcement from re-firing when the active-item title state evolves
+  // mid-countdown (e.g., a stale render shouldn't re-announce).
+  const [countdownTitle, setCountdownTitle] = useState<string>('')
+
+  const stopCountdown = useCallback(() => {
+    setCountdownTarget(null)
+    setCountdownSeconds(COUNTDOWN_TOTAL_SECONDS)
+    setCountdownStartTs(null)
+  }, [])
+
+  const startCountdown = useCallback(
+    (targetItemId: string, targetTitle: string) => {
+      setCountdownTarget(targetItemId)
+      setCountdownSeconds(COUNTDOWN_TOTAL_SECONDS)
+      setCountdownStartTs(Date.now())
+      setCountdownTitle(targetTitle)
+    },
+    [],
   )
 
   // Signed URL cache + fetch state for AUDIO/PDF.
@@ -266,6 +329,11 @@ export function SessionViewer({
     (nextItemId: string) => {
       if (nextItemId === activeItemId) return
 
+      // Phase 5.1 — any explicit item swap (playlist click, "Play now",
+      // or the timer firing through handleSelectRef) is a clean point
+      // to drop the countdown. Idempotent if no countdown was running.
+      stopCountdown()
+
       const outgoing = latestPositionRef.current
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
@@ -297,7 +365,7 @@ export function SessionViewer({
       setPdfUrl(null)
       setPdfPhase('loading')
     },
-    [activeItemId, fireSave, items, progress],
+    [activeItemId, fireSave, items, progress, stopCountdown],
   )
 
   const handleProgress = useCallback(
@@ -353,7 +421,73 @@ export function SessionViewer({
       snap.itemId === activeItemId ? snap.positionSeconds : 0,
       true,
     )
-  }, [activeItemId, fireSave])
+    // Phase 5.1 — kick the auto-advance countdown when there's a next
+    // item. Last-item completion falls through to the celebration
+    // card via showCompletionState; no countdown there.
+    if (nextItem) {
+      startCountdown(nextItem.id, nextItem.title)
+    }
+  }, [activeItemId, fireSave, nextItem, startCountdown])
+
+  // Phase 5.1 — countdown timer effect. Splits into a tick (visual
+  // 5→4→3→2→1 readout, 250ms cadence so the digit updates promptly even
+  // if a tab-throttle skews the 1s schedule) and a one-shot fire that
+  // actually triggers the advance at COUNTDOWN_TOTAL_MS. Both clean up
+  // on cancel / item-switch / unmount via the effect's return.
+  //
+  // handleSelectRef indirection: handleSelect's identity changes whenever
+  // items/progress/activeItemId change, so depending on it directly here
+  // would tear down + rebuild the timers mid-countdown. The ref lets us
+  // call the freshest handleSelect without re-firing the effect.
+  const handleSelectRef = useRef(handleSelect)
+  useEffect(() => {
+    handleSelectRef.current = handleSelect
+  }, [handleSelect])
+
+  useEffect(() => {
+    if (!countdownActive || countdownStartTs == null) return
+    const target = countdownTarget!
+    const start = countdownStartTs
+
+    const tickId = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((COUNTDOWN_TOTAL_MS - (Date.now() - start)) / 1000),
+      )
+      setCountdownSeconds(remaining)
+    }, 250)
+
+    const fireId = setTimeout(() => {
+      // Reset state first so AnimatePresence transitions cleanly, then
+      // delegate to handleSelect through the ref. handleSelect's own
+      // stopCountdown call is then a no-op.
+      setCountdownTarget(null)
+      setCountdownSeconds(COUNTDOWN_TOTAL_SECONDS)
+      setCountdownStartTs(null)
+      handleSelectRef.current(target)
+    }, COUNTDOWN_TOTAL_MS)
+
+    return () => {
+      clearInterval(tickId)
+      clearTimeout(fireId)
+    }
+  }, [countdownActive, countdownStartTs, countdownTarget])
+
+  // Esc cancels the countdown. Window-level keydown — works regardless
+  // of which element currently has focus (player iframe, audio button,
+  // or none). Listener mounts only while the countdown is active to
+  // avoid swallowing Esc anywhere else in the viewer.
+  useEffect(() => {
+    if (!countdownActive) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        stopCountdown()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [countdownActive, stopCountdown])
 
   // ─── On-demand signed-URL fetch for AUDIO + PDF items ─────────────
   // Returns a cached URL when one exists and isn't near expiry, else
@@ -431,6 +565,8 @@ export function SessionViewer({
     }
   }, [activeItem, fetchSignedUrl])
 
+  const tLibrary = useTranslations('library')
+
   return (
     <motion.div
       dir={isRtl ? 'rtl' : 'ltr'}
@@ -440,6 +576,30 @@ export function SessionViewer({
       transition={{ duration: 0.5, ease: EASE_EDITORIAL }}
       className="mx-auto flex w-full max-w-[var(--container-max)] flex-col gap-6 px-4 py-[clamp(20px,3vw,40px)] lg:gap-8"
     >
+      {/* Slim "Library" chip — present at every breakpoint, leading edge.
+          Keeps the back-affordance reachable without stealing vertical
+          real estate from the media area below. The legacy in-header
+          back-arrow link was removed to avoid two redundant back routes.
+          a11y: min-h-[44px] meets the codebase's mobile touch-target
+          standard; the chip looks slim because the content (12px text +
+          14px icon) is centered vertically inside a 44px-tall hit area. */}
+      <Link
+        href="/dashboard/library"
+        aria-label={tLibrary('back_to_library')}
+        className={`inline-flex min-h-[44px] w-fit items-center gap-1.5 self-start rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-1.5 text-[12px] font-semibold text-[var(--color-fg2)] transition-colors hover:text-[var(--color-fg1)] hover:border-[var(--color-fg1)] ${fontDisplay}`}
+      >
+        {/* Arrow points AGAINST the reading direction (back toward
+            origin) — LTR uses ←, RTL uses →. Lucide's ChevronLeft +
+            ChevronRight handle the swap explicitly so the icon doesn't
+            mirror via CSS [dir=rtl] (which can clash with bidi text). */}
+        {isRtl ? (
+          <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        ) : (
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        )}
+        {tLibrary('back_to_library')}
+      </Link>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
         {/* Leading column — media + header */}
         <div className="flex flex-col gap-5">
@@ -507,19 +667,194 @@ export function SessionViewer({
             )}
           </div>
 
-          {/* Header — session title, current item title, description */}
+          {/* Inter-item navigation surface — countdown / completion / up-next.
+              AnimatePresence fades the three cases cleanly. Branch order
+              matters: the countdown takes precedence over the up-next pill
+              (current item just completed AND a next item exists), and
+              the completion celebration takes precedence when there's no
+              next item. They are mutually exclusive — only one renders. */}
+          <AnimatePresence mode="wait" initial={false}>
+            {countdownActive && nextItem ? (
+              <motion.section
+                key={`countdown-${countdownStartTs}`}
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                role="region"
+                aria-live="polite"
+                // Accessible name on a SEPARATE sr-only element below
+                // (not via aria-label which would re-fire on every state
+                // tick). The label here is stable on mount.
+                aria-labelledby={`countdown-label-${countdownStartTs}`}
+                className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-4 sm:flex-row sm:items-center sm:gap-4"
+              >
+                {/* The polite announcement reads ONCE on mount because
+                    its text doesn't change after the section enters the
+                    DOM. Every other dynamic node (countdown digit, ring)
+                    is aria-hidden so it doesn't trigger re-announcement. */}
+                <span
+                  id={`countdown-label-${countdownStartTs}`}
+                  className="sr-only"
+                >
+                  {tLibrary('session.auto_advance.label', {
+                    seconds: COUNTDOWN_TOTAL_SECONDS,
+                  })}
+                  {' — '}
+                  {countdownTitle}
+                </span>
+
+                {/* Leading: countdown indicator (animated ring or static
+                    digit when prefers-reduced-motion is set). aria-hidden
+                    because the sr-only label above conveys the meaning;
+                    a screen reader reading "5, 4, 3, 2, 1" is the spam
+                    we're avoiding. */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div aria-hidden className="shrink-0">
+                    {reduceMotion ? (
+                      <span
+                        dir="ltr"
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)] text-[15px] font-bold tabular-nums num-latn`}
+                      >
+                        {countdownSeconds}
+                      </span>
+                    ) : (
+                      <CountdownRing seconds={countdownSeconds} />
+                    )}
+                  </div>
+
+                  {/* Identity */}
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span
+                      className={`text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-accent)] ${
+                        isRtl
+                          ? `${fontDisplay} !text-[12px] !tracking-normal !normal-case !font-bold`
+                          : 'font-display'
+                      }`}
+                    >
+                      {tLibrary('session.auto_advance.label', {
+                        seconds: countdownSeconds,
+                      })}
+                    </span>
+                    <span
+                      className={`block truncate text-[14px] font-semibold text-[var(--color-fg1)] ${fontHeading}`}
+                    >
+                      {countdownTitle}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions row. Both buttons satisfy 44px mobile target
+                    via min-h. "Play now" is the affirmative — gets the
+                    primary pill. "Cancel" is the dismissive — outline. */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Skip the timer and advance immediately.
+                      // handleSelect runs stopCountdown internally.
+                      handleSelect(nextItem.id)
+                    }}
+                    aria-label={tLibrary('session.auto_advance.play_now')}
+                    className={`btn-pill btn-pill-primary inline-flex min-h-[44px] !text-[12px] !py-1.5 !px-4 ${fontDisplay}`}
+                  >
+                    {tLibrary('session.auto_advance.play_now')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCountdown}
+                    aria-label={tLibrary('session.auto_advance.cancel')}
+                    className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 text-[12px] font-semibold text-[var(--color-fg2)] transition-colors hover:text-[var(--color-fg1)] hover:border-[var(--color-fg1)] ${fontDisplay}`}
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                    <span className="hidden sm:inline">
+                      {tLibrary('session.auto_advance.cancel')}
+                    </span>
+                  </button>
+                </div>
+              </motion.section>
+            ) : showCompletionState ? (
+              <motion.section
+                key="completion"
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                aria-live="polite"
+                className="flex flex-col items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-accent-soft)] px-5 py-6 text-center"
+              >
+                <div
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)]"
+                  aria-hidden
+                >
+                  <CheckCircle2 className="h-5 w-5" strokeWidth={2} />
+                </div>
+                <h2
+                  className={`m-0 text-[clamp(16px,2vw,20px)] font-bold leading-[1.2] tracking-[-0.01em] text-[var(--color-fg1)] ${fontHeading}`}
+                >
+                  {tLibrary('session.completion_title')}
+                </h2>
+                <Link
+                  href="/dashboard/library"
+                  className={`btn-pill btn-pill-primary inline-flex !text-[13px] !py-2 !px-5 ${fontDisplay}`}
+                >
+                  {tLibrary('session.completion_cta')}
+                </Link>
+              </motion.section>
+            ) : nextItem ? (
+              <motion.button
+                key={`upnext-${nextItem.id}`}
+                type="button"
+                onClick={() => handleSelect(nextItem.id)}
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                aria-label={`${tLibrary('session.next_item_label')} — ${nextItem.title}`}
+                className={`group flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3 text-start transition-colors hover:border-[var(--color-fg1)] hover:bg-[var(--color-bg-deep)] ${
+                  isCurrentCompleted
+                    ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+                    : ''
+                }`}
+              >
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span
+                    className={`text-[10px] uppercase tracking-[0.14em] font-semibold text-[var(--color-accent)] ${
+                      isRtl
+                        ? `${fontDisplay} !text-[12px] !tracking-normal !normal-case !font-bold`
+                        : 'font-display'
+                    }`}
+                  >
+                    {tLibrary('session.next_item_label')}
+                  </span>
+                  <span
+                    className={`block truncate text-[14px] font-semibold text-[var(--color-fg1)] ${fontHeading}`}
+                  >
+                    {nextItem.title}
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-bg-deep)] text-[var(--color-fg2)] transition-colors group-hover:bg-[var(--color-accent)] group-hover:text-[var(--color-accent-fg)]"
+                >
+                  {/* Arrow points WITH the reading direction (forward to
+                      the next item) — LTR uses →, RTL uses ←. Mirrors
+                      the back-chip's logic. */}
+                  {isRtl ? (
+                    <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                  ) : (
+                    <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+                  )}
+                </span>
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Header — eyebrow + current item title + description.
+              Phase 5: the legacy back-arrow link was hoisted out into
+              the slim Library chip at the top of the viewer; the header
+              now leads with the now-playing eyebrow. */}
           <header className="flex flex-col gap-3">
-            <Link
-              href="/dashboard/library"
-              className={`inline-flex items-center gap-1 self-start text-[12px] text-[var(--color-fg3)] hover:text-[var(--color-fg1)] transition-colors ${fontDisplay}`}
-            >
-              {/* Back-link arrow points AGAINST the reading direction
-                  (LTR: ←, RTL: →). The forward-CTA pattern in
-                  CorporateProgramsGrid is the opposite — that one
-                  points WITH the reading direction. */}
-              <span aria-hidden>{isRtl ? '→' : '←'}</span>
-              {t('back_to_library')}
-            </Link>
             <span
               className={`text-[11px] uppercase tracking-[0.16em] text-[var(--color-accent)] ${
                 isRtl
@@ -529,11 +864,16 @@ export function SessionViewer({
             >
               {t('now_playing')}
             </span>
-            <h1
+            {/* Phase 6.1 a11y — demoted from h1 → h2.
+                DashboardLayout owns the page-level h1 (the user's name),
+                so the active item title slots in as h2. Visual styling
+                is unchanged because the heading uses explicit Tailwind
+                classes; only the semantic level shifts. */}
+            <h2
               className={`m-0 text-[clamp(20px,2.6vw,28px)] leading-[1.2] font-bold tracking-[-0.01em] text-[var(--color-fg1)] ${fontHeading}`}
             >
               {activeItem.title}
-            </h1>
+            </h2>
             <p
               className={`m-0 text-[14px] leading-[1.6] text-[var(--color-fg2)] ${fontDisplay}`}
             >
@@ -545,8 +885,16 @@ export function SessionViewer({
           </header>
         </div>
 
-        {/* Trailing column — playlist (sticky on desktop) */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        {/* Trailing column — playlist (sticky on desktop). The aside
+            advertises itself as a complementary landmark; without an
+            aria-label it announces as "complementary" with no name.
+            SessionPlaylist's inner <section> also carries the same
+            label (by design — the section is what AT users actually
+            land in when navigating by region). */}
+        <aside
+          aria-label={t('aria.playlist_region')}
+          className="lg:sticky lg:top-6 lg:self-start"
+        >
           <SessionPlaylist
             items={items}
             activeItemId={activeItemId}
@@ -557,5 +905,68 @@ export function SessionViewer({
         </aside>
       </div>
     </motion.div>
+  )
+}
+
+/**
+ * Auto-advance countdown ring — pure SVG, animated via motion/react.
+ *
+ * The drain runs continuously over COUNTDOWN_TOTAL_MS independent of the
+ * `seconds` digit (which ticks per state update). That separation is on
+ * purpose: the digit must update for AT and visual readout, but the ring
+ * looks janky if it ticks in 1-second steps. The motion timing is
+ * `linear` so the visible drain matches wall-clock time.
+ *
+ * Re-mount restarts the animation: AnimatePresence keys the parent
+ * section by `countdownStartTs`, so a cancel-then-recomplete spins up a
+ * fresh CountdownRing instance with `initial → animate` running again
+ * from the start.
+ */
+function CountdownRing({ seconds }: { seconds: number }) {
+  const size = 40
+  const stroke = 3
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+
+  return (
+    <div
+      className="relative inline-flex h-10 w-10 items-center justify-center"
+      aria-hidden
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="-rotate-90 absolute inset-0"
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="var(--color-accent-soft)"
+          strokeWidth={stroke}
+          fill="var(--color-accent)"
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="var(--color-accent-fg)"
+          strokeWidth={stroke}
+          fill="transparent"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: 0 }}
+          animate={{ strokeDashoffset: circumference }}
+          transition={{ duration: COUNTDOWN_TOTAL_SECONDS, ease: 'linear' }}
+        />
+      </svg>
+      <span
+        dir="ltr"
+        className="relative text-[14px] font-bold tabular-nums num-latn text-[var(--color-accent-fg)]"
+      >
+        {seconds}
+      </span>
+    </div>
   )
 }

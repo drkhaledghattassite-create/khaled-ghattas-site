@@ -34,6 +34,16 @@ import { useTranslations } from 'next-intl'
 const PLAYBACK_RATES = [1, 1.25, 1.5, 2] as const
 const POLL_INTERVAL_MS = 2000
 const COMPLETION_THRESHOLD = 0.95
+// Phase 6.1 M2 — screen-reader announcements throttle. The visible
+// clock updates ~once per second; that's far too noisy to forward to
+// AT (some readers queue every change, others interrupt the prior one).
+// Every 30s is the sweet spot: long enough that a focused listener
+// won't be talked over while reading other content, short enough that
+// a casual user gets durable progress feedback.
+const ANNOUNCE_INTERVAL_MS = 30_000
+// M3 — keyboard shortcuts step (5s). Matches the de-facto standard
+// across Spotify / YouTube / podcast apps for "skip a sentence."
+const SHORTCUT_SCRUB_SECONDS = 5
 
 function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -74,6 +84,11 @@ export function AudioPlayer({
   const seekedRef = useRef(false)
   const initialPosRef = useRef(initialPositionSeconds)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // M2 — last wall-clock time we updated the live-region announcement.
+  // Initialised to 0 so the first elapsed milestone after playback
+  // starts produces an announcement instead of waiting 30s for the
+  // ref to "ripen".
+  const lastAnnouncedRef = useRef(0)
 
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading')
   const [isPlaying, setIsPlaying] = useState(false)
@@ -86,6 +101,10 @@ export function AudioPlayer({
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [rate, setRate] = useState<(typeof PLAYBACK_RATES)[number]>(1)
+  // M2 — content of the polite live region. Empty string until the
+  // first 30s milestone fires; emptying it back out on src change so
+  // the next item starts with no stale "Played 1:30 of 8:00".
+  const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
     onProgressRef.current = onProgress
@@ -103,9 +122,11 @@ export function AudioPlayer({
   useEffect(() => {
     completedRef.current = false
     seekedRef.current = false
+    lastAnnouncedRef.current = 0
     setPhase('loading')
     setIsPlaying(false)
     setPosition(initialPositionSeconds)
+    setAnnouncement('')
     if (initialDurationSeconds && initialDurationSeconds > 0) {
       setDuration(initialDurationSeconds)
     }
@@ -141,6 +162,78 @@ export function AudioPlayer({
   }, [])
 
   useEffect(() => () => stopPolling(), [stopPolling])
+
+  // M3 — keyboard shortcuts.
+  //
+  // Window-level keydown listener, mounted only when the player is in
+  // the 'ready' phase. Pattern lifted from useReaderShortcuts:
+  //   - bail on input/textarea/contenteditable focus (don't steal Space
+  //     from a search box)
+  //   - bail on metaKey/ctrlKey/altKey (browser/OS shortcuts win)
+  //   - bail when the player itself is loading or errored
+  //
+  // Arrow direction is RTL-aware: in Arabic, ArrowLeft is the visual
+  // "forward" direction (matches every other RTL media UI). In English
+  // ArrowRight is forward.
+  //
+  // We intentionally do NOT bind shortcuts to a specific element-focus
+  // requirement. The visible big "Play" button has standard focus +
+  // enter/space behaviour for keyboard users who prefer explicit
+  // activation. These shortcuts are ergonomic accelerators on top.
+  useEffect(() => {
+    if (phase !== 'ready') return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          target.isContentEditable
+        ) {
+          return
+        }
+      }
+      const audio = audioRef.current
+      if (!audio) return
+      const forwardKey = isRtl ? 'ArrowLeft' : 'ArrowRight'
+      const backKey = isRtl ? 'ArrowRight' : 'ArrowLeft'
+
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault()
+        if (audio.paused) {
+          audio.play().catch((err: unknown) => {
+            if (err instanceof DOMException && err.name === 'AbortError') return
+            console.error('[AudioPlayer] play (shortcut)', err)
+          })
+        } else {
+          audio.pause()
+        }
+      } else if (e.key === forwardKey) {
+        e.preventDefault()
+        const next = Math.min(
+          audio.duration || Infinity,
+          audio.currentTime + SHORTCUT_SCRUB_SECONDS,
+        )
+        audio.currentTime = next
+        setPosition(next)
+      } else if (e.key === backKey) {
+        e.preventDefault()
+        const next = Math.max(0, audio.currentTime - SHORTCUT_SCRUB_SECONDS)
+        audio.currentTime = next
+        setPosition(next)
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault()
+        const nextMuted = !audio.muted
+        audio.muted = nextMuted
+        setMuted(nextMuted)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [phase, isRtl])
 
   function handleLoadedMetadata() {
     const audio = audioRef.current
@@ -199,6 +292,23 @@ export function AudioPlayer({
     const audio = audioRef.current
     if (!audio) return
     setPosition(audio.currentTime)
+    // M2 — throttled SR announcement. The visible clock above this line
+    // still updates every second; this branch only refreshes the
+    // sr-only live region every 30s of wall-clock time. Gate on
+    // duration > 0 so a not-yet-loaded stream doesn't announce
+    // "Played 0:00 of 0:00".
+    if (audio.duration > 0) {
+      const now = Date.now()
+      if (now - lastAnnouncedRef.current >= ANNOUNCE_INTERVAL_MS) {
+        lastAnnouncedRef.current = now
+        setAnnouncement(
+          t('aria.elapsed_announcement', {
+            elapsed: formatClock(audio.currentTime),
+            total: formatClock(audio.duration),
+          }),
+        )
+      }
+    }
   }
   function handleError() {
     setPhase('error')
@@ -244,8 +354,22 @@ export function AudioPlayer({
     if (audio) audio.playbackRate = next
   }
 
+  // Human-readable scrub aria-valuetext using the same translated
+  // "{elapsed} / {total}" pattern the visible clock uses. Without this,
+  // screen readers announce raw seconds (e.g. "current value 1247") and
+  // the user has to mentally divide by 60.
+  const scrubValueText = t('elapsed', {
+    elapsed: formatClock(position),
+    total: formatClock(duration || 0),
+  })
+  const volumePercent = Math.round((muted ? 0 : volume) * 100)
+
   return (
-    <div
+    // role=region + aria-label promotes this into the landmark tree so
+    // AT users can jump to the player by region. Plain <div aria-label>
+    // does nothing — divs need a role for aria-label to expose a name.
+    <section
+      role="region"
       dir={isRtl ? 'rtl' : 'ltr'}
       className="flex h-full w-full flex-col items-stretch justify-end bg-black/85 p-5"
       aria-label={ariaLabel}
@@ -263,15 +387,40 @@ export function AudioPlayer({
         className="sr-only"
       />
 
+      {/* Phase 6.1 M2 — throttled (30s) live region. The visible clock
+          updates every second above; this is the SR-only mirror that
+          announces "Played 1:30 of 8:00" at a humane cadence. role=status
+          implies aria-live=polite which is what we want — progress isn't
+          urgent, the listener should finish whatever they're hearing
+          before getting a milestone. Empty string until the first 30s
+          tick fires. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
+
       <div className="flex flex-1 items-center justify-center pb-4">
         {phase === 'loading' && (
-          <span className="inline-flex items-center gap-2 text-[13px] text-white/80">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <span
+            role="status"
+            aria-live="polite"
+            className="inline-flex items-center gap-2 text-[13px] text-white/80"
+          >
+            <Loader2
+              // Phase 6.1 — motion-reduce halts the spin so users with
+              // prefers-reduced-motion don't get a constantly-rotating
+              // glyph. The icon stays visible (still indicates loading
+              // state visually); just frozen.
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+              aria-hidden
+            />
             {t('loading')}
           </span>
         )}
         {phase === 'error' && (
-          <span className="inline-flex items-center gap-2 text-[13px] text-white">
+          <span
+            role="alert"
+            className="inline-flex items-center gap-2 text-[13px] text-white"
+          >
             <AlertCircle className="h-4 w-4" aria-hidden />
             {t('error')}
           </span>
@@ -281,6 +430,13 @@ export function AudioPlayer({
             type="button"
             onClick={togglePlay}
             aria-label={isPlaying ? t('pause') : t('play')}
+            aria-pressed={isPlaying}
+            // Phase 6.1 M3 — declare the keyboard shortcut so AT users
+            // get the affordance announced on focus. The handler itself
+            // is window-scoped (see effect above) — this attribute is
+            // documentation, not wiring.
+            aria-keyshortcuts="Space"
+            title={t('shortcut.play_pause')}
             className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             {isPlaying ? (
@@ -310,6 +466,12 @@ export function AudioPlayer({
             onChange={handleScrub}
             disabled={phase !== 'ready' || duration <= 0}
             aria-label={t('scrub')}
+            aria-valuetext={scrubValueText}
+            // M3 — declare ±5s arrow shortcut so AT announces it on
+            // focus. Window-scoped handler runs even without focus, but
+            // this attribute makes the ergonomic feature discoverable.
+            aria-keyshortcuts="ArrowLeft ArrowRight"
+            title={t('shortcut.scrub')}
             className="session-scrubber flex-1"
           />
           <span
@@ -327,7 +489,13 @@ export function AudioPlayer({
               type="button"
               onClick={toggleMute}
               aria-label={muted ? t('unmute') : t('mute')}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+              aria-pressed={muted}
+              aria-keyshortcuts="M"
+              title={t('shortcut.mute')}
+              // Touch target bumped to 44x44 (codebase mobile a11y
+              // standard). The icon stays h-4 w-4; extra space is
+              // padding around it.
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
             >
               {muted ? (
                 <VolumeX className="h-4 w-4" aria-hidden />
@@ -343,6 +511,10 @@ export function AudioPlayer({
               value={muted ? 0 : volume}
               onChange={handleVolume}
               aria-label={t('volume')}
+              // Percent readout — universal-locale, no translation
+              // needed (the % symbol reads as "percent" in every screen
+              // reader I'm aware of).
+              aria-valuetext={`${volumePercent}%`}
               className="session-scrubber w-[120px]"
             />
           </div>
@@ -361,7 +533,10 @@ export function AudioPlayer({
                 type="button"
                 onClick={() => changeRate(r)}
                 aria-pressed={rate === r}
-                className={`inline-flex h-7 min-w-[36px] items-center justify-center rounded-full px-2 text-[12px] font-semibold transition-colors num-latn ${
+                // 44x44 minimum target on mobile. The pill stays slim
+                // visually because the row content (12px text) is
+                // center-justified inside the larger hit area.
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-2 text-[12px] font-semibold transition-colors num-latn ${
                   rate === r
                     ? 'bg-white text-black'
                     : 'text-white/80 hover:bg-white/10 hover:text-white'
@@ -373,6 +548,6 @@ export function AudioPlayer({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

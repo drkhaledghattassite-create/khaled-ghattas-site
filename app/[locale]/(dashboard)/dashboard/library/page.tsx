@@ -3,11 +3,18 @@ import { Suspense } from 'react'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { redirect } from '@/lib/i18n/navigation'
 import { getServerSession } from '@/lib/auth/server'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { LibraryView } from '@/components/dashboard/LibraryView'
 import { LibrarySkeleton } from '@/components/dashboard/LibrarySkeleton'
 import type { LibraryItem } from '@/components/dashboard/LibraryCard'
-import { getLibraryEntriesByUserId, getReadingProgress } from '@/lib/db/queries'
+import type { HeroActivity } from '@/components/dashboard/ContinueReadingHero'
+import {
+  getLibraryEntriesByUserId,
+  getMostRecentActivity,
+  getReadingProgress,
+  getSessionAggregateProgress,
+} from '@/lib/db/queries'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -28,24 +35,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
   const entries = await getLibraryEntriesByUserId(userId)
-  // Per-book progress fetch in parallel for BOOK items only — SESSION
-  // progress lives in media_progress and ships in Phase 4. Mock-mode
-  // and DB-fallback paths inside getReadingProgress make this safe to
-  // call even without DATABASE_URL set; the persisted mock-store keeps
-  // the percentages stable across dev-server restarts.
+  // Per-item progress fetch in parallel.
+  //   BOOK  → reading_progress (Phase 2)
+  //   SESSION → session aggregate progress (Phase 5: completedItems / totalItems)
+  // Both helpers branch on MOCK_AUTH_ENABLED first, so this is safe in
+  // every dev/prod combination. NOTE: the SESSION branch issues N queries
+  // for N sessions in the user's library — fine at realistic scale
+  // (~tens of sessions per user). Batch into a single GROUP-BY query if
+  // we ever ship a "trending sessions" surface that pulls 100+ rows.
   const progresses = await Promise.all(
     entries.map(({ book }) =>
       book.productType === 'SESSION'
-        ? Promise.resolve(null)
+        ? getSessionAggregateProgress(userId, book.id)
         : getReadingProgress(userId, book.id),
     ),
   )
   return entries.map(({ order, item, book }, idx) => {
     const isSession = book.productType === 'SESSION'
-    const progressRow = progresses[idx]
-    const computed =
-      progressRow && progressRow.totalPages > 0
-        ? Math.round((progressRow.lastPage / progressRow.totalPages) * 100)
+    const row = progresses[idx]
+    const sessionAggregate =
+      isSession && row && 'totalItems' in row ? row : null
+    const readingRow = !isSession && row && 'lastPage' in row ? row : null
+    const computedReading =
+      readingRow && readingRow.totalPages > 0
+        ? Math.round((readingRow.lastPage / readingRow.totalPages) * 100)
         : 0
     return {
       id: `${order.id}:${item.id}`,
@@ -62,18 +75,58 @@ async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
         ? `/dashboard/library/session/${book.id}`
         : `/dashboard/library/read/${book.id}`,
       hasDownload: !isSession && Boolean(book.digitalFile),
-      progress: isSession ? 0 : computed,
+      progress: isSession ? (sessionAggregate?.percent ?? 0) : computedReading,
       purchasedAt: order.createdAt.toISOString(),
-      lastReadAt: progressRow ? progressRow.lastReadAt.toISOString() : null,
-      lastPage: progressRow ? progressRow.lastPage : 0,
-      totalPages: progressRow ? progressRow.totalPages : 0,
+      lastReadAt: readingRow ? readingRow.lastReadAt.toISOString() : null,
+      lastPage: readingRow ? readingRow.lastPage : 0,
+      totalPages: readingRow ? readingRow.totalPages : 0,
+      sessionItemsTotal: sessionAggregate?.totalItems ?? 0,
+      sessionItemsCompleted: sessionAggregate?.completedItems ?? 0,
+      sessionItemsPartial: sessionAggregate?.partiallyWatchedItems ?? 0,
     }
   })
 }
 
+/**
+ * Phase 5 — translate the unified continue-activity query result into the
+ * client-side hero shape. The query returns Date objects + full Book/SessionItem
+ * rows; the client component only needs the locale-specific titles and the
+ * fields that drive the progress ring + timestamp readout.
+ */
+async function buildHeroActivity(userId: string): Promise<HeroActivity | null> {
+  const activity = await getMostRecentActivity(userId)
+  if (!activity) return null
+  if (activity.type === 'BOOK') {
+    return {
+      type: 'BOOK',
+      bookId: activity.bookId,
+      titleAr: activity.book.titleAr,
+      titleEn: activity.book.titleEn,
+      cover: activity.book.coverImage,
+      primaryHref: `/dashboard/library/read/${activity.bookId}`,
+      lastPage: activity.lastPage,
+      totalPages: activity.totalPages,
+    }
+  }
+  return {
+    type: 'SESSION',
+    sessionId: activity.sessionId,
+    sessionTitleAr: activity.session.titleAr,
+    sessionTitleEn: activity.session.titleEn,
+    itemTitle: activity.item.title,
+    cover: activity.session.coverImage,
+    primaryHref: `/dashboard/library/session/${activity.sessionId}`,
+    lastPositionSeconds: activity.lastPositionSeconds,
+    durationSeconds: activity.durationSeconds,
+  }
+}
+
 async function LibraryData({ userId }: { userId: string }) {
-  const items = await buildLibraryItems(userId)
-  return <LibraryView items={items} />
+  const [items, activity] = await Promise.all([
+    buildLibraryItems(userId),
+    buildHeroActivity(userId),
+  ])
+  return <LibraryView items={items} activity={activity} />
 }
 
 export default async function DashboardLibraryPage({ params }: Props) {
@@ -85,8 +138,14 @@ export default async function DashboardLibraryPage({ params }: Props) {
     redirect({ href: '/login', locale })
   }
 
+  const settings = await getCachedSiteSettings()
+
   return (
-    <DashboardLayout activeTab="library" user={session!.user}>
+    <DashboardLayout
+      activeTab="library"
+      user={session!.user}
+      dashboardSettings={settings.dashboard}
+    >
       <Suspense fallback={<LibrarySkeleton />}>
         <LibraryData userId={session!.user.id} />
       </Suspense>

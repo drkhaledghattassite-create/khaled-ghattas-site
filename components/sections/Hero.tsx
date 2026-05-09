@@ -79,18 +79,22 @@ export function Hero({ showCtaBooks = true, showCtaArticles = true }: HeroProps 
           }
           className="absolute inset-0 will-change-transform"
         >
-          {/* Blur reveal layer */}
+          {/* Blur reveal layer — always animates filter to blur(0px) so the photo ends crisp.
+              Without `filter` in `animate`, motion.react can leave the inline filter stuck
+              partway through if `enableBlur` flips during SSR→hydration on mobile.
+              `transitionEnd` clears the inline style after the reveal so nothing lingers. */}
           <motion.div
             initial={
               enableBlur
                 ? { opacity: 0, scale: 1.06, filter: 'blur(8px)' }
-                : { opacity: 0, scale: 1.04 }
+                : { opacity: 0, scale: 1.04, filter: 'blur(0px)' }
             }
-            animate={
-              enableBlur
-                ? { opacity: 1, scale: 1, filter: 'blur(0px)' }
-                : { opacity: 1, scale: 1 }
-            }
+            animate={{
+              opacity: 1,
+              scale: 1,
+              filter: 'blur(0px)',
+              transitionEnd: { filter: 'none' },
+            }}
             transition={{ duration: 1.0, ease: EASE_EDITORIAL, delay: 0.1 }}
             className="absolute inset-0"
           >

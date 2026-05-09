@@ -35,6 +35,7 @@
     "contact": "Contact",
     "events": "Events",
     "corporate": "For Corporations",
+    "booking": "Services for Individuals",
     "menu": "Menu",
     "close": "Close",
     "primary": "Primary navigation",
@@ -42,7 +43,8 @@
     "dashboard": "Dashboard",
     "account": "My Account",
     "admin": "Admin",
-    "signout": "Sign Out"
+    "signout": "Sign Out",
+    "continue_indicator_aria": "Continue from where you left off"
   },
   "common": {
     "back": "Back",
@@ -413,6 +415,169 @@
       "required_label": "Required field"
     }
   },
+  "booking": {
+    "meta": {
+      "title": "Services for Individuals — Tours, Reconsider Course, Online Sessions",
+      "description": "Three ways to attend: in-person tours in selected cities, the Reconsider course, and eight standalone online sessions."
+    },
+    "page": {
+      "eyebrow": "Booking",
+      "hero_italic": "Reserve",
+      "hero_sans": "your place",
+      "lead": "Three ways to attend: in-person tours in selected cities, the flagship Reconsider course, and eight standalone online sessions. Read carefully — choose what fits."
+    },
+    "status_strip": {
+      "tours_open_one": "{count} in-person tour open for booking",
+      "tours_open_other": "{count} in-person tours open for booking",
+      "tours_none": "No tours currently scheduled",
+      "reconsider_open": "Reconsider course — next cohort {date}",
+      "reconsider_closed": "Reconsider course — booking closed",
+      "reconsider_sold_out": "Reconsider course — sold out",
+      "sessions_open": "{open} of 8 online sessions open"
+    },
+    "subnav": {
+      "tours": "Tours",
+      "reconsider": "Reconsider",
+      "sessions": "Online sessions",
+      "aria_label": "Jump to section"
+    },
+    "tours": {
+      "label": "01 — Tours",
+      "title": "In-person tours",
+      "lead": "Limited-capacity gatherings hosted by local publishers. Booking is handled by each host city.",
+      "meta_upcoming": "upcoming",
+      "meta_past": "past",
+      "venue_tba": "Venue to be announced",
+      "book_cta": "Book via host",
+      "booking_soon": "Booking opens soon",
+      "past_show": "Show past tours",
+      "past_hide": "Hide past tours",
+      "past_attended_one": "{count} attended",
+      "past_attended_other": "{count} attended"
+    },
+    "suggest": {
+      "eyebrow": "Haven't reached your city?",
+      "title": "Suggest a city or country",
+      "body": "Register your interest. We'll let you know when a visit is planned near you. We never share your email.",
+      "cta": "Suggest your city",
+      "modal_title": "Suggest a city or country",
+      "modal_desc": "If there's enough interest in your region, we'll add it to the next tour plan.",
+      "field_country": "Country",
+      "field_country_placeholder": "e.g. Lebanon",
+      "field_city": "City",
+      "field_city_placeholder": "e.g. Beirut",
+      "field_notes": "Context (optional)",
+      "field_notes_placeholder": "A book club, university, organization? Tell us briefly.",
+      "submit": "Submit",
+      "submitting": "Submitting…",
+      "submitted_title": "Got it",
+      "submitted_body": "We've recorded your interest. We'll be in touch when plans firm up.",
+      "login_required_title": "Sign in to suggest a city",
+      "login_required_body": "Your suggestion is linked to your account so we can reach back to you when we plan a tour nearby."
+    },
+    "reconsider": {
+      "label": "02 — Course",
+      "title": "Reconsider",
+      "name": "Reconsider",
+      "tagline": "An eight-week, deep-work cohort in thinking, writing, and methodical reflection.",
+      "positioning": "Not lectures to be heard once and forgotten. Reconsider is a working room. You meet weekly with Dr. Khaled and a small group, and you leave each session with a piece of writing of your own.",
+      "block_who_for": "Who this is for",
+      "block_curriculum": "Modules",
+      "block_format": "Format",
+      "block_schedule": "Schedule",
+      "block_outcomes": "What you take away",
+      "block_note": "A note from Dr. Khaled",
+      "block_faq": "Common questions",
+      "panel_next_cohort": "Next cohort",
+      "panel_duration": "Duration",
+      "panel_delivery": "Delivery",
+      "panel_price": "Price",
+      "panel_seats_remaining_one": "{n} seat remaining",
+      "panel_seats_remaining_other": "{n} seats remaining",
+      "panel_seats_remaining_few": "Only {n} seats remaining",
+      "panel_of_capacity": "of {cap}",
+      "panel_sold_out": "Sold out",
+      "panel_reserve_cta": "Reserve a seat",
+      "panel_reserve_foot": "Secure payment via Stripe — sign-in required",
+      "panel_join_waitlist": "Join waitlist",
+      "panel_join_waitlist_foot": "We'll notify you if a seat opens up",
+      "panel_notify_me": "Notify me when it opens",
+      "closed_heading": "Booking is currently closed",
+      "closed_body": "Register your interest, and we'll notify you the moment the next cohort opens.",
+      "module_n": "Module {n}",
+      "week_n": "Week {n}"
+    },
+    "sessions": {
+      "label": "03 — Online sessions",
+      "title": "Eight online sessions",
+      "lead": "Each session stands on its own — its theme, its date, its price. Pick what speaks to you.",
+      "filter_all": "All",
+      "filter_open": "Open",
+      "filter_sold_out": "Sold out",
+      "filter_closed": "Closed",
+      "session_n": "Session {n}",
+      "next_cohort": "Next cohort",
+      "reserve": "Reserve",
+      "remaining_short": "{n} left",
+      "meta_open": "open",
+      "meta_sold_out_closed": "{soldOut} sold out · {closed} closed",
+      "empty_state": "No sessions scheduled right now."
+    },
+    "reserve_modal": {
+      "title": "Review your reservation",
+      "desc": "Confirm the details before continuing to payment.",
+      "summary_item": "Item",
+      "summary_cohort": "Cohort",
+      "summary_when": "When",
+      "summary_total": "Total",
+      "fine_print": "By continuing, you'll be redirected to Stripe to complete payment securely. We do not store card data on our servers.",
+      "continue": "Continue to payment",
+      "redirecting_title": "Redirecting to Stripe…",
+      "redirecting_sub": "Don't close this window. You'll be redirected in a few seconds.",
+      "stripe_mark": "Powered by Stripe"
+    },
+    "interest_modal": {
+      "title": "Register your interest",
+      "desc": "We'll save your name and reach out before booking opens.",
+      "field_notes": "Why does this interest you? (optional)",
+      "field_notes_placeholder": "Anything you'd like us to know…",
+      "submit": "Submit",
+      "submitting": "Submitting…",
+      "submitted_title": "Interest registered",
+      "submitted_body": "We've recorded your interest. You'll hear from us when booking opens.",
+      "sold_out_title": "This cohort is full",
+      "sold_out_body": "Join the waitlist for the next one — we'll let you know as soon as it opens.",
+      "closed_title": "Booking is closed",
+      "closed_body": "Let us know you're interested and we'll reach out before the next cohort opens."
+    },
+    "shared": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "login_required_cta": "Sign in to continue",
+      "network_error": "Couldn't connect — your network looks unsteady. Try again.",
+      "error_generic": "Something went wrong. Please try again.",
+      "error_no_capacity": "This booking just sold out — join the waitlist for the next cohort.",
+      "error_not_open": "Booking isn't open right now.",
+      "error_already_booked": "You've already booked this. Open it from your dashboard.",
+      "error_rate_limited": "Too many requests. Please wait a moment and try again.",
+      "error_stripe_unconfigured": "Checkout isn't available yet. Please try again later.",
+      "error_db_unavailable": "Couldn't reach the database. Please try again in a moment.",
+      "error_validation": "Please check the form and try again.",
+      "already_booked": "Already booked",
+      "already_booked_body": "You've already reserved a seat in this cohort. Manage it from your dashboard.",
+      "view_in_dashboard": "View in dashboard"
+    },
+    "success": {
+      "heading": "You're booked",
+      "body": "We've reserved your seat. Cohort details will arrive in your inbox shortly.",
+      "order_ref_label": "Order reference",
+      "go_to_dashboard": "Go to dashboard",
+      "browse_more": "Back to booking",
+      "pending_heading": "Confirmation pending",
+      "pending_body": "Your payment is processing. Check your email for confirmation, or refresh in a moment.",
+      "confirming": "Confirming your booking..."
+    }
+  },
   "newsletter": {
     "heading": "STAY CONNECTED",
     "description": "Get the latest articles and releases in your inbox",
@@ -456,6 +621,7 @@
     "heading_about": "About Coming Soon",
     "heading_contact": "Contact Coming Soon",
     "heading_corporate": "Corporate Programs Coming Soon",
+    "heading_booking": "Bookings Open Soon",
     "body_books": "We're preparing the bookstore with care. Soon you'll find Dr. Khaled's books and recorded lectures available for instant digital delivery.",
     "body_articles": "The article archive is being curated. A growing collection of essays on philosophy, psychology, and society will be published here shortly.",
     "body_interviews": "A selection of television, radio, and podcast interviews is being assembled. Watch this space for the full conversation library.",
@@ -463,6 +629,7 @@
     "body_about": "The biography page is being polished. A full account of Dr. Khaled's career, books, and the Al-Warsheh initiative is on its way.",
     "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via kamallchhimi@gmail.com in the meantime.",
     "body_corporate": "The corporate programs page is being prepared. For direct inquiries about leadership, influence, or talent-management programs, please reach out via kamallchhimi@gmail.com.",
+    "body_booking": "Tour dates, the next Reconsider cohort, and online sessions are being finalized. Booking will open here shortly — for direct inquiries please reach out via kamallchhimi@gmail.com.",
     "folio_books": "Nº 03",
     "folio_articles": "Nº 02",
     "folio_interviews": "Nº 04",
@@ -470,6 +637,7 @@
     "folio_about": "Nº 01",
     "folio_contact": "Nº 06",
     "folio_corporate": "Nº 07",
+    "folio_booking": "Nº 08",
     "expected_by": "Expected by {date}",
     "notify_me": "Notify me on launch"
   },
@@ -489,6 +657,7 @@
       "commerce": "Commerce",
       "audience": "Audience",
       "corporate": "Corporate",
+      "booking": "Booking",
       "site": "Site"
     },
     "nav": {
@@ -510,6 +679,12 @@
       "corporate_programs": "Corporate programs",
       "corporate_clients": "Client logos",
       "corporate_requests": "Corporate requests",
+      "questions": "Questions",
+      "booking_tours": "Tours",
+      "booking_bookings": "Bookings",
+      "booking_tour_suggestions": "Tour suggestions",
+      "booking_interest": "Interest waitlist",
+      "booking_orders": "Booking orders",
       "new": "New",
       "edit": "Edit"
     },
@@ -568,7 +743,8 @@
     "aria": {
       "delete_item": "Delete {name}",
       "edit_item": "Edit {name}",
-      "view_item": "View {name}"
+      "view_item": "View {name}",
+      "row_actions": "Row actions"
     },
     "confirm": {
       "delete_article_title": "Delete article?",
@@ -860,6 +1036,85 @@
         "cancel_confirm": "Yes, mark failed"
       }
     },
+    "questions": {
+      "description": "Review user questions, mark them answered, or archive.",
+      "filter": {
+        "status_all": "All",
+        "status_pending": "Pending",
+        "status_answered": "Answered",
+        "status_archived": "Archived"
+      },
+      "table": {
+        "col_created": "Submitted",
+        "col_asker": "Asker",
+        "col_subject": "Subject",
+        "col_category": "Category",
+        "col_status": "Status",
+        "empty_title": "No questions match this filter",
+        "empty_body": "Try a different status or wait for new submissions."
+      },
+      "actions": {
+        "mark_answered": "Mark answered",
+        "edit_answer": "Edit answer",
+        "archive": "Archive",
+        "revert_to_pending": "Revert to pending",
+        "restore": "Restore to pending",
+        "delete": "Delete"
+      },
+      "modal": {
+        "shared": {
+          "question_eyebrow": "The question"
+        },
+        "mark_answered": {
+          "title": "Mark as answered",
+          "description": "Add a reference to the answer. A URL triggers a notification email to the asker; a free-text note saves quietly.",
+          "reference_label": "Answer reference",
+          "reference_help": "Paste a URL (Instagram, YouTube, article) for the asker to receive an email with the link, or write a free-text note (no email sent).",
+          "reference_placeholder": "https://instagram.com/reel/… or a short note",
+          "submit": "Mark answered"
+        },
+        "archive": {
+          "title": "Archive question",
+          "body": "\"{subject}\" will be hidden from the active queue but preserved for audit. The asker will see it as Archived in their dashboard.",
+          "cancel": "Cancel",
+          "confirm": "Archive"
+        },
+        "revert": {
+          "title_from_answered": "Revert to pending",
+          "title_from_archived": "Restore to pending",
+          "body_from_answered": "This will clear the answer reference and the answered timestamp on \"{subject}\".",
+          "body_from_archived": "This will return \"{subject}\" to the active queue.",
+          "cancel": "Cancel",
+          "confirm_revert": "Revert",
+          "confirm_restore": "Restore"
+        },
+        "delete": {
+          "title": "Delete permanently",
+          "body": "\"{subject}\" cannot be recovered. Use Archive instead unless this is spam.",
+          "confirm_word": "delete",
+          "confirm_label": "Type {word} to confirm",
+          "cancel": "Cancel",
+          "confirm": "Delete"
+        }
+      },
+      "toast": {
+        "answered_with_email": "Marked answered. Notification email sent.",
+        "answered_text_note": "Marked answered. No email sent (free-text note).",
+        "answered_email_failed": "Marked answered. Email could not be sent — please notify the asker manually.",
+        "archived": "Question archived.",
+        "reverted": "Reverted to pending.",
+        "deleted": "Question deleted.",
+        "error_forbidden": "You don't have permission to do that.",
+        "error_not_found": "That question no longer exists.",
+        "error_validation": "Please check your input.",
+        "error_generic": "Action failed. Please try again."
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "page_of": "Page {current} of {total}"
+      }
+    },
     "subscribers": {
       "description": "Newsletter subscribers and audience growth.",
       "email": "Email",
@@ -896,6 +1151,320 @@
       "reply_placeholder": "Write your reply…",
       "reply_sent": "Reply queued (mock).",
       "send_reply": "Send reply"
+    },
+    "booking_overview": {
+      "page_title": "Booking",
+      "description": "Manage tours, bookings, the interest waitlist, suggestions, and Stripe-backed booking orders.",
+      "stats_tours": "Tours",
+      "stats_bookings": "Bookings",
+      "stats_suggestions_pending": "Pending suggestions",
+      "stats_interest_pending": "Pending interest",
+      "stats_orders_paid": "Paid orders",
+      "go_tours": "Manage tours",
+      "go_bookings": "Manage bookings",
+      "go_suggestions": "Review suggestions",
+      "go_interest": "Open waitlist",
+      "go_orders": "Open orders"
+    },
+    "booking_tours": {
+      "page_title": "Tours",
+      "page_description": "In-person tours promoted on the public booking page. Booking is handled by external hosts.",
+      "add": "Add tour",
+      "filter_all": "All",
+      "filter_upcoming": "Upcoming",
+      "filter_past": "Past",
+      "col_cover": "Cover",
+      "col_title": "Title",
+      "col_city": "City",
+      "col_country": "Country",
+      "col_date": "Date",
+      "col_external_url": "Booking URL",
+      "col_active": "Active",
+      "col_actions": "Actions",
+      "url_set": "Set",
+      "url_unset": "Not set",
+      "pill_upcoming": "Upcoming",
+      "pill_past": "Past",
+      "empty_title": "No tours yet",
+      "empty_body": "Create the first tour to advertise on the public booking page."
+    },
+    "booking_tour_form": {
+      "create_title": "New tour",
+      "edit_title": "Edit tour",
+      "section_basics": "Basics",
+      "section_location": "Location",
+      "section_schedule": "Schedule",
+      "section_extras": "Extras",
+      "slug": "Slug",
+      "slug_hint": "Lowercase letters, numbers, dashes only.",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "city_ar": "City (Arabic)",
+      "city_en": "City (English)",
+      "country_ar": "Country (Arabic)",
+      "country_en": "Country (English)",
+      "region_ar": "Region (Arabic, optional)",
+      "region_en": "Region (English, optional)",
+      "region_option_mena": "MENA",
+      "region_option_gcc": "GCC",
+      "region_option_europe": "Europe",
+      "region_option_north_america": "North America",
+      "region_option_asia": "Asia",
+      "region_option_africa": "Africa",
+      "region_option_other": "Other",
+      "date": "Date & time",
+      "venue_ar": "Venue (Arabic, optional)",
+      "venue_en": "Venue (English, optional)",
+      "description_ar": "Description (Arabic, optional)",
+      "description_en": "Description (English, optional)",
+      "external_booking_url": "External booking URL",
+      "external_booking_url_hint": "https://… link to the host site. Leave empty to show \"Booking opens soon\".",
+      "cover_image": "Cover image URL",
+      "attended_count": "Attended count (past tours only)",
+      "is_active": "Active",
+      "is_active_hint": "Inactive tours are hidden from the public page.",
+      "display_order": "Display order",
+      "save_create": "Create tour",
+      "save_update": "Save changes",
+      "delete_button": "Delete tour"
+    },
+    "booking_bookings": {
+      "page_title": "Bookings",
+      "page_description": "Reconsider course + the eight online sessions. Capacity, state, and pricing.",
+      "add": "Add booking",
+      "filter_all": "All",
+      "filter_reconsider": "Reconsider",
+      "filter_sessions": "Online sessions",
+      "col_cover": "Cover",
+      "col_title": "Title",
+      "col_type": "Type",
+      "col_price": "Price",
+      "col_capacity": "Capacity",
+      "col_state": "State",
+      "col_next_cohort": "Next cohort",
+      "col_active": "Active",
+      "col_actions": "Actions",
+      "type_reconsider": "Reconsider course",
+      "type_session": "Online session",
+      "capacity_with_holds": "{booked}/{max} · {holds} on hold",
+      "capacity_no_holds": "{booked}/{max}",
+      "edit_capacity": "Edit capacity",
+      "edit_state": "Edit state",
+      "view_interest": "View interest",
+      "empty_title": "No bookings yet",
+      "empty_body": "Create the Reconsider course or an online session to start accepting reservations."
+    },
+    "booking_booking_form": {
+      "create_title": "New booking",
+      "edit_title": "Edit booking",
+      "section_basics": "Basics",
+      "section_pricing": "Pricing",
+      "section_schedule": "Schedule",
+      "section_capacity": "Capacity & state",
+      "section_visibility": "Visibility",
+      "slug": "Slug",
+      "slug_hint": "Lowercase letters, numbers, dashes only.",
+      "product_type": "Product type",
+      "product_type_reconsider": "Reconsider course",
+      "product_type_session": "Online session",
+      "title_ar": "Title (Arabic)",
+      "title_en": "Title (English)",
+      "description_ar": "Short description (Arabic)",
+      "description_en": "Short description (English)",
+      "cover_image": "Cover image URL (optional)",
+      "price_usd": "Price",
+      "price_usd_hint": "Cents. ${dollars} = {cents}¢ — enter the cents amount.",
+      "currency": "Currency",
+      "next_cohort_date": "Next cohort date",
+      "next_cohort_date_hint": "Leave empty for TBD.",
+      "cohort_label_ar": "Cohort label (Arabic)",
+      "cohort_label_en": "Cohort label (English)",
+      "duration_minutes": "Duration (minutes)",
+      "format_ar": "Format (Arabic)",
+      "format_en": "Format (English)",
+      "max_capacity": "Maximum capacity",
+      "max_capacity_hint": "Total seats available, including those already booked.",
+      "max_capacity_edit_hint": "Read-only here. Use the Capacity card below to update — the action validates against committed seats.",
+      "booking_state": "State",
+      "booking_state_open": "Open",
+      "booking_state_closed": "Closed",
+      "booking_state_sold_out": "Sold out",
+      "booking_state_edit_hint": "Read-only here. Use the Capacity card below to change state.",
+      "booking_state_revert_hint": "Manual revert to OPEN allows new bookings even if previous SOLD_OUT was triggered automatically.",
+      "display_order": "Display order",
+      "is_active": "Active",
+      "is_active_hint": "Inactive bookings disappear from public view but existing reservations are preserved.",
+      "save_create": "Create booking",
+      "save_update": "Save changes",
+      "delete_button": "Delete booking"
+    },
+    "booking_capacity_modal": {
+      "title": "Edit capacity",
+      "description": "{title}",
+      "current_label": "Current",
+      "current_value": "{booked} booked + {holds} on hold = {committed} committed",
+      "stat_max": "Maximum",
+      "stat_booked": "Booked",
+      "stat_holds": "On hold",
+      "max_capacity": "New maximum capacity",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "booking_state_modal": {
+      "title": "Change state",
+      "description": "{title}",
+      "current_label": "Current",
+      "save": "Save",
+      "cancel": "Cancel",
+      "revert_warning": "Manually re-opening will allow new reservations even though the booking was marked sold-out automatically."
+    },
+    "booking_tour_suggestions": {
+      "page_title": "Tour suggestions",
+      "page_description": "User-submitted city / country requests from the public booking page.",
+      "view_list": "List",
+      "view_aggregate": "Aggregate",
+      "col_user": "User",
+      "col_city": "City",
+      "col_country": "Country",
+      "col_notes": "Notes",
+      "col_created_at": "Submitted",
+      "col_status": "Status",
+      "col_actions": "Actions",
+      "agg_col_country": "Country",
+      "agg_col_city": "City",
+      "agg_col_count": "Suggestions",
+      "status_pending": "Pending",
+      "status_reviewed": "Reviewed",
+      "mark_reviewed": "Mark reviewed",
+      "unmark_reviewed": "Mark pending",
+      "open_user": "Open user",
+      "empty_title": "No suggestions yet",
+      "filter_all": "All",
+      "filter_pending": "Pending",
+      "filter_reviewed": "Reviewed",
+      "notes_empty": "—",
+      "aggregate_panel_title": "Aggregate by demand",
+      "aggregate_panel_description": "Top requested locations, sorted by suggestion count. Use this to prioritize the next tour roadmap.",
+      "aggregate_empty": "No aggregated data yet."
+    },
+    "booking_interest": {
+      "page_title": "Interest waitlist",
+      "page_description": "Users who registered interest while a booking was closed or sold out.",
+      "filter_all": "All",
+      "filter_pending": "Pending",
+      "filter_contacted": "Contacted",
+      "view_list": "List",
+      "view_grouped": "Grouped",
+      "col_user": "User",
+      "col_booking": "Booking",
+      "col_notes": "Notes",
+      "col_created_at": "Submitted",
+      "col_status": "Status",
+      "col_actions": "Actions",
+      "group_col_booking": "Booking",
+      "group_col_pending": "Pending",
+      "group_col_total": "Total",
+      "status_pending": "Pending",
+      "status_contacted": "Contacted",
+      "mark_contacted": "Mark contacted",
+      "unmark_contacted": "Mark pending",
+      "send_email": "Send email",
+      "open_user": "Open user",
+      "bulk_select": "Select",
+      "bulk_selected": "{count} selected",
+      "bulk_mark_contacted": "Mark all contacted",
+      "bulk_unmark_contacted": "Mark all pending",
+      "bulk_clear_selection": "Clear selection",
+      "bulk_confirm_title": "Mark {count} entries as contacted?",
+      "bulk_confirm_body": "This sets contactedAt = now() on the selected interest rows. They will move out of the Pending filter.",
+      "bulk_confirm_action": "Mark contacted",
+      "notes_empty": "—",
+      "empty_title": "No interest entries yet"
+    },
+    "booking_orders": {
+      "page_title": "Booking orders",
+      "page_description": "Stripe-backed payment records for booking purchases.",
+      "filter_all": "All",
+      "filter_pending": "Pending",
+      "filter_paid": "Paid",
+      "filter_refunded": "Refunded",
+      "filter_failed": "Failed",
+      "col_id": "Order",
+      "col_customer": "Customer",
+      "col_booking": "Booking",
+      "col_amount": "Amount",
+      "col_status": "Status",
+      "col_created_at": "Created",
+      "col_confirmed_at": "Confirmed",
+      "col_actions": "Actions",
+      "view_detail": "View",
+      "refund": "Refund",
+      "purge_stale": "Purge stale PENDING",
+      "empty_title": "No orders yet",
+      "back_to_list": "Back to orders",
+      "section_order": "Order",
+      "section_customer": "Customer & booking",
+      "field_order_id": "Order ID",
+      "field_status": "Status",
+      "field_amount": "Amount paid",
+      "field_currency": "Currency",
+      "field_created": "Created",
+      "field_confirmed": "Confirmed",
+      "field_session_id": "Stripe session",
+      "field_payment_intent": "Payment intent",
+      "field_customer_name": "Name",
+      "field_customer_email": "Email",
+      "field_user_id": "User ID",
+      "field_booking": "Booking",
+      "field_product_type": "Product type",
+      "edit_booking": "Open booking",
+      "not_set": "—",
+      "type_reconsider": "Reconsider course",
+      "type_session": "Online session"
+    },
+    "booking_actions": {
+      "success_created": "Created",
+      "success_saved": "Saved",
+      "success_deleted": "Deleted",
+      "success_state_updated": "State updated",
+      "success_capacity_updated": "Capacity updated",
+      "success_marked_reviewed": "Marked reviewed",
+      "success_marked_pending": "Marked pending",
+      "success_marked_contacted": "Marked contacted",
+      "success_bulk_contacted": "{count} marked contacted",
+      "success_refund_initiated": "Refund initiated. State will reflect within a few seconds.",
+      "success_purge": "{count} stale orders deleted",
+      "error_unauthorized": "Sign in to continue.",
+      "error_forbidden": "Admin access required.",
+      "error_validation": "Please check the form and try again.",
+      "error_db_failed": "Save failed. Try again in a moment.",
+      "error_has_orders": "Cannot delete: this booking has existing orders. Refund or archive (toggle inactive) instead.",
+      "error_invalid_refund_target": "Only PAID orders with a Stripe payment intent can be refunded.",
+      "error_stripe_unconfigured": "Stripe is not configured. Set STRIPE_SECRET_KEY and restart the dev server.",
+      "error_stripe_refund_failed": "Stripe refused the refund: {message}",
+      "error_order_not_found": "Order not found.",
+      "error_capacity_below_commitment_title": "Cannot reduce capacity",
+      "error_capacity_below_commitment_body": "{committed} seats are already committed ({booked} booked + {holds} on hold). Reduce maxCapacity to at least {committed} or refund existing bookings first."
+    },
+    "booking_confirm": {
+      "delete_tour_title": "Delete this tour?",
+      "delete_tour_body": "This removes \"{title}\" from the database. This action cannot be undone.",
+      "delete_tour_confirm": "Delete",
+      "delete_booking_title": "Delete this booking?",
+      "delete_booking_body": "This removes \"{title}\" from the database. Bookings with existing orders cannot be deleted — toggle inactive instead.",
+      "delete_booking_confirm": "Delete",
+      "refund_title": "Refund this order?",
+      "refund_body": "Refund {amount} to {email}? This will:\n• Trigger an irreversible Stripe refund\n• Decrement bookedCount by 1 (via webhook)\n• Set local order status to REFUNDED\n\nThe booking's SOLD_OUT state will NOT auto-revert.",
+      "refund_confirm": "Refund",
+      "purge_title": "Purge stale PENDING orders?",
+      "purge_body": "Delete every booking_orders row with status='PENDING' and createdAt older than 24 hours. These are abandoned Stripe Checkouts that never completed payment.",
+      "purge_confirm": "Purge",
+      "back": "Back",
+      "busy": "Working…"
+    },
+    "booking_site_settings": {
+      "show_admin_booking": "Show booking admin section",
+      "show_admin_booking_hint": "Hide the entire Booking group from the admin sidebar."
     },
     "settings": {
       "tabs": {
@@ -938,6 +1507,10 @@
         "featured_desc": "Pin a specific item to lead each homepage section. Default uses the first published item.",
         "features_title": "Runtime features",
         "features_desc": "Top-level switches that affect site behavior, not just visual layout.",
+        "admin_title": "Admin panel",
+        "admin_desc": "Visibility controls for sections of the /admin sidebar. Routes still resolve via direct URL — these toggles only hide the nav entries.",
+        "dashboard_title": "User dashboard",
+        "dashboard_desc": "Visibility controls for tabs in the customer-facing /dashboard. Routes still resolve via direct URL when hidden.",
         "maintenance_title": "Maintenance banner",
         "maintenance_desc": "Shown when Maintenance mode is on. Leave fields empty to use the default message.",
         "coming_soon_title": "Coming-soon pages",
@@ -960,6 +1533,7 @@
         "show_nav_about": "About",
         "show_nav_contact": "Contact",
         "show_nav_corporate": "For Corporations",
+        "show_nav_booking": "Services for Individuals",
         "show_locale_switcher": "Locale switcher (AR ⇄ EN)",
         "bottom_nav_note": "The mobile bottom bar mirrors these toggles automatically."
       },
@@ -989,6 +1563,24 @@
         "maintenance_mode": "Maintenance mode",
         "maintenance_mode_desc": "Show a site-wide banner above all pages."
       },
+      "admin": {
+        "show_admin_booking": "Booking admin section",
+        "show_admin_booking_desc": "Show the entire Booking group (Tours, Bookings, Suggestions, Interest, Orders) in the /admin sidebar.",
+        "show_admin_questions": "Questions admin entry",
+        "show_admin_questions_desc": "Show the Questions entry (with pending count badge) in the audience group of the /admin sidebar."
+      },
+      "dashboard": {
+        "show_account_tab": "Account tab (always on)",
+        "show_account_tab_desc": "The dashboard's landing page (profile editor + bio). Cannot be hidden — users always need a path back to their own info.",
+        "show_library_tab": "Library tab",
+        "show_library_tab_desc": "Show the Library tab (purchased books + sessions). The /dashboard/library route stays accessible when hidden.",
+        "show_bookings_tab": "Bookings tab",
+        "show_bookings_tab_desc": "Show the Bookings tab (confirmed cohort sessions and courses). The /dashboard/bookings route stays accessible when hidden.",
+        "show_ask_tab": "\"Ask Dr. Khaled\" tab",
+        "show_ask_tab_desc": "Show the Ask tab in the customer dashboard nav. The /dashboard/ask route stays accessible via direct URL even when hidden.",
+        "show_settings_tab": "Settings tab",
+        "show_settings_tab_desc": "Show the Settings tab (preferences, account deletion). The /dashboard/settings route stays accessible when hidden."
+      },
       "maintenance": {
         "message_ar": "Banner message (Arabic)",
         "message_en": "Banner message (English)",
@@ -1004,7 +1596,8 @@
         "events": "Events",
         "about": "About",
         "contact": "Contact",
-        "corporate": "For Corporations"
+        "corporate": "For Corporations",
+        "booking": "Services for Individuals"
       },
       "unsaved_changes": "Unsaved changes",
       "reset": "Reset to defaults",
@@ -1196,7 +1789,13 @@
     "tabs": {
       "account": "Account",
       "library": "Library",
+      "bookings": "Bookings",
+      "ask": "Ask Dr. Khaled",
       "settings": "Settings"
+    },
+    "recent_bookings": {
+      "heading": "Your bookings",
+      "view_all": "View all bookings"
     },
     "account": {
       "meta": {
@@ -1290,6 +1889,92 @@
       "logout_everywhere": "Log out everywhere",
       "save": "Save changes",
       "saved": "Saved"
+    },
+    "ask": {
+      "meta": {
+        "title": "Ask Dr. Khaled",
+        "description": "Send a question. He may answer it on his channels."
+      },
+      "hero": {
+        "greeting_named": "A question for the teacher, {name}",
+        "greeting_generic": "A question for the teacher",
+        "title_a": "Ask Dr.",
+        "title_b": "Khaled",
+        "lede": "A quiet space to send your question. Dr. Khaled reads what reaches him with care, and chooses among the questions those he answers through his channels — Instagram videos and stories. His answers are public by nature, but they begin with one question. Like yours.",
+        "note_aria": "Note from Dr. Khaled",
+        "note_name": "Dr. Khaled Ghattass",
+        "note_role": "The teacher",
+        "note_body": "Welcome. When you write your question, write it as you would to a friend — clear, honest, close to your life. I don't reply privately to every question, but I read every one. And when I find a question that deserves to be shared, I answer it on my public channels — so the question becomes a lesson for all of us.",
+        "channels": "Channels: Instagram · YouTube · Stories"
+      },
+      "guide": {
+        "title": "Before you send",
+        "point_one_question": "One question is enough — a clear question beats three tangled ones.",
+        "point_set_context": "Set the context briefly: who you are in this moment, what you've tried.",
+        "point_personal_ok": "Personal questions are honoured — you can keep your name private.",
+        "point_no_clinical": "We don't reply to individual medical or clinical advice. We answer meaning, not diagnosis.",
+        "foot": "When answers come, they're public — a video or a story. That's the nature of this space: your question helps others too."
+      },
+      "form": {
+        "section_eyebrow": "Write your question",
+        "section_sub": "Only Dr. Khaled will see this. He may choose to answer it publicly — if so, we'll notify you with the link.",
+        "subject_label": "Subject",
+        "subject_hint": "one line",
+        "subject_placeholder": "A short title that summarises what you're asking",
+        "body_label": "Your question",
+        "body_placeholder": "Explain the context briefly, then write the question on your mind. The more specific, the deeper the answer.",
+        "body_counter": "{count} / {max}",
+        "category_label": "Category",
+        "category_hint": "optional",
+        "category_placeholder": "Choose a category (optional)",
+        "category_psychology": "Psychology",
+        "category_education": "Education & Parenting",
+        "category_relationships": "Relationships",
+        "category_society": "Society",
+        "category_career": "Work & Career",
+        "category_general": "General",
+        "foot_note": "By submitting, you agree to the publication terms.",
+        "submit": "Send question",
+        "submitting": "Sending…",
+        "success_toast": "Your question has been sent.",
+        "error_unauthorized": "Please sign in again to send your question.",
+        "error_validation": "Please check your question and try again.",
+        "error_rate_limited": "You've sent too many questions recently. Please wait an hour.",
+        "error_generic": "Couldn't send. Please try again."
+      },
+      "shared": {
+        "subject_too_short": "Please write a short subject (at least 5 characters).",
+        "subject_too_long": "Subject is over the 120-character limit.",
+        "body_too_short": "Too short — add a little context.",
+        "body_too_long": "Over the 1000-character limit."
+      },
+      "success": {
+        "title": "Your question is with the teacher.",
+        "body": "Dr. Khaled will read it himself. If he chooses to answer publicly, we'll send you a notification with the link. Thank you for your trust.",
+        "ask_another": "Ask another",
+        "view_list": "View my questions"
+      },
+      "list": {
+        "eyebrow": "My questions",
+        "heading": "My questions",
+        "subheading": "Everything you've sent — and the answers when they arrive.",
+        "filter_aria": "Filter questions by status",
+        "filter_all": "All",
+        "filter_pending": "Pending",
+        "filter_answered": "Answered",
+        "filter_archived": "Archived",
+        "empty_filter": "No questions in this filter yet.",
+        "status_pending": "Pending",
+        "status_answered": "Answered",
+        "status_archived": "Archived",
+        "answer_eyebrow": "Dr. Khaled's reply",
+        "view_answer": "Watch the reply"
+      },
+      "empty": {
+        "title": "You haven't asked anything yet.",
+        "body": "When a question worth pondering occurs to you, write it. Dr. Khaled reads what reaches him — and may answer publicly on one of his channels.",
+        "cta": "Write your first question"
+      }
     }
   },
   "library": {
@@ -1313,6 +1998,31 @@
       "label": "Continue reading",
       "cta": "Continue",
       "page_of_total": "Page {current} of {total}"
+    },
+    "continue_watching": {
+      "label": "Continue watching",
+      "cta": "Continue",
+      "timestamp": "{elapsed} / {total}",
+      "item_subtitle": "{item_title}"
+    },
+    "back_to_library": "Library",
+    "session": {
+      "next_item_label": "Up next",
+      "completion_title": "You've completed this session",
+      "completion_cta": "Back to library",
+      "auto_advance": {
+        "label": "Up next in {seconds}",
+        "cancel": "Cancel auto-advance",
+        "play_now": "Play now"
+      }
+    },
+    "session_progress": {
+      "completed": "Completed"
+    },
+    "continue_pill": {
+      "label": "Continue",
+      "aria_book": "Continue reading {title}",
+      "aria_session": "Continue watching {title}"
     },
     "filter": {
       "all": "All",
@@ -1498,7 +2208,15 @@
       "elapsed": "{elapsed} / {total}",
       "scrub": "Scrub",
       "loading": "Loading audio…",
-      "error": "Audio could not be loaded. Please try again."
+      "error": "Audio could not be loaded. Please try again.",
+      "aria": {
+        "elapsed_announcement": "Played {elapsed} of {total}"
+      },
+      "shortcut": {
+        "play_pause": "Space: play or pause",
+        "scrub": "Arrow keys: skip 5 seconds",
+        "mute": "M: mute or unmute"
+      }
     },
     "pdf": {
       "loading": "Loading document…",
@@ -1511,6 +2229,48 @@
     },
     "completed": {
       "label": "Session completed"
+    },
+    "aria": {
+      "playlist_region": "Session items playlist",
+      "playlist_item_video": "Video. {title}. Item {position} of {total}.",
+      "playlist_item_audio": "Audio. {title}. Item {position} of {total}.",
+      "playlist_item_pdf": "PDF. {title}. Item {position} of {total}.",
+      "playlist_item_completed": " Completed.",
+      "playlist_item_in_progress": " In progress at {time}."
     }
+  },
+  "home": {
+    "welcome_back": {
+      "greeting": "Welcome back, {name}",
+      "no_activity_cta": "Browse your library"
+    }
+  },
+  "dashboard_root": {
+    "activity_heading": "Continue from where you left off",
+    "view_all": "View all in library"
+  },
+  "dashboard_bookings": {
+    "title": "My bookings",
+    "subtitle": "Cohort sessions and courses you've reserved a seat in.",
+    "empty": {
+      "title": "No bookings yet",
+      "body": "Browse our courses and online sessions to reserve your seat.",
+      "cta": "Browse bookings"
+    },
+    "list": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "refunded": "Refunded",
+      "failed": "Payment failed",
+      "cohort_date": "Cohort: {date}",
+      "format": "Format: {format}",
+      "amount_paid": "Paid {amount}",
+      "manage_cta": "Manage booking",
+      "manage_subject": "Booking change request"
+    }
+  },
+  "checkout_success": {
+    "start_now_cta": "Start now",
+    "go_to_library_cta": "Go to library"
   }
 }

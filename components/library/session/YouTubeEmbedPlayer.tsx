@@ -310,18 +310,30 @@ export function YouTubeEmbedPlayer({
 
   return (
     <div className="relative h-full w-full bg-black">
-      <div
-        ref={containerRef}
-        className="absolute inset-0"
-        aria-label={ariaLabel}
-      />
+      {/* The iframe inside this container carries `title={ariaLabel}`,
+          which is the accessible name AT users get for the video. The
+          wrapping div doesn't need a duplicate aria-label — divs without
+          a landmark role can't expose accessible names anyway, and
+          duplicating the iframe title here would just cause double
+          announcement. */}
+      <div ref={containerRef} className="absolute inset-0" />
       {phase === 'loading' && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-[13px] text-white/85">
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-[13px] text-white/85"
+        >
           {t('loading')}
         </div>
       )}
       {phase === 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-[13px] text-white">
+        // role=alert auto-implies aria-live=assertive — matches the
+        // urgency: a video that won't load is something the user needs
+        // to hear about immediately, not at the next polite break.
+        <div
+          role="alert"
+          className="absolute inset-0 flex items-center justify-center bg-black/80 text-[13px] text-white"
+        >
           {t('error')}
         </div>
       )}

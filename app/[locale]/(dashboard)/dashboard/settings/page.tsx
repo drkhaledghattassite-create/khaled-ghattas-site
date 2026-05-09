@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { redirect } from '@/lib/i18n/navigation'
 import { getServerSession } from '@/lib/auth/server'
 import { getUserById } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { SettingsView } from '@/components/dashboard/SettingsView'
 
@@ -47,11 +48,18 @@ export default async function DashboardSettingsPage({ params }: Props) {
     redirect({ href: '/login', locale })
   }
 
-  const dbUser = await getUserById(session!.user.id).catch(() => null)
+  const [dbUser, settings] = await Promise.all([
+    getUserById(session!.user.id).catch(() => null),
+    getCachedSiteSettings(),
+  ])
   const initialPreferences = parsePreferences(dbUser?.preferences)
 
   return (
-    <DashboardLayout activeTab="settings" user={session!.user}>
+    <DashboardLayout
+      activeTab="settings"
+      user={session!.user}
+      dashboardSettings={settings.dashboard}
+    >
       <SettingsView initialPreferences={initialPreferences} />
     </DashboardLayout>
   )

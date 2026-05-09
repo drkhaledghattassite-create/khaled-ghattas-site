@@ -10,6 +10,7 @@ import {
   getReadingProgress,
   userOwnsProduct,
 } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { storage } from '@/lib/storage'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 // PdfReader is loaded via a client-only dynamic-import wrapper because
@@ -68,8 +69,13 @@ export default async function LibraryReadPage({ params }: Props) {
   // available" state inside the dashboard chrome. The user owns the
   // product; the file just hasn't been uploaded. Don't 404.
   if (!book.digitalFile || book.digitalFile.trim() === '') {
+    const settings = await getCachedSiteSettings()
     return (
-      <DashboardLayout activeTab="library" user={session!.user}>
+      <DashboardLayout
+        activeTab="library"
+        user={session!.user}
+        dashboardSettings={settings.dashboard}
+      >
         <UnavailableNotice
           locale={readerLocale}
           title={t('unavailable.title')}

@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { redirect } from '@/lib/i18n/navigation'
 import { getServerSession } from '@/lib/auth/server'
 import { getUserById } from '@/lib/db/queries'
+import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { AccountView } from '@/components/dashboard/AccountView'
 
@@ -32,10 +33,21 @@ export default async function DashboardAccountPage({ params }: Props) {
     redirect({ href: '/login', locale })
   }
 
-  const dbUser = await getUserById(session!.user.id).catch(() => null)
+  // Account tab is profile-only. The "continue reading" surface lives on the
+  // Library tab (ContinueReadingHero) and the bookings recap lives on the
+  // Bookings tab — duplicating them here is noise. AccountActivityStrip and
+  // RecentBookingsCard are kept on disk for potential future use elsewhere.
+  const [dbUser, settings] = await Promise.all([
+    getUserById(session!.user.id).catch(() => null),
+    getCachedSiteSettings(),
+  ])
 
   return (
-    <DashboardLayout activeTab="account" user={session!.user}>
+    <DashboardLayout
+      activeTab="account"
+      user={session!.user}
+      dashboardSettings={settings.dashboard}
+    >
       <AccountView user={session!.user} initialBio={dbUser?.bio ?? null} />
     </DashboardLayout>
   )

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { CheckCircle2, Play } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Link } from '@/lib/i18n/navigation'
@@ -37,6 +38,15 @@ export type LibraryItem = {
   lastPage: number
   /** Total page count of the PDF. 0 when unknown. */
   totalPages: number
+  /** Phase 5 — total session_items count for SESSION cards (drives the
+   * "X of Y items" readout + the all-complete check mark). 0 for BOOKs. */
+  sessionItemsTotal?: number
+  /** Phase 5 — count of session_items with completedAt set. 0 for BOOKs. */
+  sessionItemsCompleted?: number
+  /** Phase 5 — count of session_items with playback > 0 but not completed.
+   * Used to decide whether to surface a "continue" affordance even when
+   * nothing is fully complete. 0 for BOOKs. */
+  sessionItemsPartial?: number
 }
 
 export function LibraryCard({ item }: { item: LibraryItem }) {
@@ -58,6 +68,44 @@ export function LibraryCard({ item }: { item: LibraryItem }) {
   const progressLabel =
     item.type === 'BOOK' ? t('progress_label') : t('progress_lecture')
   const progress = Math.max(0, Math.min(100, Math.round(item.progress)))
+
+  // Phase 5 — session aggregate signals. The progress bar already shows
+  // completedItems/totalItems via the `progress` prop set in
+  // buildLibraryItems. The check-mark badge is the dopamine moment for
+  // "you finished this one."
+  const isBook = item.type === 'BOOK'
+  const isSession = item.type === 'LECTURE'
+  const sessionTotal = item.sessionItemsTotal ?? 0
+  const sessionCompleted = item.sessionItemsCompleted ?? 0
+  const sessionPartial = item.sessionItemsPartial ?? 0
+  const allSessionComplete =
+    isSession && sessionTotal > 0 && sessionCompleted === sessionTotal
+
+  // Phase 5.1 — "Continue" pill surfaces on cards with meaningful
+  // in-progress state. Desktop reveals it on hover; mobile shows it
+  // persistently (no hover state on touch). Same primaryHref as the
+  // cover Link — both routes go to the in-app reader/viewer which
+  // auto-resumes via existing logic. The pill exists to call attention
+  // to the resume affordance, not to differentiate destinations.
+  //
+  // BOOK in-progress = lastPage > 1 AND lastPage < totalPages
+  //   (gate on totalPages > 0 too — totalPages=0 means we don't know
+  //   the length yet, so we can't claim the user is mid-book.)
+  // SESSION in-progress = at least one item touched AND not fully done
+  const bookInProgress =
+    isBook &&
+    item.lastPage > 1 &&
+    item.totalPages > 0 &&
+    item.lastPage < item.totalPages
+  const sessionInProgress =
+    isSession &&
+    sessionTotal > 0 &&
+    (sessionPartial > 0 || sessionCompleted > 0) &&
+    sessionCompleted < sessionTotal
+  const showContinuePill = bookInProgress || sessionInProgress
+  const continueAriaLabel = isBook
+    ? tLib('continue_pill.aria_book', { title })
+    : tLib('continue_pill.aria_session', { title })
 
   async function handleDownload() {
     if (downloading) return
@@ -93,7 +141,9 @@ export function LibraryCard({ item }: { item: LibraryItem }) {
   return (
     <article
       dir={isRtl ? 'rtl' : 'ltr'}
-      className="group flex flex-col gap-5 rounded-[var(--radius-md)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:[box-shadow:var(--shadow-lift)]"
+      // `relative` so the absolute-positioned Continue pill anchors to
+      // this article (overlaying the cover at the trailing-top corner).
+      className="group relative flex flex-col gap-5 rounded-[var(--radius-md)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:[box-shadow:var(--shadow-lift)]"
     >
       {/* Cover with optional play overlay */}
       <Link
@@ -142,6 +192,34 @@ export function LibraryCard({ item }: { item: LibraryItem }) {
         </span>
       </Link>
 
+      {/* Phase 5.1 — Continue pill (in-progress affordance).
+          Sibling of the cover Link rather than nested (HTML doesn't
+          allow nested <a> elements). Anchored to the article via the
+          parent's `relative`; sits at the trailing-top corner of the
+          cover area (article p-5 = 20px, plus 12px gives ~32px).
+          Mobile = always visible, Desktop = hover or focus reveal.
+          Both viewports satisfy the 44px touch-target floor via
+          min-h-[44px]. CSS-only transitions because the show/hide is
+          purely hover-driven (no React state needed); the visual
+          fade+slide respects prefers-reduced-motion via tailwind's
+          `motion-reduce:` variants. */}
+      {showContinuePill && (
+        <Link
+          href={primaryHref}
+          aria-label={continueAriaLabel}
+          className={`absolute z-20 [inset-block-start:32px] [inset-inline-end:32px] inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-[var(--color-accent)] px-4 py-1.5 text-[13px] font-semibold text-[var(--color-accent-fg)] [box-shadow:0_4px_14px_-4px_rgba(0,0,0,0.35)] opacity-100 transition-[opacity,transform] duration-200 ease-out md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0 md:group-focus-within:opacity-100 md:group-focus-within:translate-y-0 motion-reduce:transition-none motion-reduce:transform-none ${
+            isRtl ? 'font-arabic-body' : 'font-display'
+          }`}
+        >
+          <Play
+            className="h-3.5 w-3.5 ms-0.5"
+            aria-hidden
+            fill="currentColor"
+          />
+          {tLib('continue_pill.label')}
+        </Link>
+      )}
+
       <div className="flex flex-col gap-3">
         <h3
           className={`m-0 text-[17px] leading-[1.3] font-bold text-[var(--color-fg1)] [text-wrap:balance] ${
@@ -164,10 +242,30 @@ export function LibraryCard({ item }: { item: LibraryItem }) {
               {progressLabel}
             </span>
             <span
-              className={`text-[12px] font-semibold text-[var(--color-fg2)] [font-feature-settings:'tnum'] ${
+              className={`inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-fg2)] [font-feature-settings:'tnum'] ${
                 isRtl ? 'font-arabic-body' : 'font-display'
               }`}
             >
+              {/* Tiny check mark when an entire session is complete —
+                  the playlist's per-item check uses the same icon, so a
+                  user who's seen it inside the viewer recognises the
+                  finished state at a glance from the library grid.
+                  The sr-only span carries the meaning for AT users; the
+                  raw "75%" without "Completed" doesn't differentiate a
+                  fully-complete session from one that happens to be at
+                  the same numeric percent for any other reason. */}
+              {allSessionComplete && (
+                <>
+                  <CheckCircle2
+                    className="h-3.5 w-3.5 text-success"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span className="sr-only">
+                    {tLib('session_progress.completed')}
+                  </span>
+                </>
+              )}
               <span dir="ltr" className="inline-block num-latn">
                 {progress}%
               </span>

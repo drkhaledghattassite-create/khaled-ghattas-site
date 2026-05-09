@@ -73,7 +73,9 @@
       "PowerShell(netlify *)",
       "PowerShell(netlify env:list *)",
       "PowerShell(netlify api *)",
-      "PowerShell(*)"
+      "PowerShell(*)",
+      "WebFetch(domain:design.claude.com)",
+      "WebFetch(domain:design.claude.ai)"
     ]
   }
 }

@@ -29,7 +29,13 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import type { PdfBookmark, SessionItem } from './schema'
+import type {
+  BookingInterest,
+  PdfBookmark,
+  SessionItem,
+  TourSuggestion,
+  UserQuestion,
+} from './schema'
 
 export type MockProgressEntry = {
   lastPage: number
@@ -57,6 +63,20 @@ export type MockStore = {
   // reading_progress + bookmarks + sessionItems so a single readStore call
   // hydrates everything the dev workflow needs.
   mediaProgress: Map<string, MockMediaProgressEntry>
+  // Booking domain — Phase A1.
+  // bookingInterest: keyed by `${userId}:${bookingId}` so the upsert pattern
+  //   from createBookingInterestAction maps cleanly onto Map.set.
+  // tourSuggestions: append-only list (no idempotency / unique constraint).
+  // We deliberately do NOT mock the Stripe-driven holds/orders flow — when
+  // STRIPE_SECRET_KEY is missing in dev, the action returns
+  // 'stripe_unconfigured' and never creates a hold; that matches the
+  // existing /api/checkout pattern.
+  bookingInterest: Map<string, BookingInterest>
+  tourSuggestions: TourSuggestion[]
+  // Phase B1 — append-only list of "Ask Dr. Khaled" questions submitted in
+  // mock-auth dev. Filtered by userId at read time. Status updates land here
+  // too (PENDING → ANSWERED / ARCHIVED) once Phase B2 admin actions ship.
+  userQuestions: UserQuestion[]
 }
 
 // JSON shape on disk — Maps serialised as [key, value][].
@@ -76,11 +96,37 @@ type SerializedMediaProgressEntry = {
   completedAt: string | null
   lastWatchedAt: string
 }
+type SerializedBookingInterest = Omit<
+  BookingInterest,
+  'createdAt' | 'contactedAt'
+> & {
+  createdAt: string
+  contactedAt: string | null
+}
+type SerializedTourSuggestion = Omit<
+  TourSuggestion,
+  'createdAt' | 'reviewedAt'
+> & {
+  createdAt: string
+  reviewedAt: string | null
+}
+type SerializedUserQuestion = Omit<
+  UserQuestion,
+  'createdAt' | 'updatedAt' | 'answeredAt' | 'archivedAt'
+> & {
+  createdAt: string
+  updatedAt: string
+  answeredAt: string | null
+  archivedAt: string | null
+}
 type SerializedStore = {
   progress: Array<[string, SerializedProgressEntry]>
   bookmarks: Array<[string, SerializedBookmark[]]>
   sessionItems?: Array<[string, SerializedSessionItem[]]>
   mediaProgress?: Array<[string, SerializedMediaProgressEntry]>
+  bookingInterest?: Array<[string, SerializedBookingInterest]>
+  tourSuggestions?: SerializedTourSuggestion[]
+  userQuestions?: SerializedUserQuestion[]
 }
 
 const STORE_FILE = join(
@@ -96,6 +142,9 @@ function emptyStore(): MockStore {
     bookmarks: new Map(),
     sessionItems: new Map(),
     mediaProgress: new Map(),
+    bookingInterest: new Map(),
+    tourSuggestions: [],
+    userQuestions: [],
   }
 }
 
@@ -174,11 +223,71 @@ export function readStore(): MockStore {
         lastWatchedAt,
       })
     }
+    const bookingInterestMap = new Map<string, BookingInterest>()
+    for (const [key, entry] of parsed.bookingInterest ?? []) {
+      const createdAt = new Date(entry.createdAt)
+      if (Number.isNaN(createdAt.getTime())) continue
+      const contactedAt = entry.contactedAt ? new Date(entry.contactedAt) : null
+      bookingInterestMap.set(key, {
+        id: entry.id,
+        userId: entry.userId,
+        bookingId: entry.bookingId,
+        additionalNotes: entry.additionalNotes ?? null,
+        createdAt,
+        contactedAt:
+          contactedAt && !Number.isNaN(contactedAt.getTime())
+            ? contactedAt
+            : null,
+      })
+    }
+    const tourSuggestionsList: TourSuggestion[] = []
+    for (const entry of parsed.tourSuggestions ?? []) {
+      const createdAt = new Date(entry.createdAt)
+      if (Number.isNaN(createdAt.getTime())) continue
+      const reviewedAt = entry.reviewedAt ? new Date(entry.reviewedAt) : null
+      tourSuggestionsList.push({
+        id: entry.id,
+        userId: entry.userId,
+        suggestedCity: entry.suggestedCity,
+        suggestedCountry: entry.suggestedCountry,
+        additionalNotes: entry.additionalNotes ?? null,
+        createdAt,
+        reviewedAt:
+          reviewedAt && !Number.isNaN(reviewedAt.getTime()) ? reviewedAt : null,
+      })
+    }
+    const userQuestionsList: UserQuestion[] = []
+    for (const entry of parsed.userQuestions ?? []) {
+      const createdAt = new Date(entry.createdAt)
+      if (Number.isNaN(createdAt.getTime())) continue
+      const updatedAt = new Date(entry.updatedAt)
+      const answeredAt = entry.answeredAt ? new Date(entry.answeredAt) : null
+      const archivedAt = entry.archivedAt ? new Date(entry.archivedAt) : null
+      userQuestionsList.push({
+        id: entry.id,
+        userId: entry.userId,
+        subject: entry.subject,
+        body: entry.body,
+        category: entry.category ?? null,
+        isAnonymous: Boolean(entry.isAnonymous),
+        status: entry.status,
+        answerReference: entry.answerReference ?? null,
+        answeredAt:
+          answeredAt && !Number.isNaN(answeredAt.getTime()) ? answeredAt : null,
+        archivedAt:
+          archivedAt && !Number.isNaN(archivedAt.getTime()) ? archivedAt : null,
+        createdAt,
+        updatedAt: !Number.isNaN(updatedAt.getTime()) ? updatedAt : createdAt,
+      })
+    }
     return {
       progress,
       bookmarks,
       sessionItems: sessionItemsMap,
       mediaProgress: mediaProgressMap,
+      bookingInterest: bookingInterestMap,
+      tourSuggestions: tourSuggestionsList,
+      userQuestions: userQuestionsList,
     }
   } catch (err) {
     console.warn(
@@ -239,6 +348,42 @@ export function writeStore(store: MockStore): void {
         lastWatchedAt: v.lastWatchedAt.toISOString(),
       },
     ]),
+    bookingInterest: Array.from(store.bookingInterest.entries()).map(
+      ([k, v]) => [
+        k,
+        {
+          id: v.id,
+          userId: v.userId,
+          bookingId: v.bookingId,
+          additionalNotes: v.additionalNotes ?? null,
+          createdAt: v.createdAt.toISOString(),
+          contactedAt: v.contactedAt ? v.contactedAt.toISOString() : null,
+        },
+      ],
+    ),
+    tourSuggestions: store.tourSuggestions.map((s) => ({
+      id: s.id,
+      userId: s.userId,
+      suggestedCity: s.suggestedCity,
+      suggestedCountry: s.suggestedCountry,
+      additionalNotes: s.additionalNotes ?? null,
+      createdAt: s.createdAt.toISOString(),
+      reviewedAt: s.reviewedAt ? s.reviewedAt.toISOString() : null,
+    })),
+    userQuestions: store.userQuestions.map((q) => ({
+      id: q.id,
+      userId: q.userId,
+      subject: q.subject,
+      body: q.body,
+      category: q.category ?? null,
+      isAnonymous: q.isAnonymous,
+      status: q.status,
+      answerReference: q.answerReference ?? null,
+      answeredAt: q.answeredAt ? q.answeredAt.toISOString() : null,
+      archivedAt: q.archivedAt ? q.archivedAt.toISOString() : null,
+      createdAt: q.createdAt.toISOString(),
+      updatedAt: q.updatedAt.toISOString(),
+    })),
   }
   try {
     mkdirSync(dirname(STORE_FILE), { recursive: true })

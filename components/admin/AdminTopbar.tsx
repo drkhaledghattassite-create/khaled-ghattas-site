@@ -38,7 +38,17 @@ const QUICK_ACTIONS = [
   { href: '/admin/events/new', key: 'new_event' },
 ] as const
 
-export function AdminTopbar({ user }: { user: ServerSessionUser }) {
+export function AdminTopbar({
+  user,
+  showAdminBooking = true,
+  showAdminQuestions = true,
+  pendingQuestionCount = 0,
+}: {
+  user: ServerSessionUser
+  showAdminBooking?: boolean
+  showAdminQuestions?: boolean
+  pendingQuestionCount?: number
+}) {
   const pathname = usePathname()
   const locale = useLocale()
   const router = useRouter()
@@ -88,7 +98,13 @@ export function AdminTopbar({ user }: { user: ServerSessionUser }) {
           <SheetHeader className="sr-only">
             <SheetTitle>{tUser('panel')}</SheetTitle>
           </SheetHeader>
-          <AdminSidebarContent user={user} onNavigate={() => setDrawerOpen(false)} />
+          <AdminSidebarContent
+            user={user}
+            showAdminBooking={showAdminBooking}
+            showAdminQuestions={showAdminQuestions}
+            pendingQuestionCount={pendingQuestionCount}
+            onNavigate={() => setDrawerOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
@@ -200,6 +216,7 @@ function lookupNavKey(segment: string): string | null {
     settings: 'settings',
     content: 'content',
     media: 'media',
+    questions: 'questions',
     new: 'new',
     edit: 'edit',
   }

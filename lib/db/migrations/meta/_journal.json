@@ -50,6 +50,27 @@
       "when": 1777886140041,
       "tag": "0006_corporate_programs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778071245000,
+      "tag": "0007_booking_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778201500000,
+      "tag": "0008_admin_booking_additions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778244500000,
+      "tag": "0009_user_questions",
+      "breakpoints": true
     }
   ]
 }
