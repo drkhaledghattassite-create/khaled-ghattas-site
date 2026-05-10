@@ -59,6 +59,12 @@ export async function getServerSession(): Promise<ServerSession> {
       },
     }
   } catch (err) {
+    // DYNAMIC_SERVER_USAGE is Next.js's intentional opt-out-of-static-render
+    // signal (triggered by headers()/cookies() during prerender). Re-throw so
+    // Next can handle it; logging the stack trace pollutes build output.
+    if ((err as { digest?: string })?.digest === 'DYNAMIC_SERVER_USAGE') {
+      throw err
+    }
     console.error('[getServerSession]', err)
     return null
   }

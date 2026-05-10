@@ -2,7 +2,6 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
-import { Phone } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
@@ -16,7 +15,7 @@ import {
 import { staggerContainer, staggerItem, EASE_EDITORIAL } from '@/lib/motion/variants'
 
 const DEVELOPER_LINKEDIN_URL = 'https://www.linkedin.com/in/kamal-chhimi-77684b228'
-const DEVELOPER_PHONE_TEL = '+96181447195'
+const DEVELOPER_WHATSAPP_URL = 'https://wa.me/96181447195'
 
 type FooterToggles = {
   show_footer_social: boolean
@@ -275,23 +274,25 @@ export function SiteFooter({
       {/* Developer credit — single English-only row */}
       <div className="border-t border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--container-max)] py-4 [padding-inline:clamp(20px,5vw,56px)]">
-          <p className="flex items-center justify-center gap-2 text-[11px] font-display tracking-[0.04em] text-[var(--color-fg3)]">
+          <p dir="ltr" className="flex items-center justify-center gap-2 text-[11px] font-display tracking-[0.04em] text-[var(--color-fg3)]">
             Designed &amp; Developed by{' '}
             <a
-              href={DEVELOPER_LINKEDIN_URL}
+              href={DEVELOPER_WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Kamal Chhimi on LinkedIn"
+              aria-label="Chat with Kamal Chhimi on WhatsApp"
               className="text-[var(--color-fg2)] transition-colors duration-200 hover:text-[var(--color-accent)]"
             >
               Kamal Chhimi
             </a>
             <a
-              href={`tel:${DEVELOPER_PHONE_TEL}`}
-              aria-label="Call Kamal Chhimi"
+              href={DEVELOPER_LINKEDIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Kamal Chhimi on LinkedIn"
               className="inline-flex items-center justify-center text-[var(--color-fg3)] transition-colors duration-200 hover:text-[var(--color-accent)]"
             >
-              <Phone className="h-3 w-3" aria-hidden="true" />
+              <LinkedInIcon className="h-3 w-3" aria-hidden="true" />
             </a>
           </p>
         </div>

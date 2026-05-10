@@ -28,26 +28,9 @@ export async function AuthMenu({
   const isEnabled = enabled ?? AUTH_ENABLED
   if (!isEnabled) return null
 
-  let session, t, locale
-  try {
-    session = await getServerSession()
-    console.log('[AuthMenu] session ok, present=', !!session)
-  } catch (e) {
-    console.error('[AuthMenu] getServerSession failed', e)
-    throw e
-  }
-  try {
-    t = await getTranslations('nav')
-  } catch (e) {
-    console.error('[AuthMenu] getTranslations failed', e)
-    throw e
-  }
-  try {
-    locale = await getLocale()
-  } catch (e) {
-    console.error('[AuthMenu] getLocale failed', e)
-    throw e
-  }
+  const session = await getServerSession()
+  const t = await getTranslations('nav')
+  const locale = await getLocale()
   const isRtl = locale === 'ar'
 
   if (session) {
