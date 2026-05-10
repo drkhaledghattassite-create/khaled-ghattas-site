@@ -272,71 +272,28 @@ export function SiteFooter({
         </div>
       )}
 
-      {/* Developer credit — the quiet signature at the very bottom.
-          Kept as a separate band with its own hairline so it reads as a
-          distinct authorship attribution, not as part of Dr. Khaled's
-          colophon. Editorial rhythm: eyebrow → name → accent micro-line →
-          icon row, matching the brand-quote section above. */}
+      {/* Developer credit — single English-only row */}
       <div className="border-t border-[var(--color-border)]">
-        <div className="mx-auto max-w-[var(--container-max)] [padding-block:20px_24px] [padding-inline:clamp(20px,5vw,56px)]">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-10%' }}
-            transition={{ duration: 0.6, ease: EASE_EDITORIAL }}
-            className="flex flex-col items-center gap-2 text-center"
-          >
-            <span
-              className={`text-[10px] font-semibold uppercase tracking-[0.26em] text-[var(--color-fg3)] ${
-                isRtl
-                  ? 'font-arabic-body !text-[11px] !tracking-[0.06em] !normal-case !font-bold'
-                  : 'font-display'
-              }`}
-            >
-              {t('developer.eyebrow')}
-            </span>
+        <div className="mx-auto max-w-[var(--container-max)] py-4 [padding-inline:clamp(20px,5vw,56px)]">
+          <p className="flex items-center justify-center gap-2 text-[11px] font-display tracking-[0.04em] text-[var(--color-fg3)]">
+            Designed &amp; Developed by{' '}
             <a
               href={DEVELOPER_LINKEDIN_URL}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t('developer.aria_linkedin')}
-              className={`text-[16px] font-semibold text-[var(--color-fg1)] transition-colors duration-300 ease-[var(--ease-editorial)] hover:text-[var(--color-accent)] ${
-                isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.005em]'
-              }`}
+              aria-label="Kamal Chhimi on LinkedIn"
+              className="text-[var(--color-fg2)] transition-colors duration-200 hover:text-[var(--color-accent)]"
             >
-              {t('developer.name')}
+              Kamal Chhimi
             </a>
-            <motion.span
-              aria-hidden
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              viewport={{ once: true, margin: '-10%' }}
-              transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 0.18 }}
-              className="block w-8 h-px bg-[var(--color-accent)]"
-            />
-            <ul className="mt-1 flex items-center gap-1.5 list-none m-0 p-0">
-              <li>
-                <a
-                  href={DEVELOPER_LINKEDIN_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t('developer.aria_linkedin')}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-fg2)] transition-colors duration-200 hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-                >
-                  <LinkedInIcon className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href={`tel:${DEVELOPER_PHONE_TEL}`}
-                  aria-label={t('developer.aria_phone')}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-fg2)] transition-colors duration-200 hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-                >
-                  <Phone className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </li>
-            </ul>
-          </motion.div>
+            <a
+              href={`tel:${DEVELOPER_PHONE_TEL}`}
+              aria-label="Call Kamal Chhimi"
+              className="inline-flex items-center justify-center text-[var(--color-fg3)] transition-colors duration-200 hover:text-[var(--color-accent)]"
+            >
+              <Phone className="h-3 w-3" aria-hidden="true" />
+            </a>
+          </p>
         </div>
       </div>
     </footer>

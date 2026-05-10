@@ -53,3 +53,5 @@ next-env.d.ts
 /public/pdf.worker.min.mjs
 /public/cmaps/
 /public/standard_fonts/
+
+.vercel
