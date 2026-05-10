@@ -170,11 +170,17 @@ function UnavailableNotice({
       >
         <Hourglass className="h-7 w-7" strokeWidth={1.6} />
       </div>
-      <h1
+      {/* h2, not h1 — DashboardLayout already renders the page-level
+          h1 for the user identity. A second h1 here would create a
+          flat heading hierarchy that screen readers expose as two
+          coequal page titles. UnavailableNotice is local to this
+          file so an inline demotion is safe; if it becomes shared,
+          accept a heading-level prop and default to h1. */}
+      <h2
         className={`m-0 mb-3 text-[clamp(24px,3.5vw,34px)] leading-[1.15] font-bold tracking-[-0.015em] text-[var(--color-fg1)] ${fontHeading}`}
       >
         {title}
-      </h1>
+      </h2>
       <p
         className={`m-0 mb-8 max-w-[440px] text-[16px] leading-[1.7] text-[var(--color-fg2)] ${fontBody}`}
       >

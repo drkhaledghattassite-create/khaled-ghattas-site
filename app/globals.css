@@ -313,6 +313,25 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* iOS Safari auto-zooms the viewport when an editable element with a
+     computed font-size below 16px receives focus. The zoom yanks the
+     surrounding chrome off-screen and is impossible to undo without a
+     pinch gesture — particularly bad in the reader, but also in every
+     modal/form across the site (newsletter, contact, ask, booking,
+     login, …).
+     Apply on touch devices only so desktop designs that intentionally
+     use 14px inputs are unaffected. `max(16px, 1em)` honours any larger
+     inherited size while clamping the floor at 16px. Range/checkbox/
+     radio are excluded — they don't render text and the rule would
+     break their default sizing. */
+  @media (hover: none) and (pointer: coarse) {
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
+  }
+
   html[dir="ltr"], html[lang="en"] {
     font-family: var(--font-display), system-ui, sans-serif;
     font-size: 16px;
@@ -879,6 +898,22 @@
 }
 [data-reader-theme] input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Prevent iOS Safari's focus-zoom on every editable element inside the
+   reader. Safari triggers a viewport zoom whenever an input/textarea has
+   a computed font-size below 16px — that yanks the reader chrome
+   off-screen and wrecks the immersive feel (the user reports a "big
+   zoom" on tapping the bookmark-note input).
+   `max(16px, 1em)` keeps the rule honest if a parent intentionally bumps
+   the font (e.g. a future "large text" preference): we never go below
+   16px, but we also never shrink larger inherited sizing. Range inputs
+   are excluded — they don't accept text and would render strangely with
+   16px line-height. */
+[data-reader-theme] input:not([type="range"]),
+[data-reader-theme] textarea,
+[data-reader-theme] select {
+  font-size: max(16px, 1em);
 }
 
 /* Reader page-scrubber. <input type="range"> renders inconsistently across

@@ -165,6 +165,30 @@ export function PdfReader({
     return () => window.removeEventListener('resize', update)
   }, [])
 
+  // Body-scroll lock while the immersive reader is mounted.
+  //
+  // The route renders the reader inside `<div className="fixed inset-0 z-[100]">`,
+  // but the dashboard route-group layout still mounts SiteHeader + SiteFooter
+  // around the children. The footer in particular makes the document body
+  // taller than the viewport, so the body's own vertical scrollbar shows up
+  // in the gutter even though the reader visually covers everything. Lock
+  // the body's overflow on mount and restore the prior value on unmount —
+  // we capture the previous value rather than blindly resetting to '' so
+  // any caller-set overflow (e.g. a parent modal) is preserved correctly.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = root.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    root.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return () => {
+      root.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+    }
+  }, [])
+
   // Memoize Document props — passing fresh objects forces a re-mount of
   // the PDF (and a re-fetch of the worker), which kills text-layer
   // selection and triggers a full reload spinner.

@@ -31,6 +31,7 @@ export function ReaderTopBar({
   isFullscreen,
   isDownloading,
   showSideRailToggle,
+  sideRailOpen,
 }: {
   variant: 'mobile' | 'desktop'
   visible: boolean
@@ -47,6 +48,11 @@ export function ReaderTopBar({
   isFullscreen?: boolean
   isDownloading?: boolean
   showSideRailToggle?: boolean
+  /** Whether the desktop side rail is currently open. Drives the toggle's
+   *  aria-label so AT users hear "close side panel" when the rail is open
+   *  and "open side panel" when it's closed. Optional because the mobile
+   *  variant doesn't render the toggle at all. */
+  sideRailOpen?: boolean
 }) {
   const t = useTranslations('reader')
   const reduceMotion = useReducedMotion()
@@ -85,7 +91,7 @@ export function ReaderTopBar({
       {showSideRailToggle && onToggleSideRail && (
         <IconButton
           onClick={onToggleSideRail}
-          ariaLabel={t('side_rail.open')}
+          ariaLabel={sideRailOpen ? t('side_rail.close') : t('side_rail.open')}
         >
           <svg
             width="16"
@@ -250,8 +256,13 @@ export function ReaderTopBar({
         </IconButton>
       )}
 
-      {/* Settings — mobile only. On desktop the side rail toggle (hamburger)
-          already handles everything the settings sheet contained. */}
+      {/* Menu — mobile only. Opens the bottom sheet (TOC, bookmarks, page
+          jump, downloads). Uses the same three-lines hamburger as the
+          desktop side-rail toggle so the affordance reads as "open the
+          navigation/options surface" on both viewports — and so the icon
+          is unambiguously NOT a brightness/theme toggle. The earlier sun-
+          with-rays glyph kept tricking users into thinking it was a light
+          switch. */}
       {variant === 'mobile' && (
         <IconButton
           onClick={onOpenSettings}
@@ -268,8 +279,7 @@ export function ReaderTopBar({
             strokeLinejoin="round"
             aria-hidden
           >
-            <circle cx="10" cy="10" r="2.5" />
-            <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.5 1.5M13.5 13.5L15 15M5 15l1.5-1.5M13.5 6.5L15 5" />
+            <path d="M3 5h14M3 10h14M3 15h14" />
           </svg>
         </IconButton>
       )}

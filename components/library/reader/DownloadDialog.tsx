@@ -196,7 +196,9 @@ export function DownloadDialog({
                   }}
                   placeholder={t('input_placeholder')}
                   dir="ltr"
-                  className={`w-full rounded-[var(--radius-md)] border px-3 py-2.5 text-[14px] text-[var(--reader-fg)] focus:outline-none ${
+                  // text-[16px] prevents iOS Safari from auto-zooming
+                  // on focus (any input < 16px triggers a viewport zoom).
+                  className={`w-full rounded-[var(--radius-md)] border px-3 py-2.5 text-[16px] text-[var(--reader-fg)] focus:outline-none ${
                     validationError
                       ? 'border-[var(--reader-fg-faint)]'
                       : 'border-[var(--reader-border)] focus:border-[var(--reader-accent)]'

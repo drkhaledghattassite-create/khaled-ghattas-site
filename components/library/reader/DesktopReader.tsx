@@ -220,6 +220,7 @@ export function DesktopReader({
           isFullscreen={isFullscreen}
           isDownloading={isDownloading}
           showSideRailToggle
+          sideRailOpen={sideRailOpen}
         />
 
         <div className="absolute inset-0 flex items-center justify-center px-8 pb-16 pt-14">

@@ -114,7 +114,13 @@ export function BookmarksList({
                         autoFocus
                         maxLength={280}
                         placeholder={t('label_placeholder')}
-                        className={`min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--reader-border)] bg-[var(--reader-surface-elev)] px-2 py-1 text-[12px] text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
+                        // text-[16px] is required: iOS Safari auto-zooms
+                        // the viewport on focus when an input renders
+                        // below 16px. The reader-scoped CSS rule in
+                        // globals.css enforces this as a safety net, but
+                        // we keep the explicit class so the code matches
+                        // the actual rendered size.
+                        className={`min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--reader-border)] bg-[var(--reader-surface-elev)] px-2.5 py-1.5 text-[16px] leading-tight text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
                       />
                     </form>
                   ) : (

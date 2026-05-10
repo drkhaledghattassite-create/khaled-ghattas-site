@@ -40,10 +40,10 @@ export function LocaleSwitcher({
       title={aria}
       disabled={pending}
       className={cn(
-        'inline-flex h-9 min-w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-transparent px-2.5',
+        'inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-transparent',
         'text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[var(--color-fg2)]',
         'transition-[color,border-color,background-color,transform] duration-200',
-        'hover:text-[var(--color-fg1)] hover:border-[var(--color-border-strong)]',
+        'hover:text-[var(--color-fg1)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-accent-soft)]',
         'active:translate-y-px',
         pending && 'opacity-50 pointer-events-none',
         className,

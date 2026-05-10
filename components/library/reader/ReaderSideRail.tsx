@@ -173,7 +173,11 @@ export function ReaderSideRail({
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value)}
                     placeholder={t('settings.go_to_page_placeholder')}
-                    className={`min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2 py-1.5 text-[13px] text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
+                    // text-[16px] for iOS Safari focus-zoom prevention,
+                    // even on the desktop side rail (the same component
+                    // can be opened on a touch tablet that uses the
+                    // desktop variant via responsive breakpoint).
+                    className={`min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--reader-border)] bg-[var(--reader-surface)] px-2 py-1.5 text-[16px] text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
                     dir="ltr"
                   />
                   <button

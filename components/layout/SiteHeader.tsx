@@ -68,14 +68,20 @@ export function SiteHeader({
               isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.01em]'
             }`}
           >
-            <Logo height={22} alt="" />
+            <Logo height={28} alt="" />
             <span className="whitespace-nowrap hidden sm:inline">{t('brand')}</span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav.
+              `whitespace-nowrap` on each Link prevents multi-word labels
+              ("For Corporations", "Services for Individuals", "للشركات
+              والمؤسسات") from wrapping to two lines and turning the
+              header into a tall double-row bar. Gap is tightened from
+              ~clamp(16,2.4vw,32) so all nine items still fit on one
+              row at the md breakpoint without horizontal overflow. */}
           <nav
             aria-label={t('primary')}
-            className="hidden md:flex justify-self-center gap-[clamp(16px,2.4vw,32px)]"
+            className="hidden md:flex justify-self-center gap-[clamp(10px,1.5vw,22px)] lg:gap-[clamp(14px,1.8vw,26px)]"
           >
             {navItems.map((item) => {
               const active = isActive(item.href)
@@ -84,7 +90,7 @@ export function SiteHeader({
                   key={item.key}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative py-1 text-[13.5px] transition-colors ${
+                  className={`relative whitespace-nowrap py-1 text-[12.5px] lg:text-[13.5px] transition-colors ${
                     active
                       ? 'text-[var(--color-fg1)] font-semibold'
                       : 'text-[var(--color-fg2)] hover:text-[var(--color-fg1)] font-medium'

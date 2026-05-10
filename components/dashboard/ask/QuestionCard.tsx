@@ -20,7 +20,7 @@
  * either an Instagram link or a free-text note.
  */
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import {
   formatDistanceToNowStrict,
   formatDistanceToNow,
@@ -28,6 +28,7 @@ import {
 import { ar, enUS } from 'date-fns/locale'
 import { ExternalLink, Play } from 'lucide-react'
 import { StatusBadge } from '@/components/admin/StatusBadge'
+import { isHttpUrl } from '@/lib/utils'
 import type { ClientUserQuestion } from './AskDrKhaledPage'
 
 type Props = {
@@ -35,23 +36,10 @@ type Props = {
   question: ClientUserQuestion
 }
 
-function isHttpUrl(s: string): boolean {
-  try {
-    const u = new URL(s)
-    return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 export function QuestionCard({ locale, question }: Props) {
   const t = useTranslations('dashboard.ask.list')
   const tCat = useTranslations('dashboard.ask.form')
-  // useLocale() reads from next-intl; we only use it as a fallback. The
-  // explicit locale prop is the source of truth.
-  useLocale()
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
   const dfnsLocale = isRtl ? ar : enUS
 
@@ -89,7 +77,7 @@ export function QuestionCard({ locale, question }: Props) {
 
   const isArchived = question.status === 'ARCHIVED'
   const ref = question.answerReference?.trim() ?? ''
-  const refIsUrl = ref !== '' && isHttpUrl(ref)
+  const refIsUrl = isHttpUrl(ref)
 
   return (
     <article
@@ -120,7 +108,7 @@ export function QuestionCard({ locale, question }: Props) {
             )}
           </div>
           <h3
-            className={`m-0 text-[18px] font-bold leading-[1.35] [text-wrap:balance] text-[var(--color-fg1)] ${fontDisplay} ${
+            className={`m-0 text-[18px] font-bold leading-[1.35] [text-wrap:balance] text-[var(--color-fg1)] font-arabic-display ${
               isRtl ? '' : '!tracking-[-0.01em]'
             }`}
           >

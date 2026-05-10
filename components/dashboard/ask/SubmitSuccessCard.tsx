@@ -20,7 +20,6 @@ type Props = {
 export function SubmitSuccessCard({ locale, onAskAnother, onViewList }: Props) {
   const t = useTranslations('dashboard.ask.success')
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
 
   return (
@@ -43,7 +42,7 @@ export function SubmitSuccessCard({ locale, onAskAnother, onViewList }: Props) {
       </span>
 
       <h3
-        className={`m-0 text-[24px] font-bold leading-[1.25] text-[var(--color-fg1)] ${fontDisplay} ${
+        className={`m-0 text-[24px] font-bold leading-[1.25] text-[var(--color-fg1)] font-arabic-display ${
           isRtl ? '' : '!tracking-[-0.02em]'
         }`}
       >

@@ -17,7 +17,6 @@ type Props = {
 export function AskEmptyState({ locale }: Props) {
   const t = useTranslations('dashboard.ask.empty')
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
 
   const focusForm = () => {
@@ -37,7 +36,7 @@ export function AskEmptyState({ locale }: Props) {
         <PenLine className="h-5 w-5" strokeWidth={1.8} />
       </span>
       <h3
-        className={`m-0 text-[22px] font-bold text-[var(--color-fg1)] ${fontDisplay} ${
+        className={`m-0 text-[22px] font-bold text-[var(--color-fg1)] font-arabic-display ${
           isRtl ? '' : '!tracking-[-0.015em]'
         }`}
       >

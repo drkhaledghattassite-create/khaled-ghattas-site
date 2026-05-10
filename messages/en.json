@@ -610,7 +610,13 @@
     "column_connect": "Connect",
     "location": "Beirut — Lebanon",
     "brand_quote": "Words are deeds, and ideas are seeds. What we plant remains.",
-    "brand_quote_attribution": "Dr. Khaled Ghattass"
+    "brand_quote_attribution": "Dr. Khaled Ghattass",
+    "developer": {
+      "eyebrow": "Designed & Developed by",
+      "name": "Kamal Chhimi",
+      "aria_linkedin": "Kamal Chhimi on LinkedIn",
+      "aria_phone": "Call Kamal Chhimi"
+    }
   },
   "coming_soon": {
     "eyebrow": "Coming Soon",
@@ -680,6 +686,7 @@
       "corporate_clients": "Client logos",
       "corporate_requests": "Corporate requests",
       "questions": "Questions",
+      "questions_pending_aria": "{count, plural, one {# pending question} other {# pending questions}}",
       "booking_tours": "Tours",
       "booking_bookings": "Bookings",
       "booking_tour_suggestions": "Tour suggestions",
@@ -1039,6 +1046,7 @@
     "questions": {
       "description": "Review user questions, mark them answered, or archive.",
       "filter": {
+        "aria": "Filter questions by status",
         "status_all": "All",
         "status_pending": "Pending",
         "status_answered": "Answered",
@@ -1050,6 +1058,7 @@
         "col_subject": "Subject",
         "col_category": "Category",
         "col_status": "Status",
+        "asker_unknown": "Account no longer exists",
         "empty_title": "No questions match this filter",
         "empty_body": "Try a different status or wait for new submissions."
       },
@@ -1100,6 +1109,7 @@
       "toast": {
         "answered_with_email": "Marked answered. Notification email sent.",
         "answered_text_note": "Marked answered. No email sent (free-text note).",
+        "answered_no_recipient": "Marked answered. The asker's account no longer exists, so no email was sent.",
         "answered_email_failed": "Marked answered. Email could not be sent — please notify the asker manually.",
         "archived": "Question archived.",
         "reverted": "Reverted to pending.",

@@ -40,7 +40,9 @@ export type AdminQuestionsRow = {
   answeredAt: string | null
   archivedAt: string | null
   createdAt: string
-  user: { id: string; name: string | null; email: string }
+  // Nullable — orphan-user case (asker row missing despite cascade FK).
+  // Components that render asker identity must handle null explicitly.
+  user: { id: string; name: string | null; email: string } | null
 }
 
 type FilterValue = QuestionStatus | 'all'
@@ -128,26 +130,30 @@ export function AdminQuestionsPage({
               answerReference,
             })
           if (res.ok) {
-            // Three-way toast for the answered case; one-liner otherwise.
+            // Five-way toast for the ANSWERED transition driven by the
+            // server's emailOutcome discriminator; one-liner otherwise.
             if (target === 'ANSWERED') {
-              const ref = (answerReference ?? '').trim()
-              const isUrl = (() => {
-                try {
-                  const u = new URL(ref)
-                  return u.protocol === 'http:' || u.protocol === 'https:'
-                } catch {
-                  return false
-                }
-              })()
-              if (!isUrl) {
-                toast.success(t('toast.answered_text_note'))
-              } else if (res.emailQueued) {
-                toast.success(t('toast.answered_with_email'))
-              } else {
-                // URL provided but email send failed (no key, send error,
-                // dev-preview mode). Status update succeeded; admin must
-                // notify manually.
-                toast.warning(t('toast.answered_email_failed'))
+              switch (res.emailOutcome) {
+                case 'sent':
+                  toast.success(t('toast.answered_with_email'))
+                  break
+                case 'no_url':
+                  toast.success(t('toast.answered_text_note'))
+                  break
+                case 'no_recipient':
+                  // Asker account no longer exists — status updated, no
+                  // one to notify. Rare in practice (cascade FK).
+                  toast.warning(t('toast.answered_no_recipient'))
+                  break
+                case 'send_failed':
+                  toast.warning(t('toast.answered_email_failed'))
+                  break
+                case 'not_applicable':
+                  // Reached when admin edits an already-ANSWERED row's
+                  // reference (transition wasn't FROM PENDING). Status
+                  // saved; no email re-send by design.
+                  toast.success(t('toast.answered_with_email'))
+                  break
               }
             } else if (target === 'ARCHIVED') {
               toast.success(t('toast.archived'))
@@ -208,7 +214,11 @@ export function AdminQuestionsPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        role="group"
+        aria-label={t('filter.aria')}
+        className="flex flex-wrap items-center gap-2"
+      >
         {filters.map((f) => {
           const isActive = statusFilter === f
           const labelKey =
@@ -223,6 +233,7 @@ export function AdminQuestionsPage({
             <button
               key={f}
               type="button"
+              aria-pressed={isActive}
               onClick={() => handleFilter(f)}
               className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-display font-semibold uppercase tracking-[0.06em] transition-colors ${
                 isActive
@@ -238,7 +249,6 @@ export function AdminQuestionsPage({
 
       <QuestionsTable
         rows={rows}
-        locale={locale}
         onMarkAnswered={(row) => setActive({ type: 'mark_answered', row })}
         onEditAnswer={(row) => setActive({ type: 'mark_answered', row })}
         onArchive={(row) => setActive({ type: 'archive', row })}

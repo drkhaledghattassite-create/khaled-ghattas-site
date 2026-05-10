@@ -172,12 +172,18 @@ export async function sendAnsweredNotificationEmail(args: {
     return { ok: false, reason: 'invalid-recipient' }
   }
   const locale: QuestionAnsweredLocale = args.user.locale ?? 'ar'
+  // SUPPORT_EMAIL is the canonical support inbox advertised in
+  // transactional-email footers ("If you have any issue, contact us at
+  // …"). It used to reuse CORPORATE_INBOX_EMAIL (the corporate-form
+  // recipient inbox) — wrong namespace; corporate ≠ support. Both
+  // fallback to the same `Team@drkhaledghattass.com` so split-config
+  // production environments still work without setting both.
   const built = buildQuestionAnsweredEmail({
     locale,
     recipientName: args.user.name,
     questionSubject: args.question.subject,
     answerUrl: args.answerUrl,
-    supportEmail: process.env.CORPORATE_INBOX_EMAIL ?? DEFAULT_SUPPORT_EMAIL,
+    supportEmail: process.env.SUPPORT_EMAIL ?? DEFAULT_SUPPORT_EMAIL,
   })
   const result = await sendEmail({
     to: recipient,

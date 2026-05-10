@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link, usePathname } from '@/lib/i18n/navigation'
@@ -67,6 +67,25 @@ export function DashboardLayout({
   const isRtl = locale === 'ar'
   const pathname = usePathname()
 
+  // Stuck-state detection — when the tabs strip sticks under the
+  // SiteHeader on scroll, we add a drop shadow so the two bars read as
+  // distinct surfaces instead of fusing into one double-tall block.
+  // The bar itself is always shown (border + blurred bg) — the shadow
+  // is the only thing that toggles. rootMargin uses 60px (the desktop
+  // sticky offset); on mobile the flip fires ~8px early, imperceptible.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [isStuck, setIsStuck] = useState(false)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsStuck(!entry.isIntersecting),
+      { rootMargin: '-60px 0px 0px 0px', threshold: 0 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
   const since = isRtl ? 'عضو منذ يناير ٢٠٢٦' : 'Member since January 2026'
 
   return (
@@ -110,10 +129,30 @@ export function DashboardLayout({
         </header>
       </div>
 
-      {/* Tabs nav — sticky below site header */}
-      <div className="sticky top-[52px] md:top-[60px] z-30 bg-[var(--color-bg)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
-        <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none min-w-max">
+      {/* Tabs nav — sticky below site header. Bar styling is constant
+          (always bordered + blurred); a drop shadow toggles on the
+          stuck state so the bar reads as a distinct floating surface
+          below the SiteHeader instead of fusing with it.
+          Sticky offset is bumped from 52/60 to 60/68 so the bar leaves
+          a small breathing gap below the SiteHeader's bottom border.
+          Width strategy: the ul uses `w-max mx-auto` so it sizes exactly
+          to its tab content and centers when it fits in the viewport. The
+          parent's `overflow-x-auto` only kicks in when the ul actually
+          overflows (many tabs on a small phone). `overscroll-x-none`
+          prevents iOS Safari's rubber-band drag from exposing empty scroll
+          area beyond the tabs — without it, users can drag the strip into
+          phantom empty space even when no horizontal scroll is needed. */}
+      <div ref={sentinelRef} aria-hidden className="h-px w-full" />
+      <div
+        data-stuck={isStuck}
+        className={`sticky top-[60px] md:top-[68px] z-30 bg-[var(--color-bg)]/95 backdrop-blur-md border-b border-[var(--color-border)] transition-shadow duration-200 ${
+          isStuck
+            ? 'shadow-[0_8px_24px_-12px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.55)]'
+            : 'shadow-none'
+        }`}
+      >
+        <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto overscroll-x-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none w-max mx-auto">
             {TABS.filter((tab) => dashboardSettings[TAB_VISIBILITY_KEY[tab.key]]).map((tab) => {
               const isActive =
                 tab.key === activeTab ||

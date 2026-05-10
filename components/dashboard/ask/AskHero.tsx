@@ -27,7 +27,6 @@ type Props = {
 export function AskHero({ locale, userFirstName }: Props) {
   const t = useTranslations('dashboard.ask.hero')
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
 
   // Greeting uses the user's first name when available; falls back to a
@@ -63,13 +62,16 @@ export function AskHero({ locale, userFirstName }: Props) {
           {greeting}
         </span>
 
-        <h1
-          className={`m-0 text-[clamp(36px,5.5vw,64px)] leading-[1.1] tracking-[-0.01em] [text-wrap:balance] text-[var(--color-fg1)] ${fontDisplay} ${
+        {/* h2 (not h1) — DashboardLayout already renders the page <h1>
+            for the user's display name (the avatar header). Two h1s would
+            break the heading outline (WCAG 1.3.1 / 2.4.6). */}
+        <h2
+          className={`m-0 text-[clamp(36px,5.5vw,64px)] leading-[1.1] tracking-[-0.01em] [text-wrap:balance] text-[var(--color-fg1)] font-arabic-display ${
             isRtl ? '' : '!tracking-[-0.025em]'
           }`}
         >
           {t('title_a')} <span className="text-[var(--color-accent)]">{t('title_b')}</span>
-        </h1>
+        </h2>
 
         <p
           className={`m-0 max-w-[52ch] text-[var(--color-fg2)] ${
@@ -107,7 +109,7 @@ export function AskHero({ locale, userFirstName }: Props) {
           </span>
           <div className="flex flex-col gap-0.5 min-w-0">
             <strong
-              className={`text-[16px] font-bold text-[var(--color-fg1)] ${fontDisplay}`}
+              className="text-[16px] font-bold text-[var(--color-fg1)] font-arabic-display"
             >
               {t('note_name')}
             </strong>

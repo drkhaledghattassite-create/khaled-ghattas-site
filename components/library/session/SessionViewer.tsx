@@ -680,7 +680,7 @@ export function SessionViewer({
                 initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                transition={{ duration: 0.25, ease: EASE_EDITORIAL }}
                 role="region"
                 aria-live="polite"
                 // Accessible name on a SEPARATE sr-only element below
@@ -779,7 +779,7 @@ export function SessionViewer({
                 initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                transition={{ duration: 0.25, ease: EASE_EDITORIAL }}
                 aria-live="polite"
                 className="flex flex-col items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-accent-soft)] px-5 py-6 text-center"
               >
@@ -809,7 +809,7 @@ export function SessionViewer({
                 initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                transition={{ duration: 0.25, ease: EASE_EDITORIAL }}
                 aria-label={`${tLibrary('session.next_item_label')} — ${nextItem.title}`}
                 className={`group flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3 text-start transition-colors hover:border-[var(--color-fg1)] hover:bg-[var(--color-bg-deep)] ${
                   isCurrentCompleted

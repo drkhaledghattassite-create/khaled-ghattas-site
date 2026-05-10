@@ -30,7 +30,6 @@ import type { AdminQuestionsRow } from './AdminQuestionsPage'
 
 type Props = {
   rows: AdminQuestionsRow[]
-  locale: 'ar' | 'en'
   onMarkAnswered: (row: AdminQuestionsRow) => void
   onEditAnswer: (row: AdminQuestionsRow) => void
   onArchive: (row: AdminQuestionsRow) => void
@@ -38,19 +37,17 @@ type Props = {
   onDelete: (row: AdminQuestionsRow) => void
 }
 
-function formatDate(iso: string, locale: 'ar' | 'en'): string {
+// YYYY-MM-DD HH:MM is the convention used elsewhere in admin tables
+// (corporate_requests). Locale-neutral on purpose so the column width is
+// predictable across both AR and EN — no `locale` arg needed.
+function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  // YYYY-MM-DD HH:MM is the convention used elsewhere in admin tables
-  // (corporate_requests). Keep it locale-neutral so the column width is
-  // predictable.
-  void locale
   return d.toISOString().slice(0, 16).replace('T', ' ')
 }
 
 export function QuestionsTable({
   rows,
-  locale,
   onMarkAnswered,
   onEditAnswer,
   onArchive,
@@ -67,23 +64,34 @@ export function QuestionsTable({
       header: t('table.col_created'),
       cell: ({ row }) => (
         <span className="text-[12px] text-fg3 [font-feature-settings:'tnum']">
-          {formatDate(row.original.createdAt, locale)}
+          {formatDate(row.original.createdAt)}
         </span>
       ),
     },
     {
       accessorKey: 'user',
       header: t('table.col_asker'),
-      cell: ({ row }) => (
-        <div className="flex flex-col leading-tight">
-          <span className="font-medium text-fg1">
-            {row.original.user.name ?? '—'}
-          </span>
-          <span className="text-[11px] text-fg3" dir="ltr">
-            {row.original.user.email}
-          </span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const u = row.original.user
+        if (!u) {
+          // Orphan: asker row missing despite ON DELETE CASCADE. Surface
+          // the state explicitly so admin doesn't think the cell is just
+          // missing data.
+          return (
+            <span className="text-[12px] italic text-fg3">
+              {t('table.asker_unknown')}
+            </span>
+          )
+        }
+        return (
+          <div className="flex flex-col leading-tight">
+            <span className="font-medium text-fg1">{u.name ?? '—'}</span>
+            <span className="text-[11px] text-fg3" dir="ltr">
+              {u.email}
+            </span>
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'subject',

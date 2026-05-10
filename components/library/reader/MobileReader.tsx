@@ -183,6 +183,23 @@ export function MobileReader({
     bump()
   }, [bump, state])
 
+  // Keyboard / switch-control nav: identical to the desktop bottom bar
+  // pattern. Single-page step (vs desktop's spread step of 2) because
+  // the mobile reader renders one page at a time.
+  const handlePrevPage = useCallback(() => {
+    state.goToPage(state.currentPage - 1)
+    bump()
+  }, [bump, state])
+
+  const handleNextPage = useCallback(() => {
+    state.goToPage(state.currentPage + 1)
+    bump()
+  }, [bump, state])
+
+  const isAtFirst = state.currentPage <= 1
+  const isAtLast =
+    state.totalPages != null && state.currentPage >= state.totalPages
+
   // Page sizing: when zoomed, 2x base width and overflow scrolls within
   // the page wrapper. When fit-width, page fills viewport width with a
   // small safety margin.
@@ -271,6 +288,10 @@ export function MobileReader({
         isPageBookmarked={state.isPageBookmarked(state.currentPage)}
         onToggleBookmark={handleToggleBookmark}
         onScrubberCommit={handleScrubberCommit}
+        onPrevPage={handlePrevPage}
+        onNextPage={handleNextPage}
+        isAtFirst={isAtFirst}
+        isAtLast={isAtLast}
       />
 
       <ReaderSettingsSheet

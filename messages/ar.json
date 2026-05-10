@@ -610,7 +610,13 @@
     "column_connect": "تواصل",
     "location": "بيروت — لبنان",
     "brand_quote": "الكلمة فعلٌ، والفكرة بذرة. ما زرعناه يبقى.",
-    "brand_quote_attribution": "د. خالد غطاس"
+    "brand_quote_attribution": "د. خالد غطاس",
+    "developer": {
+      "eyebrow": "تصميم وتطوير",
+      "name": "كمال تشيمي",
+      "aria_linkedin": "كمال تشيمي على لينكدإن",
+      "aria_phone": "اتصل بكمال تشيمي"
+    }
   },
   "coming_soon": {
     "eyebrow": "قريباً",
@@ -680,6 +686,7 @@
       "corporate_clients": "شعارات العملاء",
       "corporate_requests": "طلبات الشركات",
       "questions": "الأسئلة",
+      "questions_pending_aria": "{count, plural, zero {لا أسئلة قيد المراجعة} one {سؤال واحد قيد المراجعة} two {سؤالان قيد المراجعة} few {# أسئلة قيد المراجعة} many {# سؤالاً قيد المراجعة} other {# سؤال قيد المراجعة}}",
       "booking_tours": "الجولات",
       "booking_bookings": "الحجوزات",
       "booking_tour_suggestions": "اقتراحات الجولات",
@@ -1039,6 +1046,7 @@
     "questions": {
       "description": "راجع الأسئلة الواردة، حدّد الأجوبة، أو أرشف.",
       "filter": {
+        "aria": "تصفية الأسئلة بحسب الحالة",
         "status_all": "الكل",
         "status_pending": "قيد المراجعة",
         "status_answered": "تمّت الإجابة",
@@ -1050,6 +1058,7 @@
         "col_subject": "الموضوع",
         "col_category": "الفئة",
         "col_status": "الحالة",
+        "asker_unknown": "لم يعد الحساب موجودًا",
         "empty_title": "لا توجد أسئلة في هذه الفئة",
         "empty_body": "جرّب فئة أخرى أو انتظر أسئلة جديدة."
       },
@@ -1100,6 +1109,7 @@
       "toast": {
         "answered_with_email": "تمّ التحديد كمُجاب وأُرسل الإشعار بالبريد.",
         "answered_text_note": "تمّ التحديد كمُجاب. لم يُرسل بريد (ملاحظة نصية).",
+        "answered_no_recipient": "تمّ التحديد كمُجاب. لم يعد حساب السائل موجودًا، لذا لم يُرسل بريد.",
         "answered_email_failed": "تمّ التحديد كمُجاب لكن تعذّر إرسال البريد — أبلغ السائل يدويًا من فضلك.",
         "archived": "تمّت أرشفة السؤال.",
         "reverted": "أُعيد السؤال إلى قيد المراجعة.",

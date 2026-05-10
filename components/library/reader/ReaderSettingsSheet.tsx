@@ -52,18 +52,64 @@ export function ReaderSettingsSheet({
   const [tab, setTab] = useState<'settings' | 'bookmarks'>('settings')
   const [pageInput, setPageInput] = useState(String(currentPage))
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     setPageInput(String(currentPage))
   }, [currentPage])
 
+  // Capture focus on open, move to close button after entry animation,
+  // restore on close. Mirrors DownloadDialog/ShortcutsOverlay exactly so
+  // every reader modal/sheet behaves identically for keyboard + AT users.
   useEffect(() => {
-    if (open) {
-      const tid = setTimeout(() => closeBtnRef.current?.focus(), 80)
-      return () => clearTimeout(tid)
+    if (!open) return
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    const tid = setTimeout(() => closeBtnRef.current?.focus(), 100)
+    return () => {
+      clearTimeout(tid)
+      previousFocusRef.current?.focus?.()
     }
   }, [open])
+
+  // Trap Tab inside the sheet — without this, tabbing escapes into the
+  // reader chrome behind, which is invisible/pointer-events-none while
+  // the sheet is open and produces an invisible focus state.
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const node = dialogRef.current
+      if (!node) return
+      const focusables = node.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input, textarea',
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]!
+      const last = focusables[focusables.length - 1]!
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
+  // Escape closes the sheet. Mobile users with a Bluetooth keyboard or
+  // VoiceOver expect this — and it costs nothing for non-keyboard users.
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open, onClose])
 
   const fontBody = isRtl ? 'font-arabic-body' : 'font-display'
 
@@ -99,6 +145,7 @@ export function ReaderSettingsSheet({
           />
           <motion.div
             key="sheet"
+            ref={dialogRef}
             initial={
               reduceMotion ? { opacity: 0 } : { y: '100%' }
             }
@@ -229,7 +276,9 @@ export function ReaderSettingsSheet({
                         value={pageInput}
                         onChange={(e) => setPageInput(e.target.value)}
                         placeholder={t('settings.go_to_page_placeholder')}
-                        className={`min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-2 text-[14px] text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
+                        // text-[16px] is required to suppress iOS Safari's
+                        // focus-zoom (any input below 16px triggers it).
+                        className={`min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--reader-border)] bg-[var(--reader-surface)] px-3 py-2 text-[16px] text-[var(--reader-fg)] focus:border-[var(--reader-accent)] focus:outline-none ${fontBody}`}
                         dir="ltr"
                       />
                       <button

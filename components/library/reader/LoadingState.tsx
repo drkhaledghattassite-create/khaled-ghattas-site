@@ -57,7 +57,7 @@ export function LoadingState({
           transition={
             reduceMotion
               ? undefined
-              : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
+              : { duration: 1.6, repeat: Infinity, ease: EASE_EDITORIAL }
           }
           className="h-[2px] w-[120px] rounded-full bg-[var(--reader-border-strong)]"
         />

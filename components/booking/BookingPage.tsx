@@ -58,7 +58,11 @@ type Props = {
 const SECTION_IDS = ['tours', 'reconsider', 'sessions'] as const
 type SectionId = (typeof SECTION_IDS)[number]
 
-const SCROLL_OFFSET = 120
+// SiteHeader (60px) + sub-nav sticky top (68px) + sub-nav height (~50px)
+// + a small breathing buffer. Used by scroll-spy threshold checks and
+// programmatic jumps so a tapped chip lands the section header just
+// below the sticky sub-bar instead of underneath it.
+const SCROLL_OFFSET = 130
 
 function effectiveRemaining(b: BookingWithHolds): number {
   return Math.max(0, b.maxCapacity - b.bookedCount - b.activeHoldsCount)

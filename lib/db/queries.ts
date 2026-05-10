@@ -4474,7 +4474,11 @@ export async function createUserQuestion(input: {
     const store = readStore()
     const now = new Date()
     const row: UserQuestion = {
-      id: `00000000-0000-0000-0000-${Date.now().toString().slice(-12).padStart(12, '0')}`,
+      // Match the real-DB `defaultRandom()` behavior on this column. The
+      // earlier Date.now-derived id was a millisecond-resolution string
+      // that could collide if two submissions landed in the same ms (rare
+      // but possible in mock dev iteration).
+      id: crypto.randomUUID(),
       userId: input.userId,
       subject: input.subject,
       body: input.body,
@@ -4522,12 +4526,19 @@ export async function createUserQuestion(input: {
  * pre-launch; `isAnonymous` will be `false` on every new row but legacy
  * data may still be `true`.
  */
+/**
+ * `user` is nullable so the orphan-user case (asker row missing — should
+ * be impossible thanks to the user_questions.user_id FK ON DELETE
+ * CASCADE, but defense-in-depth) is explicit. Callers MUST handle null
+ * before reading email/name. The action layer uses null to skip the
+ * notification email.
+ */
 export type AdminQuestion = UserQuestion & {
   user: {
     id: string
     name: string | null
     email: string
-  }
+  } | null
 }
 
 /**
@@ -4562,11 +4573,12 @@ export async function getAdminQuestions(input: {
       const u = userById.get(q.userId)
       return {
         ...q,
-        user: {
-          id: q.userId,
-          name: u?.name ?? null,
-          email: u?.email ?? '',
-        },
+        // null when the asker row is missing — orphaned question. Cascade
+        // FK should prevent this in real DB, but the mock placeholder set
+        // is small and a question can outlive a placeholder user.
+        user: u
+          ? { id: q.userId, name: u.name ?? null, email: u.email }
+          : null,
       }
     })
     return { rows, total: all.length, page, pageSize }
@@ -4596,11 +4608,17 @@ export async function getAdminQuestions(input: {
       .offset(offset)
     const rows: AdminQuestion[] = dbRows.map((r) => ({
       ...r.question,
-      user: {
-        id: r.userId ?? r.question.userId,
-        name: r.userName ?? null,
-        email: r.userEmail ?? '',
-      },
+      // LEFT JOIN: null `users.id` ⇒ orphaned question (FK cascade should
+      // prevent this; defense-in-depth). The action layer skips email send
+      // when user is null and surfaces the dedicated 'no recipient' toast.
+      user:
+        r.userId != null
+          ? {
+              id: r.userId,
+              name: r.userName ?? null,
+              email: r.userEmail ?? '',
+            }
+          : null,
     }))
     return { rows, total: Number(count) || 0, page, pageSize }
   } catch (err) {
@@ -4625,7 +4643,9 @@ export async function getQuestionById(
     const u = userById.get(q.userId)
     return {
       ...q,
-      user: { id: q.userId, name: u?.name ?? null, email: u?.email ?? '' },
+      user: u
+        ? { id: q.userId, name: u.name ?? null, email: u.email }
+        : null,
     }
   }
   if (!HAS_DB) return null
@@ -4645,11 +4665,16 @@ export async function getQuestionById(
     if (!row) return null
     return {
       ...row.question,
-      user: {
-        id: row.userId ?? row.question.userId,
-        name: row.userName ?? null,
-        email: row.userEmail ?? '',
-      },
+      // LEFT JOIN: null `users.id` ⇒ orphaned. FK cascade should prevent
+      // this; explicit null lets the action layer skip the email send.
+      user:
+        row.userId != null
+          ? {
+              id: row.userId,
+              name: row.userName ?? null,
+              email: row.userEmail ?? '',
+            }
+          : null,
     }
   } catch (err) {
     console.error('[queries.getQuestionById]', err)

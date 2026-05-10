@@ -175,6 +175,7 @@ export function QuestionForm({ locale, onSubmitted }: Props) {
             maxLength={120}
             placeholder={t('subject_placeholder')}
             disabled={pending}
+            aria-required="true"
             aria-invalid={subjectError ? true : undefined}
             aria-describedby={subjectError ? 'ask-subject-error' : undefined}
             {...form.register('subject')}
@@ -224,6 +225,7 @@ export function QuestionForm({ locale, onSubmitted }: Props) {
             rows={6}
             placeholder={t('body_placeholder')}
             disabled={pending}
+            aria-required="true"
             aria-invalid={bodyError ? true : undefined}
             aria-describedby={bodyError ? 'ask-body-error' : undefined}
             {...form.register('body')}

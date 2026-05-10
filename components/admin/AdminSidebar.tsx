@@ -50,6 +50,12 @@ type NavItem = {
    *  (0, null, undefined) hide the badge — we don't want a "0" chip
    *  shouting on an empty queue. */
   badgeCount?: number
+  /** Translation key (under `admin.nav`) used for the badge's
+   *  screen-reader label. The key MUST accept a `{count}` placeholder
+   *  so the announcement reads "3 pending questions" (or whatever
+   *  semantically matches the count). Without this, screen-reader
+   *  users hear a bare number with no context. */
+  badgeAriaLabelKey?: string
 }
 
 type NavGroup = {
@@ -95,6 +101,7 @@ function buildGroups(
       key: 'questions',
       icon: HelpCircle,
       badgeCount: pendingQuestionCount,
+      badgeAriaLabelKey: 'questions_pending_aria',
     })
   }
 
@@ -238,13 +245,31 @@ export function AdminSidebarContent({
                       {/* Count badge first (e.g., pending questions); active
                           dot only when the entry has no badge to show.
                           Both can't be useful at once — the badge already
-                          implies meaningful state. */}
+                          implies meaningful state.
+
+                          For screen readers we hide the bare-number visual
+                          (aria-hidden on the digit) and surface a
+                          semantic SR-only label via the badge wrapper's
+                          aria-label, e.g. "3 pending questions" rather
+                          than just "3" with no context. */}
                       {item.badgeCount && item.badgeCount > 0 ? (
                         <span
                           className="ms-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-display font-bold leading-none text-accent-fg [font-feature-settings:'tnum']"
-                          aria-label={`${item.badgeCount}`}
+                          aria-label={
+                            item.badgeAriaLabelKey
+                              ? tNav(
+                                  // narrow to the typed nav-key set; this
+                                  // key must exist in messages/{ar,en}.json
+                                  // under `admin.nav` and accept `{count}`
+                                  item.badgeAriaLabelKey as 'questions_pending_aria',
+                                  { count: item.badgeCount },
+                                )
+                              : undefined
+                          }
                         >
-                          {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                          <span aria-hidden="true">
+                            {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                          </span>
                         </span>
                       ) : active ? (
                         <span aria-hidden className="ms-auto h-1.5 w-1.5 rounded-full bg-accent" />

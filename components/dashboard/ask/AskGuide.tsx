@@ -24,7 +24,6 @@ const POINT_KEYS = [
 export function AskGuide({ locale }: Props) {
   const t = useTranslations('dashboard.ask.guide')
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
 
   return (
     <aside
@@ -33,7 +32,7 @@ export function AskGuide({ locale }: Props) {
     >
       <h3
         id="ask-guide-heading"
-        className={`m-0 mb-3 text-[17px] font-bold text-[var(--color-fg1)] ${fontDisplay} ${
+        className={`m-0 mb-3 text-[17px] font-bold text-[var(--color-fg1)] font-arabic-display ${
           isRtl ? '' : '!tracking-[-0.01em]'
         }`}
       >

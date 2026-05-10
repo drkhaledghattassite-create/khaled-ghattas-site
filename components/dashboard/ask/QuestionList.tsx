@@ -52,7 +52,6 @@ function toLocaleNumber(n: number, locale: 'ar' | 'en'): string {
 export function QuestionList({ locale, items }: Props) {
   const t = useTranslations('dashboard.ask.list')
   const isRtl = locale === 'ar'
-  const fontDisplay = isRtl ? 'font-arabic-display' : 'font-arabic-display'
 
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -98,7 +97,7 @@ export function QuestionList({ locale, items }: Props) {
               {t('eyebrow')}
             </span>
             <h2
-              className={`m-0 text-[clamp(22px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--color-fg1)] ${fontDisplay} ${
+              className={`m-0 text-[clamp(22px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--color-fg1)] font-arabic-display ${
                 isRtl ? '' : '!tracking-[-0.015em]'
               }`}
             >
@@ -141,7 +140,7 @@ export function QuestionList({ locale, items }: Props) {
             {t('eyebrow')}
           </span>
           <h2
-            className={`m-0 text-[clamp(22px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--color-fg1)] ${fontDisplay} ${
+            className={`m-0 text-[clamp(22px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--color-fg1)] font-arabic-display ${
               isRtl ? '' : '!tracking-[-0.015em]'
             }`}
           >
@@ -158,9 +157,15 @@ export function QuestionList({ locale, items }: Props) {
           </p>
         </div>
 
-        {/* Segmented filter pills */}
+        {/* Segmented filter pills.
+            Implemented as plain <button>s in a labeled group with
+            aria-pressed for state. We don't claim WAI-ARIA tab semantics
+            (role="tablist" / role="tab") because there's no companion
+            tabpanel — the active filter swaps the rows in this list,
+            not a tabpanel. aria-pressed is the right primitive for a
+            visual segmented-control toggle. */}
         <div
-          role="tablist"
+          role="group"
           aria-label={t('filter_aria')}
           className="inline-flex gap-0.5 self-end rounded-full border border-[var(--color-border)] bg-[var(--color-bg-deep)] p-[3px]"
         >
@@ -169,12 +174,12 @@ export function QuestionList({ locale, items }: Props) {
             return (
               <button
                 key={key}
-                role="tab"
-                aria-selected={isActive}
+                type="button"
+                aria-pressed={isActive}
                 onClick={() => setFilter(key)}
                 className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-0 px-3.5 py-1.5 text-[var(--color-fg2)] transition-[background-color,color,box-shadow] duration-200 hover:text-[var(--color-fg1)] ${
                   isActive
-                    ? 'bg-[var(--color-bg-elevated)] text-[var(--color-fg1)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                    ? 'bg-[var(--color-bg-elevated)] text-[var(--color-fg1)] shadow-[var(--shadow-card)]'
                     : ''
                 } ${
                   isRtl

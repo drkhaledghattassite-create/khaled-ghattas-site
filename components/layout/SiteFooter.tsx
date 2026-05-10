@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { Phone } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
@@ -13,6 +14,9 @@ import {
   YouTubeIcon,
 } from '@/components/shared/social-icons'
 import { staggerContainer, staggerItem, EASE_EDITORIAL } from '@/lib/motion/variants'
+
+const DEVELOPER_LINKEDIN_URL = 'https://www.linkedin.com/in/kamal-chhimi-77684b228'
+const DEVELOPER_PHONE_TEL = '+96181447195'
 
 type FooterToggles = {
   show_footer_social: boolean
@@ -255,6 +259,74 @@ export function SiteFooter({
           <span>{t('copyright')}</span>
         </div>
       )}
+
+      {/* Developer credit — the quiet signature at the very bottom.
+          Kept as a separate band with its own hairline so it reads as a
+          distinct authorship attribution, not as part of Dr. Khaled's
+          colophon. Editorial rhythm: eyebrow → name → accent micro-line →
+          icon row, matching the brand-quote section above. */}
+      <div className="border-t border-[var(--color-border)]">
+        <div className="mx-auto max-w-[var(--container-max)] [padding-block:20px_24px] [padding-inline:clamp(20px,5vw,56px)]">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-10%' }}
+            transition={{ duration: 0.6, ease: EASE_EDITORIAL }}
+            className="flex flex-col items-center gap-2 text-center"
+          >
+            <span
+              className={`text-[10px] font-semibold uppercase tracking-[0.26em] text-[var(--color-fg3)] ${
+                isRtl
+                  ? 'font-arabic-body !text-[11px] !tracking-[0.06em] !normal-case !font-bold'
+                  : 'font-display'
+              }`}
+            >
+              {t('developer.eyebrow')}
+            </span>
+            <a
+              href={DEVELOPER_LINKEDIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('developer.aria_linkedin')}
+              className={`text-[16px] font-semibold text-[var(--color-fg1)] transition-colors duration-300 ease-[var(--ease-editorial)] hover:text-[var(--color-accent)] ${
+                isRtl ? 'font-arabic-display' : 'font-arabic-display tracking-[-0.005em]'
+              }`}
+            >
+              {t('developer.name')}
+            </a>
+            <motion.span
+              aria-hidden
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true, margin: '-10%' }}
+              transition={{ duration: 0.6, ease: EASE_EDITORIAL, delay: 0.18 }}
+              className="block w-8 h-px bg-[var(--color-accent)]"
+            />
+            <ul className="mt-1 flex items-center gap-1.5 list-none m-0 p-0">
+              <li>
+                <a
+                  href={DEVELOPER_LINKEDIN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t('developer.aria_linkedin')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-fg2)] transition-colors duration-200 hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+                >
+                  <LinkedInIcon className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`tel:${DEVELOPER_PHONE_TEL}`}
+                  aria-label={t('developer.aria_phone')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-fg2)] transition-colors duration-200 hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+                >
+                  <Phone className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+      </div>
     </footer>
   )
 }

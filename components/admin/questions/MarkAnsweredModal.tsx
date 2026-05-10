@@ -47,6 +47,8 @@ export function MarkAnsweredModal({
   const t = useTranslations('admin.questions.modal.mark_answered')
   const tShared = useTranslations('admin.questions.modal.shared')
   const tForms = useTranslations('admin.forms')
+  // `locale` is destructured for the body-excerpt direction signaling
+  // (textarea / paragraph fonts vary by locale below).
   const isRtl = locale === 'ar'
   const [value, setValue] = useState(row.answerReference ?? '')
   const trimmed = value.trim()
@@ -70,11 +72,7 @@ export function MarkAnsweredModal({
           <div className="text-[11px] font-display font-semibold uppercase tracking-[0.12em] text-fg3">
             {tShared('question_eyebrow')}
           </div>
-          <h4
-            className={`mt-1.5 text-[15px] font-bold leading-[1.35] text-fg1 ${
-              isRtl ? 'font-arabic-display' : 'font-arabic-display'
-            }`}
-          >
+          <h4 className="mt-1.5 text-[15px] font-bold leading-[1.35] text-fg1 font-arabic-display">
             {row.subject}
           </h4>
           <p
@@ -100,6 +98,10 @@ export function MarkAnsweredModal({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             disabled={pending}
+            // The modal exists to mark a question as answered, which
+            // requires a non-empty reference (URL or note). Mirrors
+            // the `superRefine` rule on `updateQuestionStatusSchema`.
+            aria-required="true"
             maxLength={ANSWER_REFERENCE_MAX}
             placeholder={t('reference_placeholder')}
             className="w-full resize-y rounded-md border border-border-strong bg-bg-elevated px-3.5 py-2.5 text-[14px] text-fg1 outline-none transition-[border-color,box-shadow] focus:border-accent focus:shadow-[var(--shadow-focus)]"

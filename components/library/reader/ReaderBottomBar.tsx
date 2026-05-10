@@ -70,8 +70,14 @@ export function ReaderBottomBar({
     >
       {variant === 'mobile' ? (
         <div className="flex flex-col gap-2 px-4 pb-3 pt-2">
-          {/* Top row: bookmark toggle + indicator */}
-          <div className="flex items-center justify-between gap-3">
+          {/* Top row: bookmark | [prev | indicator | next] | spacer.
+              The spacer matches the bookmark's footprint so the centred
+              cluster stays optically centred. Prev/next are needed for
+              keyboard / switch-control users — swipe-only nav makes the
+              book unreadable on a Bluetooth keyboard. Visual treatment
+              (h-10 w-10 rounded-full, fg-muted with hover-fg) matches
+              the bookmark button so the bar reads as one toolset. */}
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onToggleBookmark}
@@ -86,16 +92,40 @@ export function ReaderBottomBar({
             >
               <BookmarkIcon filled={isPageBookmarked} />
             </button>
-            <span
-              className={`text-center text-[13px] font-semibold text-[var(--reader-fg)] [font-feature-settings:'tnum'] ${fontBody}`}
-              dir="ltr"
-              aria-label={t('aria.current_page_indicator')}
-            >
-              {t('controls.page_x_of_y', {
-                current: currentPage,
-                total: totalPages ?? '—',
-              })}
-            </span>
+            <div className="flex items-center gap-1">
+              {onPrevPage && (
+                <button
+                  type="button"
+                  onClick={onPrevPage}
+                  disabled={isAtFirst}
+                  aria-label={t('controls.previous')}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--reader-fg-muted)] transition-colors hover:bg-[var(--reader-surface)] hover:text-[var(--reader-fg)] disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <ArrowIcon direction={isRtl ? 'right' : 'left'} />
+                </button>
+              )}
+              <span
+                className={`text-center text-[13px] font-semibold text-[var(--reader-fg)] [font-feature-settings:'tnum'] ${fontBody}`}
+                dir="ltr"
+                aria-label={t('aria.current_page_indicator')}
+              >
+                {t('controls.page_x_of_y', {
+                  current: currentPage,
+                  total: totalPages ?? '—',
+                })}
+              </span>
+              {onNextPage && (
+                <button
+                  type="button"
+                  onClick={onNextPage}
+                  disabled={isAtLast}
+                  aria-label={t('controls.next')}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--reader-fg-muted)] transition-colors hover:bg-[var(--reader-surface)] hover:text-[var(--reader-fg)] disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <ArrowIcon direction={isRtl ? 'left' : 'right'} />
+                </button>
+              )}
+            </div>
             <span aria-hidden className="h-10 w-10 shrink-0" />
           </div>
 

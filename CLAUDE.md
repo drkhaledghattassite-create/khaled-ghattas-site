@@ -1,152 +1,52 @@
 # CLAUDE.md — drkhaledghattass.com
 
-Welcome. Read this fully before any work in this repo. It is the single source
-of truth for project conventions. Code is the source of truth for everything
-else; when this file and code disagree, trust the code and update this file.
+Project conventions index. Read fully before any work. Code is the source
+of truth for everything else; when this file and code disagree, trust the
+code and update this file.
+
+For per-surface deep dives, see `docs/architecture/`:
+- [pdf-reader.md](docs/architecture/pdf-reader.md) — `/dashboard/library/read/[bookId]`
+- [session-viewer.md](docs/architecture/session-viewer.md) — `/dashboard/library/session/[sessionId]`
+- [booking-domain.md](docs/architecture/booking-domain.md) — `/booking`, `/dashboard/bookings`, `/admin/booking/*`
+- [ask-dr-khaled.md](docs/architecture/ask-dr-khaled.md) — `/dashboard/ask`, `/admin/questions`
+
+For volatile state: `LAUNCH-CHECKLIST.md`, `TODO.md`, `CONTENT-NEEDED.md`.
 
 ## Working with Claude on this project
 
-Every substantial or behavior-changing prompt must result in CLAUDE.md being updated to reflect the new state. If a prompt adds files, tables, routes, components, conventions, dependencies, or changes existing patterns, the implementer (Claude or otherwise) updates CLAUDE.md in the same change. CLAUDE.md is the source of truth for project conventions; if it drifts from reality, future sessions break.
+Every behavior-changing prompt must result in CLAUDE.md being updated to
+reflect the new state. If a prompt adds files, tables, routes, components,
+conventions, dependencies, or changes existing patterns, the implementer
+updates CLAUDE.md (or the relevant `docs/architecture/*.md`) in the same
+change. If CLAUDE.md drifts from reality, future sessions break.
+
+CLAUDE.md is for conventions — patterns an AI needs every conversation.
+Surface-specific architecture (how the PDF reader saves progress, how
+booking holds work) goes in `docs/architecture/<surface>.md`.
 
 ## Project overview
 
-`drkhaledghattass.com` is the bilingual editorial site for Dr. Khaled Ghattass
-— Lebanese cell biologist, author, lecturer, and founder of «الورشة»
-(Al-Warsheh / Workshop) initiative (founded 2020-07-11 in Burja, Lebanon;
-Khaled Ghattass Library opened 2023). The site showcases his books, articles,
-interviews, and events to a primarily Arab-speaking, primarily mobile audience.
+`drkhaledghattass.com` is the bilingual editorial site for Dr. Khaled
+Ghattass — Lebanese cell biologist, author, lecturer, and founder of
+«الورشة» (Al-Warsheh / Workshop) initiative (founded 2020-07-11 in Burja,
+Lebanon; Khaled Ghattass Library opened 2023). The site showcases his
+books, articles, interviews, and events to a primarily Arab-speaking,
+primarily mobile audience.
 
 Tour 2025-2026 theme: «بين الغريب والسائد.. لقاء عن الحب والحياة».
 
 This is a paid freelance project. Lead developer: Kamal Chhimi.
 
-Primary locale: Arabic (RTL) at `/`.
-Secondary locale: English (LTR) at `/en/`.
-
-## Current status
-
-No release tags exist yet. Recent commits (most recent first):
-
-- `2586036` — unified loader on every transition, admin auth-toggle visibility,
-  mobile top-nav (bottom nav removed), purchase-blocked-without-login flow
-- `7c060ca` — side-nav polish, navigation transitions on mobile
-- `3e75c2d` — agents created, scroll animation polish
-- `4551122` — design fixes, login/signup flow, removed old-URL checkout redirect
-- `30408bf` — Qalem v2 implementation: editorial hero, folio articles, store
-  carousel, dashboard, auth
-- `fdb5712` — Qalem design system handoff from Claude Design
-- `6ede3e7` — Tailwind v4 migration + dark mode + section restructure
-- `21a319e` — Step 2.5 UX (locale switcher, auth menu, Store rename)
-- `bcb3108` — Phase 5: full admin panel with mock auth
-- `8e27f90` — Phase 4A: Drizzle schema, migrations, unified query layer
-
-What works in dev:
-- All public + auth + dashboard + admin routes render under both locales
-  (Arabic at `/`, English at `/en`).
-- Mock auth lets you impersonate `ADMIN`, `CLIENT`, or `USER` without a DB.
-  Toggled OFF in `.env.local` once real Better Auth is configured.
-- Without `DATABASE_URL`, all data reads fall back to `lib/placeholder-data.ts`.
-- Admin CRUD UIs are live for articles, books, interviews, events, gallery,
-  orders, users, settings, content-blocks, plus the **corporate-programs
-  suite** (programs · client logos · incoming requests, see Corporate section
-  below). The structured site-settings toggle panel lives at
-  `/admin/settings/site`.
-- Purchase flow is gated client-side (via `useSession`) AND server-side
-  (`/api/checkout` returns 401 without a session). Unauthenticated buy
-  attempts open `AuthRequiredDialog`, which sends users to
-  `/login?redirect=<original-path>` and bounces them back after sign-in.
-- **Phase 5.2 — cross-content "Continue" surfaces** originally extended
-  the unified `getMostRecentActivity` helper to three additional
-  surfaces. After Phase A3 (booking domain integration + Account-tab
-  cleanup), only ONE of those surfaces is still mounted:
-  1. ~~**Public homepage Welcome back banner**~~ — UNMOUNTED in Phase
-     A3.2. The continue affordance lives on tab-specific surfaces in
-     the dashboard (`/dashboard/library`, `/dashboard/bookings`); the
-     public homepage showing it for logged-in visitors duplicated those
-     surfaces. Component files (`components/sections/WelcomeBackBanner.tsx`
-     + `WelcomeBackCard.tsx`) kept on disk for potential future use.
-  2. ~~**Dashboard root activity strip**~~ — UNMOUNTED in Phase A3.1.
-     Same reasoning — the Library tab's `ContinueReadingHero` is the
-     right home for "resume" affordances. Account tab is profile-only
-     now. Component (`components/dashboard/AccountActivityStrip.tsx`)
-     kept on disk.
-  3. **Post-purchase "Start now" CTA** on `/checkout/success` — STILL
-     LIVE. Resolves the Stripe `?session_id=cs_xxx` query param to the
-     persisted order via `getOrderByStripeSessionId(id)`, picks a
-     deterministic first item (BOOK before SESSION, then alphabetical
-     by `book.slug`), and emits a primary CTA deep-linking to
-     `/dashboard/library/read/{bookId}` or
-     `/dashboard/library/session/{sessionId}`. The pre-5.2 "Go to
-     library" link demotes to secondary. Falls back to the pre-5.2
-     two-CTA shape when the session_id is missing/invalid OR the
-     webhook hasn't persisted the order yet.
-  Surface 4 (a "Continue" indicator dot in the AuthMenu trigger) was
-  considered and **skipped**: AuthMenu sits in the public layout, so
-  every public-page navigation would pay an extra
-  `getMostRecentActivity` query just to power a small dot.
-- **Phase 2 — premium PDF reader is live** at
-  `/dashboard/library/read/[bookId]`. Built on `react-pdf@9` (which
-  pins `pdfjs-dist@4.8.69`, the LEGACY build — see "PDF.js — pinned to
-  legacy build" below for why). Worker, cMaps, and standard fonts
-  copied to `public/` by the `scripts/copy-pdf-assets.mjs` postinstall
-  hook (paths gitignored — they regenerate per install). The route renders **full-bleed** (a `fixed
-  inset-0 z-[100]` overlay over the dashboard chrome) — DashboardLayout
-  is intentionally NOT wrapped around the read path; that layout still
-  applies to the "book has no digital file yet" notice.
-  **Architecture**: `PdfReader.tsx` is the orchestrator that mounts a
-  single `<Document>`, hosts `useReaderState`, and picks Mobile vs
-  Desktop via `useViewport()` (with hydration-safe `mounted` flag).
-  Mobile (< 768px): full-bleed page, auto-hiding top/bottom bars,
-  swipe / drag / tap-zone navigation, double-tap zoom (1x ↔ 2x),
-  haptic feedback. Desktop (>= 768px): two-page spread with collapsible
-  side rail (RTL leading edge — open by default at >= 1280px) housing
-  ToC (extracted via `pdf.getOutline()`), bookmarks, theme picker,
-  progress ring; full keyboard shortcuts (`?`, `b`, `f`, `t`, `Esc`,
-  `Space`, arrows). Three reader-only themes (`light` / `sepia` /
-  `dark`) scoped via `data-reader-theme` on the reader root, persisted
-  in `localStorage` under `reader-theme` — independent of site dark
-  mode. CSS tokens (`--reader-surface`, `--reader-fg`, `--reader-chrome`,
-  …) live in `app/globals.css` under "Reader themes — used in
-  /dashboard/library/read/[bookId] only".
-  Two save paths preserved verbatim: in-page page-changes save
-  (debounced 1.5s) via the `saveProgressAction` server action, and
-  unmount/pagehide flush via `fetch('/api/reader/progress',
-  { keepalive: true })` — the keepalive flag is what survives tab-close
-  (server actions cannot be invoked with keepalive). Both paths write
-  to the `reading_progress` table via `saveReadingProgress` upsert.
-  Both also forward `totalPages` (the PDF's `numPages`) so the dashboard
-  library card can render `(lastPage / totalPages)` as a real progress
-  percentage rather than the previous hardcoded 0%. The column ships
-  in migration `0005_dizzy_luckman.sql`; `saveReadingProgress` retries
-  without the column on write failure so an un-applied migration
-  degrades gracefully.
-  On resume the reader hydrates from `getReadingProgress` and shows
-  a sonner toast ("Resuming from page N"). The "Saved" indicator pulse
-  is throttled to once per minute so a fast-flipping session doesn't
-  spam the chrome. Mock-auth dev mode persists progress + bookmarks
-  to `.next/cache/reader-mock-store.json` via `lib/db/mock-store.ts`
-  (debounced 200ms write, gated behind `MOCK_AUTH_ENABLED` so the
-  disk read never fires in production); the file survives dev-server
-  restarts and Webpack HMR. Mock user ids ('1', '2', '3') aren't
-  UUIDs, so they can't go in the real `reading_progress` /
-  `pdf_bookmarks` tables — the JSON file is the dev substitute.
+Primary locale: Arabic (RTL) at `/`. Secondary locale: English (LTR) at
+`/en/`.
 
 What's stubbed:
-- Stripe checkout: route requires session and creates real Stripe sessions
-  when `STRIPE_SECRET_KEY` is set; otherwise returns 503 "coming soon".
-  Webhook validates signatures but does not yet write `orders` rows.
-- Image upload pipeline (Uploadthing not wired; admin forms accept URL strings).
+- Stripe checkout creates real sessions when `STRIPE_SECRET_KEY` is set;
+  otherwise returns 503 "coming soon". Webhook validates signatures.
+- Image upload pipeline (Uploadthing not wired; admin forms accept URLs).
 - Markdown article body parser (paragraphs split by `\n` for now).
 - Site-wide search.
-- PDF per-page download + annotations (Phase 3). Bookmarks ship with
-  Phase 2 (toggle on/off per page, optional inline note, list view in
-  side rail / settings sheet) — they are persisted to the
-  `pdf_bookmarks` table when migration 0004 is applied; otherwise the
-  bookmark queries swallow the missing-table error and surface no
-  bookmarks (see the try/catch in `getBookmarks` /
-  `toggleBookmark`).
-
-See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
+- PDF per-page download + annotations (Phase 3 — bookmarks shipped in Phase 2).
 
 ## Stack
 
@@ -157,276 +57,134 @@ See `LAUNCH-CHECKLIST.md` and `TODO.md` for the full pending list.
 - Tailwind v4 with `@theme inline { ... }` tokens in `app/globals.css`.
 
 ### Data
-- Drizzle ORM (`drizzle-orm@^0.45`).
-- Neon Postgres (serverless).
-- Schema in `lib/db/schema.ts`. **29 tables**: `users`, `sessions`, `accounts`,
-  `verifications`, `articles`, `books`, `interviews`, `gallery`, `events`,
-  `orders`, `orderItems`, `subscribers`, `contactMessages`, `siteSettings`,
-  `contentBlocks`, the four Phase-1 content-delivery tables
-  `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`,
-  the three Phase-3 corporate tables `corporatePrograms`,
-  `corporateClients`, `corporateRequests`, the six Phase-A1/A2 booking
-  domain tables `tours`, `tourSuggestions`, `bookings`,
-  `bookingInterest`, `bookingsPendingHolds`, `bookingOrders`, and the
-  Phase-B1 `userQuestions` table for the "Ask Dr. Khaled" surface.
-  **13 enums**: `userRole` (USER/ADMIN/CLIENT), `contentStatus`
-  (DRAFT/PUBLISHED/ARCHIVED), `orderStatus` (PENDING/PAID/FULFILLED/REFUNDED/
-  FAILED), `messageStatus` (UNREAD/READ/ARCHIVED), `subscriberStatus` (ACTIVE/
-  UNSUBSCRIBED/BOUNCED), `eventStatus` (UPCOMING/PAST/CANCELLED),
-  `articleCategory` (PHILOSOPHY/PSYCHOLOGY/SOCIETY/POLITICS/CULTURE/OTHER),
-  `productType` (BOOK/SESSION), `sessionItemType` (VIDEO/AUDIO/PDF),
-  `corporateRequestStatus` (NEW/CONTACTED/SCHEDULED/COMPLETED/CANCELLED),
-  `bookingProductType` (RECONSIDER_COURSE/ONLINE_SESSION),
-  `bookingState` (OPEN/CLOSED/SOLD_OUT),
-  `questionStatus` (PENDING/ANSWERED/ARCHIVED).
-  `sessionItems.sessionId` references `books.id` (sessions live in the
-  `books` table with `productType='SESSION'`); the application enforces the
-  productType invariant — the FK does not.
-  `corporateRequests.programId` references `corporatePrograms.id` with
-  `ON DELETE SET NULL` so deleting a program preserves the request history
-  but clears the FK.
-  `bookingOrders.userId` is nullable with `ON DELETE SET NULL` so order
-  history survives account deletion (matches the `orders` precedent).
-  `bookingOrders.status` reuses the canonical `orderStatus` enum;
-  `bookingOrders.bookingId` uses `ON DELETE RESTRICT` so admin can't
-  delete a booking with existing orders.
-- Migrations in `lib/db/migrations/`. **Ten** migrations exist:
-  `0000_blue_adam_warlock.sql`, `0001_remarkable_toad_men.sql`,
-  `0002_flippant_luke_cage.sql`, `0003_cold_scream.sql` (the last in that
-  group adds the `value_json` jsonb column on `site_settings` for the
-  structured-settings blob), `0004_overjoyed_red_wolf.sql` (Phase 1 —
-  adds `session_item_type` enum + the four content-delivery tables with
-  their FKs and indexes; fully additive, no ALTER on existing tables),
-  `0005_dizzy_luckman.sql` (Phase 2 — adds `total_pages integer NOT
-  NULL DEFAULT 0` to `reading_progress` so the library card can render
-  a real progress percentage; additive only),
-  `0006_corporate_programs.sql` (Phase 3 — adds `corporate_request_status`
-  enum and the three corporate tables `corporate_programs`,
-  `corporate_clients`, `corporate_requests` with their FK + indexes;
-  fully additive), `0007_booking_tables.sql` and
-  `0008_admin_booking_additions.sql` (Phase A1/A2 — booking domain), and
-  `0009_user_questions.sql` (Phase B1 — adds `question_status` enum and
-  the `user_questions` table with `(user_id, created_at DESC)` and
-  `(status, created_at DESC)` indexes; fully additive). Apply with
-  `npm run db:migrate`.
-- **Unified data layer**: `lib/db/queries.ts` is the single import point. It
-  uses Drizzle when `DATABASE_URL` is set to a real Neon URL, and falls back
-  to `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
-  This is auto-detected — there is **no `HAS_DB` env flag**, only the
-  `HAS_DB` constant inside `queries.ts`.
-- **Reading progress (Phase 2)**: `getReadingProgress(userId, bookId)` and
-  `saveReadingProgress(userId, bookId, lastPage)` live in
-  `lib/db/queries.ts`. They use the `reading_progress` Drizzle table with a
-  unique `(user_id, book_id)` index for upsert via `onConflictDoUpdate`.
-  Both helpers branch on `MOCK_AUTH_ENABLED` first (mock user ids fail the
-  UUID guard) and fall back to a module-level in-memory `Map` so the
-  save/restore round-trip is exercisable in dev without a seeded DB. The
-  Map resets every dev-server restart — that's by design; the goal is
-  flow exercise, not durable persistence.
-- **PDF bookmarks (Phase 2)**: `getBookmarks(userId, bookId)`,
-  `toggleBookmark(userId, bookId, pageNumber, label?)`,
-  `updateBookmarkLabel(bookmarkId, userId, label)` in `lib/db/queries.ts`,
-  fronted by `getBookmarksAction` / `toggleBookmarkAction` /
-  `updateBookmarkLabelAction` in
-  `app/[locale]/(dashboard)/dashboard/library/read/[bookId]/actions.ts`.
-  Same MOCK_AUTH_ENABLED → in-memory Map → Drizzle pattern as
-  reading progress. Drizzle path is wrapped in try/catch so a
-  not-yet-applied migration 0004 silently degrades to "no bookmarks"
-  rather than crashing the reader. UX treats one bookmark per page as
-  a toggle; the schema permits multiple.
-- **Session-content CRUD (Phase 4 — admin)**: `getSessionItemById(id, sessionId?)`
-  (the optional second arg adds a cross-session guard for admin
-  mutations), `getSessionItemsBySessionId(sessionId)`,
-  `createSessionItem({ sessionId, itemType, title, description?, storageKey, durationSeconds?, sortOrder? })`
-  (auto-places at end when sortOrder is omitted),
-  `updateSessionItem(itemId, sessionId, patch)`,
-  `deleteSessionItem(itemId, sessionId)`,
-  `reorderSessionItems(sessionId, orderedItemIds[])` in `lib/db/queries.ts`,
-  fronted by the four server actions in
-  `app/[locale]/(admin)/admin/books/[id]/content/actions.ts`. Same
-  MOCK_AUTH_ENABLED-first → HAS_DB-second pattern as reading progress;
-  the mock store extends `lib/db/mock-store.ts` with a `sessionItems`
-  Map keyed by sessionId and serialised alongside progress + bookmarks
-  in `.next/cache/reader-mock-store.json`.
-- **Media progress (Phase 4 — customer session viewer)**:
-  `getMediaProgress(userId, sessionItemId)`,
-  `saveMediaProgress(userId, sessionItemId, lastPositionSeconds,
-  completed?)`, and
-  `getAllMediaProgressForSession(userId, sessionId)` in
-  `lib/db/queries.ts`. The third helper joins through `session_items`
-  so the viewer can fetch every item's progress in a single round trip
-  (used to mark completion + render in-progress percentages on the
-  playlist + pick the resume item). Same MOCK_AUTH_ENABLED-first →
-  HAS_DB-second pattern; mock store keyed by `${userId}:${itemId}`,
-  serialised in `.next/cache/reader-mock-store.json`. Sticky-completion
-  invariant: `saveMediaProgress` with `completed=false` will NEVER
-  clear a previously-set `completedAt` — both the mock branch and the
-  Drizzle branch (`onConflictDoUpdate` with `coalesce`) preserve the
-  existing value. A user re-watching a finished item shouldn't toggle
-  the playlist badge back to "in progress."
-
-### Site settings (structured)
-
-Stored as a single JSON blob in `site_settings.value_json` under the
-`site_config` key. Read/write through:
-- `lib/site-settings/types.ts` — `SiteSettings` shape + `COMING_SOON_PAGES`.
-- `lib/site-settings/defaults.ts` — `DEFAULT_SETTINGS`, `mergeSettings`,
-  `coerceSettings`.
-- `lib/site-settings/zod.ts` — `siteSettingsPatchSchema` for the admin PATCH.
-- `lib/site-settings/get.ts` — `getCachedSiteSettings()`: `unstable_cache`
-  + `React.cache` wrapper. Tagged `'site-settings'`. Pages should use this.
-- `lib/db/queries.ts` — `getSiteSettings()` (uncached) and
-  `updateSiteSettings(patch)` (admin-only path; revalidates the cache tag).
-- API: `app/api/admin/site-settings/route.ts` — `GET` + `PATCH`, gated by
-  `requireAdmin(req)` and per-admin rate-limited.
-- Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
-
-Toggle groups: `homepage`, `navigation` (now includes `show_nav_corporate`),
-`footer`, `hero_ctas`, `featured`,
-`features` (auth_enabled, newsletter_form_enabled, maintenance_mode),
-`maintenance` (message + until date), `admin` (`show_admin_booking`),
-`dashboard` (`show_ask_tab` — Phase B1, hides the Ask tab from the
-dashboard nav; route still resolves via deep link),
-`coming_soon_pages` (now includes `'corporate'`).
-
-**Coming Soon ≠ Hide.** Two independent concerns:
-- A page in `coming_soon_pages` renders the `ComingSoon` placeholder instead
-  of its content and is excluded from the sitemap. The link **stays** in
-  navigation.
-- A page hidden via `navigation.show_nav_*` toggles is removed from the nav
-  + footer. Whether it's also coming-soon is a separate decision.
+- Drizzle ORM (`drizzle-orm@^0.45`) + Neon Postgres (serverless).
+- Schema: `lib/db/schema.ts` — **29 tables**, **13 enums**.
+  - Tables: `users`, `sessions`, `accounts`, `verifications`, `articles`,
+    `books`, `interviews`, `gallery`, `events`, `orders`, `orderItems`,
+    `subscribers`, `contactMessages`, `siteSettings`, `contentBlocks`,
+    `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`,
+    `corporatePrograms`, `corporateClients`, `corporateRequests`, `tours`,
+    `tourSuggestions`, `bookings`, `bookingInterest`, `bookingsPendingHolds`,
+    `bookingOrders`, `userQuestions`.
+  - Enums: `userRole`, `contentStatus`, `orderStatus`, `messageStatus`,
+    `subscriberStatus`, `eventStatus`, `articleCategory`, `productType`,
+    `sessionItemType`, `corporateRequestStatus`, `bookingProductType`,
+    `bookingState`, `questionStatus`.
+  - Cross-table notes: `sessionItems.sessionId` references `books.id`
+    (sessions live in `books` with `productType='SESSION'`); the
+    productType invariant is enforced in app code, not by FK.
+    `corporateRequests.programId` is `ON DELETE SET NULL`.
+    `bookingOrders.userId` is `ON DELETE SET NULL`; `bookingOrders.bookingId`
+    is `ON DELETE RESTRICT` so admin can't delete a booking with orders.
+    `bookingOrders.status` reuses the canonical `orderStatus` enum.
+- Migrations: `lib/db/migrations/0000…0009`. Apply with `npm run db:migrate`.
+- **Unified data layer**: `lib/db/queries.ts` is the single import point.
+  Drizzle when `DATABASE_URL` is a real Neon URL; falls back to
+  `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
+  Auto-detected via the `HAS_DB` constant inside `queries.ts`.
+  **There is no `HAS_DB` env flag** — don't introduce one.
 
 ### Auth
 - Better Auth (`better-auth@^1.6`).
-- Auth route catch-all: `app/api/auth/[...all]/route.ts`.
-- `lib/auth/index.ts` configures Better Auth. Session timing:
-  - `expiresIn: 30 days` (absolute lifetime)
-  - `updateAge: 24 hours` (sliding refresh — active users effectively stay
-    logged in indefinitely)
-- `lib/auth/server.ts` exposes `getServerSession()` (mock-aware).
-- `lib/auth/client.ts` exposes `authClient`, `signIn`, `signUp`, `signOut`,
-  `useSession` for client components.
-- `lib/auth/admin-guard.ts` exposes `requireAdmin(req)` — runs origin check
-  via `assertSameOrigin` + role check.
-- `lib/auth/redirect.ts` — `safeRedirect(raw)` and `withRedirect(href, target)`
-  for the post-login redirect-back flow. Rejects `//host`, `/\evil`, and
-  embedded schemes (`/javascript:…`).
-- `components/auth/AuthRequiredDialog.tsx` — reusable login-required prompt
-  used by purchase-gated actions. Sends users to
-  `/login?redirect=<encoded path>`; the auth forms read this param and
-  bounce the user back after a successful sign-in. The chain is preserved
-  across login ↔ register, login ↔ forgot, reset → login, and Google OAuth
-  via `callbackURL`.
-- **Mock auth** lives in `lib/auth/mock.ts`. Opt-in via env:
-  set `MOCK_AUTH=true` (or `NEXT_PUBLIC_MOCK_AUTH=true`) to enable. Default
-  is OFF — and mock auth is **hard-disabled** when `NODE_ENV === 'production'`
-  regardless of env. `getMockSession()` throws in production as a defense-in-
-  depth guard against env-misconfiguration privilege escalation. (Inverted
-  from the pre-launch semantics; see SECURITY [C-2] in `lib/auth/mock.ts`.)
-- Mock users: `id 1` admin@drkhaledghattass.com (Kamal, ADMIN),
-  `id 2` khaled@drkhaledghattass.com (Dr. Khaled, CLIENT),
-  `id 3` user@example.com (test user). Active mock user is
-  `MOCK_ACTIVE_USER_ID = '1'` (ADMIN — that's why mock-in-prod is fatal).
-- Public auth-UI gate: two-layered. `settings.features.auth_enabled` (DB,
-  per-deployment) is the runtime gate read by `AuthMenu`; the env flag
-  `NEXT_PUBLIC_AUTH_ENABLED === 'true'` is the build-time fallback for
-  callers that don't pass the runtime setting.
-- Three roles, three meanings:
-  - `USER` — buyer / reader, has `/dashboard`.
-  - `ADMIN` — full content + settings access at `/admin`.
-  - `CLIENT` — Dr. Khaled's read-only financial / analytics view (planned).
+- Catch-all route: `app/api/auth/[...all]/route.ts`.
+- Session timing: `expiresIn` 30 days; `updateAge` 24 hours (sliding refresh).
+- `lib/auth/server.ts` — `getServerSession()` (mock-aware in dev only).
+- `lib/auth/client.ts` — `authClient`, `signIn`, `signUp`, `signOut`, `useSession`.
+- `lib/auth/admin-guard.ts` — `requireAdmin(req)` runs origin check + role check.
+- `lib/auth/redirect.ts` — `safeRedirect(raw)`, `withRedirect(href, target)`.
+  Rejects `//host`, `/\evil`, embedded schemes (`/javascript:…`).
+- `components/auth/AuthRequiredDialog.tsx` — purchase-gated login prompt.
+  Sends users to `/login?redirect=<encoded path>`; auth forms read this
+  param and bounce after sign-in. Chain preserved across login ↔ register,
+  login ↔ forgot, reset → login, and Google OAuth via `callbackURL`.
+- `lib/auth/index.ts` throws at module load when `BETTER_AUTH_SECRET` is
+  unset in production. In dev with no secret, an ephemeral `randomBytes(32)`
+  secret is used per-process — sessions don't persist across restarts.
+  `trustedOrigins` locked to `NEXT_PUBLIC_APP_URL` + `BETTER_AUTH_URL` in
+  production; dev also includes `localhost:3000`/`:3001`.
+
+Three roles: `USER` (buyer / reader, has `/dashboard`), `ADMIN` (full
+content + settings access at `/admin`), `CLIENT` (Dr. Khaled's read-only
+financial / analytics view, planned).
 
 ### i18n
 - `next-intl@^4.9`.
 - Routing in `lib/i18n/routing.ts`: `locales: ['ar', 'en']`,
   `defaultLocale: 'ar'`, `localePrefix: 'as-needed'`,
   `localeDetection: false`. Arabic at `/`; English at `/en/`.
-- `messages/ar.json` and `messages/en.json` MUST have identical structure —
-  same key paths, same nesting. Enforced by the `translation-syncer` agent.
+- `messages/ar.json` and `messages/en.json` MUST have **identical
+  structure** — same key paths, same nesting. Enforced by the
+  `translation-syncer` agent. Don't track leaf counts in this file —
+  they drift on every change.
 
 ### Motion
-- `motion/react@^12.38`. **Never** `framer-motion` — it's a different package.
-- Reusable variants live in `lib/motion/variants.ts`:
-  - Easings: `EASE_EDITORIAL` `(0.16, 1, 0.3, 1)`, `EASE_REVEAL` `(0.22, 1, 0.36, 1)`,
-    `EASE_DRAMATIC` `(0.65, 0, 0.35, 1)`, `EASE_STAGGER` `(0.4, 0, 0.2, 1)`.
+- `motion/react@^12.38`. **Never** `framer-motion` — different package.
+- Reusable variants: `lib/motion/variants.ts`.
+  - Easings: `EASE_EDITORIAL` `(0.16, 1, 0.3, 1)`, `EASE_REVEAL`
+    `(0.22, 1, 0.36, 1)`, `EASE_DRAMATIC` `(0.65, 0, 0.35, 1)`,
+    `EASE_STAGGER` `(0.4, 0, 0.2, 1)`.
   - Variants: `fadeUp`, `fadeUpBidirectional`, `blurReveal`,
     `blurRevealBidirectional`, `fadeIn`, `staggerContainer`, `staggerItem`,
     `slideInStart`, `slideInEnd`, `scaleIn`, `maskRevealUp`, `maskRevealDown`.
   - Helpers: `fadeUpDelayed(delay)`, `staggerContainerWith(stagger, delay)`,
     `VIEWPORT_DEFAULT`, `VIEWPORT_BIDIRECTIONAL`.
-- Hooks in `lib/motion/hooks.ts`: `useReducedMotion`, `useIsMobile`,
+- Hooks: `lib/motion/hooks.ts` — `useReducedMotion`, `useIsMobile`,
   `useIsTouchDevice`, `useScrollReveal`, `useScrollVelocity`,
   `useScrollProgress`.
-- Motion components in `components/motion/`: `AnimatedText`, `CountUp`,
-  `FocusModeToggle`, `PageTransition`, `ProximityPrefetch`,
-  `PullQuote`, `ReadingProgress`, `ScrollReveal`, `ScrollRevealLine`,
+- Components: `components/motion/` — `AnimatedText`, `CountUp`,
+  `FocusModeToggle`, `PageTransition`, `ProximityPrefetch`, `PullQuote`,
+  `ReadingProgress`, `ScrollReveal`, `ScrollRevealLine`,
   `SectionBackgroundCrossfade`, `Tilt3D`, `ViewTransitionsRouter`.
 - `ViewTransitionsRouter` is a global capture-phase anchor-click interceptor
-  that wraps internal navigation in `document.startViewTransition`. It
-  `preventDefault`s the link click and pushes via the App-Router. **It does
-  NOT `stopPropagation`** — React's bubble-phase delegation must still fire
-  so user-attached `onClick` handlers (e.g. closing a mobile drawer when one
-  of its links is tapped) work. Don't add `stopPropagation` here.
-- `AppLoader` (in `components/layout/`) is the unified app-wide loader. It
-  shows a sequenced splash on first load (sessionStorage-gated) and a brief
-  logo overlay on subsequent navigations. It listens for both anchor clicks
+  that wraps internal nav in `document.startViewTransition`. It
+  `preventDefault`s and pushes via the App-Router. **It does NOT
+  `stopPropagation`** — React's bubble-phase delegation must still fire so
+  user-attached `onClick` handlers (e.g. closing a mobile drawer when a
+  link is tapped) work. Don't add `stopPropagation` here.
+- `AppLoader` (in `components/layout/`) is the unified app-wide loader.
+  Sequenced splash on first load (sessionStorage-gated); brief logo
+  overlay on subsequent navigations. Listens for both anchor clicks
   (capture phase) and a custom `kg:loader:show` event so non-link
   navigations (e.g. post-login `router.push`) can also trigger it.
 
 ### Other deps
 - `lenis@^1.3` — smooth scroll (`components/providers/LenisProvider.tsx`).
 - `@upstash/ratelimit` + `@upstash/redis` — rate limiting (`lib/redis/`).
-- `resend@^6.12` — transactional email (`lib/email/index.ts`).
+- `resend@^6.12` — transactional email (`lib/email/`).
 - `stripe@^22` + `@stripe/stripe-js` — checkout (Phase 6).
 - `next-themes@^0.4` — dark mode toggle.
 - `@base-ui/react` + `@radix-ui/*` + `shadcn` — primitives (`components/ui/*`).
 - `react-hook-form` + `@hookform/resolvers` + `zod@^4.3` — forms.
 - `@tanstack/react-table@^8` — admin tables.
 - `recharts@^3` — admin dashboard charts.
-- `lucide-react` — icons.
-- `date-fns@^4` — dates.
-- `react-day-picker@^9` — date pickers.
-- `sonner@^2` — toasts.
-- `react-pdf@^9` (transitively pins `pdfjs-dist@4.8.69`, the LEGACY build
-  — see "PDF.js — pinned to legacy build" below) — Phase 2 in-browser PDF
-  reader for `/dashboard/library/read/[bookId]`. The worker, cMaps, and
-  standard fonts are copied to `public/` by `scripts/copy-pdf-assets.mjs`
-  (postinstall hook) and gitignored. `next.config.ts` aliases `canvas`
-  → `false` so the optional Node-side rendering dep doesn't break
-  serverless builds, AND aliases `pdfjs-dist$` →
-  `pdfjs-dist/legacy/build/pdf.mjs` to force the legacy library build.
-- `playwright@^1.56` — devDep only (used by `scripts/visual-check.mjs`).
-- Deploy target: **Netlify**.
+- `lucide-react`, `date-fns@^4`, `react-day-picker@^9`, `sonner@^2`.
+- `react-pdf@^9` — Phase 2 in-browser PDF reader. **See "PDF.js — pinned
+  to legacy build" below before changing anything in this dependency
+  chain.**
+- `playwright@^1.56` — devDep only (`scripts/visual-check.mjs`).
+
+Deploy target: **Netlify**.
 
 ## PDF.js — pinned to legacy build (do not "modernize")
 
-The PDF reader uses pdfjs-dist's LEGACY build, NOT the modern one. This
-pinning is intentional and required.
+The PDF reader uses pdfjs-dist's LEGACY build, NOT the modern one.
 
 Why:
 - pdfjs-dist@5's modern build crashes at module-eval with
   "Object.defineProperty called on non-object" when bundled by
-  Webpack/Next.js
+  Webpack/Next.js.
 - Workaround: Webpack alias in `next.config.ts` points
-  `pdfjs-dist$` → `pdfjs-dist/legacy/build/pdf.mjs`
-- `react-pdf` is pinned to v9 (which uses pdfjs-dist v4) to match this
-  constraint
-- `scripts/copy-pdf-assets.mjs` copies the LEGACY worker to `public/`,
-  not the modern one
+  `pdfjs-dist$` → `pdfjs-dist/legacy/build/pdf.mjs`.
+- `react-pdf` is pinned to v9 (which uses pdfjs-dist v4) to match.
+- `scripts/copy-pdf-assets.mjs` (postinstall) copies the LEGACY worker.
 
-DO NOT:
-- Bump `react-pdf` to v10+ without re-testing the entire chain
-- "Simplify" the Webpack alias in `next.config.ts`
-- Switch the postinstall script to the modern worker
-- Mix legacy and modern imports
+DO NOT bump `react-pdf` to v10+, simplify the Webpack alias, switch the
+postinstall script to the modern worker, or mix legacy + modern imports.
 
-If you need to upgrade in the future:
-1. Test `pdfjs-dist@latest`'s modern build with the current Next.js
-   version (the bug may be fixed upstream)
-2. If still broken, leave the legacy pinning in place
-3. If fixed, update all three places: Webpack alias in `next.config.ts`,
-   `react-pdf` version in `package.json`, and the worker source path in
-   `scripts/copy-pdf-assets.mjs`
+To upgrade: test `pdfjs-dist@latest` modern build with the current Next
+version. If still broken, leave the pinning. If fixed, update three
+places in lockstep — Webpack alias, `react-pdf` version, worker source
+path. Full procedure in `docs/architecture/pdf-reader.md`.
 
 ## Design system: Qalem v2
 
@@ -436,62 +194,32 @@ If you need to upgrade in the future:
 - `--color-bg` `#FAFAFA` (pure neutral, zero warmth)
 - `--color-bg-elevated` `#FFFFFF`
 - `--color-bg-deep` `#F4F4F4`
-- `--color-fg1` `#0A0A0A`
-- `--color-fg2` `#404040`
-- `--color-fg3` `#737373`
-- `--color-border` `#E5E5E5`
-- `--color-border-strong` `#D4D4D4`
+- `--color-fg1` `#0A0A0A` · `--color-fg2` `#404040` · `--color-fg3` `#737373`
+- `--color-border` `#E5E5E5` · `--color-border-strong` `#D4D4D4`
 - `--color-accent` `#B85440` (**Sienna Ink** — the single warm accent)
-- `--color-accent-hover` `#9A4534`
-- `--color-accent-soft` `#F4E5DF`
-- `--color-accent-fg` `#FFFFFF`
+- `--color-accent-hover` `#9A4534` · `--color-accent-soft` `#F4E5DF`
+  · `--color-accent-fg` `#FFFFFF`
 - `--color-destructive` `#DC2626`
 
 **Dark** (`.dark` scope):
-- `--color-bg` `#0A0A0A`
-- `--color-bg-elevated` `#171717`
-- `--color-bg-deep` `#1F1F1F`
-- `--color-fg1` `#FAFAFA`
-- `--color-fg2` `#A3A3A3`
-- `--color-fg3` `#737373`
-- `--color-border` `#262626`
-- `--color-border-strong` `#404040`
-- `--color-accent` `#D97560`
-- `--color-accent-hover` `#E89281`
+- `--color-bg` `#0A0A0A` · `--color-bg-elevated` `#171717` · `--color-bg-deep` `#1F1F1F`
+- `--color-fg1` `#FAFAFA` · `--color-fg2` `#A3A3A3` · `--color-fg3` `#737373`
+- `--color-border` `#262626` · `--color-border-strong` `#404040`
+- `--color-accent` `#D97560` · `--color-accent-hover` `#E89281`
 
-A pile of legacy aliases (`--color-paper-*`, `--color-cream-*`,
-`--color-amber`, `--color-brass`, etc.) are mapped to the current tokens for
-backwards compatibility. Don't introduce new code that uses them — use the
-canonical names above.
+Legacy aliases (`--color-paper-*`, `--color-cream-*`, `--color-amber`,
+`--color-brass`, etc.) are mapped to the current tokens for backwards
+compatibility. Don't introduce new code that uses them.
 
 ### Typography
 
 Three Google fonts loaded via `next/font/google` in `app/[locale]/layout.tsx`:
-- `Readex Pro` (300–700, bilingual) → `--font-display` and `--font-arabic-display`. Display / hero / stats.
-- `IBM Plex Sans Arabic` (300–700) → `--font-arabic`. Arabic body / UI.
-- `Inter` (400–700) → `--font-display` (also). Latin body / UI.
+- `Readex Pro` (300–700, bilingual) → `--font-display`, `--font-arabic-display`
+- `IBM Plex Sans Arabic` (300–700) → `--font-arabic`
+- `Inter` (400–700) → `--font-display` (Latin)
 
-> Note: the legacy CLAUDE.md mentioned Noto Naskh Arabic / Instrument Serif /
-> Oswald — those are NOT used. Trust the code.
-
-### Type scale (`@theme`)
-- `--text-monumental` `clamp(72px, 16vw, 220px)`
-- `--text-hero` `clamp(40px, 7vw, 72px)`
-- `--text-display` `clamp(40px, 7vw, 72px)`
-- `--text-h1` `clamp(32px, 5vw, 56px)`
-- `--text-h2` `clamp(28px, 4vw, 44px)`
-- `--text-h3` `clamp(20px, 2.5vw, 28px)`
-- `--text-stat` `clamp(64px, 9vw, 88px)`
-- `--text-lead` `18px`
-- `--text-body` `16px` (Latin)
-- `--text-body-ar` `17px` (Arabic — slightly larger to match optical size)
-- `--text-small` `14px`
-- `--text-eyebrow` `13px`
-- `--text-label` `11.5px`
-
-Line heights: `--leading-display` `1.1`, `--leading-heading` `1.15`,
-`--leading-body` `1.6`, `--leading-arabic-body` `1.85`.
-Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
+Type scale, line heights, and tracking tokens live in the `@theme` block
+in `app/globals.css`. Don't redefine them in components.
 
 ### Spacing
 - Scale: `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128`.
@@ -500,354 +228,144 @@ Tracking: `--tracking-display` `-0.02em`, `--tracking-label` `0.12em`.
 - `--container-max` `1280px` (use the `container` utility from globals).
 
 ### Radii
-`--radius-sm` `4px` · `--radius-md`/`--radius` `8px` · `--radius-lg`/`--radius-xl` `12px` · `--radius-pill` `9999px`.
-
-### Motion tokens
-- `--ease-editorial` `cubic-bezier(0.16, 1, 0.3, 1)`
-- `--ease-reveal` `cubic-bezier(0.22, 1, 0.36, 1)`
-- `--ease-dramatic` `cubic-bezier(0.65, 0, 0.35, 1)`
-- `--ease-stagger` `cubic-bezier(0.4, 0, 0.2, 1)`
-- Durations: `--motion-fast` 200ms · `--motion-base` 400ms · `--motion-medium` 600ms · `--motion-slow` 800ms · `--motion-cinematic` 1200ms.
-- Legacy compat: `--dur-fast` 180ms · `--dur-base` 240ms · `--dur-slow` 400ms.
+`--radius-sm` 4px · `--radius-md`/`--radius` 8px · `--radius-lg`/`--radius-xl` 12px · `--radius-pill` 9999px.
 
 ### Shared UI patterns (in `globals.css`)
-- `.section-eyebrow` / `.eyebrow-accent` / `.eyebrow-invitation` — the three
-  eyebrow styles.
-- `.section-title` — the canonical h2 style for sections.
-- `.btn-pill` + `.btn-pill-primary|secondary|accent` — pill buttons.
-- `.link-underline`, `.link-reveal`, `.hover-shift` — link / row affordances.
-- `.dropcap` — article body first-letter style.
-- `.italic-feel` — italic-feeling Arabic emphasis (Arabic has no italics).
-- `.skip-link` — accessibility skip link, mounted in the locale layout.
-- `.num-latn` — Latin tabular numerals on Arabic pages.
-- `:focus-visible` — accent outline + offset.
+- `.section-eyebrow` / `.eyebrow-accent` / `.eyebrow-invitation`
+- `.section-title` — canonical h2 style
+- `.btn-pill` + `.btn-pill-primary|secondary|accent`
+- `.link-underline`, `.link-reveal`, `.hover-shift`
+- `.dropcap` — article body first-letter
+- `.italic-feel` — italic-feeling Arabic emphasis
+- `.skip-link` — a11y skip link, mounted in the locale layout
+- `.num-latn` — Latin tabular numerals on Arabic pages
+- `:focus-visible` — accent outline + offset
 
 ### Forbidden patterns
 
-- Hardcoded hex anywhere outside `app/globals.css`.
-- `margin-left|right`, `padding-left|right`, `text-left|right`,
-  `border-l|r`, `left-*|right-*`. Use logical properties:
-  `ms-*` `me-*` `ps-*` `pe-*` `text-start` `text-end` `border-s` `border-e`
-  `start-*` `end-*` `inset-inline-*`.
-- `framer-motion` imports (the package is `motion`, the import is `motion/react`).
-- `<a href="/...">` for internal navigation. Use `Link` from
+- **Hardcoded hex** anywhere outside `app/globals.css`.
+- **Physical CSS properties**: `margin-left|right`, `padding-left|right`,
+  `text-left|right`, `border-l|r`, `left-*|right-*`. Use logical
+  properties: `ms-*` `me-*` `ps-*` `pe-*` `text-start` `text-end`
+  `border-s` `border-e` `start-*` `end-*` `inset-inline-*`.
+- **`framer-motion` imports** — the package is `motion`, the import is
+  `motion/react`.
+- **`<a href="/...">` for internal navigation**. Use `Link` from
   `@/lib/i18n/navigation`.
-- `<img>` tags. Use `next/image`.
-- `: any` annotations or `as any` assertions. TypeScript is strict.
-- `isRtl ? '<arabic-string>' : '<english-string>'` for content. Use
-  `t('namespace.key')`. (Typographic conditionals like Arabic-Indic vs
-  Western numerals are fine; metadata-internal `isAr ? a : b` switches in
-  `generateMetadata` are fine.)
-- Auto-commits. Commits are MANUAL — Claude never runs `git commit` or
-  `git push` unprompted.
-- Secrets in source. Only `.env.local` (gitignored) and `.env.local.example`
-  (empty values).
+- **`<img>` tags**. Use `next/image`.
+- **`: any` annotations or `as any` assertions**. TypeScript is strict.
+- **`isRtl ? '<arabic>' : '<english>'` for content**. Use
+  `t('namespace.key')`. Typographic conditionals (Arabic-Indic vs Western
+  numerals) are fine; metadata-internal `isAr ? a : b` switches in
+  `generateMetadata` are fine.
+- **Auto-commits**. Commits are MANUAL — Claude never runs `git commit`
+  or `git push` unprompted.
+- **Secrets in source**. Only `.env.local` (gitignored) and
+  `.env.local.example` (empty values).
 
 ## Routing
 
-### Public routes (`app/[locale]/(public)/`)
-- `/` — homepage (Hero, AboutTeaser, StoreShowcase, ArticlesList, InterviewRotator, Newsletter)
-- `/about`
-- `/articles` — listing
-- `/articles/[slug]` — detail
-- `/books` — listing
-- `/books/[slug]` — detail
-- `/interviews` — listing
-- `/interviews/[slug]` — detail
-- `/events` — listing only (no detail page yet)
-- `/corporate` — corporate programs + trust strip + request form (the
-  in-page anchor `#request` is wired to per-card "Request this program"
-  CTAs, which dispatch a `kg:corporate:select-program` event so the form's
-  program select pre-populates without a route change)
-- `/booking` — **Phase A1** "Services for Individuals" / «خدمات للأفراد» —
-  three-section page (Tours · Reconsider course · 8 Online Sessions) with
-  capacity-safe holds, sub-nav scroll-spy, mobile sticky-bottom Reserve
-  CTA, and the already-booked guard (Phase A3.1) that swaps Reserve for
-  "view in dashboard" when the user already paid for that booking. Page
-  refreshes on window-focus return (throttled 30s) so a user coming back
-  from Stripe sees fresh hold/capacity numbers. See "Booking domain"
-  in "What works in dev."
-- `/booking/success` — Stripe success landing. Resolves
-  `?session_id=cs_xxx` to a `booking_orders` row; renders confirmation
-  with order ref + dashboard CTA when PAID, or a polling state
-  (`PendingPoller`) when still PENDING (~10s ceiling, then falls back).
-- `/contact`
-- `/checkout/success`
+Routes live under `app/[locale]/` for the locale-aware surfaces and
+`app/api/` for handlers. Public, auth, dashboard, admin are split into
+route groups.
 
-> No `/shop` route. The product surface is `/books` (with `productType: BOOK`
-> or `SESSION`). External-store fulfillment uses the `externalUrl` field on
-> a book.
+### Public (`app/[locale]/(public)/`)
+`/` · `/about` · `/articles` · `/articles/[slug]` · `/books` ·
+`/books/[slug]` · `/interviews` · `/interviews/[slug]` · `/events` ·
+`/corporate` · `/booking` · `/booking/success` · `/contact` ·
+`/checkout/success`
+
+Notes:
+- No `/shop` route. The product surface is `/books` (with `productType`
+  BOOK or SESSION). External-store fulfillment uses the `externalUrl`
+  field on a book.
+- `/events` is listing only — no detail page.
+- `/corporate` has an in-page anchor `#request` wired to per-card
+  CTAs via the `kg:corporate:select-program` CustomEvent.
+- `/booking` — see `docs/architecture/booking-domain.md`.
 
 ### Auth (`app/[locale]/(auth)/`)
-- `/login`
-- `/register`
-- `/forgot-password`
-- `/reset-password`
+`/login` · `/register` · `/forgot-password` · `/reset-password`
 
 ### Dashboard (`app/[locale]/(dashboard)/`)
-- `/dashboard` — account view
-- `/dashboard/ask` — **Phase B1** "Ask Dr. Khaled" Q&A submission +
-  history surface. Logged-in users send a question (subject + body +
-  optional category + optional anonymity preference); the question lands
-  in the `user_questions` queue with status `PENDING`. Dr. Khaled (or his
-  team) reviews offline; answering happens on his social channels
-  (Instagram videos, stories) — the site is intake-only, never a
-  consultation channel. The page composes an editorial hero + signed
-  note from Dr. Khaled, a sticky "Before you send" guide, the form
-  itself, and a history list with segmented filter pills (All /
-  Pending / Answered / Archived). "All" excludes ARCHIVED to keep the
-  active queue front and centre. v1 is intake-only — no user-facing
-  edit/delete/archive affordances; admin (Phase B2) handles status
-  transitions. The form rate-limits to 5 questions per hour per user
-  via `tryRateLimit('user-question:${userId}', { limit: 5, window: '60 m' })`
-  (fails OPEN when Upstash isn't configured). Visibility is gated on
-  the `dashboard.show_ask_tab` site-setting; route still resolves via
-  deep link when the tab is hidden.
-- `/dashboard/library` — purchased content
-- `/dashboard/library/read/[bookId]` — **Phase 2** in-browser PDF reader.
-  Server-verifies ownership (`userOwnsProduct`); on miss redirects to
-  `/dashboard/library` rather than 404 to avoid leaking catalog membership.
-  Mints a 1h signed URL via `storage.getSignedUrl`, hydrates last-page-read
-  via `getReadingProgress`, and renders the client `PdfReader` as a
-  **full-bleed overlay** (`fixed inset-0 z-[100]`) — NOT wrapped in
-  `DashboardLayout`; the dashboard chrome would compete with the
-  immersive reading surface. The unavailable-notice path (book owned but
-  no `digitalFile` attached) does keep `DashboardLayout` so users can nav
-  back to the library tab. Save flow: client debounces page changes
-  500ms → `saveProgressAction` (server action at
-  `app/[locale]/(dashboard)/dashboard/library/read/[bookId]/actions.ts`).
-  Unmount/tab-close flush → `fetch('/api/reader/progress', { keepalive: true })`
-  (the keepalive flag is what survives tab-close; server actions can't
-  be invoked with it).
-- `/dashboard/library/session/[sessionId]` — **Phase 4** customer-facing
-  session viewer. Server-verifies ownership via `userOwnsProduct`; on
-  miss redirects to `/dashboard/library` rather than 404 to avoid
-  leaking catalog membership. Wraps the page in `DashboardLayout` (the
-  reader is full-bleed by contrast; the session viewer keeps the
-  dashboard chrome because the playlist + surrounding navigation feel
-  natural alongside it). Empty `session_items` list renders
-  `SessionEmptyState` ("This session is being prepared") instead of
-  crashing or 404ing — the user owns the product; admin just hasn't
-  populated content yet.
-  **Layout** (in `components/library/session/SessionViewer.tsx`): mobile
-  stacks media → header → playlist; lg+ (1024px) goes two-column with
-  the playlist sticky in the trailing column (RTL trailing edge).
-  **Initial item selection** (server-side): most-recently-watched
-  non-completed item → first not-yet-started item by sortOrder → first
-  item (replay UX when everything's completed). Computed in
-  `pickInitialItemId` on the page server component.
-  **Media area** picks the player by item type:
-    - VIDEO → `VideoPlayer` (provider-agnostic wrapper) →
-      `YouTubeEmbedPlayer` (today's only adapter; see "Video adapter
-      abstraction" below). Embed URL minted at component mount via
-      `videoProvider.getEmbedConfig({ storageKey }, { origin, startSeconds })`
-      with origin from `window.location.origin` (NOT from
-      `NEXT_PUBLIC_APP_URL` — env-driven origin breaks dev's
-      postMessage origin check). YouTube IFrame API loaded via a
-      module-scoped singleton-Promise so concurrent mounts don't race
-      `window.onYouTubeIframeAPIReady`.
-    - AUDIO → `AudioPlayer` (HTML5 `<audio>` engine + custom Qalem
-      controls; play/pause, scrub, volume + mute, playback speed
-      1×/1.25×/1.5×/2× for educational content). Source URL is
-      minted on demand via `POST /api/content/access`
-      (`{ productType: 'SESSION_ITEM', productId }`), cached in a
-      ref keyed by sessionItemId until ~5min before expiry.
-    - PDF → `PdfInline` (browser-native iframe, NOT the Phase 2 react-pdf
-      reader). Same on-demand `/api/content/access` URL fetch as audio.
-      Why native iframe: react-pdf's pdfjs-dist machinery (worker,
-      cMaps, fonts, ssr:false wrapper) is overkill for short workshop
-      handouts; the browser's built-in PDF viewer renders them fine
-      with native zoom/print/download. The "no iframe in
-      SessionViewer" rule is specifically about VIDEO providers (which
-      MUST go through the swappable VideoPlayer wrapper) — PDFs have
-      no swappable-provider concern. Trivial to swap to the premium
-      reader later by replacing one component.
-  **Progress save flow** (mirrors Phase 2 reader's two-path pattern):
-  in-page debounced save (1.5s) via the
-  `saveSessionItemProgressAction` server action; unmount/tab-close
-  flush via `fetch('/api/session/progress', { keepalive: true })`.
-  Server actions can't be invoked with `keepalive`, so the API route
-  twin is required. `handleComplete` bypasses the debounce — completion
-  is rare and the playlist's check-mark feedback should be immediate.
-  **Item switch** flushes the outgoing item's progress (fire-and-forget
-  via the action) before swapping, so a half-watched item that the
-  user navigated away from is durable. Replays of completed items
-  start at position 0, not the saved last-position (which would pin
-  the player at the very end).
-  **Completion** is dual-signal: YouTube `PlayerState.ENDED` OR
-  position/duration ≥ 0.95, whichever fires first. A ref guards the
-  second fire so the server save isn't sent twice.
-  Mock-mode (`MOCK_AUTH_ENABLED=true`) persists media progress to
-  `.next/cache/reader-mock-store.json` via `lib/db/mock-store.ts` — the
-  same file already used by reading_progress + bookmarks +
-  sessionItems. Keyed by `${userId}:${sessionItemId}`. Mock-mode
-  AUDIO/PDF will surface error states because
-  `/placeholder-content/<key>` 404s — by design; matches every other
-  Phase-1 signed-URL flow.
-- `/dashboard/bookings` — **Phase A3** customer-facing list of the
-  user's confirmed bookings (Reconsider + online sessions). Server
-  component, auth-gated, `force-dynamic`. Fetches via
-  `getBookingOrdersByUserId(userId)`; renders status pills (Confirmed
-  / Pending / Refunded / Failed) and a "Manage booking" mailto: CTA.
-  Empty state CTAs back to `/booking`.
+`/dashboard` · `/dashboard/ask` · `/dashboard/library` ·
+`/dashboard/library/read/[bookId]` · `/dashboard/library/session/[sessionId]` ·
+`/dashboard/bookings` · `/dashboard/settings`
 
-- **Phase A — Booking domain (services for individuals)** is live at
-  `/booking`. Three sections share one route:
-  - **Tours** — externally-booked in-person events; "suggest a city"
-    form when no tour matches.
-  - **Reconsider** — flagship paid 8-week course with internal Stripe
-    checkout when OPEN, waitlist signup when CLOSED/SOLD_OUT.
-  - **8 Online Sessions** — standalone paid recordings with the same
-    OPEN/CLOSED/SOLD_OUT pattern.
-  **Capacity-race solution** lives in the `bookings_pending_holds`
-  table. A 15-min TTL hold is created inside a `db.transaction` that
-  locks the booking row via `SELECT … FOR UPDATE` and counts active
-  holds via `WHERE expires_at > NOW()` BEFORE the Stripe Checkout
-  Session is opened. Effective remaining seats =
-  `maxCapacity - bookedCount - activeHoldsCount`. Re-clicks delete the
-  user's prior hold and create a fresh one (orphan Stripe sessions
-  clean themselves up via `checkout.session.expired`).
-  **Already-booked guard** (Phase A3.1) — `getPaidBookingIdsForUser`
-  in `lib/db/queries.ts` returns bookingIds with PAID/FULFILLED orders
-  for the current user. The `/booking` page hides the Reserve UI for
-  those (replaced with "Already booked → view in dashboard"); the
-  `createBookingCheckoutAction` server action also defends with
-  `error: 'already_booked'` for stale-tab bypass attempts.
-  **Rate limiting** (Phase A3.3) — `createBookingCheckoutAction`
-  capped at 10/min/user (default `tryRateLimit` shape);
-  `createBookingInterestAction` capped at 20/min/user via the new
-  optional `{ limit, window }` config on `tryRateLimit`. Custom
-  configs use `rl:<limit>:<window>` Redis prefixes; the default
-  `'rl'` prefix is preserved so existing limit-counters don't reset.
-  Helper fails open without Upstash creds.
-  **Webhook integration** — `app/api/stripe/webhook/route.ts` has
-  BOOKING-flavoured branches in `checkout.session.completed`,
-  `checkout.session.expired`, `payment_intent.payment_failed`, and
-  `charge.refunded`. The completed branch is an early-return BEFORE
-  the existing books/sessions logic (the existing path reads
-  `metadata.bookId` which BOOKING sessions don't have). The refunded
-  branch decrements `bookings.bookedCount` with a `GREATEST(...-1, 0)`
-  floor and deliberately leaves `bookingState` alone — admin manually
-  reverts SOLD_OUT → OPEN if needed (Decision 11; see
-  `docs/decisions/booking-domain.md` if it exists, otherwise the Phase
-  A1 plan).
-  **Customer-facing dashboard** — `/dashboard/bookings` lists the
-  user's `booking_orders` with status pills (Confirmed / Pending /
-  Refunded / Failed) and a "Manage booking" CTA that opens
-  `mailto:Team@drkhaledghattass.com` for v1 (admin handles changes
-  manually until Phase B self-service flows ship). Empty state CTAs
-  back to `/booking`.
-  **Admin tooling (Phase A2)** at `/admin/booking/*` — five surfaces:
-  Tours, Bookings, Tour Suggestions, Booking Interest, Booking Orders.
-  Capacity-reduction guard runs server-side inside `updateBookingAdmin`
-  (rejects when `newMaxCapacity < bookedCount + activeHolds` with an
-  explicit `capacity_below_commitment` error code carrying the live
-  numbers). Stripe refund flow: admin clicks → action calls
-  `stripe.refunds.create({ payment_intent })` → action returns success
-  → webhook fires `charge.refunded` → DB state syncs (admin doesn't
-  mutate `booking_orders` directly). Visibility flag
-  `admin.show_admin_booking` (default `true`) gates the sidebar entry
-  but NOT the routes themselves — deep links still work for admins.
-  Stale-PENDING purge button on the orders surface deletes `booking_orders`
-  rows with `status='PENDING'` AND `createdAt < now() - interval '24 hours'`.
-- `/dashboard/settings`
+Surface-specific architecture:
+- `/dashboard/library/read/[bookId]` → `docs/architecture/pdf-reader.md`
+- `/dashboard/library/session/[sessionId]` → `docs/architecture/session-viewer.md`
+- `/dashboard/ask` → `docs/architecture/ask-dr-khaled.md`
+- `/dashboard/bookings` → `docs/architecture/booking-domain.md`
 
 ### Admin (`app/[locale]/(admin)/`)
-- `/admin` — overview with charts (Recharts)
-- `/admin/articles` · `/admin/articles/new` · `/admin/articles/[id]/edit`
-- `/admin/books` · `/admin/books/new` · `/admin/books/[id]/edit` · `/admin/books/[id]/content` (SESSION rows only — manages `session_items` for paid sessions: add/edit/reorder/delete videos, audios, PDFs. The "Manage content" link in `BooksTable` is gated on `productType === 'SESSION'`. Server actions in `app/[locale]/(admin)/admin/books/[id]/content/actions.ts` — `createSessionItemAction`, `updateSessionItemAction`, `deleteSessionItemAction`, `reorderSessionItemsAction`. Each action does its own admin role check inline (server actions can't call `requireAdmin(req)` without a Request); CSRF is covered by Next's encrypted action ids. Mutations call `revalidatePath` on the editor and edit routes. The parent's productType=SESSION invariant is enforced at the action layer via `getBookById`. Storage keys are free-text in this phase — the storage adapter is mocked.)
-- `/admin/interviews` · `/admin/interviews/new` · `/admin/interviews/[id]/edit`
-- `/admin/events` · `/admin/events/new` · `/admin/events/[id]/edit`
-- `/admin/gallery` · `/admin/gallery/new` (no edit page yet — gallery edits inline)
-- `/admin/orders` · `/admin/orders/[id]`
-- `/admin/products` (combined book+session listing)
-- `/admin/subscribers`
-- `/admin/messages`
-- `/admin/users`
-- `/admin/settings` (legacy key/value page)
-- `/admin/settings/site` (structured toggles — homepage, navigation, footer,
-  hero CTAs, featured items, features, maintenance, coming-soon pages)
-- `/admin/content` (content-blocks editor)
-- `/admin/media` (media library)
-- `/admin/corporate` (overview — counts + jump links)
-- `/admin/corporate/programs` · `/admin/corporate/programs/new` · `/admin/corporate/programs/[id]/edit`
-- `/admin/corporate/clients` · `/admin/corporate/clients/new` · `/admin/corporate/clients/[id]/edit`
-- `/admin/corporate/requests` · `/admin/corporate/requests/[id]` (status + admin-notes update)
-- `/admin/booking` (Phase A2 overview — 5-card stat grid: tours, bookings,
-  pending suggestions, pending interest, paid orders)
-- `/admin/booking/tours` · `/admin/booking/tours/new` · `/admin/booking/tours/[id]/edit`
-- `/admin/booking/bookings` · `/admin/booking/bookings/new` ·
-  `/admin/booking/bookings/[id]/edit` (capacity card with separate
-  `updateBookingCapacityAction` + `updateBookingStateAction` modals)
-- `/admin/booking/tour-suggestions` (list + top-10 country/city aggregate panel)
-- `/admin/booking/interest` (list + bulk-mark-contacted with AlertDialog confirm)
-- `/admin/booking/orders` · `/admin/booking/orders/[id]` (refund button on
-  PAID orders with stripePaymentIntentId; stale-PENDING purge button on
-  the list page)
-  Sidebar visibility gated on `admin.show_admin_booking` (default true).
+- `/admin` — overview (Recharts)
+- `/admin/articles[/new][/[id]/edit]`
+- `/admin/books[/new][/[id]/edit][/[id]/content]` — `/[id]/content`
+  manages `session_items` for SESSION rows; gated on
+  `productType === 'SESSION'`.
+- `/admin/interviews[/new][/[id]/edit]`
+- `/admin/events[/new][/[id]/edit]`
+- `/admin/gallery[/new]` — gallery edits inline; no edit route
+- `/admin/orders[/[id]]`
+- `/admin/products` — combined book+session listing
+- `/admin/subscribers` · `/admin/messages` · `/admin/users`
+- `/admin/settings` (legacy key/value) · `/admin/settings/site` (structured toggles)
+- `/admin/content` (content-blocks editor) · `/admin/media` (media library)
+- `/admin/questions` — Q&A admin queue (Phase B2; see
+  `docs/architecture/ask-dr-khaled.md`)
+- `/admin/corporate` · `/admin/corporate/{programs,clients,requests}/...`
+- `/admin/booking` · `/admin/booking/{tours,bookings,interest,tour-suggestions,orders}/...`
+  (sidebar gated on `admin.show_admin_booking`)
 
 ### Special / framework files
-- `app/[locale]/layout.tsx` — locale root, fonts, providers, Toaster, JSON-LD,
-  metadata defaults.
-- `app/[locale]/template.tsx` — page-transition shell (motion).
-- `app/[locale]/loading.tsx` — `LoadingSequence` route loading state.
-- `app/[locale]/not-found.tsx` and `app/[locale]/error.tsx`.
-- `app/sitemap.ts`, `app/robots.ts`, `app/manifest.ts`.
-- `app/opengraph-image.tsx` — dynamic OG; static `public/og.png` will win once added.
-- `app/icon.png` and `app/apple-icon.png` — favicons (the legacy `.tsx`
-  generators were replaced with real PNGs; see `scripts/gen-icons.mjs`).
+- `app/[locale]/{layout,template,loading,not-found,error}.tsx`
+- `app/{sitemap,robots,manifest}.ts`
+- `app/opengraph-image.tsx` — dynamic OG; static `public/og.png` will
+  win once added.
+- `app/{icon,apple-icon}.png` — favicons (replaced legacy `.tsx`
+  generators; see `scripts/gen-icons.mjs`).
 
 ### API (`app/api/`)
-- `auth/[...all]` — Better Auth catch-all.
-- `contact` — POST, zod-validated, IP rate-limited.
-- `corporate/request` — POST, zod-validated (`corporateRequestSchema`),
-  IP rate-limited (`corporate-request:<ip>`). On success, persists to
-  `corporate_requests` and best-effort-sends an internal notification email
+- `auth/[...all]` — Better Auth catch-all
+- `contact` — POST, zod-validated, IP rate-limited
+- `corporate/request` — POST, zod-validated, IP rate-limited; persists
+  to `corporate_requests` and best-effort sends a notification email
   via `lib/email/templates/corporate-request.ts` (target inbox: env
-  `CORPORATE_INBOX_EMAIL` → fallback `Team@drkhaledghattass.com`). Email
-  failures are swallowed — the user-facing flow never 500s because Resend
-  is unconfigured.
-- `newsletter` — POST, zod-validated, IP rate-limited.
-- `revalidate` — bearer-token-protected (`REVALIDATE_TOKEN`).
-- `checkout` — POST. Requires session (returns 401 otherwise). Creates a
-  Stripe Checkout session when `STRIPE_SECRET_KEY` is set; returns 503
-  ("coming soon") otherwise. Origin-checked.
-- `stripe/webhook` — signature verification + `checkout.session.completed`,
-  `charge.refunded`, `payment_intent.payment_failed`, `payment_intent.succeeded`
-  handlers. On successful checkout it also sends the post-purchase email
-  (best-effort, no-op when `RESEND_API_KEY` is missing — see Email infra).
+  `CORPORATE_INBOX_EMAIL` → fallback `Team@drkhaledghattass.com`)
+- `newsletter` — POST, zod-validated, IP rate-limited
+- `revalidate` — bearer-token-protected (`REVALIDATE_TOKEN`)
+- `checkout` — POST. Requires session (returns 401 otherwise). Real
+  Stripe sessions when `STRIPE_SECRET_KEY` is set; else 503. Origin-checked.
+- `stripe/webhook` — signature verification +
+  `checkout.session.completed`, `checkout.session.expired`,
+  `charge.refunded`, `payment_intent.payment_failed`,
+  `payment_intent.succeeded`. Sends post-purchase email best-effort
+  (no-op when `RESEND_API_KEY` missing). Booking-flavoured branches
+  documented in `docs/architecture/booking-domain.md`.
 - `content/access` — POST. Authenticated, origin-checked, ownership-gated.
-  Returns `{ url, expiresAt }` from the storage adapter for an owned BOOK or
-  SESSION_ITEM. Rate-limited per-user (`content-access:<userId>`, 10/min).
-  `force-dynamic`. See `lib/storage/`.
-- `reader/progress` — POST. Authenticated, origin-checked, ownership-gated.
-  Mirrors the `saveProgressAction` server action so the in-browser PDF
-  reader can flush its last-read page on unmount/tab-close via
-  `fetch(..., { keepalive: true })`. Server actions can't accept that
-  flag, hence this twin route. Rate-limited per-user
-  (`reader-progress:<userId>`). `force-dynamic`. Idempotent — `saveReadingProgress`
-  uses `onConflictDoUpdate`, so duplicate writes from racing in-flight
-  saves and unmount flushes are safe.
-- `session/progress` — POST. Authenticated, origin-checked,
-  ownership-gated, cross-session-item-guarded (`getSessionItemById(itemId,
-  sessionId)` rejects when itemId belongs to a different session).
-  Mirrors `saveSessionItemProgressAction` so the session viewer can flush
-  its last play position on unmount/tab-close via
-  `fetch(..., { keepalive: true })`. Same rate-limit pattern as
-  reader/progress (`session-progress:<userId>`). `force-dynamic`.
-  Idempotent via `onConflictDoUpdate` on
-  `media_progress_user_item_idx`. Sticky completion — once
-  `completedAt` is set, subsequent saves with `completed=false` do NOT
-  clear it (replay shouldn't unwind the badge).
-- `user/profile` — PATCH, DELETE (account self-edit / self-delete).
-- `user/preferences` — PATCH.
-- `admin/articles[/id]`, `admin/books[/id]`, `admin/interviews[/id]`,
-  `admin/events[/id]`, `admin/gallery[/id]`, `admin/orders/[id]`,
-  `admin/users/[id]`, `admin/settings`, `admin/site-settings` (structured),
-  `admin/content-blocks[/key]`, `admin/revalidate`,
-  `admin/corporate/programs[/id]`, `admin/corporate/clients[/id]`,
-  `admin/corporate/requests/[id]` (PATCH for status/adminNotes, DELETE) —
-  all gated by `requireAdmin(req)` (origin + role).
+  Returns `{ url, expiresAt }` from the storage adapter for an owned
+  BOOK or SESSION_ITEM. Rate-limited per-user
+  (`content-access:<userId>`, 10/min). `force-dynamic`.
+- `reader/progress` — POST. Keepalive twin for the PDF reader's
+  unmount/tab-close flush. Idempotent (`onConflictDoUpdate`).
+  Rate-limited per-user (`reader-progress:<userId>`).
+- `session/progress` — POST. Keepalive twin for the session viewer's
+  unmount/tab-close flush. Cross-session-item-guarded. Idempotent
+  (`onConflictDoUpdate` on `media_progress_user_item_idx`).
+  Sticky-completion: `completed=false` never clears a previously-set
+  `completedAt`. Rate-limited per-user (`session-progress:<userId>`).
+- `booking/order-status` — GET. Auth-gated read used by the booking
+  success page's poller while the Stripe webhook flips PENDING → PAID.
+  Returns `{ status: 'PAID' | 'PENDING' | 'NOT_FOUND', orderId? }`.
+  Defends user-id ownership; cross-user lookups return `NOT_FOUND`
+  rather than 403 to avoid leaking session_id existence.
+- `user/{profile,preferences}` — PATCH (and DELETE on profile)
+- `admin/*` — all gated by `requireAdmin(req)` (origin + role):
+  `articles[/id]`, `books[/id]`, `interviews[/id]`, `events[/id]`,
+  `gallery[/id]`, `orders/[id]`, `users/[id]`, `settings`,
+  `site-settings`, `content-blocks[/key]`, `revalidate`,
+  `corporate/{programs,clients,requests}[/id]`
 
 ## API conventions
 
@@ -877,296 +395,209 @@ export async function PATCH(req: Request, { params }: Ctx) {
 Public POSTs additionally call `tryRateLimit('<key>:<ip>')` from
 `@/lib/redis/ratelimit`. The helper **fails open** — without Upstash
 credentials, when the URL/token contain `dummy`, OR when the Redis call
-throws at runtime, the request is allowed through. We log the error rather
-than 500ing the user when the rate-limit infrastructure itself is broken.
+throws at runtime, the request is allowed through. We log the error
+rather than 500ing the user when the rate-limit infrastructure itself
+is broken.
+
+`tryRateLimit` accepts an optional `{ limit, window }` config; custom
+configs use `rl:<limit>:<window>` Redis prefixes so existing default-prefix
+limit-counters aren't reset.
 
 Helpers in `lib/api/errors.ts`: `apiError(code, message, extras?)`,
 `errInvalidJson()`, `errValidation(fieldErrors)`, `errUnauthorized()`,
 `errForbidden()`, `errNotFound()`, `errConflict()`, `errRateLimited()`,
 `errInternal()`, `parseJsonBody(req, schema)`.
 
-Origin / CSRF helper: `assertSameOrigin(req)` from `lib/api/origin.ts` — wired
-inside `requireAdmin(req)`. If you write a non-admin state-changing handler,
-call it explicitly.
+Origin / CSRF helper: `assertSameOrigin(req)` from `lib/api/origin.ts` —
+wired inside `requireAdmin(req)`. If you write a non-admin
+state-changing handler, call it explicitly.
 
 ## Translations
 
-Every user-visible string is in `messages/ar.json` and `messages/en.json`.
-Both files have identical structure. Conventions:
+Every user-visible string is in `messages/ar.json` and `messages/en.json`,
+both with identical structure.
 
 - `useTranslations(namespace)` in client components.
-- `getTranslations({ locale, namespace })` in server components and route
-  handlers.
-- Add new keys at the end of their namespace; don't reorder existing keys —
-  diffs become unreadable.
+- `getTranslations({ locale, namespace })` in server components and
+  route handlers.
+- Add new keys at the end of their namespace; don't reorder existing
+  keys (diffs become unreadable).
 - When adding a key, update BOTH files in the same edit.
 - Stub missing translations with `«TODO» <source>` so they're greppable.
 - The `translation-syncer` agent enforces parity.
 
-Bilingual fields in DB schemas use `*Ar` / `*En` columns (`titleAr`, `titleEn`,
-`excerptAr`, `excerptEn`, etc.). Pick by `locale === 'ar'` server-side; don't
-push the choice to the client.
+Bilingual fields in DB schemas use `*Ar` / `*En` columns (`titleAr`,
+`titleEn`, `excerptAr`, `excerptEn`, etc.). Pick by `locale === 'ar'`
+server-side; don't push the choice to the client.
+
+## Site settings (structured)
+
+Stored as a single JSON blob in `site_settings.value_json` under the
+`site_config` key.
+- Types + defaults: `lib/site-settings/types.ts`,
+  `lib/site-settings/defaults.ts`.
+- Validator: `lib/site-settings/zod.ts` — `siteSettingsPatchSchema`.
+- Cached read: `lib/site-settings/get.ts` — `getCachedSiteSettings()`
+  (`unstable_cache` + `React.cache`, tagged `'site-settings'`).
+- Uncached read + admin write: `lib/db/queries.ts` — `getSiteSettings()`
+  and `updateSiteSettings(patch)` (revalidates the cache tag).
+- API: `app/api/admin/site-settings/route.ts` (GET + PATCH; gated by
+  `requireAdmin(req)` and per-admin rate-limited).
+- Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
+
+Toggle groups: `homepage`, `navigation` (incl. `show_nav_corporate`),
+`footer`, `hero_ctas`, `featured`, `features` (`auth_enabled`,
+`newsletter_form_enabled`, `maintenance_mode`), `maintenance` (message
++ until date), `admin` (`show_admin_booking`, `show_admin_questions`),
+`dashboard` (`show_ask_tab`), `coming_soon_pages` (incl. `'corporate'`).
+
+**Coming Soon ≠ Hide.** Two independent concerns:
+- A page in `coming_soon_pages` renders the `ComingSoon` placeholder
+  instead of its content and is excluded from the sitemap. The link
+  **stays** in navigation.
+- A page hidden via `navigation.show_nav_*` toggles is removed from the
+  nav + footer. Whether it's also coming-soon is a separate decision.
 
 ## Workflow rules
 
 ### Git
-- **Manual commits only.** Claude must never run `git commit` or `git push`
-  unprompted. Stage if asked.
-- Branch strategy: work on feature branches off `main`; `claude/*` branches for
+- **Manual commits only.** Claude must never run `git commit` or
+  `git push` unprompted. Stage if asked.
+- Branch strategy: feature branches off `main`; `claude/*` branches for
   Claude Code worktree sessions.
-- Commit-message conventions in this repo: short imperative subject, often with
+- Commit-message conventions: short imperative subject, often with
   `feat:` / `fix:` / `chore:` / `refactor:` prefixes (see `git log`).
 
 ### Verification before reporting done
-Always:
+
 ```
 npx tsc --noEmit
 npm run lint
 ```
-Run `npm run build` only when the change crosses route boundaries, touches
-`next.config.ts`, `middleware`, `app/sitemap.ts`, `app/robots.ts`, or
-`app/manifest.ts`. Build is slow.
 
-**Never** ship UI claims based on screenshots, headed Playwright runs, or
-visual-MCP tools. Type checking, lint, and build are the gates. If you can't
-verify a UI behavior without running the dev server in front of a human, say
-so explicitly rather than implying success.
+Run `npm run build` only when the change crosses route boundaries,
+touches `next.config.ts`, `middleware`, `app/sitemap.ts`,
+`app/robots.ts`, or `app/manifest.ts`. Build is slow.
+
+**Never** ship UI claims based on screenshots, headed Playwright runs,
+or visual-MCP tools. Type checking, lint, and build are the gates. If
+you can't verify a UI behavior without running the dev server in front
+of a human, say so explicitly rather than implying success.
 
 ### Code conventions
-- Server Components by default. `'use client'` only when the file uses hooks,
-  event handlers, refs, or browser APIs.
-- TypeScript strict — no `any`, no `as any`, no `@ts-ignore` without a comment
-  explaining why.
+- Server Components by default. `'use client'` only when the file uses
+  hooks, event handlers, refs, or browser APIs.
+- TypeScript strict — no `any`, no `as any`, no `@ts-ignore` without a
+  comment explaining why.
 - Compose small components; don't prop-drill.
 - Suspense boundaries for async data; `loading.tsx` for route loading.
 - Reuse `requireAdmin`, `getServerSession`, `apiError`, `tryRateLimit`,
   `parseJsonBody` — don't reinvent.
-- Reuse motion variants from `lib/motion/variants.ts` — don't define new
-  cubic-beziers or duration constants in components.
+- Reuse motion variants from `lib/motion/variants.ts` — don't define
+  new cubic-beziers or duration constants in components.
 - Use the unified data layer (`lib/db/queries.ts`) — never import
   `lib/placeholder-data.ts` directly outside that file.
 
 ### File organization
+
 - `app/` — routes (Next.js App Router).
 - `components/admin/` — admin-only components (incl. `SiteSettingsForm`,
-  `CorporateProgramForm`, `CorporateProgramsTable`, `CorporateClientForm`,
-  `CorporateClientsTable`, `CorporateRequestsTable`,
-  `CorporateRequestStatusForm`, `SessionContentEditor`,
-  `SessionContentItemDialog`, plus the **Phase A2 booking suite**:
-  `ToursAdminTable`, `TourForm`, `BookingsAdminTable`, `BookingForm`,
-  `BookingCapacityCard`, `TourSuggestionsTable`, `BookingInterestTable`,
-  `BookingOrdersTable`, `BookingOrdersPurgeButton`,
-  `BookingOrderRefundButton`). The shared `StatusBadge` was extended
-  with `NEW`/`CONTACTED`/`SCHEDULED`/`COMPLETED` (corporate request
-  lifecycle) and the `status.*` translations were extended in lockstep.
-  `StatusBadge` also accepts optional `tone` (`neutral` | `accent` |
-  `positive` | `warning` | `negative` | `info`) and `label` overrides
-  so non-status enums (e.g. session-item types — VIDEO=info,
-  AUDIO=warning, PDF=positive) can render in the same chip without
-  ad-hoc CSS clones.
-- `components/booking/` — public `/booking` page (Phase A1):
-  `BookingPage` (client orchestrator with sub-nav scroll-spy + auth gate
-  + focus-refresh throttle + already-booked-set), `BookingPageHeader`,
-  `BookingSubNav`, `ToursSection`, `ReconsiderSection` (with mobile
-  sticky-bottom Reserve CTA + already-booked panel state),
-  `SessionsSection` (already-booked card swap), `ReserveModal`,
-  `SuggestCityModal`, `InterestModal`. All use the existing Qalem-skinned
-  `Dialog` primitive; no custom modal chrome.
-- `components/dashboard/` — dashboard-only components.
-- `components/auth/` — `LoginForm`, `SignupForm`, `ForgotPasswordForm`,
-  `ResetPasswordForm`, `AuthAside`, `AuthRequiredDialog`.
-- `components/layout/` — site chrome: `SiteHeader` (with mobile hamburger),
-  `SiteFooter`, `MobileMenu`, `LocaleSwitcher`, `ThemeToggle`, `AuthMenu`,
-  `UserMenuDropdown`, `AppLoader`, `LoadingSequence`, `MaintenanceBanner`.
-  `BottomNav.tsx` still exists but is no longer imported anywhere — the
-  hamburger in `SiteHeader` opens `MobileMenu` directly on mobile.
+  the corporate suite, `SessionContentEditor`, the booking suite). The
+  shared `StatusBadge` accepts optional `tone` and `label` overrides
+  for non-status enums (e.g. session-item types).
+- `components/auth/` — login/signup/forgot/reset forms,
+  `AuthRequiredDialog`, `AuthAside`.
+- `components/booking/` — public `/booking` page (Phase A1).
+- `components/corporate/` — public `/corporate` sections.
+- `components/dashboard/` — dashboard-only components, including the
+  Phase-1 `ContentPlaceholder` (legacy empty-state primitive — Phase 2
+  replaced the read placeholder, Phase 4 replaced the session
+  placeholder; the file is kept as a small empty-state primitive for
+  future "owned but not ready" shells).
+- `components/dashboard/ask/` — Q&A user-facing surface (Phase B1).
+- `components/admin/questions/` — Q&A admin queue (Phase B2).
+- `components/layout/` — site chrome: `SiteHeader` (with mobile
+  hamburger), `SiteFooter`, `MobileMenu`, `LocaleSwitcher`, `ThemeToggle`,
+  `AuthMenu`, `UserMenuDropdown`, `AppLoader`, `LoadingSequence`,
+  `MaintenanceBanner`. `BottomNav.tsx` exists but is no longer imported
+  — the hamburger in `SiteHeader` opens `MobileMenu` directly on mobile.
+- `components/library/` — Phase-2 PDF reader (see
+  `docs/architecture/pdf-reader.md`).
+- `components/library/session/` — Phase-4 session viewer (see
+  `docs/architecture/session-viewer.md`).
+- `components/motion/` — motion-specific reusable components.
 - `components/sections/` — homepage and listing-page sections, plus
   `BookBuyButton` (purchase trigger; gated on session via `useSession`).
-- `components/corporate/` — the public `/corporate` page sections:
-  `CorporateClientStrip` (trust-strip logos), `CorporateProgramsGrid`
-  (4-card alternating dark/light grid), `CorporateRequestForm` (zod-
-  validated form, dispatches/listens to `kg:corporate:select-program`
-  CustomEvent for per-card prefill).
-- `components/dashboard/` — dashboard-only components, including the legacy
-  Phase-1 `ContentPlaceholder` (no longer mounted — Phase 2 replaced the
-  read placeholder, Phase 4 replaced the session placeholder; keeping
-  the file around as a small empty-state primitive for future "owned
-  but not ready" shells) and the Phase-1 download flow added to
-  `LibraryCard.tsx` (button → fetch `/api/content/access` →
-  programmatic `<a download>` click → `sonner` toast on error).
-- `components/library/session/` — **Phase 4** customer session viewer:
-  `SessionViewer` (orchestrator — layout, state, signed-URL cache,
-  progress save flow), `SessionPlaylist` (item rows with type chip,
-  duration, progress bar, "now playing" + "completed" indicators),
-  `SessionEmptyState` (no-items-yet shell), `VideoPlayer` (provider-
-  agnostic wrapper that consults `videoProvider` from `lib/video/`),
-  `YouTubeEmbedPlayer` (the only file on the site that touches the
-  YouTube IFrame Player API — module-scoped singleton-Promise loader
-  shared across mounts), `AudioPlayer` (HTML5 `<audio>` engine + Qalem
-  custom controls including 1×/1.25×/1.5×/2× playback speed), and
-  `PdfInline` (browser-native iframe for short workshop PDFs — see
-  `/dashboard/library/session/[sessionId]` notes for why this is NOT
-  the Phase 2 react-pdf reader).
-- `components/library/` — Phase-2 premium reader. `PdfReader.tsx` is the
-  orchestrator component mounted (via `next/dynamic` from
-  `PdfReaderClient.tsx`) by `/dashboard/library/read/[bookId]`. It owns
-  the worker init, cMap/standardFont config, the single `<Document>`
-  instance, the ToC outline resolution, and picks the variant (Mobile
-  vs Desktop) via `useViewport`. The variant components and shared
-  pieces live under `components/library/reader/`:
-    - `MobileReader.tsx` — full-bleed page, swipe + drag + tap-zones,
-      double-tap zoom, auto-hiding bars.
-    - `DesktopReader.tsx` — two-page spread, collapsible side rail,
-      keyboard shortcuts, fullscreen, shortcuts overlay.
-    - `ReaderTopBar.tsx` / `ReaderBottomBar.tsx` — shared bars with
-      `variant: 'mobile' | 'desktop'`. Both use `absolute` positioning
-      so the desktop side rail isn't overlapped.
-    - `ReaderSideRail.tsx` — desktop-only collapsible rail (300px,
-      RTL leading edge) with theme picker, ToC, bookmarks, progress
-      ring.
-    - `ReaderSettingsSheet.tsx` — mobile bottom-sheet with theme,
-      reading info, go-to-page, bookmarks tab.
-    - `ShortcutsOverlay.tsx` — modal listing keyboard shortcuts
-      (focus-trapped, Esc-closeable).
-    - `PageScrubber.tsx` — `<input type="range">` styled via
-      `.reader-scrubber` in globals.css; drags update preview, commit
-      on release.
-    - `ProgressRing.tsx` — SVG progress ring with % + remaining-time
-      estimate (2 min/page).
-    - `BookmarksList.tsx` — list view used by both rail and sheet.
-    - `LoadingState.tsx` — first-load splash.
-  Reader-specific hooks live under `components/library/hooks/`:
-  `useReaderState` (page, bookmarks, progress save), `useReaderTheme`
-  (light/sepia/dark with localStorage), `useReaderShortcuts` (desktop
-  keyboard map), `useSwipeGesture` (mobile tap zones; drag handled by
-  motion's `drag="x"` on the page wrapper), `useAutoHideChrome` (3s
-  inactivity hide), `useViewport` (hydration-safe variant picker).
-  The reader theme is scoped via `data-reader-theme="..."` on the
-  reader root and is independent of the site's `.dark` mode — the
-  CSS variables `--reader-surface`, `--reader-fg`, `--reader-chrome`,
-  etc. live in `app/globals.css` under "Reader themes — used in
-  /dashboard/library/read/[bookId] only".
-  The worker file at `public/pdf.worker.min.mjs` and the cMaps under
-  `public/cmaps/` are version-pinned to the bundled `pdfjs-dist` — see
-  the file header for the upgrade procedure.
-- `components/motion/` — motion-specific reusable components.
 - `components/seo/` — JSON-LD components.
 - `components/ui/` — Base UI / shadcn primitives. `dialog.tsx` and
   `alert-dialog.tsx` are Qalem-skinned: real backdrop scrim, `border` +
-  `shadow-lift` instead of a thin ring, `text-start` (logical), 18px bold
-  title, `max-w-[560px]`, simple footer (no colored bg — `bg-bg-deep` was
-  invisible against `bg-elevated` in light mode).
-- `components/shared/`, `components/forms/`, `components/providers/` — small utilities.
-- `lib/` — business logic (auth, db, motion, redis, email, validators, i18n,
-  api, seo, stripe, site-settings, storage, hooks).
-- `lib/storage/` — Phase-1 storage abstraction. `index.ts` exports a single
-  `storage: StorageAdapter` that every signed-URL caller (access API,
-  post-purchase email, future PDF reader, future session viewer) uses.
-  `mock-adapter.ts` is the dev placeholder; the real adapter (Netlify Blobs,
-  R2, Cloudflare Stream — TBD per Dr. Khaled's storage decision) drops in
-  by editing the single import in `lib/storage/index.ts`. Nothing else moves.
-- `lib/video/` — **Phase-4 video provider abstraction** (mirrors the
-  storage abstraction). `index.ts` exports a single `videoProvider:
-  VideoAdapter` that the session viewer's `VideoPlayer` wrapper calls
-  via `videoProvider.getEmbedConfig({ storageKey }, { origin,
-  startSeconds })`. `youtube-adapter.ts` is today's default — free dev
-  hosting, accepts video-id/watch-URL/short-URL/embed-URL formats in
-  `storageKey`, normalizes to a `youtube-nocookie.com` embed URL with
-  `rel=0 modestbranding=1 playsinline=1 enablejsapi=1 origin=…` query
-  params. YouTube branding (logo watermark, "More videos" panel on
-  pause) cannot be fully removed — that's an inherent constraint
-  acceptable for dev. Production will swap to a cleaner provider
-  (Cloudflare Stream / Vimeo / Mux — pending Dr. Khaled's decision)
-  by: (1) adding a sibling adapter file implementing `VideoAdapter`,
-  (2) adding a sibling player component under
-  `components/library/session/<Provider>Player.tsx` that knows the
-  provider's runtime API, (3) extending `VideoPlayer.tsx`'s switch on
-  `providerName`, (4) replacing the import in `lib/video/index.ts`. No
-  other files change. The session viewer's UI stays put.
-  The YouTube IFrame Player API is loaded ONLY inside
-  `components/library/session/YouTubeEmbedPlayer.tsx` via a module-
-  scoped singleton-Promise — concurrent player mounts share the same
-  load instead of racing `window.onYouTubeIframeAPIReady`. That file
-  is the only place on the site that touches `window.YT` /
-  `iframe_api`; any future provider's runtime code stays inside its
-  own sibling component.
-- `lib/email/` — Resend wrapper. `index.ts` exports `getResend()` (returns
-  `null` and warns once when `RESEND_API_KEY` is missing — never throws at
-  module load). `send.ts` is the canonical send wrapper used by templates;
-  it returns a tagged result so callers can branch on `no-api-key` vs
-  `send-failed`. Templates live in `lib/email/templates/` —
-  `post-purchase.ts` is the Phase-1 bilingual order confirmation.
-- `messages/` — i18n JSON. Top-level `library.*` namespace was added in
-  Phase 1 alongside the legacy `dashboard.library.*` keys for the new
-  download / placeholder copy. Phase 2 adds the top-level `reader.*`
-  namespace (loading, error, controls, resume, unavailable) consumed by
-  `components/library/PdfReader.tsx` and the read-page server component.
-  Phase 3 adds the top-level `corporate.*` namespace (meta, page, trust,
-  programs, request, form) and the `admin.corporate*`,
-  `admin.corporate_program_form`, `admin.corporate_client_form`,
-  `admin.corporate_requests` admin namespaces — plus
-  `nav.corporate`, four new `status.*` keys (`new`, `contacted`,
-  `scheduled`, `completed`), and the
-  `coming_soon.{heading|body|folio}_corporate` triple. Phase 4 adds the
-  `admin.session_content.*` namespace consumed by `SessionContentEditor`
-  and `SessionContentItemDialog` (page chrome, item-type labels, dialog
-  copy, error codes), plus the top-level `session.*` namespace consumed
-  by the customer-facing session viewer (`empty`, `now_playing`,
-  `playlist.*`, `type.*`, `video.*`, `audio.*`, `pdf.*`, `continue.*`,
-  `completed.*`, `back_to_library`). Phase 6.1 a11y pass adds 9 new
-  leaves: `session.aria.playlist_item_{video,audio,pdf}` (with `{title,
-  position, total}` placeholders), `session.aria.playlist_item_completed`
-  / `session.aria.playlist_item_in_progress` (suffix fragments
-  concatenated onto the base label by `SessionPlaylist`),
-  `session.audio.aria.elapsed_announcement` (with `{elapsed, total}` —
-  the throttled SR-only live region in `AudioPlayer`), and
-  `session.audio.shortcut.{play_pause,scrub,mute}` (documentation strings
-  surfaced via `aria-keyshortcuts` + `title` on the audio controls).
-  Phase 5.2 adds 7 leaves per locale: `nav.continue_indicator_aria`
-  (kept even though Surface 4 is skipped — translation parity for the
-  string is cheap insurance against re-implementing it later), three
-  top-level namespaces `home.welcome_back.{greeting,no_activity_cta}`,
-  `dashboard_root.{activity_heading,view_all}`, and
-  `checkout_success.{start_now_cta,go_to_library_cta}`.
-  Both files maintain identical key paths — current count: 1161/1161.
-- `public/` — static assets. `public/placeholder-content/` is the Phase-1
-  mock storage sandbox (gitignored content; tracked README). Phase 2 adds
-  `public/pdf.worker.min.mjs`, `public/cmaps/`, and `public/standard_fonts/`
-  — copies from `node_modules/pdfjs-dist/` pinned to the bundled version.
-  These are real shipped assets, not gitignored.
-- `scripts/` — dev tooling: `dev.mjs`, `build.mjs`, `seed.ts`, `gen-icons.mjs`,
-  `promote-admin.mjs`, `reset-db.mjs`, `verify-db.mjs`, `fix-external-urls.mjs`,
-  `visual-check.mjs`.
+  `shadow-lift` instead of a thin ring, `text-start` (logical), 18px
+  bold title, `max-w-[560px]`, simple footer.
+- `components/{shared,forms,providers}/` — small utilities.
+- `lib/` — business logic (auth, db, motion, redis, email, validators,
+  i18n, api, seo, stripe, site-settings, storage, video, hooks).
+- `lib/storage/` — Phase-1 storage abstraction. `index.ts` exports a
+  single `storage: StorageAdapter` that every signed-URL caller uses.
+  `mock-adapter.ts` is the dev placeholder; the real adapter (Netlify
+  Blobs / R2 / Cloudflare Stream — pending Dr. Khaled's storage
+  decision) drops in by editing the single import in
+  `lib/storage/index.ts`. Nothing else moves.
+- `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
+  `youtube-adapter.ts` is today's default; production swaps by adding
+  a sibling adapter + sibling player component (see
+  `docs/architecture/session-viewer.md`).
+- `lib/email/` — Resend wrapper. `index.ts` exports `getResend()`
+  (returns `null` and warns once when `RESEND_API_KEY` is missing —
+  never throws at module load). `send.ts` is the canonical send wrapper;
+  templates live in `lib/email/templates/`.
+- `lib/db/queries.ts` — unified data layer. All `MOCK_AUTH_ENABLED`-
+  first → `HAS_DB`-second helpers branch the same way: try mock-store,
+  fall back to in-memory Map, then Drizzle. Drizzle paths are wrapped
+  in try/catch so a not-yet-applied migration silently degrades.
+- `lib/db/mock-store.ts` — JSON-backed dev persistence for reading
+  progress, bookmarks, sessionItems, and media progress. File:
+  `.next/cache/reader-mock-store.json`. Mock user ids ('1', '2', '3')
+  aren't UUIDs and can't be inserted into the real progress / bookmarks
+  tables — this file is the dev substitute.
+- `messages/` — i18n JSON. Top-level namespaces include `library.*`
+  (Phase 1), `reader.*` (Phase 2), `corporate.*` (Phase 3),
+  `session.*` (Phase 4), and the Phase B1/B2 `dashboard.ask.*` +
+  `admin.questions.*`.
+- `public/` — static assets. `public/placeholder-content/` is the
+  Phase-1 mock storage sandbox (gitignored content; tracked README).
+  Phase 2 added `public/pdf.worker.min.mjs`, `public/cmaps/`,
+  `public/standard_fonts/` — version-pinned to bundled `pdfjs-dist`.
+- `scripts/` — dev tooling: `dev.mjs`, `build.mjs`, `seed.ts`,
+  `gen-icons.mjs`, `promote-admin.mjs`, `reset-db.mjs`, `verify-db.mjs`,
+  `fix-external-urls.mjs`, `visual-check.mjs`, `copy-pdf-assets.mjs`.
 
 ## Auth & mock mode
 
-- `lib/auth/mock.ts` provides `getMockSession()` returning the active mock user
-  when `MOCK_AUTH_ENABLED` is true. Mock auth is **opt-in** in dev — set
-  `MOCK_AUTH=true` (or `NEXT_PUBLIC_MOCK_AUTH=true`) in `.env.local` to enable.
-  Default OFF. `NODE_ENV === 'production'` hard-disables it; `getMockSession()`
-  throws if invoked in production at all.
-- `lib/auth/server.ts` provides `getServerSession()` — the production path
-  (mock-aware in dev only; mock branch is gated by `NODE_ENV !== 'production'`).
-- `lib/auth/client.ts` exposes `useSession()` for client components (used by
-  `BookBuyButton` to gate purchases).
-- `lib/auth/admin-guard.ts` exports `requireAdmin(req)`.
-- `lib/auth/index.ts` configures Better Auth (30-day sessions, 24h refresh).
-  Throws at module load when `BETTER_AUTH_SECRET` is unset in production
-  (SECURITY [C-1]). In dev with no secret, an ephemeral `randomBytes(32)`
-  secret is used per process — sessions don't persist across restarts, by
-  design. `trustedOrigins` locked to `NEXT_PUBLIC_APP_URL` + `BETTER_AUTH_URL`
-  in production; dev also includes `localhost:3000`/`:3001`.
-- `lib/auth/redirect.ts` — safe-redirect helpers for the post-login bounce-back.
-- Promotion script: `node --env-file=.env.local scripts/promote-admin.mjs <email> ADMIN|CLIENT`.
+- `lib/auth/mock.ts` — `getMockSession()` returns the active mock user
+  when `MOCK_AUTH_ENABLED` is true. Mock auth is **opt-in** in dev: set
+  `MOCK_AUTH=true` (or `NEXT_PUBLIC_MOCK_AUTH=true`) in `.env.local` to
+  enable. Default OFF. `NODE_ENV === 'production'` **hard-disables** it;
+  `getMockSession()` throws if invoked in production at all (defense-
+  in-depth against env-misconfiguration privilege escalation —
+  SECURITY [C-2]).
+- Mock users: `id 1` admin@drkhaledghattass.com (Kamal, ADMIN),
+  `id 2` khaled@drkhaledghattass.com (Dr. Khaled, CLIENT),
+  `id 3` user@example.com (test USER). Active mock user is
+  `MOCK_ACTIVE_USER_ID = '1'` (ADMIN — that's why mock-in-prod is fatal).
+- Promotion script:
+  `node --env-file=.env.local scripts/promote-admin.mjs <email> ADMIN|CLIENT`.
 
 Two gates work together:
 - `MOCK_AUTH_ENABLED` (computed in `mock.ts`) — gates fake sessions.
 - **`features.auth_enabled`** (DB-backed via `site_settings.value_json`,
-  read through `getCachedSiteSettings`) — runtime gate for the public-nav
-  Sign In UI. The env flag `NEXT_PUBLIC_AUTH_ENABLED` is the build-time
-  fallback for callers that don't pass the runtime setting.
+  read through `getCachedSiteSettings`) — runtime gate for the
+  public-nav Sign In UI. The env flag `NEXT_PUBLIC_AUTH_ENABLED` is
+  the build-time fallback for callers that don't pass the runtime
+  setting.
 
-Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED` is dev-only):
+Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED`
+is dev-only):
+
 | `auth_enabled` | `MOCK_AUTH_ENABLED` | Result |
 | --- | --- | --- |
 | false | true  | Public nav hides auth links. Admin/dashboard protected by mock. (Dev with `MOCK_AUTH=true`.) |
@@ -1176,52 +607,18 @@ Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED` is dev-on
 
 > Mock-mode caveat: in dev with `MOCK_AUTH_ENABLED=true`, server-side
 > `getServerSession()` returns the mock user, but client-side
-> `authClient.useSession()` queries Better Auth's real endpoint and sees no
-> session. If you're testing purchase gating, leave mock off (the default).
+> `authClient.useSession()` queries Better Auth's real endpoint and
+> sees no session. If you're testing purchase gating, leave mock off
+> (the default).
 
 ## Real content status
 
-- **Bio (about)**: real.
-- **Books**: 6 real books + 2 real recorded paid lectures (productType
-  `SESSION`; UI labels these «محاضرة مدفوعة» — paid lectures, not live
-  consultations).
-- **Events**: real (World Tour 2025-2026, Al-Warsheh, GOC, Ihya, Reading Prize).
-- **Articles**: 2 real + 6 thematic placeholders.
-- **Interviews**: all 8 are placeholders. `videoUrl` is empty; detail pages
-  show a "Video coming soon" overlay until real URLs arrive.
-- **Gallery**: deleted from the public site; admin CRUD remains.
-- **Corporate programs**: 4 real programs (text sourced from the existing
-  drkhaledghattass.com/cooperate page) + 7 real client logos referenced by
-  name (Canadian University Dubai, Department of Energy Abu Dhabi, Al
-  Muhaidib, PepsiCo, Zain, Tamer Group, Department of Community
-  Development). Logo image files are NOT yet in `public/clients/` — the
-  `CorporateClientStrip` falls back to text when the image fails to load.
-  Real PNGs need to be dropped into `public/clients/` before launch.
+Maintained in `CONTENT-NEEDED.md` (single source of truth — track gaps
+there, not here). Real assets live in `public/` (`dr khaled photo.jpeg`,
+`Paid books/`, `Paid sessions/`, logos, PWA icons).
 
-Real assets in `public/`:
-- `dr khaled photo.jpeg` — hero portrait
-- `drphoto.JPG`, `DSC06608.JPG` — additional photography
-- `Paid books/` — book covers and PDFs
-- `Paid sessions/` — recorded paid lectures
-- `logo-black.png`
-- `icon-192.png`, `icon-512.png`, `icon-maskable.png` — PWA icons
-
-Real contact:
-- `Team@drkhaledghattass.com`
-- `+961 3 579 666` (009613579666)
-- مكتبة خالد غطاس — برجا، لبنان
-
-Pending real content (track in `CONTENT-NEEDED.md`):
-- 8 real interview YouTube/Vimeo URLs + thumbnails
-- 6 real article cover images and bilingual bodies
-- Designed OG share image at `public/og.png` (1200×630)
-- Real `public/favicon.ico` (multi-resolution)
-- Book PDFs (or `externalUrl` for store-fulfilled titles)
-- Confirmation: native Stripe checkout vs external WP shop integration
-- Real client-logo PNGs at `public/clients/{canadian-university-dubai,
-  department-of-energy-abu-dhabi, al-muhaidib, pepsico, zain, tamer,
-  department-of-community-development}.png` for the `/corporate` trust
-  strip
+Real contact: `Team@drkhaledghattass.com` · `+961 3 579 666` · مكتبة
+خالد غطاس — برجا، لبنان.
 
 ## Environment variables
 
@@ -1236,21 +633,24 @@ Full reference in `.env.local.example`. Required for production:
 | `REVALIDATE_TOKEN` | `openssl rand -hex 32` |
 
 Optional / feature-gated:
+
 | Var | Purpose |
 | --- | --- |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 6 |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limiting |
 | `RESEND_API_KEY` | Transactional email |
-| `CORPORATE_INBOX_EMAIL` | Inbox that receives `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. |
+| `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. |
+| `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. |
 | `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
-| `GOOGLE_SITE_VERIFICATION` | Search Console |
+| `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
 
 Runtime flags (string-equality `'true'` / `'false'`):
+
 | Var | Effect |
 | --- | --- |
 | `NEXT_PUBLIC_AUTH_ENABLED` | Build-time fallback for the auth UI gate. The runtime gate is `features.auth_enabled` in the structured site settings. |
-| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Either set to `'true'` to opt into mock auth (dev only — hard-disabled in production regardless). Default OFF. |
+| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Either set to `'true'` to opt into mock auth (dev only — hard-disabled in production). Default OFF. |
 
 `HAS_DB` is **not** an env var. It's auto-detected from `DATABASE_URL`
 inside `lib/db/queries.ts`.
@@ -1270,124 +670,26 @@ Eight project-scoped subagents live in `.claude/agents/`:
 | `seo-checker` | ✓ |   | Pre-launch / new public route |
 | `accessibility-checker` | ✓ |   | Pre-launch / new UI surface |
 
-Verify they're discovered: `claude agents`.
-
-Auditor agents are intentionally read-only — they report; the implementer
-fixes. Full docs in `.claude/agents/README.md`. Invoke by @-mention or by
-describing the task in a way that triggers auto-delegation.
+Verify they're discovered: `claude agents`. Auditor agents are
+intentionally read-only — they report; the implementer fixes. Full docs
+in `.claude/agents/README.md`.
 
 ## Path to launch
 
-1. Provision Neon, generate `BETTER_AUTH_SECRET` + `REVALIDATE_TOKEN`, populate
-   `.env.local` (production values go on Netlify).
+1. Provision Neon, generate `BETTER_AUTH_SECRET` + `REVALIDATE_TOKEN`,
+   populate `.env.local` (production values go on Netlify).
 2. Apply migrations to Neon (`npm run db:migrate`); seed if desired.
-3. Confirm mock auth is OFF in production env (the default — leave `MOCK_AUTH`
-   unset, or set to anything other than `'true'`). Even with `MOCK_AUTH=true`,
+3. Confirm mock auth is OFF in production env (the default — leave
+   `MOCK_AUTH` unset). Even with `MOCK_AUTH=true`,
    `NODE_ENV === 'production'` blocks it. Enable real auth UI
    (`NEXT_PUBLIC_AUTH_ENABLED=true`).
 4. Promote admin and CLIENT users via `scripts/promote-admin.mjs`.
-5. Get pending content from Dr. Khaled (interviews, articles, OG, favicon).
+5. Get pending content from Dr. Khaled (interviews, articles, OG,
+   favicon — see `CONTENT-NEEDED.md`).
 6. Run the agent team: `security-auditor`, `seo-checker`,
    `accessibility-checker`, `code-reviewer`. Resolve all critical/high.
 7. Deploy to Netlify staging. Send URL to Dr. Khaled. Iterate.
 8. Production deploy + DNS.
 
-Estimated 1–2 weeks calendar time, mostly waiting on content + credentials.
-Full readiness checklist: `LAUNCH-CHECKLIST.md`.
-
-## Reference
-
-- Design tokens: `app/globals.css` (`@theme inline { ... }` block).
-- Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/0000–0009`.
-- Unified queries: `lib/db/queries.ts`.
-- Site settings: `lib/site-settings/{types,defaults,zod,get}.ts`.
-- Auth: `lib/auth/{index,server,client,admin-guard,mock,redirect}.ts`.
-- Motion: `lib/motion/variants.ts` and `lib/motion/hooks.ts`.
-- Storage abstraction: `lib/storage/{index,types,mock-adapter}.ts` —
-  `mockAdapter` is wired today; the real adapter is pending Dr. Khaled's
-  storage-provider decision. Swap by editing the single import in
-  `lib/storage/index.ts`.
-- Video provider abstraction: `lib/video/{index,types,youtube-adapter}.ts`
-  — `youtubeAdapter` is wired today as the dev default; production will
-  swap to a cleaner provider (Cloudflare Stream / Vimeo / Mux pending Dr.
-  Khaled's decision) by adding a sibling adapter + sibling player
-  component and editing the single import in `lib/video/index.ts`. The
-  YouTube IFrame Player API is touched ONLY inside
-  `components/library/session/YouTubeEmbedPlayer.tsx` (singleton-Promise
-  loader). See "Video adapter abstraction" notes near the storage
-  abstraction in this file.
-- Email: `lib/email/{index,send}.ts` (lazy Resend; never throws at module
-  load) and `lib/email/templates/post-purchase.ts` (bilingual order email).
-- Session-content admin: `app/[locale]/(admin)/admin/books/[id]/content/{page.tsx,actions.ts}`,
-  `components/admin/{SessionContentEditor,SessionContentItemDialog}.tsx`,
-  query helpers in `lib/db/queries.ts` (`getSessionItemsBySessionId`,
-  `createSessionItem`, `updateSessionItem`, `deleteSessionItem`,
-  `reorderSessionItems`).
-- Customer session viewer (Phase 4):
-  `app/[locale]/(dashboard)/dashboard/library/session/[sessionId]/{page.tsx,actions.ts}`,
-  `components/library/session/{SessionViewer,SessionPlaylist,SessionEmptyState,VideoPlayer,YouTubeEmbedPlayer,AudioPlayer,PdfInline}.tsx`,
-  keepalive twin route `app/api/session/progress/route.ts`,
-  query helpers in `lib/db/queries.ts` (`getMediaProgress`,
-  `saveMediaProgress`, `getAllMediaProgressForSession`).
-- "Ask Dr. Khaled" Q&A (Phase B1):
-  `app/[locale]/(dashboard)/dashboard/ask/{page.tsx,actions.ts}`,
-  `components/dashboard/ask/{AskDrKhaledPage,AskHero,AskGuide,QuestionForm,QuestionList,QuestionCard,AskEmptyState,SubmitSuccessCard}.tsx`,
-  validator `lib/validators/user-question.ts` (exports
-  `createUserQuestionSchema`, `QUESTION_CATEGORIES`,
-  `QUESTION_BODY_MAX/MIN`, `QUESTION_SUBJECT_MAX/MIN`),
-  query helpers in `lib/db/queries.ts` (`getUserQuestionsByUserId`,
-  `createUserQuestion`). Dashboard tab visibility flag is
-  `dashboard.show_ask_tab` in site-settings; the `DashboardLayout`
-  client component accepts a `showAskTab` prop threaded from each
-  dashboard page that mounts it. Categories are stored as plain text
-  (not a `pgEnum`) so admin can adjust the vocabulary without a
-  migration — the validator's tuple guard is the single source of
-  truth for allowed values. **Dormant column:** the
-  `is_anonymous boolean` column on `user_questions` (migration 0009)
-  is preserved but unused — the user-facing toggle was removed
-  pre-launch and every insert writes the DB default (`false`).
-  Reintroducing the toggle would re-add `isAnonymous` to the
-  validator + form + admin table; no schema change needed.
-- "Ask Dr. Khaled" admin queue (Phase B2):
-  `app/[locale]/(admin)/admin/questions/{page.tsx,actions.ts}`,
-  `components/admin/questions/{AdminQuestionsPage,QuestionsTable,MarkAnsweredModal,ArchiveModal,RevertModal,DeleteModal}.tsx`,
-  email template `lib/email/templates/question-answered.ts`
-  (bilingual, inline string-map per the post-purchase pattern), send
-  wrapper `sendAnsweredNotificationEmail` in `lib/email/send.ts`.
-  Validators extended in `lib/validators/user-question.ts` with
-  `updateQuestionStatusSchema` (refines that ANSWERED requires a
-  non-empty answerReference), `deleteQuestionSchema`, and
-  `adminQuestionListSchema`. Query helpers in `lib/db/queries.ts`:
-  `getAdminQuestions` (paginated + joined with users),
-  `getQuestionById` (single row + user join),
-  `updateQuestionStatus` (atomic timestamp side-effects per status),
-  `deleteQuestion` (idempotent hard delete),
-  `getPendingQuestionCount` (sidebar badge).
-  **Email semantics:** the notification email fires ONLY on a
-  PENDING → ANSWERED transition AND only when the answerReference is
-  an http(s) URL. Free-text notes save quietly with no email;
-  non-PENDING source states (e.g., editing an already-ANSWERED
-  row's reference) also skip the email so admins aren't surprised
-  by re-sends. Email send NEVER blocks the status update — Resend
-  missing/down maps to a warning toast, the DB write still
-  succeeds.
-  **Sidebar:** Questions entry sits in the Audience group with a
-  pending-count badge powered by `getPendingQuestionCount()` in
-  the admin layout. Visibility is gated on
-  `admin.show_admin_questions` site-setting (default true). Layout
-  passes `showAdminQuestions` + `pendingQuestionCount` to both
-  `AdminSidebar` and `AdminTopbar`.
-  **User locale fallback:** the `users` table has no `locale`
-  column, so the answered-notification email defaults to `'ar'`
-  (the site's primary locale). Adding a `users.locale` column is
-  a Phase B3 concern.
-- Validators: `lib/validators/*` (incl. `corporate.ts` exporting
-  `corporateProgramSchema`, `corporateClientSchema`,
-  `corporateRequestSchema`, `corporateRequestUpdateSchema`, and the
-  `CORPORATE_REQUEST_STATUSES` tuple).
-- Agents: `.claude/agents/` (eight project-scoped agents — see Agent team).
-- Pending content: `CONTENT-NEEDED.md`.
-- Launch checklist: `LAUNCH-CHECKLIST.md`.
-- Outstanding follow-ups: `TODO.md`.
-- Next.js 15 caveat: `AGENTS.md` (project root) — read it before relying on
-  pre-15 conventions.
+Estimated 1–2 weeks calendar time, mostly waiting on content +
+credentials. Full readiness checklist: `LAUNCH-CHECKLIST.md`.

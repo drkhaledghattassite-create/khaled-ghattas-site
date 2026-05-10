@@ -32,6 +32,7 @@ import {
   type DeleteQuestionInput,
   type UpdateQuestionStatusInput,
 } from '@/lib/validators/user-question'
+import { isHttpUrl } from '@/lib/utils'
 
 type Ok<T> = { ok: true } & T
 type Err<E extends string> = { ok: false; error: E }
@@ -54,24 +55,33 @@ function revalidateQuestionPaths() {
   revalidatePath('/en/dashboard/ask')
 }
 
-/**
- * Detect whether the answer reference is a public URL — used to decide
- * whether to send a notification email. Free-text notes don't have a link
- * to deliver, so the email is skipped. Mirror's `QuestionCard.isHttpUrl`.
- */
-function isHttpUrl(s: string): boolean {
-  try {
-    const u = new URL(s)
-    return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 /* ── updateQuestionStatusAction ────────────────────────────────────────── */
 
+/**
+ * `emailOutcome` describes what happened to the notification email path,
+ * so the client can pick the right toast without re-deriving from the
+ * input it sent. Discriminator values:
+ *   - `not_applicable`: transition wasn't PENDING→ANSWERED, no email was
+ *      ever in scope (ARCHIVED, revert-to-PENDING, edit-on-already-
+ *      ANSWERED).
+ *   - `no_url`:       admin saved a free-text note. No link to deliver.
+ *   - `no_recipient`: defensive — asker row missing despite cascade FK.
+ *                     Status update succeeded; admin must notify
+ *                     manually if relevant.
+ *   - `sent`:         Resend accepted the message.
+ *   - `send_failed`:  Resend rejected, was unconfigured, or in dev
+ *                     preview-only mode. Admin should follow up
+ *                     out-of-band.
+ */
+export type EmailOutcome =
+  | 'not_applicable'
+  | 'no_url'
+  | 'no_recipient'
+  | 'sent'
+  | 'send_failed'
+
 export type UpdateQuestionStatusActionResult =
-  | Ok<{ id: string; emailQueued: boolean }>
+  | Ok<{ id: string; emailOutcome: EmailOutcome }>
   | Err<
       | 'unauthorized'
       | 'forbidden'
@@ -118,46 +128,65 @@ export async function updateQuestionStatusAction(
   // Reverting an ANSWERED back to PENDING and re-answering with a different
   // URL also fires an email; admins should be aware of that. Documented
   // in self-critique.
-  let emailQueued = false
   const transitionedFromPending = existing.status === 'PENDING'
   const isAnsweredTransition = parsed.data.status === 'ANSWERED'
-  if (
-    isAnsweredTransition &&
-    transitionedFromPending &&
-    answerReferenceForWrite &&
-    isHttpUrl(answerReferenceForWrite)
-  ) {
-    try {
-      const result = await sendAnsweredNotificationEmail({
-        user: {
-          email: existing.user.email,
-          name: existing.user.name,
-        },
-        question: { subject: existing.subject },
-        answerUrl: answerReferenceForWrite,
+  let emailOutcome: EmailOutcome = 'not_applicable'
+
+  if (isAnsweredTransition && transitionedFromPending) {
+    if (!answerReferenceForWrite || !isHttpUrl(answerReferenceForWrite)) {
+      // Free-text note (or empty, but the schema forbids that). No link
+      // to deliver.
+      emailOutcome = 'no_url'
+    } else if (!existing.user) {
+      // Defensive: asker row missing despite ON DELETE CASCADE. Status
+      // update has already succeeded; we can't email an absent user.
+      console.warn('[updateQuestionStatusAction] orphan-user; email skipped', {
+        questionId: existing.id,
       })
-      emailQueued = result.ok
-      if (!result.ok) {
-        // Structured log only — no question subject / body / email body in
-        // logs. The id + reason are enough for ops triage.
-        console.warn('[updateQuestionStatusAction] email send skipped/failed', {
-          questionId: existing.id,
-          reason: result.reason,
+      emailOutcome = 'no_recipient'
+    } else if (!existing.user.email) {
+      // Schema-illegal — `users.email` is non-null — but the LEFT JOIN
+      // could in principle return an empty string if a future migration
+      // softens the column. Treat as no_recipient.
+      console.warn('[updateQuestionStatusAction] empty asker email; email skipped', {
+        questionId: existing.id,
+      })
+      emailOutcome = 'no_recipient'
+    } else {
+      try {
+        const result = await sendAnsweredNotificationEmail({
+          user: {
+            email: existing.user.email,
+            name: existing.user.name,
+          },
+          question: { subject: existing.subject },
+          answerUrl: answerReferenceForWrite,
         })
+        if (result.ok) {
+          emailOutcome = 'sent'
+        } else {
+          // Structured log only — no question body / recipient address /
+          // email html in logs. id + reason are enough for ops triage.
+          console.warn('[updateQuestionStatusAction] email send skipped/failed', {
+            questionId: existing.id,
+            reason: result.reason,
+          })
+          emailOutcome = 'send_failed'
+        }
+      } catch (err) {
+        // sendAnsweredNotificationEmail is documented as never-throws, but
+        // belt-and-suspenders: if anything escapes, the status update has
+        // already succeeded. Log and move on.
+        console.error(
+          '[updateQuestionStatusAction] email send threw unexpectedly',
+          err,
+        )
+        emailOutcome = 'send_failed'
       }
-    } catch (err) {
-      // sendAnsweredNotificationEmail is documented as never-throws, but
-      // belt-and-suspenders: if anything escapes, the status update has
-      // already succeeded. Log and move on.
-      console.error(
-        '[updateQuestionStatusAction] email send threw unexpectedly',
-        err,
-      )
-      emailQueued = false
     }
   }
 
-  return { ok: true, id: updated.id, emailQueued }
+  return { ok: true, id: updated.id, emailOutcome }
 }
 
 /* ── deleteQuestionAction ──────────────────────────────────────────────── */
