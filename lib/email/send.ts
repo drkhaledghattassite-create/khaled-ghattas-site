@@ -18,6 +18,14 @@
  * Override: set `EMAIL_FORCE_SEND=true` in `.env.local` to actually call
  * Resend in dev — useful for "test the real Gmail render once before I
  * declare done."
+ *
+ * Sender address selection
+ * ────────────────────────
+ * See `resolveFromAddress` below. On Vercel preview deploys (and locally
+ * when `EMAIL_FORCE_SEND=true`) we send from Resend's pre-verified
+ * sandbox address `onboarding@resend.dev`, which works with zero DNS but
+ * only delivers to the Resend account owner's inbox. Production uses the
+ * verified domain (override via `EMAIL_FROM`).
  */
 
 import { promises as fs } from 'node:fs'
@@ -46,7 +54,33 @@ export type SendEmailResult =
   | { ok: true; id: string | null }
   | { ok: false; reason: 'no-api-key' | 'send-failed' | 'preview-only'; error?: unknown }
 
-const DEFAULT_FROM_FALLBACK = 'noreply@drkhaledghattass.com'
+// Resend ships a pre-verified sandbox sender that requires zero DNS setup.
+// Useful on dev + Vercel preview deploys where the production domain may
+// not be verified yet (or where you only want to email the Resend account
+// owner). When pointed at `onboarding@resend.dev`, Resend will deliver
+// only to the email tied to your Resend account; everything else is
+// dropped server-side.
+const RESEND_TEST_FROM = 'Dr. Khaled Ghattass <onboarding@resend.dev>'
+const PROD_FROM_FALLBACK = 'Dr. Khaled Ghattass <noreply@drkhaledghattass.com>'
+
+/**
+ * Resolve the `from` address with the following precedence:
+ *   1. Explicit `input.from` on the sendEmail call (per-template override).
+ *   2. `EMAIL_FROM` env var (set in Vercel / .env.local).
+ *   3. Auto: `RESEND_TEST_FROM` on dev / Vercel preview deploys, the
+ *      production fallback in real production (Vercel injects `VERCEL_ENV`
+ *      = 'production' | 'preview' | 'development').
+ *
+ * Once the real domain is verified in Resend, you can drop `EMAIL_FROM`
+ * entirely — production auto-uses the verified domain and previews keep
+ * using the sandbox sender.
+ */
+function resolveFromAddress(explicit: string | undefined): string {
+  if (explicit) return explicit
+  if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM
+  if (process.env.VERCEL_ENV !== 'production') return RESEND_TEST_FROM
+  return PROD_FROM_FALLBACK
+}
 
 function isDevPreviewMode(): boolean {
   if (process.env.EMAIL_FORCE_SEND === 'true') return false
@@ -114,8 +148,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   const resend = getResend()
   if (!resend) return { ok: false, reason: 'no-api-key' }
 
-  const from =
-    input.from ?? process.env.EMAIL_FROM ?? `Dr. Khaled Ghattass <${DEFAULT_FROM_FALLBACK}>`
+  const from = resolveFromAddress(input.from)
 
   try {
     const { data, error } = await resend.emails.send({

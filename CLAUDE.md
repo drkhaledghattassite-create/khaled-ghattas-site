@@ -688,7 +688,7 @@ Optional / feature-gated:
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 6 |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limiting |
 | `RESEND_API_KEY` | Transactional email |
-| `EMAIL_FROM` | Verified Resend sender address used by every transactional email. Format `Display Name <addr@domain>`. Falls back to `Dr. Khaled Ghattass <noreply@drkhaledghattass.com>` — only works once that domain is Verified in Resend with SPF/DKIM/DMARC propagated. **Production should set this explicitly.** |
+| `EMAIL_FROM` | Resend sender address. **Auto-selected** when unset: Vercel preview/dev → `onboarding@resend.dev` (Resend sandbox, zero DNS, delivers only to the Resend account owner). Vercel production → `noreply@drkhaledghattass.com` (requires domain verified in Resend with SPF/DKIM/DMARC). Set explicitly to override in any environment. Logic lives in `resolveFromAddress` in `lib/email/send.ts`. |
 | `EMAIL_FORCE_SEND` | Dev-only `'true'` flag that forces real Resend sends outside production (overrides the dev-preview short-circuit in `lib/email/send.ts`). Do NOT set in production. |
 | `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly. |
 | `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
