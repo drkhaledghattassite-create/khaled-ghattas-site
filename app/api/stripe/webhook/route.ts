@@ -6,12 +6,19 @@ import {
   deleteHoldByStripeSessionId,
   getBookingById,
   getBookingOrderByStripeSessionId,
+  getGiftByStripeSessionId,
   getOrderByPaymentIntentId,
   getOrderItemsWithBooks,
   markBookingOrderFailed,
   markBookingOrderPaid,
   markBookingOrderRefunded,
+  markGiftBookingOrderPaid,
+  markGiftEmailSent,
+  markGiftRefunded,
+  setGiftStripePaymentIntent,
   updateOrderStatusByPaymentIntentId,
+  voidGiftForPaymentFailure,
+  type Gift,
 } from '@/lib/db/queries'
 import { sendEmail } from '@/lib/email/send'
 import {
@@ -28,8 +35,21 @@ import {
   buildBookingConfirmationText,
   type BookingConfirmationLocale,
 } from '@/lib/email/templates/booking-confirmation'
+import {
+  buildGiftSentHtml,
+  buildGiftSentSubject,
+  buildGiftSentText,
+} from '@/lib/email/templates/gift-sent'
+import {
+  buildGiftRevokedHtml,
+  buildGiftRevokedSubject,
+  buildGiftRevokedText,
+} from '@/lib/email/templates/gift-revoked'
+import { createUserPurchaseGiftFromWebhook, sendGiftReceivedEmail } from '@/app/[locale]/(public)/gifts/actions'
+import { resolveGiftItemPrice, type GiftableItemType, getUserById } from '@/lib/db/queries'
 import { storage } from '@/lib/storage'
 import { SITE_URL } from '@/lib/constants'
+import type { GiftDisplayItem, GiftEmailLocale } from '@/lib/email/templates/gift-shared'
 
 export const runtime = 'nodejs'
 
@@ -104,6 +124,15 @@ export async function POST(req: Request) {
       // Falling through would either crash or write a malformed `orders` row.
       if (session.metadata?.productType === 'BOOKING') {
         await handleBookingCheckoutCompleted(session)
+        break
+      }
+
+      // GIFT product type (Phase D) — same early-return precedent as BOOKING.
+      // Gift checkout completion creates the gifts row (and a linked
+      // booking_orders row when itemType=BOOKING), then sends both the
+      // gift_received and gift_sent emails best-effort.
+      if (session.metadata?.productType === 'GIFT') {
+        await handleGiftCheckoutCompleted(session)
         break
       }
 
@@ -193,7 +222,28 @@ export async function POST(req: Request) {
     // are no-ops.
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session
-      if (session.metadata?.productType !== 'BOOKING') {
+      const productType = session.metadata?.productType
+      if (productType === 'GIFT') {
+        // Gift checkout expired without payment. The gift row is only created
+        // on `checkout.session.completed`, so there's nothing in `gifts` to
+        // mark. We DO need to release any BOOKING hold the action created up
+        // front (the action calls createBookingHold + setHoldStripeSessionId
+        // BEFORE Stripe checkout for itemType=BOOKING).
+        try {
+          await deleteHoldByStripeSessionId(session.id)
+          console.info(
+            '[stripe/webhook] checkout.session.expired (GIFT) — hold released',
+            { sessionId: session.id },
+          )
+        } catch (err) {
+          console.error(
+            '[stripe/webhook] failed to release GIFT hold',
+            err,
+          )
+        }
+        break
+      }
+      if (productType !== 'BOOKING') {
         // Not a booking — current books/sessions flow doesn't handle this
         // event. Log + skip.
         console.info(
@@ -233,7 +283,26 @@ export async function POST(req: Request) {
         break
       }
 
-      // BOOKING-flavored branch first. markBookingOrderRefunded returns null
+      // GIFT-flavored branch first. We look up by paymentIntentId by joining
+      // through the booking_order's gift_id (BOOKING gifts) or by direct
+      // paymentIntentId match on the gifts row (BOOK / SESSION gifts). For
+      // simplicity, the gifts row stores stripePaymentIntentId at completion
+      // time — we look up by sessionId via the charge → invoice path, but
+      // Stripe's charge payload includes payment_intent. We hop session →
+      // gift via getGiftByStripeSessionId after fetching the session — but
+      // we don't have it here. Practical path: find the gift by joining
+      // the bookingOrders → gifts. Simpler: store paymentIntentId on the
+      // gift, search by it.
+      const refundedGift = await refundGiftByPaymentIntent(paymentIntentId)
+      if (refundedGift) {
+        console.info(
+          '[stripe/webhook] charge.refunded → GIFT REFUNDED',
+          { giftId: refundedGift.id },
+        )
+        break
+      }
+
+      // BOOKING-flavored branch second. markBookingOrderRefunded returns null
       // when no booking_orders row matches this paymentIntentId — falls
       // through to the books/sessions path. Per Decision 11, bookingState is
       // NOT auto-flipped from SOLD_OUT → OPEN on refund (admin tooling
@@ -280,7 +349,19 @@ export async function POST(req: Request) {
 
     case 'payment_intent.payment_failed': {
       const pi = event.data.object as Stripe.PaymentIntent
-      // Try BOOKING first. We don't currently store paymentIntentId on
+      // GIFT branch first — try voiding any gift created PENDING but never
+      // paid. Per spec edge-case (q): mark status=REFUNDED with reason
+      // 'payment_failed' so the recipient (if notified) gets the revoke email.
+      const voidedGift = await voidGiftByPaymentIntent(pi.id)
+      if (voidedGift) {
+        console.info(
+          '[stripe/webhook] payment_intent.payment_failed → GIFT voided',
+          { giftId: voidedGift.id },
+        )
+        break
+      }
+
+      // BOOKING next. We don't currently store paymentIntentId on
       // booking_orders before completion, so this only matches if the PI
       // was already linked (via a prior succeeded then failed sequence — rare
       // for our card-only flow, but handled defensively). If no booking_order
@@ -644,5 +725,324 @@ async function handleBookingCheckoutCompleted(
     })
   } catch (err) {
     console.error('[stripe/webhook] booking-confirmation email failed', err)
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * GIFT — Phase D
+ *
+ * Gift checkout completion creates the gift row + (for BOOKING gifts) flips
+ * the linked booking_orders row from PENDING → PAID. Then sends both the
+ * recipient gift_received email and the sender gift_sent email best-effort.
+ *
+ * Idempotency: getGiftByStripeSessionId() guards against duplicate Stripe
+ * deliveries (the unique partial index on stripe_session_id ensures the
+ * createGift call would fail if we tried to insert twice anyway, but the
+ * read-first path lets us surface a clean log line + skip the email
+ * resend instead of erroring out).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const GIFTABLE_SET = new Set<GiftableItemType>(['BOOK', 'SESSION', 'BOOKING'])
+
+function pickEmailItemUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  let parsed: URL
+  try {
+    parsed = trimmed.startsWith('/') ? new URL(trimmed, SITE_URL) : new URL(trimmed)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+  const host = parsed.hostname.toLowerCase()
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    return null
+  }
+  return parsed.toString()
+}
+
+async function handleGiftCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const sessionId = session.id
+
+  // Idempotency guard.
+  const existing = await getGiftByStripeSessionId(sessionId)
+  if (existing) {
+    console.info('[stripe/webhook] GIFT already processed — skipping', {
+      sessionId,
+      giftId: existing.id,
+    })
+    // Defensive: drop the BOOKING hold if any.
+    await deleteHoldByStripeSessionId(sessionId)
+    return
+  }
+
+  const md = session.metadata ?? {}
+  const itemTypeRaw = md.giftItemType
+  const itemType =
+    typeof itemTypeRaw === 'string' && GIFTABLE_SET.has(itemTypeRaw as GiftableItemType)
+      ? (itemTypeRaw as GiftableItemType)
+      : null
+  const itemId = typeof md.giftItemId === 'string' ? md.giftItemId : null
+  const senderUserId = typeof md.senderUserId === 'string' ? md.senderUserId : null
+  const recipientEmail =
+    typeof md.recipientEmail === 'string' ? md.recipientEmail.trim().toLowerCase() : null
+  const senderMessage =
+    typeof md.senderMessage === 'string' && md.senderMessage.trim()
+      ? md.senderMessage.trim()
+      : null
+  const localeRaw = md.locale
+  const locale: GiftEmailLocale = localeRaw === 'en' ? 'en' : 'ar'
+  const totalCents = session.amount_total ?? 0
+  const currency = session.currency ?? 'usd'
+  const paymentIntentId =
+    typeof session.payment_intent === 'string' ? session.payment_intent : null
+
+  if (!itemType || !itemId || !senderUserId || !recipientEmail) {
+    console.warn(
+      '[stripe/webhook] GIFT completed but metadata incomplete — skipping',
+      { sessionId, hasItemType: !!itemType, hasItemId: !!itemId, hasSender: !!senderUserId, hasRecipient: !!recipientEmail },
+    )
+    // For BOOKING gifts, release the hold so capacity returns.
+    await deleteHoldByStripeSessionId(sessionId)
+    return
+  }
+
+  // Create the gift row + (BOOKING) booking_order shell.
+  const created = await createUserPurchaseGiftFromWebhook({
+    itemType,
+    itemId,
+    senderUserId,
+    recipientEmail,
+    senderMessage,
+    locale,
+    amountCents: totalCents,
+    currency,
+    stripeSessionId: sessionId,
+    stripePaymentIntentId: paymentIntentId,
+    holdId: typeof md.holdId === 'string' ? md.holdId : null,
+  })
+  if (!created) {
+    console.error('[stripe/webhook] GIFT createUserPurchaseGiftFromWebhook failed', {
+      sessionId,
+    })
+    return
+  }
+  console.info('[stripe/webhook] GIFT created', {
+    sessionId,
+    giftId: created.id,
+    itemType,
+  })
+
+  // For BOOKING gifts, mark the linked booking_order as PAID + bump bookedCount.
+  if (itemType === 'BOOKING') {
+    const paid = await markGiftBookingOrderPaid({
+      giftId: created.id,
+      stripeSessionId: sessionId,
+      stripePaymentIntentId: paymentIntentId,
+      amountPaid: totalCents,
+    })
+    if (!paid) {
+      console.warn('[stripe/webhook] GIFT booking_order not promoted to PAID', {
+        sessionId,
+        giftId: created.id,
+      })
+    } else {
+      console.info('[stripe/webhook] GIFT booking_order PAID', {
+        sessionId,
+        bookingOrderId: paid.bookingOrderId,
+        flippedToSoldOut: paid.flippedToSoldOut,
+      })
+    }
+  }
+
+  // Persist the paymentIntentId on the gift even if it wasn't set at insert.
+  if (paymentIntentId) {
+    await setGiftStripePaymentIntent(created.id, paymentIntentId)
+  }
+
+  // Send the gift_received email to the recipient.
+  try {
+    const result = await sendGiftReceivedEmail(created)
+    await markGiftEmailSent(
+      created.id,
+      result.ok,
+      result.ok ? null : result.reason,
+    )
+  } catch (err) {
+    console.error('[stripe/webhook] gift_received email failed', err)
+    await markGiftEmailSent(created.id, false, 'unknown_error')
+  }
+
+  // Send the gift_sent email to the sender — best-effort.
+  try {
+    const sender = await getUserById(senderUserId)
+    if (!sender) {
+      console.warn('[stripe/webhook] GIFT sender row not found for email', {
+        senderUserId,
+      })
+      return
+    }
+    const itemSummary = await resolveGiftItemPrice(itemType, itemId)
+    if (!itemSummary) return
+    const item: GiftDisplayItem = {
+      itemType,
+      titleAr: itemSummary.titleAr,
+      titleEn: itemSummary.titleEn,
+      coverImageUrl: pickEmailItemUrl(itemSummary.coverImage),
+    }
+    const claimUrl = `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(created.token)}`
+    const dashboardUrl = `${SITE_URL}/${locale}/dashboard/gifts`
+    const html = buildGiftSentHtml({
+      locale,
+      senderEmail: sender.email,
+      senderName: sender.name,
+      recipientEmail,
+      item,
+      amountCents: totalCents,
+      currency,
+      claimUrl,
+      dashboardUrl,
+      expiresAt: created.expiresAt,
+      supportEmail: SUPPORT_EMAIL,
+    })
+    const text = buildGiftSentText({
+      locale,
+      senderEmail: sender.email,
+      senderName: sender.name,
+      recipientEmail,
+      item,
+      amountCents: totalCents,
+      currency,
+      claimUrl,
+      dashboardUrl,
+      expiresAt: created.expiresAt,
+      supportEmail: SUPPORT_EMAIL,
+    })
+    await sendEmail({
+      to: sender.email,
+      subject: buildGiftSentSubject(locale, recipientEmail),
+      html,
+      text,
+      previewLabel: 'gift-sent',
+    })
+  } catch (err) {
+    console.error('[stripe/webhook] gift_sent email failed', err)
+  }
+}
+
+async function refundGiftByPaymentIntent(
+  paymentIntentId: string,
+): Promise<Gift | null> {
+  // Look up the gift via paymentIntentId. We persist it on the gifts row
+  // at completion time (see setGiftStripePaymentIntent + the createGift
+  // input), so a direct match is sufficient.
+  try {
+    const { db } = await import('@/lib/db')
+    const { gifts } = await import('@/lib/db/schema')
+    const { eq } = await import('drizzle-orm')
+    const [row] = await db
+      .select()
+      .from(gifts)
+      .where(eq(gifts.stripePaymentIntentId, paymentIntentId))
+      .limit(1)
+    if (!row) return null
+    const refunded = await markGiftRefunded(row.id)
+    if (!refunded) return null
+    // Send revoke/refund emails best-effort.
+    try {
+      const itemSummary = await resolveGiftItemPrice(
+        refunded.itemType === 'TEST' ? 'BOOK' : (refunded.itemType as GiftableItemType),
+        refunded.itemId,
+      )
+      if (itemSummary) {
+        const locale: GiftEmailLocale = refunded.locale === 'en' ? 'en' : 'ar'
+        const item: GiftDisplayItem = {
+          itemType: itemSummary.itemType,
+          titleAr: itemSummary.titleAr,
+          titleEn: itemSummary.titleEn,
+          coverImageUrl: pickEmailItemUrl(itemSummary.coverImage),
+        }
+        await sendEmail({
+          to: refunded.recipientEmail,
+          subject: buildGiftRevokedSubject(locale, 'REFUNDED'),
+          html: buildGiftRevokedHtml({
+            locale,
+            toEmail: refunded.recipientEmail,
+            audience: 'recipient',
+            kind: 'REFUNDED',
+            item,
+            reason: null,
+            supportEmail: SUPPORT_EMAIL,
+          }),
+          text: buildGiftRevokedText({
+            locale,
+            toEmail: refunded.recipientEmail,
+            audience: 'recipient',
+            kind: 'REFUNDED',
+            item,
+            reason: null,
+            supportEmail: SUPPORT_EMAIL,
+          }),
+          previewLabel: 'gift-refunded-recipient',
+        })
+        if (refunded.senderUserId) {
+          const sender = await getUserById(refunded.senderUserId)
+          if (sender) {
+            await sendEmail({
+              to: sender.email,
+              subject: buildGiftRevokedSubject(locale, 'REFUNDED'),
+              html: buildGiftRevokedHtml({
+                locale,
+                toEmail: sender.email,
+                audience: 'sender',
+                kind: 'REFUNDED',
+                item,
+                reason: null,
+                supportEmail: SUPPORT_EMAIL,
+              }),
+              text: buildGiftRevokedText({
+                locale,
+                toEmail: sender.email,
+                audience: 'sender',
+                kind: 'REFUNDED',
+                item,
+                reason: null,
+                supportEmail: SUPPORT_EMAIL,
+              }),
+              previewLabel: 'gift-refunded-sender',
+            })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[stripe/webhook] gift refund email failed', err)
+    }
+    return refunded
+  } catch (err) {
+    console.error('[stripe/webhook] refundGiftByPaymentIntent failed', err)
+    return null
+  }
+}
+
+async function voidGiftByPaymentIntent(
+  paymentIntentId: string,
+): Promise<Gift | null> {
+  try {
+    const { db } = await import('@/lib/db')
+    const { gifts } = await import('@/lib/db/schema')
+    const { eq } = await import('drizzle-orm')
+    const [row] = await db
+      .select()
+      .from(gifts)
+      .where(eq(gifts.stripePaymentIntentId, paymentIntentId))
+      .limit(1)
+    if (!row) return null
+    return await voidGiftForPaymentFailure(row.id)
+  } catch (err) {
+    console.error('[stripe/webhook] voidGiftByPaymentIntent failed', err)
+    return null
   }
 }

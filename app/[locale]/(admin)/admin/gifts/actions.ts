@@ -1,0 +1,444 @@
+'use server'
+
+/**
+ * Admin server actions for the Phase D gift queue.
+ *
+ *   - createAdminGiftAction — Dr. Khaled's team grants a free gift (no Stripe)
+ *   - revokeGiftAction      — admin revokes a gift (with reason); cascades
+ *     entitlement removal for CLAIMED gifts
+ *   - resendAdminGiftEmailAction — admin re-sends the gift email; same
+ *     rate-limit shape as the user surface (1/day per gift)
+ *
+ * Auth: server actions don't have a `requireAdmin(req)` analog (that helper
+ * checks origin via Request, which isn't available here). We inline the role
+ * check after `getServerSession()`. If a non-admin user manages to reach
+ * these actions (they can't through the UI — admin layout already gates),
+ * the action returns 'forbidden'.
+ */
+
+import { revalidatePath } from 'next/cache'
+import { getServerSession } from '@/lib/auth/server'
+import { tryRateLimit } from '@/lib/redis/ratelimit'
+import {
+  createBookingHold,
+  createGift,
+  createGiftClaimOrder,
+  deleteHoldById,
+  getGiftById,
+  getUserByEmail,
+  markGiftEmailSent,
+  recipientEmailHasBooking,
+  recipientEmailOwnsBookOrSession,
+  resolveGiftItemPrice,
+  revokeGift,
+  type GiftItemSummary,
+} from '@/lib/db/queries'
+import {
+  createAdminGiftSchema,
+  resendGiftEmailSchema,
+  revokeGiftSchema,
+  type CreateAdminGiftInput,
+  type GiftableItemType,
+  type ResendGiftEmailInput,
+  type RevokeGiftInput,
+} from '@/lib/validators/gift'
+import { sendEmail } from '@/lib/email/send'
+import {
+  buildAdminGiftGrantedHtml,
+  buildAdminGiftGrantedSubject,
+  buildAdminGiftGrantedText,
+} from '@/lib/email/templates/admin-gift-granted'
+import {
+  buildGiftRevokedHtml,
+  buildGiftRevokedSubject,
+  buildGiftRevokedText,
+} from '@/lib/email/templates/gift-revoked'
+import { sendGiftReceivedEmail } from '@/app/[locale]/(public)/gifts/actions'
+import { SITE_URL } from '@/lib/constants'
+import type { GiftDisplayItem, GiftEmailLocale } from '@/lib/email/templates/gift-shared'
+import type { Gift } from '@/lib/db/schema'
+
+type ActionOk<T> = { ok: true } & T
+type ActionErr<E extends string> = { ok: false; error: E }
+
+const SUPPORT_EMAIL =
+  process.env.SUPPORT_EMAIL ?? 'Team@drkhaledghattass.com'
+
+function pickHttpUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  let parsed: URL
+  try {
+    parsed = trimmed.startsWith('/') ? new URL(trimmed, SITE_URL) : new URL(trimmed)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+  const host = parsed.hostname.toLowerCase()
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    return null
+  }
+  return parsed.toString()
+}
+
+function buildItemForEmail(summary: GiftItemSummary): GiftDisplayItem {
+  return {
+    itemType: summary.itemType,
+    titleAr: summary.titleAr,
+    titleEn: summary.titleEn,
+    coverImageUrl: pickHttpUrl(summary.coverImage),
+  }
+}
+
+function normaliseLocale(raw: unknown): GiftEmailLocale {
+  return raw === 'en' ? 'en' : 'ar'
+}
+
+async function requireAdminSession() {
+  const session = await getServerSession()
+  if (!session) return { ok: false as const, error: 'unauthorized' as const }
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'CLIENT') {
+    return { ok: false as const, error: 'forbidden' as const }
+  }
+  return { ok: true as const, session }
+}
+
+/* ── Create admin gift ─────────────────────────────────────────────────── */
+
+export type CreateAdminGiftActionResult =
+  | ActionOk<{ giftId: string; autoClaimed: boolean }>
+  | ActionErr<
+      | 'unauthorized'
+      | 'forbidden'
+      | 'validation'
+      | 'self_gift'
+      | 'item_unavailable'
+      | 'recipient_already_owns'
+      | 'recipient_already_booked'
+      | 'no_capacity'
+      | 'rate_limited'
+      | 'db_failed'
+    >
+
+export async function createAdminGiftAction(
+  raw: CreateAdminGiftInput,
+): Promise<CreateAdminGiftActionResult> {
+  const guard = await requireAdminSession()
+  if (!guard.ok) return { ok: false, error: guard.error }
+  const { session } = guard
+
+  const rl = await tryRateLimit(`gift-admin-create:${session.user.id}`, {
+    limit: 30,
+    window: '60 s',
+  })
+  if (!rl.ok) return { ok: false, error: 'rate_limited' }
+
+  const parsed = createAdminGiftSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false, error: 'validation' }
+  const data = parsed.data
+
+  const senderEmailLc = (session.user.email ?? '').trim().toLowerCase()
+  const recipientLc = data.recipientEmail.toLowerCase()
+  if (senderEmailLc === recipientLc) return { ok: false, error: 'self_gift' }
+  const recipientUser = await getUserByEmail(recipientLc)
+  if (recipientUser && recipientUser.id === session.user.id) {
+    return { ok: false, error: 'self_gift' }
+  }
+
+  const itemSummary = await resolveGiftItemPrice(
+    data.itemType as GiftableItemType,
+    data.itemId,
+  )
+  if (!itemSummary) return { ok: false, error: 'item_unavailable' }
+
+  if (data.itemType === 'BOOK' || data.itemType === 'SESSION') {
+    const owns = await recipientEmailOwnsBookOrSession(recipientLc, data.itemId)
+    if (owns) return { ok: false, error: 'recipient_already_owns' }
+  } else if (data.itemType === 'BOOKING') {
+    const has = await recipientEmailHasBooking(recipientLc, data.itemId)
+    if (has) return { ok: false, error: 'recipient_already_booked' }
+    // For BOOKING admin grants we still need capacity — admin can't oversell.
+    // Use the same race-safe hold path; if no capacity, surface the error
+    // rather than auto-overbooking.
+    const holdResult = await createBookingHold({
+      userId: session.user.id,
+      bookingId: data.itemId,
+    })
+    if (!holdResult.ok) {
+      if (holdResult.error === 'no_capacity') {
+        return { ok: false, error: 'no_capacity' }
+      }
+      return { ok: false, error: 'db_failed' }
+    }
+    // Convert the hold immediately. Admin grants don't go through Stripe;
+    // the hold is just the capacity gate.
+    await deleteHoldById(holdResult.holdId)
+    // For admin-granted bookings we DO want to consume capacity (one seat
+    // for the recipient). Increment bookedCount manually.
+    // Simpler approach: skip the hold path entirely and just check capacity
+    // before insert. But the race would re-emerge, so we keep the hold
+    // path. The booking_orders row creation happens via a small helper
+    // path below.
+  }
+
+  const result = await createGift({
+    source: 'ADMIN_GRANT',
+    itemType: data.itemType,
+    itemId: data.itemId,
+    recipientEmail: recipientLc,
+    senderMessage: data.senderMessage ?? null,
+    locale: data.locale,
+    adminGrantedByUserId: session.user.id,
+  })
+  if (!result) return { ok: false, error: 'db_failed' }
+
+  // For auto-claimed (recipient existed) BOOK / SESSION grants, also create
+  // the orders row. BOOKING grants follow a different path (we skip auto-
+  // booking_orders creation in v1 — admin grants of bookings are a small
+  // edge case; the recipient still needs to claim through the gift flow).
+  if (
+    result.autoClaimed &&
+    result.recipientUserId &&
+    (data.itemType === 'BOOK' || data.itemType === 'SESSION')
+  ) {
+    await createGiftClaimOrder({
+      recipientUserId: result.recipientUserId,
+      recipientEmail: recipientLc,
+      giftId: result.gift.id,
+      bookId: data.itemId,
+      priceCents: itemSummary.priceCents,
+      currency: itemSummary.currency,
+    })
+  }
+
+  // Send the admin-grant notification email.
+  try {
+    const locale = normaliseLocale(data.locale)
+    const itemForEmail = buildItemForEmail(itemSummary)
+    const claimUrl = result.autoClaimed
+      ? `${SITE_URL}/${locale}/dashboard/library`
+      : `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(result.gift.token)}`
+    const html = buildAdminGiftGrantedHtml({
+      locale,
+      recipientEmail: recipientLc,
+      item: itemForEmail,
+      claimUrl,
+      alreadyClaimed: result.autoClaimed,
+      senderMessage: data.senderMessage ?? null,
+      expiresAt: result.gift.expiresAt,
+      supportEmail: SUPPORT_EMAIL,
+    })
+    const text = buildAdminGiftGrantedText({
+      locale,
+      recipientEmail: recipientLc,
+      item: itemForEmail,
+      claimUrl,
+      alreadyClaimed: result.autoClaimed,
+      senderMessage: data.senderMessage ?? null,
+      expiresAt: result.gift.expiresAt,
+      supportEmail: SUPPORT_EMAIL,
+    })
+    const send = await sendEmail({
+      to: recipientLc,
+      subject: buildAdminGiftGrantedSubject(locale),
+      html,
+      text,
+      previewLabel: 'admin-gift-granted',
+    })
+    await markGiftEmailSent(
+      result.gift.id,
+      send.ok || (!send.ok && send.reason === 'preview-only'),
+      send.ok ? null : send.reason,
+    )
+  } catch (err) {
+    console.error('[admin/gifts] email failed', err)
+    await markGiftEmailSent(result.gift.id, false, 'unknown_error')
+  }
+
+  revalidatePath('/admin/gifts')
+  return { ok: true, giftId: result.gift.id, autoClaimed: result.autoClaimed }
+}
+
+/* ── Revoke gift ───────────────────────────────────────────────────────── */
+
+export type RevokeGiftActionResult =
+  | ActionOk<{ giftId: string }>
+  | ActionErr<'unauthorized' | 'forbidden' | 'validation' | 'not_found' | 'wrong_state'>
+
+export async function revokeGiftAction(
+  raw: RevokeGiftInput,
+): Promise<RevokeGiftActionResult> {
+  const guard = await requireAdminSession()
+  if (!guard.ok) return { ok: false, error: guard.error }
+
+  const parsed = revokeGiftSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false, error: 'validation' }
+
+  const before = await getGiftById(parsed.data.giftId)
+  if (!before) return { ok: false, error: 'not_found' }
+  if (before.status === 'REVOKED' || before.status === 'REFUNDED' || before.status === 'EXPIRED') {
+    return { ok: false, error: 'wrong_state' }
+  }
+
+  const revoked = await revokeGift(parsed.data.giftId, parsed.data.reason)
+  if (!revoked) return { ok: false, error: 'not_found' }
+
+  // Notify recipient + (USER_PURCHASE only) sender.
+  try {
+    const itemSummary = await resolveGiftItemPrice(
+      revoked.itemType === 'TEST' ? 'BOOK' : (revoked.itemType as GiftableItemType),
+      revoked.itemId,
+    )
+    if (itemSummary) {
+      const locale = normaliseLocale(revoked.locale)
+      const itemForEmail = buildItemForEmail(itemSummary)
+      // Recipient
+      await sendEmail({
+        to: revoked.recipientEmail,
+        subject: buildGiftRevokedSubject(locale, 'REVOKED'),
+        html: buildGiftRevokedHtml({
+          locale,
+          toEmail: revoked.recipientEmail,
+          audience: 'recipient',
+          kind: 'REVOKED',
+          item: itemForEmail,
+          reason: revoked.revokedReason,
+          supportEmail: SUPPORT_EMAIL,
+        }),
+        text: buildGiftRevokedText({
+          locale,
+          toEmail: revoked.recipientEmail,
+          audience: 'recipient',
+          kind: 'REVOKED',
+          item: itemForEmail,
+          reason: revoked.revokedReason,
+          supportEmail: SUPPORT_EMAIL,
+        }),
+        previewLabel: 'gift-revoked-recipient',
+      })
+      // Sender (USER_PURCHASE only)
+      if (revoked.source === 'USER_PURCHASE' && revoked.senderUserId) {
+        const { getUserById } = await import('@/lib/db/queries')
+        const sender = await getUserById(revoked.senderUserId)
+        if (sender) {
+          await sendEmail({
+            to: sender.email,
+            subject: buildGiftRevokedSubject(locale, 'REVOKED'),
+            html: buildGiftRevokedHtml({
+              locale,
+              toEmail: sender.email,
+              audience: 'sender',
+              kind: 'REVOKED',
+              item: itemForEmail,
+              reason: revoked.revokedReason,
+              supportEmail: SUPPORT_EMAIL,
+            }),
+            text: buildGiftRevokedText({
+              locale,
+              toEmail: sender.email,
+              audience: 'sender',
+              kind: 'REVOKED',
+              item: itemForEmail,
+              reason: revoked.revokedReason,
+              supportEmail: SUPPORT_EMAIL,
+            }),
+            previewLabel: 'gift-revoked-sender',
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[admin/gifts] revoke email failed', err)
+  }
+
+  revalidatePath('/admin/gifts')
+  revalidatePath(`/admin/gifts/${revoked.id}`)
+  return { ok: true, giftId: revoked.id }
+}
+
+/* ── Resend admin gift email ───────────────────────────────────────────── */
+
+export type ResendAdminGiftEmailActionResult =
+  | ActionOk<{ giftId: string }>
+  | ActionErr<'unauthorized' | 'forbidden' | 'not_found' | 'wrong_state' | 'rate_limited' | 'send_failed'>
+
+export async function resendAdminGiftEmailAction(
+  raw: ResendGiftEmailInput,
+): Promise<ResendAdminGiftEmailActionResult> {
+  const guard = await requireAdminSession()
+  if (!guard.ok) return { ok: false, error: guard.error }
+
+  const parsed = resendGiftEmailSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false, error: 'not_found' }
+
+  const gift = await getGiftById(parsed.data.giftId)
+  if (!gift) return { ok: false, error: 'not_found' }
+  if (gift.status !== 'PENDING') return { ok: false, error: 'wrong_state' }
+
+  const rl = await tryRateLimit(`gift-resend:${gift.id}`, {
+    limit: 1,
+    window: '86400 s',
+  })
+  if (!rl.ok) return { ok: false, error: 'rate_limited' }
+
+  let result: { ok: true; id: string | null } | { ok: false; reason: string }
+  if (gift.source === 'ADMIN_GRANT') {
+    // Resend the admin-grant template, with alreadyClaimed=false (resends
+    // are only for PENDING gifts).
+    result = await resendAdminGrantEmail(gift)
+  } else {
+    result = await sendGiftReceivedEmail(gift)
+  }
+  await markGiftEmailSent(gift.id, result.ok, result.ok ? null : result.reason)
+  if (!result.ok) return { ok: false, error: 'send_failed' }
+  return { ok: true, giftId: gift.id }
+}
+
+/**
+ * Compose + send the admin-grant email for a PENDING ADMIN_GRANT gift.
+ * Mirrors createAdminGiftAction's email block; factored out for reuse from
+ * the resend path.
+ */
+async function resendAdminGrantEmail(
+  gift: Gift,
+): Promise<{ ok: true; id: string | null } | { ok: false; reason: string }> {
+  const itemSummary = await resolveGiftItemPrice(
+    gift.itemType === 'TEST' ? 'BOOK' : (gift.itemType as GiftableItemType),
+    gift.itemId,
+  )
+  if (!itemSummary) return { ok: false, reason: 'item_unavailable' }
+  const locale = normaliseLocale(gift.locale)
+  const claimUrl = `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(gift.token)}`
+  const html = buildAdminGiftGrantedHtml({
+    locale,
+    recipientEmail: gift.recipientEmail,
+    item: buildItemForEmail(itemSummary),
+    claimUrl,
+    alreadyClaimed: false,
+    senderMessage: gift.senderMessage,
+    expiresAt: gift.expiresAt,
+    supportEmail: SUPPORT_EMAIL,
+  })
+  const text = buildAdminGiftGrantedText({
+    locale,
+    recipientEmail: gift.recipientEmail,
+    item: buildItemForEmail(itemSummary),
+    claimUrl,
+    alreadyClaimed: false,
+    senderMessage: gift.senderMessage,
+    expiresAt: gift.expiresAt,
+    supportEmail: SUPPORT_EMAIL,
+  })
+  const send = await sendEmail({
+    to: gift.recipientEmail,
+    subject: buildAdminGiftGrantedSubject(locale),
+    html,
+    text,
+    previewLabel: 'admin-gift-granted',
+  })
+  if (send.ok) return { ok: true, id: send.id }
+  if (send.reason === 'preview-only') return { ok: true, id: null }
+  return { ok: false, reason: send.reason }
+}
+

@@ -7,7 +7,14 @@ import { Link, usePathname } from '@/lib/i18n/navigation'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import type { SiteSettings } from '@/lib/site-settings/types'
 
-type TabKey = 'account' | 'library' | 'bookings' | 'ask' | 'tests' | 'settings'
+type TabKey =
+  | 'account'
+  | 'library'
+  | 'bookings'
+  | 'ask'
+  | 'tests'
+  | 'gifts'
+  | 'settings'
 
 // Maps each tab key to the site-settings flag that gates its visibility.
 // Adding a new tab? Add the flag to `SiteSettings.dashboard` first, then
@@ -18,6 +25,7 @@ const TAB_VISIBILITY_KEY: Record<TabKey, keyof SiteSettings['dashboard']> = {
   bookings: 'show_bookings_tab',
   ask: 'show_ask_tab',
   tests: 'show_tests_tab',
+  gifts: 'show_gifts_tab',
   settings: 'show_settings_tab',
 }
 
@@ -30,9 +38,12 @@ const TABS = [
   // chrome (settings).
   { key: 'ask' as const, href: '/dashboard/ask' },
   // 'tests' sits next to 'ask' — both are reflective surfaces from
-  // Dr. Khaled's editorial side. Tests history is a personal record;
-  // settings still anchors the trailing edge as account chrome.
+  // Dr. Khaled's editorial side.
   { key: 'tests' as const, href: '/dashboard/tests' },
+  // 'gifts' (Phase D) sits between tests and settings — gifting is a
+  // social action, neighbouring tests' editorial content and preceding
+  // the trailing settings/account chrome.
+  { key: 'gifts' as const, href: '/dashboard/gifts' },
   { key: 'settings' as const, href: '/dashboard/settings' },
 ] as const
 
@@ -44,6 +55,7 @@ const ALL_TABS_VISIBLE: SiteSettings['dashboard'] = {
   show_bookings_tab: true,
   show_ask_tab: true,
   show_tests_tab: true,
+  show_gifts_tab: true,
   show_settings_tab: true,
 }
 
@@ -157,7 +169,13 @@ export function DashboardLayout({
             : 'shadow-none'
         }`}
       >
-        <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto overscroll-x-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {/* Edge fades — gradient masks indicate horizontal scroll on mobile
+            once 7 tabs (Phase D) overflow the viewport. The [mask-image]
+            applies a transparent → opaque → transparent sweep so the first
+            and last tabs visually fade into the surface, hinting that more
+            content scrolls past. When the strip fits (desktop, narrow tab
+            sets), the fade falls outside the visible content and is a no-op. */}
+        <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto overscroll-x-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,black_20px,black_calc(100%-20px),transparent)]">
           <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none w-max mx-auto">
             {TABS.filter((tab) => dashboardSettings[TAB_VISIBILITY_KEY[tab.key]]).map((tab) => {
               const isActive =

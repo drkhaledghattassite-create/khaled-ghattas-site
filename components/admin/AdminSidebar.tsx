@@ -13,6 +13,7 @@ import {
   CreditCard,
   FileEdit,
   FileText,
+  Gift,
   HelpCircle,
   Heart,
   Image as ImageIcon,
@@ -89,6 +90,7 @@ function buildGroups(
   pendingQuestionCount: number,
   showTests: boolean,
   draftTestCount: number,
+  showGifts: boolean,
 ): NavGroup[] {
   const audienceItems: NavItem[] = [
     { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
@@ -138,6 +140,9 @@ function buildGroups(
       items: [
         { href: '/admin/orders', key: 'orders', icon: ShoppingCart },
         { href: '/admin/products', key: 'products', icon: Package },
+        ...(showGifts
+          ? ([{ href: '/admin/gifts', key: 'gifts', icon: Gift }] as NavItem[])
+          : []),
       ],
     },
     {
@@ -174,6 +179,7 @@ export function AdminSidebarContent({
   pendingQuestionCount = 0,
   showAdminTests = true,
   draftTestCount = 0,
+  showAdminGifts = true,
 }: {
   user: ServerSessionUser
   onNavigate?: () => void
@@ -206,6 +212,11 @@ export function AdminSidebarContent({
    * Tests sidebar entry; 0 hides it.
    */
   draftTestCount?: number
+  /**
+   * Phase D — gates the Gifts entry in the commerce group. Sourced from
+   * `admin.show_admin_gifts`.
+   */
+  showAdminGifts?: boolean
 }) {
   const pathname = usePathname()
   const tNav = useTranslations('admin.nav')
@@ -218,6 +229,7 @@ export function AdminSidebarContent({
     pendingQuestionCount,
     showAdminTests,
     draftTestCount,
+    showAdminGifts ?? true,
   )
 
   return (
@@ -344,6 +356,7 @@ export function AdminSidebar({
   pendingQuestionCount = 0,
   showAdminTests = true,
   draftTestCount = 0,
+  showAdminGifts = true,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
@@ -351,6 +364,7 @@ export function AdminSidebar({
   pendingQuestionCount?: number
   showAdminTests?: boolean
   draftTestCount?: number
+  showAdminGifts?: boolean
 }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
@@ -361,6 +375,7 @@ export function AdminSidebar({
         pendingQuestionCount={pendingQuestionCount}
         showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
+        showAdminGifts={showAdminGifts}
       />
     </aside>
   )

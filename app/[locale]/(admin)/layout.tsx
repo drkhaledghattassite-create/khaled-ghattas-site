@@ -54,6 +54,7 @@ export default async function AdminLayout({ children, params }: Props) {
   const showAdminBooking = settings?.admin?.show_admin_booking ?? true
   const showAdminQuestions = settings?.admin?.show_admin_questions ?? true
   const showAdminTests = settings?.admin?.show_admin_tests ?? true
+  const showAdminGifts = settings?.admin?.show_admin_gifts ?? true
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -64,6 +65,7 @@ export default async function AdminLayout({ children, params }: Props) {
         pendingQuestionCount={pendingQuestionCount}
         showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
+        showAdminGifts={showAdminGifts}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
@@ -73,6 +75,7 @@ export default async function AdminLayout({ children, params }: Props) {
           pendingQuestionCount={pendingQuestionCount}
           showAdminTests={showAdminTests}
           draftTestCount={draftTestCount}
+          showAdminGifts={showAdminGifts}
         />
         <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
       </div>

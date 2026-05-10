@@ -10,6 +10,7 @@
  */
 
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from 'drizzle-orm'
+import { randomBytes } from 'node:crypto'
 import { revalidateTag } from 'next/cache'
 import { db } from '.'
 import {
@@ -26,6 +27,7 @@ import {
   corporateRequests,
   events,
   gallery,
+  gifts,
   interviews,
   mediaProgress,
   orderItems,
@@ -60,6 +62,12 @@ import {
   type CorporateRequestStatus,
   type Event,
   type GalleryItem,
+  type Gift,
+  type GiftItemType,
+  type GiftSource,
+  type GiftStatus,
+  // NewGift kept available for callers via the type-export block below; the
+  // internal createGift helper uses an explicit input type instead.
   type Interview,
   type MessageStatus,
   type NewArticle,
@@ -767,6 +775,7 @@ export async function getLibraryEntriesByUserId(
         stripeSessionId: null,
         customerEmail: 'mock@drkhaledghattass.com',
         customerName: 'Mock Buyer',
+        giftId: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -6580,6 +6589,1187 @@ export async function setTestPublished(
   return updated
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase D — Gifts
+ *
+ * Two flavors share `gifts`: ADMIN_GRANT (no Stripe) and USER_PURCHASE
+ * (Stripe Checkout). The query helpers below cover both flows + admin
+ * tooling. The action layer enforces the one-way state graph; helpers do
+ * not — they only execute the requested transition (with sane FK guards).
+ *
+ * Mock-mode coverage: ADMIN_GRANT is fully exercisable (the action shortcuts
+ * through createGift → markGiftEmailSent in the same in-memory list).
+ * USER_PURCHASE is gated by Stripe in the action layer (returns
+ * 'stripe_unconfigured' when getStripe() is null), so PENDING USER_PURCHASE
+ * gifts never land in the mock store.
+ *
+ * Token generation: `crypto.randomBytes(32).toString('base64url')` produces
+ * a ~43-char URL-safe string. Collision probability with a unique-index
+ * retry is effectively zero for any realistic gift volume.
+ *
+ * Item resolution: `resolveGiftItemPrice()` is the bridge between the
+ * polymorphic `itemId` column and the three concrete item tables. It
+ * normalises numeric (decimal dollars) and integer-cents prices into a
+ * single `priceCents` shape so callers don't need to re-encode.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const GIFT_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+export type GiftableItemType = 'BOOK' | 'SESSION' | 'BOOKING'
+
+export type GiftItemSummary = {
+  itemType: GiftableItemType
+  itemId: string
+  priceCents: number
+  currency: string
+  titleAr: string
+  titleEn: string
+  coverImage: string | null
+}
+
+/**
+ * Polymorphic price + display lookup.
+ *
+ * - BOOK / SESSION: row in `books`. Price stored as `numeric(10,2)` decimal
+ *   dollars; we multiply by 100 → cents. `productType` invariant enforced
+ *   here (BOOK row can't be gifted as a SESSION even if itemId matches).
+ * - BOOKING: row in `bookings`. Price already in cents (`integer priceUsd`).
+ *
+ * Returns null when:
+ *   - The row doesn't exist or isn't published.
+ *   - Price is null/zero (free items can't be paid-gifted; admin grants
+ *     handle the free case via a separate path).
+ *   - The productType invariant fails.
+ *
+ * Used by: createUserGiftAction (resolve before Stripe), createAdminGiftAction
+ * (resolve before insert), gift display components.
+ */
+export async function resolveGiftItemPrice(
+  itemType: GiftableItemType,
+  itemId: string,
+): Promise<GiftItemSummary | null> {
+  if (!itemId) return null
+  if (itemType === 'BOOKING') {
+    const booking = await getBookingById(itemId)
+    if (!booking || !booking.isActive) return null
+    if (!booking.priceUsd || booking.priceUsd <= 0) return null
+    return {
+      itemType: 'BOOKING',
+      itemId: booking.id,
+      priceCents: booking.priceUsd,
+      currency: (booking.currency || 'usd').toLowerCase(),
+      titleAr: booking.titleAr,
+      titleEn: booking.titleEn,
+      coverImage: booking.coverImage ?? null,
+    }
+  }
+  // BOOK / SESSION
+  const book = await getBookById(itemId)
+  if (!book) return null
+  if (book.status !== 'PUBLISHED') return null
+  const expectedProductType = itemType === 'SESSION' ? 'SESSION' : 'BOOK'
+  if (book.productType !== expectedProductType) return null
+  const decimal = Number.parseFloat(String(book.price))
+  if (!Number.isFinite(decimal) || decimal <= 0) return null
+  const priceCents = Math.round(decimal * 100)
+  return {
+    itemType,
+    itemId: book.id,
+    priceCents,
+    currency: (book.currency || 'USD').toLowerCase(),
+    titleAr: book.titleAr,
+    titleEn: book.titleEn,
+    coverImage: book.coverImage ?? null,
+  }
+}
+
+export type CreateGiftInput = {
+  source: GiftSource
+  itemType: GiftItemType
+  itemId: string
+  recipientEmail: string
+  senderUserId?: string | null
+  senderMessage?: string | null
+  amountCents?: number | null
+  currency?: string | null
+  stripeSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  locale?: 'ar' | 'en'
+  adminGrantedByUserId?: string | null
+}
+
+export type CreateGiftResult = {
+  gift: Gift
+  /** True when the gift was auto-claimed because the recipient already had
+   *  an account with the matching email (ADMIN_GRANT path). */
+  autoClaimed: boolean
+  /** The recipient's userId iff autoClaimed; null otherwise. */
+  recipientUserId: string | null
+}
+
+function generateGiftToken(): string {
+  return randomBytes(32).toString('base64url')
+}
+
+function lcEmail(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
+/**
+ * Insert a gift row. Auto-claim semantics for ADMIN_GRANT:
+ * if the recipient email matches an existing user (case-insensitive), the
+ * gift starts in CLAIMED state and `recipientUserId` is set immediately.
+ * For USER_PURCHASE, the gift always starts PENDING — Stripe webhook calls
+ * this only AFTER successful payment, so the recipient's existence isn't
+ * a gating signal.
+ *
+ * Returns null on DB failure. Token uniqueness is enforced by the
+ * `gifts_token_idx` unique index; a collision would surface as null + a
+ * console.error (effectively zero probability with 256-bit entropy).
+ */
+export async function createGift(
+  input: CreateGiftInput,
+): Promise<CreateGiftResult | null> {
+  const recipientEmail = lcEmail(input.recipientEmail)
+  const expiresAt = new Date(Date.now() + GIFT_TTL_MS)
+  const token = generateGiftToken()
+  const locale = input.locale ?? 'ar'
+  const currency = (input.currency ?? 'usd').toLowerCase()
+
+  // Resolve recipient existence — needed for ADMIN_GRANT auto-claim AND for
+  // setting recipientUserId on USER_PURCHASE if they happen to be a user
+  // (so claim-time joins are simpler).
+  const recipientUser = await getUserByEmail(recipientEmail)
+  const autoClaim =
+    input.source === 'ADMIN_GRANT' && recipientUser != null
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const now = new Date()
+    const row: Gift = {
+      id: cryptoRandomUuid(),
+      token,
+      source: input.source,
+      status: autoClaim ? 'CLAIMED' : 'PENDING',
+      itemType: input.itemType,
+      itemId: input.itemId,
+      senderUserId: input.senderUserId ?? null,
+      recipientEmail,
+      recipientUserId: autoClaim ? (recipientUser?.id ?? null) : null,
+      senderMessage: input.senderMessage ?? null,
+      amountCents: input.amountCents ?? null,
+      currency,
+      stripeSessionId: input.stripeSessionId ?? null,
+      stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+      claimedAt: autoClaim ? now : null,
+      expiresAt,
+      revokedAt: null,
+      revokedReason: null,
+      refundedAt: null,
+      locale,
+      adminGrantedByUserId: input.adminGrantedByUserId ?? null,
+      emailSentAt: null,
+      emailSendFailedReason: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    store.gifts.unshift(row)
+    writeStore(store)
+    return {
+      gift: row,
+      autoClaimed: autoClaim,
+      recipientUserId: autoClaim ? (recipientUser?.id ?? null) : null,
+    }
+  }
+
+  if (!HAS_DB) return null
+  const senderUserIdOk =
+    input.senderUserId == null || isUuid(input.senderUserId)
+  const adminGrantedByOk =
+    input.adminGrantedByUserId == null || isUuid(input.adminGrantedByUserId)
+  if (!isUuid(input.itemId) || !senderUserIdOk || !adminGrantedByOk) {
+    return null
+  }
+
+  try {
+    const [row] = await db
+      .insert(gifts)
+      .values({
+        token,
+        source: input.source,
+        status: autoClaim ? 'CLAIMED' : 'PENDING',
+        itemType: input.itemType,
+        itemId: input.itemId,
+        senderUserId: input.senderUserId ?? null,
+        recipientEmail,
+        recipientUserId: autoClaim ? (recipientUser?.id ?? null) : null,
+        senderMessage: input.senderMessage ?? null,
+        amountCents: input.amountCents ?? null,
+        currency,
+        stripeSessionId: input.stripeSessionId ?? null,
+        stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+        claimedAt: autoClaim ? new Date() : null,
+        expiresAt,
+        locale,
+        adminGrantedByUserId: input.adminGrantedByUserId ?? null,
+      })
+      .returning()
+    if (!row) return null
+    return {
+      gift: row,
+      autoClaimed: autoClaim,
+      recipientUserId: autoClaim ? (recipientUser?.id ?? null) : null,
+    }
+  } catch (err) {
+    console.error('[queries.createGift]', err)
+    return null
+  }
+}
+
+// Tiny helper: produce a uuid-like string for mock-mode rows. Real UUIDs
+// would require a dependency; mock-mode IDs only need to be unique within
+// the mock store and visually distinct from real ones.
+function cryptoRandomUuid(): string {
+  // Deterministically uuid-shaped: 8-4-4-4-12 hex chars.
+  const hex = randomBytes(16).toString('hex')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
+export async function getGiftByToken(token: string): Promise<Gift | null> {
+  if (!token || token.length < 16 || token.length > 64) return null
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.gifts.find((g) => g.token === token) ?? null
+  }
+  if (!HAS_DB) return null
+  try {
+    const [row] = await db.select().from(gifts).where(eq(gifts.token, token)).limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getGiftByToken]', err)
+    return null
+  }
+}
+
+export async function getGiftById(id: string): Promise<Gift | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.gifts.find((g) => g.id === id) ?? null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db.select().from(gifts).where(eq(gifts.id, id)).limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getGiftById]', err)
+    return null
+  }
+}
+
+export async function getGiftByStripeSessionId(
+  stripeSessionId: string,
+): Promise<Gift | null> {
+  if (!stripeSessionId || stripeSessionId.length > 200) return null
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return (
+      store.gifts.find((g) => g.stripeSessionId === stripeSessionId) ?? null
+    )
+  }
+  if (!HAS_DB) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(gifts)
+      .where(eq(gifts.stripeSessionId, stripeSessionId))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getGiftByStripeSessionId]', err)
+    return null
+  }
+}
+
+/**
+ * Race-safe claim. The UPDATE is gated on `status='PENDING'` AND
+ * `expiresAt > now()`. If two callers race (concurrent claim + cron expiry,
+ * or two browser tabs), exactly one's UPDATE matches a row and returns it;
+ * the other returns null and the action layer surfaces 'invalid_or_expired'.
+ *
+ * Mock-mode replicates the same all-or-nothing semantics by checking + updating
+ * the in-memory row inside a single readStore→write→writeStore sequence.
+ */
+export async function claimGift(
+  token: string,
+  recipientUserId: string,
+): Promise<Gift | null> {
+  if (!token) return null
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const now = new Date()
+    const idx = store.gifts.findIndex((g) => g.token === token)
+    if (idx === -1) return null
+    const g = store.gifts[idx]!
+    if (g.status !== 'PENDING') return null
+    if (g.expiresAt.getTime() <= now.getTime()) return null
+    const updated: Gift = {
+      ...g,
+      status: 'CLAIMED',
+      claimedAt: now,
+      recipientUserId,
+      updatedAt: now,
+    }
+    store.gifts[idx] = updated
+    writeStore(store)
+    return updated
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(recipientUserId)) return null
+  try {
+    const [row] = await db
+      .update(gifts)
+      .set({
+        status: 'CLAIMED',
+        claimedAt: new Date(),
+        recipientUserId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(gifts.token, token),
+          eq(gifts.status, 'PENDING'),
+          gt(gifts.expiresAt, sql`now()`),
+        ),
+      )
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.claimGift]', err)
+    return null
+  }
+}
+
+/**
+ * Delete the BOOK/SESSION order row associated with a claimed gift. Used as
+ * a side effect of revokeGift / markGiftRefunded for BOOK and SESSION items.
+ * Booking-flavored gifts have their own revoke path (transfer userId back).
+ */
+async function deleteOrderForGift(giftId: string): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(giftId)) return
+  try {
+    await db.delete(orders).where(eq(orders.giftId, giftId))
+  } catch (err) {
+    console.error('[queries.deleteOrderForGift]', err)
+  }
+}
+
+/**
+ * Booking-side of revoke for CLAIMED gifts. Transfers the booking_orders
+ * row back to the original sender (per spec: "sender paid, so they keep
+ * the booking after revoke") and clears the giftId pointer. Capacity is
+ * NOT decremented — the seat stays. Returns the senderUserId for the email
+ * recipient logic.
+ */
+async function unlinkBookingOrderFromGift(giftId: string): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(giftId)) return
+  try {
+    await db
+      .update(bookingOrders)
+      .set({ giftId: null, updatedAt: new Date() })
+      .where(eq(bookingOrders.giftId, giftId))
+  } catch (err) {
+    console.error('[queries.unlinkBookingOrderFromGift]', err)
+  }
+}
+
+export type RevokeGiftResult = Gift
+
+/**
+ * Admin revoke. Sets status=REVOKED + revokedAt + revokedReason. If the
+ * gift was CLAIMED, also revokes the entitlement:
+ *   - BOOK / SESSION: delete the orders row (cascades to order_items via FK)
+ *   - BOOKING: transfer the booking_orders.userId back to senderUserId, clear
+ *     giftId. Sender keeps the seat.
+ */
+export async function revokeGift(
+  giftId: string,
+  reason: string,
+): Promise<RevokeGiftResult | null> {
+  const now = new Date()
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.gifts.findIndex((g) => g.id === giftId)
+    if (idx === -1) return null
+    const g = store.gifts[idx]!
+    if (g.status === 'REVOKED' || g.status === 'REFUNDED') return g
+    const updated: Gift = {
+      ...g,
+      status: 'REVOKED',
+      revokedAt: now,
+      revokedReason: reason,
+      updatedAt: now,
+    }
+    store.gifts[idx] = updated
+    writeStore(store)
+    return updated
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(giftId)) return null
+  try {
+    const [row] = await db
+      .update(gifts)
+      .set({
+        status: 'REVOKED',
+        revokedAt: now,
+        revokedReason: reason,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(gifts.id, giftId),
+          // Only transition non-terminal states. Terminal states return
+          // null from the .returning() call.
+          inArray(gifts.status, ['PENDING', 'CLAIMED']),
+        ),
+      )
+      .returning()
+    if (!row) return null
+    if (row.itemType === 'BOOK' || row.itemType === 'SESSION') {
+      await deleteOrderForGift(row.id)
+    } else if (row.itemType === 'BOOKING') {
+      await unlinkBookingOrderFromGift(row.id)
+    }
+    return row
+  } catch (err) {
+    console.error('[queries.revokeGift]', err)
+    return null
+  }
+}
+
+/**
+ * Stripe-driven refund or chargeback. Mirrors revokeGift's side effects but
+ * with status=REFUNDED. Booking flavor: same transfer-back-to-sender shape.
+ */
+export async function markGiftRefunded(giftId: string): Promise<Gift | null> {
+  const now = new Date()
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.gifts.findIndex((g) => g.id === giftId)
+    if (idx === -1) return null
+    const g = store.gifts[idx]!
+    if (g.status === 'REFUNDED') return g
+    const updated: Gift = {
+      ...g,
+      status: 'REFUNDED',
+      refundedAt: now,
+      updatedAt: now,
+    }
+    store.gifts[idx] = updated
+    writeStore(store)
+    return updated
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(giftId)) return null
+  try {
+    const [row] = await db
+      .update(gifts)
+      .set({
+        status: 'REFUNDED',
+        refundedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(gifts.id, giftId))
+      .returning()
+    if (!row) return null
+    if (row.itemType === 'BOOK' || row.itemType === 'SESSION') {
+      await deleteOrderForGift(row.id)
+    } else if (row.itemType === 'BOOKING') {
+      await unlinkBookingOrderFromGift(row.id)
+    }
+    return row
+  } catch (err) {
+    console.error('[queries.markGiftRefunded]', err)
+    return null
+  }
+}
+
+/**
+ * Direct status setter — used by the webhook's payment_failed branch to void
+ * a gift that was created PENDING but never paid. Kept separate from
+ * markGiftRefunded so the email + audit trail can distinguish "Stripe refund"
+ * from "payment never succeeded".
+ */
+export async function voidGiftForPaymentFailure(
+  giftId: string,
+): Promise<Gift | null> {
+  const now = new Date()
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.gifts.findIndex((g) => g.id === giftId)
+    if (idx === -1) return null
+    const g = store.gifts[idx]!
+    if (g.status === 'REFUNDED' || g.status === 'REVOKED') return g
+    const updated: Gift = {
+      ...g,
+      status: 'REFUNDED',
+      refundedAt: now,
+      revokedReason: 'payment_failed',
+      updatedAt: now,
+    }
+    store.gifts[idx] = updated
+    writeStore(store)
+    return updated
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(giftId)) return null
+  try {
+    const [row] = await db
+      .update(gifts)
+      .set({
+        status: 'REFUNDED',
+        refundedAt: now,
+        revokedReason: 'payment_failed',
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(gifts.id, giftId),
+          inArray(gifts.status, ['PENDING']),
+        ),
+      )
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.voidGiftForPaymentFailure]', err)
+    return null
+  }
+}
+
+export async function markGiftEmailSent(
+  giftId: string,
+  success: boolean,
+  failedReason?: string | null,
+): Promise<void> {
+  const now = new Date()
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.gifts.findIndex((g) => g.id === giftId)
+    if (idx === -1) return
+    const g = store.gifts[idx]!
+    store.gifts[idx] = {
+      ...g,
+      emailSentAt: success ? now : g.emailSentAt,
+      emailSendFailedReason: success ? null : failedReason ?? null,
+      updatedAt: now,
+    }
+    writeStore(store)
+    return
+  }
+  if (!HAS_DB) return
+  if (!isUuid(giftId)) return
+  try {
+    await db
+      .update(gifts)
+      .set({
+        emailSentAt: success ? now : sql`email_sent_at`,
+        emailSendFailedReason: success ? null : failedReason ?? null,
+        updatedAt: now,
+      })
+      .where(eq(gifts.id, giftId))
+  } catch (err) {
+    console.error('[queries.markGiftEmailSent]', err)
+  }
+}
+
+/**
+ * Update the link from a Stripe session id to a gift after the gift has been
+ * created. Used by the webhook to record the paymentIntentId once Stripe
+ * provides it, after the initial PENDING insert.
+ */
+export async function setGiftStripePaymentIntent(
+  giftId: string,
+  stripePaymentIntentId: string,
+): Promise<void> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const idx = store.gifts.findIndex((g) => g.id === giftId)
+    if (idx === -1) return
+    const g = store.gifts[idx]!
+    store.gifts[idx] = {
+      ...g,
+      stripePaymentIntentId,
+      updatedAt: new Date(),
+    }
+    writeStore(store)
+    return
+  }
+  if (!HAS_DB) return
+  if (!isUuid(giftId)) return
+  try {
+    await db
+      .update(gifts)
+      .set({ stripePaymentIntentId, updatedAt: new Date() })
+      .where(eq(gifts.id, giftId))
+  } catch (err) {
+    console.error('[queries.setGiftStripePaymentIntent]', err)
+  }
+}
+
+export async function getUserSentGifts(userId: string): Promise<Gift[]> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.gifts
+      .filter((g) => g.senderUserId === userId)
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  }
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    return await db
+      .select()
+      .from(gifts)
+      .where(eq(gifts.senderUserId, userId))
+      .orderBy(desc(gifts.createdAt))
+      .limit(100)
+  } catch (err) {
+    console.error('[queries.getUserSentGifts]', err)
+    return []
+  }
+}
+
+/**
+ * Returns the gifts a user has received. Joins on `recipient_user_id` for
+ * already-claimed gifts AND on lowercased recipient_email for PENDING gifts
+ * the user hasn't claimed yet (e.g., signed up after the gift was created).
+ */
+export async function getUserReceivedGifts(
+  userId: string,
+  email: string,
+): Promise<Gift[]> {
+  const lc = lcEmail(email)
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.gifts
+      .filter(
+        (g) =>
+          g.recipientUserId === userId ||
+          g.recipientEmail.toLowerCase() === lc,
+      )
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  }
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    return await db
+      .select()
+      .from(gifts)
+      .where(
+        or(
+          eq(gifts.recipientUserId, userId),
+          eq(gifts.recipientEmail, lc),
+        ),
+      )
+      .orderBy(desc(gifts.createdAt))
+      .limit(100)
+  } catch (err) {
+    console.error('[queries.getUserReceivedGifts]', err)
+    return []
+  }
+}
+
+export type AdminGiftFilter = {
+  status?: GiftStatus | 'all'
+  source?: GiftSource | 'all'
+  itemType?: GiftItemType | 'all'
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export type AdminGiftsPage = {
+  rows: Gift[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAdminGifts(
+  filter: AdminGiftFilter,
+): Promise<AdminGiftsPage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = Math.min(100, Math.max(10, filter.pageSize ?? 50))
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    let rows = store.gifts.slice()
+    if (filter.status && filter.status !== 'all') {
+      rows = rows.filter((g) => g.status === filter.status)
+    }
+    if (filter.source && filter.source !== 'all') {
+      rows = rows.filter((g) => g.source === filter.source)
+    }
+    if (filter.itemType && filter.itemType !== 'all') {
+      rows = rows.filter((g) => g.itemType === filter.itemType)
+    }
+    if (filter.search?.trim()) {
+      const needle = filter.search.trim().toLowerCase()
+      rows = rows.filter((g) =>
+        g.recipientEmail.toLowerCase().includes(needle),
+      )
+    }
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    const total = rows.length
+    const sliced = rows.slice((page - 1) * pageSize, page * pageSize)
+    return { rows: sliced, total, page, pageSize }
+  }
+  if (!HAS_DB) return { rows: [], total: 0, page, pageSize }
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(gifts.status, filter.status))
+    }
+    if (filter.source && filter.source !== 'all') {
+      conditions.push(eq(gifts.source, filter.source))
+    }
+    if (filter.itemType && filter.itemType !== 'all') {
+      conditions.push(eq(gifts.itemType, filter.itemType))
+    }
+    if (filter.search?.trim()) {
+      conditions.push(ilike(gifts.recipientEmail, `%${filter.search.trim()}%`))
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(gifts)
+      .where(whereClause)
+    const rows = await db
+      .select()
+      .from(gifts)
+      .where(whereClause)
+      .orderBy(desc(gifts.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return {
+      rows,
+      total: Number(count) || 0,
+      page,
+      pageSize,
+    }
+  } catch (err) {
+    console.error('[queries.getAdminGifts]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+export type ExpirePendingGiftsResult = {
+  expiredCount: number
+  bookingReleasedCount: number
+  errors: Array<{ giftId: string; error: string }>
+}
+
+/**
+ * Daily cron sweep. Marks PENDING gifts past their expiresAt as EXPIRED and
+ * applies booking-specific cleanup:
+ *   - BOOKING gifts whose underlying booking has a future event date:
+ *     decrement bookings.bookedCount, leave the booking_order row as-is
+ *     (sender's payment record stays — admin can refund manually).
+ *   - BOOKING gifts whose event has already passed: leave bookedCount alone.
+ *
+ * Idempotent: a second pass finds no PENDING+expired rows.
+ */
+export async function expirePendingGifts(): Promise<ExpirePendingGiftsResult> {
+  const errors: Array<{ giftId: string; error: string }> = []
+  const now = new Date()
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    let expiredCount = 0
+    for (let i = 0; i < store.gifts.length; i++) {
+      const g = store.gifts[i]!
+      if (g.status !== 'PENDING') continue
+      if (g.expiresAt.getTime() > now.getTime()) continue
+      store.gifts[i] = { ...g, status: 'EXPIRED', updatedAt: now }
+      expiredCount++
+    }
+    if (expiredCount > 0) writeStore(store)
+    // Booking release in mock-mode is a no-op (USER_PURCHASE BOOKING gifts
+    // don't get created in mock-auth dev mode; ADMIN_GRANT BOOKING gifts
+    // don't consume capacity through Stripe).
+    return { expiredCount, bookingReleasedCount: 0, errors }
+  }
+
+  if (!HAS_DB) return { expiredCount: 0, bookingReleasedCount: 0, errors }
+
+  try {
+    const expiredRows = await db
+      .update(gifts)
+      .set({ status: 'EXPIRED', updatedAt: now })
+      .where(
+        and(eq(gifts.status, 'PENDING'), lte(gifts.expiresAt, sql`now()`)),
+      )
+      .returning()
+
+    let bookingReleasedCount = 0
+    for (const g of expiredRows) {
+      if (g.itemType !== 'BOOKING') continue
+      try {
+        const booking = await getBookingById(g.itemId)
+        if (!booking) continue
+        const eventInFuture =
+          booking.nextCohortDate != null &&
+          booking.nextCohortDate.getTime() > now.getTime()
+        if (!eventInFuture) continue
+        await db.transaction(async (tx) => {
+          await tx
+            .update(bookings)
+            .set({
+              bookedCount: sql`GREATEST(${bookings.bookedCount} - 1, 0)`,
+              updatedAt: now,
+            })
+            .where(eq(bookings.id, g.itemId))
+        })
+        bookingReleasedCount++
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'unknown'
+        errors.push({ giftId: g.id, error: msg })
+        console.error('[queries.expirePendingGifts] booking release failed', {
+          giftId: g.id,
+          err,
+        })
+      }
+    }
+    return {
+      expiredCount: expiredRows.length,
+      bookingReleasedCount,
+      errors,
+    }
+  } catch (err) {
+    console.error('[queries.expirePendingGifts]', err)
+    const msg = err instanceof Error ? err.message : 'unknown'
+    errors.push({ giftId: 'sweep', error: msg })
+    return { expiredCount: 0, bookingReleasedCount: 0, errors }
+  }
+}
+
+export async function countPendingGiftsForUser(
+  userId: string,
+  email: string,
+): Promise<number> {
+  const lc = lcEmail(email)
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const now = Date.now()
+    return store.gifts.filter(
+      (g) =>
+        g.status === 'PENDING' &&
+        g.expiresAt.getTime() > now &&
+        (g.recipientUserId === userId || g.recipientEmail.toLowerCase() === lc),
+    ).length
+  }
+  if (!HAS_DB) return 0
+  if (!isUuid(userId)) return 0
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(gifts)
+      .where(
+        and(
+          eq(gifts.status, 'PENDING'),
+          gt(gifts.expiresAt, sql`now()`),
+          or(eq(gifts.recipientUserId, userId), eq(gifts.recipientEmail, lc)),
+        ),
+      )
+    return Number(count) || 0
+  } catch (err) {
+    console.error('[queries.countPendingGiftsForUser]', err)
+    return 0
+  }
+}
+
+/**
+ * Email-based already-owns check for BOOK / SESSION gifts. Joins orders →
+ * users.email so an offer to gift a book to recipient@example.com is
+ * blocked when that email belongs to an existing user who already paid for
+ * (or claimed a gift of) the same item.
+ */
+export async function recipientEmailOwnsBookOrSession(
+  email: string,
+  bookId: string,
+): Promise<boolean> {
+  const lc = lcEmail(email)
+  if (!HAS_DB) return false
+  if (!isUuid(bookId)) return false
+  try {
+    const recipient = await getUserByEmail(lc)
+    if (!recipient) return false
+    const rows = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+      .where(
+        and(
+          eq(orders.userId, recipient.id),
+          eq(orderItems.bookId, bookId),
+          inArray(orders.status, ['PAID', 'FULFILLED']),
+        ),
+      )
+      .limit(1)
+    return rows.length > 0
+  } catch (err) {
+    console.error('[queries.recipientEmailOwnsBookOrSession]', err)
+    return false
+  }
+}
+
+export async function recipientEmailHasBooking(
+  email: string,
+  bookingId: string,
+): Promise<boolean> {
+  const lc = lcEmail(email)
+  if (!HAS_DB) return false
+  if (!isUuid(bookingId)) return false
+  try {
+    const recipient = await getUserByEmail(lc)
+    if (!recipient) return false
+    const rows = await db
+      .select({ id: bookingOrders.id })
+      .from(bookingOrders)
+      .where(
+        and(
+          eq(bookingOrders.userId, recipient.id),
+          eq(bookingOrders.bookingId, bookingId),
+          inArray(bookingOrders.status, ['PAID', 'FULFILLED']),
+        ),
+      )
+      .limit(1)
+    return rows.length > 0
+  } catch (err) {
+    console.error('[queries.recipientEmailHasBooking]', err)
+    return false
+  }
+}
+
+/**
+ * Grant an entitlement after a successful claim. For BOOK/SESSION gifts this
+ * inserts an order + order_items row; for BOOKING gifts the action layer
+ * mutates the existing booking_order's userId to the recipient. This helper
+ * encapsulates the BOOK/SESSION branch only.
+ *
+ * Returns the orderId on success, null on failure.
+ */
+export async function createGiftClaimOrder(input: {
+  recipientUserId: string
+  recipientEmail: string
+  giftId: string
+  bookId: string
+  priceCents: number
+  currency: string
+}): Promise<string | null> {
+  if (MOCK_AUTH_ENABLED) {
+    // Mock-mode "library access" is governed by the queries.ts BOOK / SESSION
+    // queries (placeholder data). Owning a book in mock-mode is auto-true for
+    // demo simplicity; we don't need to insert an orders row here. Return a
+    // stable mock id so the caller's logging works.
+    return `gift-mock-order-${input.giftId.slice(0, 8)}`
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.recipientUserId) || !isUuid(input.bookId) || !isUuid(input.giftId)) {
+    return null
+  }
+  try {
+    const totalAmount = (input.priceCents / 100).toFixed(2)
+    return await db.transaction(async (tx) => {
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          userId: input.recipientUserId,
+          status: 'PAID',
+          totalAmount,
+          currency: input.currency.toUpperCase(),
+          customerEmail: input.recipientEmail,
+          giftId: input.giftId,
+        })
+        .returning({ id: orders.id })
+      if (!order) return null
+      await tx.insert(orderItems).values({
+        orderId: order.id,
+        bookId: input.bookId,
+        quantity: 1,
+        priceAtPurchase: totalAmount,
+      })
+      return order.id
+    })
+  } catch (err) {
+    console.error('[queries.createGiftClaimOrder]', err)
+    return null
+  }
+}
+
+/**
+ * Booking-flavored claim. Updates the booking_order's userId from sender
+ * to recipient. Idempotent on userId: re-running with the same args is a
+ * no-op (the WHERE clause matches, the SET applies the same value).
+ */
+export async function transferBookingOrderToRecipient(input: {
+  giftId: string
+  recipientUserId: string
+}): Promise<{ bookingId: string; bookingOrderId: string } | null> {
+  if (MOCK_AUTH_ENABLED) {
+    // Mock-mode booking_orders flow is gated behind Stripe, so this branch
+    // is unreachable for USER_PURCHASE. ADMIN_GRANT BOOKING gifts in mock
+    // mode just record the gift; the booking_order doesn't exist. Return
+    // a synthesized success so the action's downstream side effects (email,
+    // revalidation) still fire.
+    const gift = await getGiftById(input.giftId)
+    return gift && gift.itemType === 'BOOKING'
+      ? {
+          bookingId: gift.itemId,
+          bookingOrderId: `gift-mock-${input.giftId.slice(0, 8)}`,
+        }
+      : null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.giftId) || !isUuid(input.recipientUserId)) return null
+  try {
+    const [row] = await db
+      .update(bookingOrders)
+      .set({ userId: input.recipientUserId, updatedAt: new Date() })
+      .where(eq(bookingOrders.giftId, input.giftId))
+      .returning({ id: bookingOrders.id, bookingId: bookingOrders.bookingId })
+    if (!row) return null
+    return { bookingOrderId: row.id, bookingId: row.bookingId }
+  } catch (err) {
+    console.error('[queries.transferBookingOrderToRecipient]', err)
+    return null
+  }
+}
+
+/**
+ * Stripe webhook helper: at the moment of checkout.session.completed for a
+ * BOOKING gift, we need to (a) create the booking_order in PENDING with
+ * the sender's userId, (b) create the gift row, (c) link the booking_order
+ * back to the gift, and (d) flip the booking_order to PAID + increment
+ * bookedCount + delete the hold. This helper bundles (d) for gift bookings.
+ *
+ * Returns null when the row didn't move (already PAID via concurrent
+ * delivery, or the row doesn't exist).
+ */
+export async function markGiftBookingOrderPaid(input: {
+  giftId: string
+  stripeSessionId: string
+  stripePaymentIntentId: string | null
+  amountPaid: number
+}): Promise<{
+  bookingOrderId: string
+  bookingId: string
+  newBookedCount: number
+  flippedToSoldOut: boolean
+} | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(input.giftId)) return null
+  try {
+    return await db.transaction(async (tx) => {
+      const [order] = await tx
+        .update(bookingOrders)
+        .set({
+          status: 'PAID',
+          stripePaymentIntentId: input.stripePaymentIntentId,
+          amountPaid: input.amountPaid,
+          confirmedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(bookingOrders.giftId, input.giftId),
+            eq(bookingOrders.status, 'PENDING'),
+          ),
+        )
+        .returning()
+      if (!order) return null
+      const [b] = await tx
+        .update(bookings)
+        .set({
+          bookedCount: sql`${bookings.bookedCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, order.bookingId))
+        .returning({
+          id: bookings.id,
+          bookedCount: bookings.bookedCount,
+          maxCapacity: bookings.maxCapacity,
+          bookingState: bookings.bookingState,
+        })
+      let flippedToSoldOut = false
+      if (b && b.bookedCount >= b.maxCapacity && b.bookingState === 'OPEN') {
+        await tx
+          .update(bookings)
+          .set({ bookingState: 'SOLD_OUT', updatedAt: new Date() })
+          .where(eq(bookings.id, b.id))
+        flippedToSoldOut = true
+      }
+      await tx
+        .delete(bookingsPendingHolds)
+        .where(eq(bookingsPendingHolds.stripeSessionId, input.stripeSessionId))
+      return {
+        bookingOrderId: order.id,
+        bookingId: order.bookingId,
+        newBookedCount: b?.bookedCount ?? 0,
+        flippedToSoldOut,
+      }
+    })
+  } catch (err) {
+    console.error('[queries.markGiftBookingOrderPaid]', err)
+    return null
+  }
+}
+
+/**
+ * Insert a booking_order row in PENDING state with a giftId linked. Called
+ * from the gift-creation server action (USER_PURCHASE BOOKING flow) AFTER
+ * the hold is created and BEFORE the Stripe checkout session is created.
+ * The user_id is the sender's id; transferred to recipient on claim.
+ */
+export async function createGiftBookingOrder(input: {
+  senderUserId: string
+  bookingId: string
+  giftId: string
+  amountPaid: number
+  currency: string
+  stripeSessionId: string
+}): Promise<BookingOrder | null> {
+  if (!HAS_DB) return null
+  if (
+    !isUuid(input.senderUserId) ||
+    !isUuid(input.bookingId) ||
+    !isUuid(input.giftId)
+  ) {
+    return null
+  }
+  try {
+    const [row] = await db
+      .insert(bookingOrders)
+      .values({
+        userId: input.senderUserId,
+        bookingId: input.bookingId,
+        stripeSessionId: input.stripeSessionId,
+        amountPaid: input.amountPaid,
+        currency: input.currency.toUpperCase(),
+        status: 'PENDING',
+        giftId: input.giftId,
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.createGiftBookingOrder]', err)
+    return null
+  }
+}
+
 export type {
   Article,
   ArticleCategory,
@@ -6598,6 +7788,10 @@ export type {
   CorporateRequestStatus,
   Event,
   GalleryItem,
+  Gift,
+  GiftItemType,
+  GiftSource,
+  GiftStatus,
   Interview,
   MediaProgress,
   MessageStatus,

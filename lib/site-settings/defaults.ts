@@ -26,6 +26,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_nav_corporate: true,
     show_nav_booking: true,
     show_nav_tests: true,
+    // Default OFF — gifts are not promoted to casual visitors by default.
+    // Admin flips this on once the surface is launched.
+    show_nav_send_gift: false,
     show_locale_switcher: true,
   },
   footer: {
@@ -60,6 +63,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_admin_booking: true,
     show_admin_questions: true,
     show_admin_tests: true,
+    show_admin_gifts: true,
   },
   dashboard: {
     show_account_tab: true,
@@ -67,7 +71,11 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_bookings_tab: true,
     show_ask_tab: true,
     show_tests_tab: true,
+    show_gifts_tab: true,
     show_settings_tab: true,
+  },
+  gifts: {
+    allow_user_to_user: true,
   },
   coming_soon_pages: [],
 }
@@ -94,6 +102,7 @@ export function mergeSettings(
     // treatment as `show_hero`. Trailing override defends against a
     // patch that tries to set it false.
     dashboard: { ...base.dashboard, ...patch.dashboard, show_account_tab: true },
+    gifts: { ...base.gifts, ...patch.gifts },
     coming_soon_pages: patch.coming_soon_pages ?? base.coming_soon_pages,
   }
 }

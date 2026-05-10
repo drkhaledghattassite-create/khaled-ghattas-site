@@ -31,6 +31,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import type {
   BookingInterest,
+  Gift,
   PdfBookmark,
   SessionItem,
   Test,
@@ -108,6 +109,12 @@ export type MockStore = {
   testQuestions: Map<string, TestQuestion[]>
   // Keyed by questionId → list of options in displayOrder.
   testOptions: Map<string, TestOption[]>
+  // Phase D — append-only list of gifts. Mock-mode supports the full
+  // ADMIN_GRANT lifecycle (create → claim auto-on-existing-account → revoke
+  // → resend). USER_PURCHASE flow is gated behind Stripe in production; in
+  // mock-auth dev the action returns 'stripe_unconfigured' before reaching
+  // the queries layer, so PENDING USER_PURCHASE gifts never land here.
+  gifts: Gift[]
 }
 
 // JSON shape on disk — Maps serialised as [key, value][].
@@ -175,6 +182,24 @@ type SerializedTestQuestion = Omit<
 type SerializedTestOption = Omit<TestOption, 'createdAt'> & {
   createdAt: string
 }
+type SerializedGift = Omit<
+  Gift,
+  | 'claimedAt'
+  | 'expiresAt'
+  | 'revokedAt'
+  | 'refundedAt'
+  | 'emailSentAt'
+  | 'createdAt'
+  | 'updatedAt'
+> & {
+  claimedAt: string | null
+  expiresAt: string
+  revokedAt: string | null
+  refundedAt: string | null
+  emailSentAt: string | null
+  createdAt: string
+  updatedAt: string
+}
 type SerializedStore = {
   progress: Array<[string, SerializedProgressEntry]>
   bookmarks: Array<[string, SerializedBookmark[]]>
@@ -187,6 +212,7 @@ type SerializedStore = {
   tests?: Array<[string, SerializedTest]>
   testQuestions?: Array<[string, SerializedTestQuestion[]]>
   testOptions?: Array<[string, SerializedTestOption[]]>
+  gifts?: SerializedGift[]
 }
 
 const STORE_FILE = join(
@@ -209,6 +235,7 @@ function emptyStore(): MockStore {
     tests: new Map(),
     testQuestions: new Map(),
     testOptions: new Map(),
+    gifts: [],
   }
 }
 
@@ -438,6 +465,48 @@ export function readStore(): MockStore {
       }
       testOptionsMap.set(key, next)
     }
+    const giftsList: Gift[] = []
+    for (const entry of parsed.gifts ?? []) {
+      const expiresAt = new Date(entry.expiresAt)
+      if (Number.isNaN(expiresAt.getTime())) continue
+      const createdAt = new Date(entry.createdAt)
+      const updatedAt = new Date(entry.updatedAt)
+      const claimedAt = entry.claimedAt ? new Date(entry.claimedAt) : null
+      const revokedAt = entry.revokedAt ? new Date(entry.revokedAt) : null
+      const refundedAt = entry.refundedAt ? new Date(entry.refundedAt) : null
+      const emailSentAt = entry.emailSentAt
+        ? new Date(entry.emailSentAt)
+        : null
+      giftsList.push({
+        id: entry.id,
+        token: entry.token,
+        source: entry.source,
+        status: entry.status,
+        itemType: entry.itemType,
+        itemId: entry.itemId,
+        senderUserId: entry.senderUserId ?? null,
+        recipientEmail: entry.recipientEmail,
+        recipientUserId: entry.recipientUserId ?? null,
+        senderMessage: entry.senderMessage ?? null,
+        amountCents: entry.amountCents ?? null,
+        currency: entry.currency ?? 'usd',
+        stripeSessionId: entry.stripeSessionId ?? null,
+        stripePaymentIntentId: entry.stripePaymentIntentId ?? null,
+        claimedAt: claimedAt && !Number.isNaN(claimedAt.getTime()) ? claimedAt : null,
+        expiresAt,
+        revokedAt: revokedAt && !Number.isNaN(revokedAt.getTime()) ? revokedAt : null,
+        revokedReason: entry.revokedReason ?? null,
+        refundedAt:
+          refundedAt && !Number.isNaN(refundedAt.getTime()) ? refundedAt : null,
+        locale: entry.locale ?? 'ar',
+        adminGrantedByUserId: entry.adminGrantedByUserId ?? null,
+        emailSentAt:
+          emailSentAt && !Number.isNaN(emailSentAt.getTime()) ? emailSentAt : null,
+        emailSendFailedReason: entry.emailSendFailedReason ?? null,
+        createdAt: !Number.isNaN(createdAt.getTime()) ? createdAt : new Date(),
+        updatedAt: !Number.isNaN(updatedAt.getTime()) ? updatedAt : new Date(),
+      })
+    }
     return {
       progress,
       bookmarks,
@@ -450,6 +519,7 @@ export function readStore(): MockStore {
       tests: testsMap,
       testQuestions: testQuestionsMap,
       testOptions: testOptionsMap,
+      gifts: giftsList,
     }
   } catch (err) {
     console.warn(
@@ -614,6 +684,33 @@ export function writeStore(store: MockStore): void {
         createdAt: o.createdAt.toISOString(),
       })),
     ]),
+    gifts: store.gifts.map((g) => ({
+      id: g.id,
+      token: g.token,
+      source: g.source,
+      status: g.status,
+      itemType: g.itemType,
+      itemId: g.itemId,
+      senderUserId: g.senderUserId ?? null,
+      recipientEmail: g.recipientEmail,
+      recipientUserId: g.recipientUserId ?? null,
+      senderMessage: g.senderMessage ?? null,
+      amountCents: g.amountCents ?? null,
+      currency: g.currency,
+      stripeSessionId: g.stripeSessionId ?? null,
+      stripePaymentIntentId: g.stripePaymentIntentId ?? null,
+      claimedAt: g.claimedAt ? g.claimedAt.toISOString() : null,
+      expiresAt: g.expiresAt.toISOString(),
+      revokedAt: g.revokedAt ? g.revokedAt.toISOString() : null,
+      revokedReason: g.revokedReason ?? null,
+      refundedAt: g.refundedAt ? g.refundedAt.toISOString() : null,
+      locale: g.locale,
+      adminGrantedByUserId: g.adminGrantedByUserId ?? null,
+      emailSentAt: g.emailSentAt ? g.emailSentAt.toISOString() : null,
+      emailSendFailedReason: g.emailSendFailedReason ?? null,
+      createdAt: g.createdAt.toISOString(),
+      updatedAt: g.updatedAt.toISOString(),
+    })),
   }
   try {
     mkdirSync(dirname(STORE_FILE), { recursive: true })

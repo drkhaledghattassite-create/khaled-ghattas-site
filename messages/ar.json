@@ -690,6 +690,7 @@
       "questions_pending_aria": "{count, plural, zero {لا أسئلة قيد المراجعة} one {سؤال واحد قيد المراجعة} two {سؤالان قيد المراجعة} few {# أسئلة قيد المراجعة} many {# سؤالاً قيد المراجعة} other {# سؤال قيد المراجعة}}",
       "tests": "الاختبارات",
       "tests_drafts_aria": "{count, plural, zero {لا اختبارات في المسودة} one {اختبار واحد في المسودة} two {اختباران في المسودة} few {# اختبارات في المسودة} many {# اختباراً في المسودة} other {# اختبار في المسودة}}",
+      "gifts": "الهدايا",
       "booking_tours": "الجولات",
       "booking_bookings": "الحجوزات",
       "booking_tour_suggestions": "اقتراحات الجولات",
@@ -1524,6 +1525,8 @@
         "admin_desc": "تحكّم في ظهور أقسام الشريط الجانبي في /admin. الصفحات تبقى متاحة عبر الرابط المباشر — هذه المفاتيح تخفي عناصر القائمة فقط.",
         "dashboard_title": "لوحة المستخدم",
         "dashboard_desc": "تحكّم في ظهور التبويبات في /dashboard للعملاء. الصفحات تبقى متاحة عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
+        "gifts_title": "الهدايا",
+        "gifts_desc": "المرحلة D — مفاتيح ميزة الهدايا. عطّل الهدايا بين المستخدمين على مستوى الموقع، أو أخفِ رابط «أرسل هدية» من القائمة العامة.",
         "maintenance_title": "شريط الصيانة",
         "maintenance_desc": "يظهر عند تفعيل وضع الصيانة. اترك الحقول فارغة لاستخدام الرسالة الافتراضية.",
         "coming_soon_title": "صفحات قيد الإنجاز",
@@ -1548,6 +1551,8 @@
         "show_nav_corporate": "للشركات والمؤسسات",
         "show_nav_booking": "خدمات للأفراد",
         "show_nav_tests": "الاختبارات",
+        "show_nav_send_gift": "رابط «أرسل هدية»",
+        "show_nav_send_gift_desc": "إظهار رابط «أرسل هدية» في القائمة العامة والتذييل. مغلق افتراضياً — فعّله عند إطلاق الهدايا.",
         "show_locale_switcher": "زر تبديل اللغة (AR ⇄ EN)",
         "bottom_nav_note": "شريط الأسفل في الجوال يتبع هذه المفاتيح تلقائياً."
       },
@@ -1583,7 +1588,9 @@
         "show_admin_questions": "إدخال الأسئلة في الإدارة",
         "show_admin_questions_desc": "إظهار إدخال «الأسئلة» (مع شارة عدد المعلَّقة) ضمن مجموعة الجمهور في الشريط الجانبي للإدارة.",
         "show_admin_tests": "إدخال الاختبارات في الإدارة",
-        "show_admin_tests_desc": "إظهار إدخال «الاختبارات» (مع شارة عدد المسودات) ضمن مجموعة المحتوى في الشريط الجانبي للإدارة."
+        "show_admin_tests_desc": "إظهار إدخال «الاختبارات» (مع شارة عدد المسودات) ضمن مجموعة المحتوى في الشريط الجانبي للإدارة.",
+        "show_admin_gifts": "إدخال الهدايا في الإدارة",
+        "show_admin_gifts_desc": "إظهار إدخال «الهدايا» ضمن مجموعة التجارة في الشريط الجانبي للإدارة. مسار /admin/gifts يبقى متاحاً عبر الرابط المباشر."
       },
       "dashboard": {
         "show_account_tab": "تبويب «حسابي» (دائماً ظاهر)",
@@ -1596,8 +1603,14 @@
         "show_ask_tab_desc": "إظهار تبويب «اسأل» في لوحة العملاء. مسار /dashboard/ask يبقى متاحاً عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
         "show_tests_tab": "تبويب «الاختبارات»",
         "show_tests_tab_desc": "إظهار تبويب «الاختبارات» (سجلّ اختبارات المستخدم) في لوحة العملاء. مسار /dashboard/tests يبقى متاحاً عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
+        "show_gifts_tab": "تبويب «الهدايا»",
+        "show_gifts_tab_desc": "إظهار تبويب «الهدايا» (المُرسَلة والمُستلَمة) في لوحة العملاء. مسار /dashboard/gifts يبقى متاحاً عبر الرابط المباشر حتى لو أُخفِيَ التبويب.",
         "show_settings_tab": "تبويب «الإعدادات»",
         "show_settings_tab_desc": "إظهار تبويب «الإعدادات» (التفضيلات، حذف الحساب). مسار /dashboard/settings يبقى متاحاً عند الإخفاء."
+      },
+      "gifts": {
+        "allow_user_to_user": "السماح بالهدايا بين المستخدمين",
+        "allow_user_to_user_desc": "مفتاح إيقاف رئيسي لـ /gifts/send (المُرسِل يدفع عبر Stripe ليُهدي مستخدماً آخر). الهدايا التي يمنحها الفريق عبر /admin/gifts/new لا تتأثّر."
       },
       "maintenance": {
         "message_ar": "نص الشريط (عربي)",
@@ -1819,6 +1832,112 @@
     "products": {
       "coming_soon_title": "المنتجات",
       "coming_soon_text": "اضبط المنتجات غير الكتب هنا عندما يكون الفهرس جاهزًا."
+    },
+    "gifts": {
+      "meta": {
+        "title": "الهدايا",
+        "description": "إدارة الهدايا الممنوحة والمشتراة."
+      },
+      "list": {
+        "heading": "الهدايا",
+        "subheading": "هدايا الفريق ومشتريات المستخدمين.",
+        "new_cta": "هدية جديدة",
+        "search_placeholder": "ابحث ببريد المستلم…",
+        "filter_status": "الحالة",
+        "filter_source": "المصدر",
+        "filter_item": "نوع العنصر",
+        "filter_all": "الكل",
+        "table": {
+          "created": "الإنشاء",
+          "recipient": "المستلم",
+          "item": "العنصر",
+          "source": "المصدر",
+          "status": "الحالة",
+          "amount": "المبلغ",
+          "actions": "إجراءات"
+        },
+        "source_admin": "هدية من الفريق",
+        "source_user": "شراء مستخدم",
+        "empty": "لا توجد هدايا تطابق هذه التصفيات.",
+        "view_cta": "عرض",
+        "revoke_cta": "إلغاء",
+        "resend_cta": "إعادة إرسال"
+      },
+      "create": {
+        "heading": "منح هدية مجّانية",
+        "subheading": "امنح كتاباً أو جلسة أو حجزاً لمستلم — دون دفع.",
+        "back_cta": "رجوع إلى الهدايا",
+        "submit_cta": "منح الهدية",
+        "submit_loading": "جارٍ المنح…",
+        "tabs": {
+          "book": "الكتب",
+          "session": "الجلسات",
+          "booking": "الحجوزات"
+        },
+        "form_recipient_label": "بريد المستلم",
+        "form_recipient_placeholder": "name@example.com",
+        "form_locale_label": "اللغة المفضّلة للمستلم",
+        "form_message_label": "ملاحظة للمستلم (اختياري)",
+        "form_message_placeholder": "ملاحظة قصيرة من الفريق…",
+        "success": "تمّ منح الهدية.",
+        "errors": {
+          "validation": "راجع النموذج وأعد المحاولة.",
+          "self_gift": "لا يمكنك منح هدية لنفسك.",
+          "item_unavailable": "هذا العنصر لم يعد متاحاً.",
+          "recipient_already_owns": "المستلم يملك هذا العنصر بالفعل.",
+          "recipient_already_booked": "المستلم لديه هذا الحجز بالفعل.",
+          "no_capacity": "لا توجد سعة متبقّية في هذا الحجز.",
+          "rate_limited": "أبطئ قليلاً وأعد المحاولة.",
+          "db_failed": "حدث خطأ. أعد المحاولة."
+        }
+      },
+      "detail": {
+        "heading": "تفاصيل الهدية",
+        "back_cta": "رجوع إلى الهدايا",
+        "section_overview": "نظرة عامة",
+        "section_timeline": "المسار الزمني",
+        "section_email": "إرسال البريد",
+        "label_token": "الرمز",
+        "label_recipient": "المستلم",
+        "label_sender": "المُرسِل",
+        "label_admin_granted_by": "مُنحت من قِبل",
+        "label_status": "الحالة",
+        "label_source": "المصدر",
+        "label_item": "العنصر",
+        "label_item_type": "النوع",
+        "label_amount": "المبلغ",
+        "label_locale": "اللغة",
+        "label_created": "الإنشاء",
+        "label_expires": "تنتهي",
+        "label_claimed": "تمّ الاستلام",
+        "label_revoked": "أُلغيت",
+        "label_revoked_reason": "السبب",
+        "label_refunded": "استُرِدّت",
+        "label_email_sent": "تمّ إرسال البريد",
+        "label_email_failed": "فشل إرسال البريد",
+        "stripe_link": "افتح في طلبات الإدارة",
+        "revoke_cta": "إلغاء الهدية",
+        "resend_cta": "إعادة إرسال البريد",
+        "no_email_yet": "لم يُسجَّل أي إرسال بريد بعد."
+      },
+      "revoke_modal": {
+        "title": "إلغاء هذه الهدية",
+        "body_pending": "إلغاء هذه الهدية يمنع المستلم من استلامها. لا يمكن التراجع عن هذا الإجراء.",
+        "body_claimed": "هذه الهدية تمّ استلامها. الإلغاء سيُزيل وصول المستلم إليها مباشرة.",
+        "stripe_note": "استرداد Stripe ليس تلقائياً. استخدم لوحة الطلبات لاسترداد المبلغ للمُرسِل إذا لزم.",
+        "reason_label": "السبب (٥-٢٠٠ حرف)",
+        "reason_placeholder": "لماذا تُلغى هذه الهدية؟",
+        "submit_cta": "إلغاء الهدية",
+        "cancel_cta": "إغلاق",
+        "submit_loading": "جارٍ الإلغاء…",
+        "success": "تمّ إلغاء الهدية.",
+        "errors": {
+          "validation": "اكتب سبباً بين ٥ و٢٠٠ حرف.",
+          "wrong_state": "هذه الهدية في حالة نهائية.",
+          "not_found": "الهدية غير موجودة.",
+          "unknown": "حدث خطأ. أعد المحاولة."
+        }
+      }
     }
   },
   "about_teaser": {
@@ -2089,6 +2208,7 @@
       "bookings": "حجوزاتي",
       "ask": "اسأل د. خالد",
       "tests": "الاختبارات",
+      "gifts": "الهدايا",
       "settings": "الإعدادات"
     },
     "recent_bookings": {
@@ -2286,6 +2406,43 @@
       "empty_cta": "تصفّح الاختبارات",
       "row_review": "راجع",
       "row_score_aria": "حصلتَ على {score}"
+    },
+    "gifts": {
+      "meta": {
+        "title": "هداياي",
+        "description": "الهدايا المُرسَلة والمُستلَمة."
+      },
+      "heading": "هداياي",
+      "subheading": "تتبّع ما أرسلته وما تلقّيته.",
+      "send_cta": "أرسل هدية جديدة",
+      "section_sent": "الهدايا المُرسَلة",
+      "section_received": "الهدايا المُستلَمة",
+      "empty_sent": "لم ترسل أي هدية بعد.",
+      "empty_received": "لم تتلقَّ أي هدية بعد.",
+      "row": {
+        "from": "من",
+        "from_admin_grant": "فريق د. خالد",
+        "from_unknown": "مُرسِل غير معروف",
+        "to": "إلى",
+        "amount": "المبلغ",
+        "type_book": "كتاب",
+        "type_session": "جلسة",
+        "type_booking": "حجز",
+        "status_pending": "قيد الانتظار",
+        "status_claimed": "تمّ الاستلام",
+        "status_expired": "منتهية",
+        "status_revoked": "مُلغاة",
+        "status_refunded": "مُسترَدّة",
+        "open_cta": "افتح",
+        "resend_cta": "إعادة الإرسال",
+        "cancel_cta": "إلغاء",
+        "cancel_dialog_title": "إلغاء هذه الهدية",
+        "cancel_dialog_body": "الهدايا المدفوعة عبر Stripe لا يمكن إلغاؤها إلا من الإدارة. تواصل معنا لاسترداد المبلغ.",
+        "cancel_dialog_close": "إغلاق",
+        "resend_success": "تمّ إعادة إرسال البريد.",
+        "resend_rate_limited": "يمكنك إعادة الإرسال مرّة واحدة في اليوم.",
+        "resend_failed": "تعذّر إعادة إرسال البريد."
+      }
     }
   },
   "library": {
@@ -2583,5 +2740,96 @@
   "checkout_success": {
     "start_now_cta": "ابدأ الآن",
     "go_to_library_cta": "اذهب إلى المكتبة"
+  },
+  "gifts": {
+    "meta": {
+      "send_title": "أرسل هدية",
+      "send_description": "أهدِ كتاباً أو جلسة أو حجزاً لشخص تحبّه.",
+      "claim_title": "استلم هديتك",
+      "claim_description": "تلقّيت هدية من موقع د. خالد غطاس."
+    },
+    "send": {
+      "eyebrow": "أرسل هدية",
+      "heading": "شارِك ما أثّر فيك",
+      "subheading": "اختر كتاباً أو جلسة أو حجزاً وأرسله لمن سيقدِّر قيمته.",
+      "step_pick_item": "اختر العنصر",
+      "step_recipient": "لمن الهدية؟",
+      "step_summary": "مراجعة وإرسال",
+      "tabs": {
+        "book": "الكتب",
+        "session": "الجلسات",
+        "booking": "الحجوزات"
+      },
+      "empty_books": "لا توجد كتب متاحة حالياً.",
+      "empty_sessions": "لا توجد جلسات متاحة حالياً.",
+      "empty_bookings": "لا توجد حجوزات متاحة حالياً.",
+      "select_item_first": "اختر عنصراً للمتابعة.",
+      "form_recipient_label": "بريد المستلم",
+      "form_recipient_placeholder": "name@example.com",
+      "form_locale_label": "اللغة المفضّلة للمستلم",
+      "form_locale_ar": "العربية",
+      "form_locale_en": "الإنجليزية",
+      "form_message_label": "أضف ملاحظة شخصية (اختياري)",
+      "form_message_placeholder": "كلمتان من القلب…",
+      "form_message_counter": "{count}/500",
+      "policy_note": "بإرسالك الهدية، فأنت توافق على سياسة الهدايا: استرداد المبلغ يعود لتقديرنا في حال لم يستلم المستلم الهدية خلال ٣٠ يوماً.",
+      "summary_heading": "هديتك",
+      "summary_recipient": "المستلم",
+      "summary_amount": "المبلغ",
+      "summary_item": "العنصر",
+      "summary_type": "النوع",
+      "submit_cta": "أرسل الهدية ({amount})",
+      "submit_loading": "جارٍ التحويل إلى الدفع…",
+      "login_required": "سجّل الدخول لإرسال هدية",
+      "login_cta": "تسجيل الدخول",
+      "feature_disabled": "إرسال الهدايا غير متاح حالياً. تفقّد الصفحة لاحقاً.",
+      "errors": {
+        "validation": "راجع النموذج وأعد المحاولة.",
+        "self_gift": "لا يمكنك إرسال هدية لنفسك.",
+        "item_unavailable": "هذا العنصر لم يعد متاحاً.",
+        "recipient_already_owns": "المستلم يملك هذا العنصر بالفعل. اختر عنصراً أو مستلماً آخر.",
+        "recipient_already_booked": "المستلم لديه هذا الحجز بالفعل. اختر عنصراً أو مستلماً آخر.",
+        "no_capacity": "نَفَدت الأماكن في هذا الحجز للتوّ. اختر عنصراً آخر.",
+        "rate_limited": "أرسلت عدداً من الهدايا مؤخراً. انتظر ساعة وأعد المحاولة.",
+        "stripe_unconfigured": "نظام الدفع غير مفعّل حالياً. حاول لاحقاً.",
+        "stripe_failed": "تعذّر فتح صفحة الدفع. أعد المحاولة.",
+        "feature_disabled": "إرسال الهدايا غير متاح حالياً.",
+        "db_failed": "حدث خطأ من جهتنا. أعد المحاولة."
+      },
+      "checkout_cancelled": "تمّ إلغاء عملية الدفع. لم يتمّ خصم أي مبلغ.",
+      "checkout_success": "هديتك في طريقها. أرسلنا بريداً للمستلم."
+    },
+    "claim": {
+      "eyebrow": "هديتك",
+      "invalid_heading": "رابط الهدية غير صالح",
+      "invalid_body": "ربما تمّ استلامها أو انتهت صلاحيتها أو يحتمل أن يكون الرابط خاطئاً.",
+      "invalid_browse_cta": "تصفّح الموقع",
+      "logged_out_heading": "لقد تلقّيت هدية!",
+      "logged_out_body": "سجّل دخولك أو أنشئ حساباً بالبريد الذي أُرسلت إليه الهدية لاستلامها.",
+      "email_hint": "سجّل الدخول بالبريد الذي أُرسلت إليه الهدية: {email}.",
+      "logged_out_signin_cta": "تسجيل الدخول",
+      "logged_out_register_cta": "إنشاء حساب",
+      "ready_heading": "هديتك جاهزة",
+      "ready_body": "اضغط الزر أدناه لاستلامها.",
+      "ready_cta": "استلم هديتك",
+      "verifying_heading": "خطوة أخيرة",
+      "verifying_body": "تفقّد بريدك للحصول على رابط التحقّق، ثم عُد إلى هنا للاستلام.",
+      "verifying_refresh_cta": "تمّ التحقّق — تحديث",
+      "mismatch_heading": "هذه الهدية ليست لهذا الحساب",
+      "mismatch_body": "سجّل خروجك ثمّ أعد الدخول بالبريد الصحيح للاستلام.",
+      "mismatch_signout_cta": "تسجيل الخروج",
+      "from_label": "من",
+      "from_admin": "فريق د. خالد غطاس",
+      "expires_at": "تنتهي بتاريخ {date}",
+      "errors": {
+        "invalid_or_expired": "رابط الهدية غير صالح أو منتهي الصلاحية.",
+        "login_required": "سجّل الدخول لاستلام الهدية.",
+        "email_mismatch": "هذه الهدية ليست لهذا الحساب.",
+        "email_verification_pending": "يرجى التحقّق من بريدك أولاً.",
+        "rate_limited": "محاولات كثيرة. انتظر قليلاً وأعد المحاولة.",
+        "item_unavailable": "العنصر المرتبط بهذه الهدية لم يعد متاحاً.",
+        "db_failed": "حدث خطأ. أعد المحاولة."
+      }
+    }
   }
 }

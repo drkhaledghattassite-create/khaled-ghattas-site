@@ -101,6 +101,40 @@ export const questionStatus = pgEnum('question_status', [
   'ARCHIVED',
 ])
 
+// Phase D — Gifts. Status transitions:
+//   PENDING → CLAIMED (recipient redeemed within 30 days)
+//   PENDING → EXPIRED (30-day TTL elapsed; daily cron sweep)
+//   PENDING → REVOKED (admin revoked before claim)
+//   PENDING → REFUNDED (Stripe refund/chargeback or payment failure)
+//   CLAIMED → REVOKED (admin revoked after claim — recipient loses access)
+//   CLAIMED → REFUNDED (chargeback after claim — recipient loses access)
+// Once terminal (EXPIRED/REVOKED/REFUNDED), no further transitions.
+export const giftStatus = pgEnum('gift_status', [
+  'PENDING',
+  'CLAIMED',
+  'EXPIRED',
+  'REVOKED',
+  'REFUNDED',
+])
+
+// Phase D — Item types a gift can carry. TEST is reserved for future use; v1
+// UI does NOT expose TEST as a giftable type (tests are free in v1, gifting
+// makes no semantic sense). The enum value exists so adding it later doesn't
+// require a migration.
+export const giftItemType = pgEnum('gift_item_type', [
+  'BOOK',
+  'SESSION',
+  'BOOKING',
+  'TEST',
+])
+
+// Phase D — Gift origin. ADMIN_GRANT = Dr. Khaled's team gives a free gift
+// (no Stripe). USER_PURCHASE = a user paid Stripe to gift another user.
+export const giftSource = pgEnum('gift_source', [
+  'ADMIN_GRANT',
+  'USER_PURCHASE',
+])
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Auth (Better Auth + role)
  * ──────────────────────────────────────────────────────────────────────── */
@@ -338,6 +372,12 @@ export const orders = pgTable('orders', {
   stripeSessionId: text('stripe_session_id'),
   customerEmail: text('customer_email').notNull(),
   customerName: text('customer_name'),
+  // Phase D — when set, this order represents a gift claim (recipient redeemed
+  // a BOOK or SESSION gift). Lets /admin/orders distinguish direct purchases
+  // from gift claims and gate the refund modal copy. Nullable + ON DELETE SET
+  // NULL: deleting the gift row leaves the order intact (the entitlement was
+  // already granted; deletion shouldn't ricochet through commerce history).
+  giftId: uuid('gift_id'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -867,6 +907,11 @@ export const bookingOrders = pgTable(
     // Reuses the project-canonical `orderStatus` lifecycle.
     status: orderStatus('status').notNull().default('PENDING'),
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    // Phase D — when set, this booking_order originated as a gift. The userId
+    // column is mutated at claim time (sender → recipient transfer); giftId
+    // pins the link to the gifts row so admin tooling can trace ownership
+    // history. Nullable + ON DELETE SET NULL — same rationale as orders.giftId.
+    giftId: uuid('gift_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1135,6 +1180,101 @@ export const testAttemptAnswers = pgTable(
 )
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Phase D — Gifts (book + session + booking)
+ *
+ * Two flavors share a single table:
+ *   - ADMIN_GRANT — Dr. Khaled's team grants a free gift; no Stripe involvement.
+ *     If the recipient already has an account with the matching email, the
+ *     gift is created CLAIMED immediately. Else it sits PENDING until the
+ *     recipient signs up.
+ *   - USER_PURCHASE — User A pays Stripe to gift User B. Created PENDING
+ *     after checkout.session.completed. Recipient has 30 days to claim.
+ *
+ * `itemType` selects the entitlement (BOOK | SESSION | BOOKING). `itemId` is
+ * NOT a true FK — it's a uuid that points at one of three tables, validated
+ * at the app layer (resolveGiftItemPrice loads it via the right query helper).
+ * TEST is reserved for future use and excluded from the v1 UI.
+ *
+ * `token` is a high-entropy secret used as the redemption URL key
+ * (crypto.randomBytes(32).toString('base64url'), ~43 chars). NOT a UUID —
+ * UUIDs have only 122 bits of entropy and a public format.
+ *
+ * `recipientEmail` is lowercased + trimmed at insert time. `recipientUserId`
+ * is null until claim; populated at claim time.
+ *
+ * Tests (Phase C1) are explicitly NOT giftable in v1 — schema accepts TEST
+ * as an enum value for forward compat, but the gift-creation actions reject it.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const gifts = pgTable(
+  'gifts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // crypto.randomBytes(32).toString('base64url'). ~43 chars. Bounded 32-64
+    // at the validator layer; not a UUID.
+    token: text('token').notNull(),
+    source: giftSource('source').notNull(),
+    status: giftStatus('status').notNull().default('PENDING'),
+    itemType: giftItemType('item_type').notNull(),
+    // Polymorphic id — points at books.id OR bookings.id depending on
+    // itemType. Not a true FK (would need partial constraints); the app
+    // layer enforces correctness via getXxxById lookups.
+    itemId: uuid('item_id').notNull(),
+    senderUserId: uuid('sender_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    recipientEmail: text('recipient_email').notNull(),
+    recipientUserId: uuid('recipient_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    senderMessage: text('sender_message'),
+    // Stripe charge amount in cents — NULL for ADMIN_GRANT.
+    amountCents: integer('amount_cents'),
+    currency: text('currency').notNull().default('usd'),
+    stripeSessionId: text('stripe_session_id'),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    refundedAt: timestamp('refunded_at', { withTimezone: true }),
+    locale: text('locale').notNull().default('ar'),
+    adminGrantedByUserId: uuid('admin_granted_by_user_id').references(
+      () => users.id,
+      { onDelete: 'set null' },
+    ),
+    emailSentAt: timestamp('email_sent_at', { withTimezone: true }),
+    emailSendFailedReason: text('email_send_failed_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    tokenIdx: uniqueIndex('gifts_token_idx').on(t.token),
+    recipientEmailIdx: index('gifts_recipient_email_idx').on(
+      t.recipientEmail,
+      t.status,
+    ),
+    recipientUserIdx: index('gifts_recipient_user_idx').on(
+      t.recipientUserId,
+      t.status,
+    ),
+    senderIdx: index('gifts_sender_idx').on(
+      t.senderUserId,
+      t.createdAt.desc(),
+    ),
+    statusIdx: index('gifts_status_idx').on(t.status, t.createdAt.desc()),
+    stripeSessionIdx: uniqueIndex('gifts_stripe_session_idx').on(
+      t.stripeSessionId,
+    ),
+    expiresIdx: index('gifts_expires_idx').on(t.expiresAt),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -1326,6 +1466,28 @@ export const bookingOrdersRelations = relations(bookingOrders, ({ one }) => ({
     fields: [bookingOrders.bookingId],
     references: [bookings.id],
   }),
+  gift: one(gifts, {
+    fields: [bookingOrders.giftId],
+    references: [gifts.id],
+  }),
+}))
+
+export const giftsRelations = relations(gifts, ({ one }) => ({
+  sender: one(users, {
+    fields: [gifts.senderUserId],
+    references: [users.id],
+    relationName: 'gift_sender',
+  }),
+  recipient: one(users, {
+    fields: [gifts.recipientUserId],
+    references: [users.id],
+    relationName: 'gift_recipient',
+  }),
+  adminGrantedBy: one(users, {
+    fields: [gifts.adminGrantedByUserId],
+    references: [users.id],
+    relationName: 'gift_admin',
+  }),
 }))
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1437,3 +1599,9 @@ export type NewTestAttempt = InferInsertModel<typeof testAttempts>
 export type TestAttemptAnswer = InferSelectModel<typeof testAttemptAnswers>
 export type NewTestAttemptAnswer = InferInsertModel<typeof testAttemptAnswers>
 export type QuestionStatus = (typeof questionStatus.enumValues)[number]
+
+export type Gift = InferSelectModel<typeof gifts>
+export type NewGift = InferInsertModel<typeof gifts>
+export type GiftStatus = (typeof giftStatus.enumValues)[number]
+export type GiftItemType = (typeof giftItemType.enumValues)[number]
+export type GiftSource = (typeof giftSource.enumValues)[number]

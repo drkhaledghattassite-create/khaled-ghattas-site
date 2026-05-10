@@ -408,6 +408,12 @@ export function SiteSettingsForm({
             checked={settings.admin.show_admin_tests}
             onCheckedChange={(v) => update('admin', { show_admin_tests: v })}
           />
+          <ToggleRow
+            label={t('admin.show_admin_gifts')}
+            description={t('admin.show_admin_gifts_desc')}
+            checked={settings.admin.show_admin_gifts}
+            onCheckedChange={(v) => update('admin', { show_admin_gifts: v })}
+          />
         </div>
       </Card>
 
@@ -444,10 +450,33 @@ export function SiteSettingsForm({
             onCheckedChange={(v) => update('dashboard', { show_tests_tab: v })}
           />
           <ToggleRow
+            label={t('dashboard.show_gifts_tab')}
+            description={t('dashboard.show_gifts_tab_desc')}
+            checked={settings.dashboard.show_gifts_tab}
+            onCheckedChange={(v) => update('dashboard', { show_gifts_tab: v })}
+          />
+          <ToggleRow
             label={t('dashboard.show_settings_tab')}
             description={t('dashboard.show_settings_tab_desc')}
             checked={settings.dashboard.show_settings_tab}
             onCheckedChange={(v) => update('dashboard', { show_settings_tab: v })}
+          />
+        </div>
+      </Card>
+
+      <Card title={t('groups.gifts_title')} description={t('groups.gifts_desc')}>
+        <div className="grid gap-3">
+          <ToggleRow
+            label={t('gifts.allow_user_to_user')}
+            description={t('gifts.allow_user_to_user_desc')}
+            checked={settings.gifts.allow_user_to_user}
+            onCheckedChange={(v) => update('gifts', { allow_user_to_user: v })}
+          />
+          <ToggleRow
+            label={t('navigation.show_nav_send_gift')}
+            description={t('navigation.show_nav_send_gift_desc')}
+            checked={settings.navigation.show_nav_send_gift}
+            onCheckedChange={(v) => update('navigation', { show_nav_send_gift: v })}
           />
         </div>
       </Card>

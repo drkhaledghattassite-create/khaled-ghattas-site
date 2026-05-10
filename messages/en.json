@@ -690,6 +690,7 @@
       "questions_pending_aria": "{count, plural, one {# pending question} other {# pending questions}}",
       "tests": "Tests",
       "tests_drafts_aria": "{count, plural, one {# draft test} other {# draft tests}}",
+      "gifts": "Gifts",
       "booking_tours": "Tours",
       "booking_bookings": "Bookings",
       "booking_tour_suggestions": "Tour suggestions",
@@ -1524,6 +1525,8 @@
         "admin_desc": "Visibility controls for sections of the /admin sidebar. Routes still resolve via direct URL — these toggles only hide the nav entries.",
         "dashboard_title": "User dashboard",
         "dashboard_desc": "Visibility controls for tabs in the customer-facing /dashboard. Routes still resolve via direct URL when hidden.",
+        "gifts_title": "Gifts",
+        "gifts_desc": "Phase D — gift feature toggles. Disable user-to-user gifting site-wide as a kill switch, or hide the public Send-a-gift link from the header nav.",
         "maintenance_title": "Maintenance banner",
         "maintenance_desc": "Shown when Maintenance mode is on. Leave fields empty to use the default message.",
         "coming_soon_title": "Coming-soon pages",
@@ -1548,6 +1551,8 @@
         "show_nav_corporate": "For Corporations",
         "show_nav_booking": "Services for Individuals",
         "show_nav_tests": "Tests",
+        "show_nav_send_gift": "Send a gift link",
+        "show_nav_send_gift_desc": "Show the public \"Send a gift\" entry in the header nav and footer. Default OFF — toggle on once gifting is launched.",
         "show_locale_switcher": "Locale switcher (AR ⇄ EN)",
         "bottom_nav_note": "The mobile bottom bar mirrors these toggles automatically."
       },
@@ -1583,7 +1588,9 @@
         "show_admin_questions": "Questions admin entry",
         "show_admin_questions_desc": "Show the Questions entry (with pending count badge) in the audience group of the /admin sidebar.",
         "show_admin_tests": "Tests admin entry",
-        "show_admin_tests_desc": "Show the Tests entry (with draft count badge) in the content group of the /admin sidebar."
+        "show_admin_tests_desc": "Show the Tests entry (with draft count badge) in the content group of the /admin sidebar.",
+        "show_admin_gifts": "Gifts admin entry",
+        "show_admin_gifts_desc": "Show the Gifts entry in the commerce group of the /admin sidebar. Route /admin/gifts stays accessible via direct URL."
       },
       "dashboard": {
         "show_account_tab": "Account tab (always on)",
@@ -1596,8 +1603,14 @@
         "show_ask_tab_desc": "Show the Ask tab in the customer dashboard nav. The /dashboard/ask route stays accessible via direct URL even when hidden.",
         "show_tests_tab": "Tests tab",
         "show_tests_tab_desc": "Show the Tests tab (the user's test history) in the customer dashboard nav. The /dashboard/tests route stays accessible via direct URL even when hidden.",
+        "show_gifts_tab": "Gifts tab",
+        "show_gifts_tab_desc": "Show the Gifts tab (sent + received gifts) in the customer dashboard nav. The /dashboard/gifts route stays accessible via direct URL even when hidden.",
         "show_settings_tab": "Settings tab",
         "show_settings_tab_desc": "Show the Settings tab (preferences, account deletion). The /dashboard/settings route stays accessible when hidden."
+      },
+      "gifts": {
+        "allow_user_to_user": "Allow user-to-user gifts",
+        "allow_user_to_user_desc": "Master kill-switch for /gifts/send (sender pays Stripe to gift another user). Admin grants via /admin/gifts/new are unaffected."
       },
       "maintenance": {
         "message_ar": "Banner message (Arabic)",
@@ -1819,6 +1832,112 @@
     "products": {
       "coming_soon_title": "Products",
       "coming_soon_text": "Configure non-book products here once the catalog is ready."
+    },
+    "gifts": {
+      "meta": {
+        "title": "Gifts",
+        "description": "Admin view for gift grants and purchases."
+      },
+      "list": {
+        "heading": "Gifts",
+        "subheading": "Grants by the team and purchases by users.",
+        "new_cta": "New gift grant",
+        "search_placeholder": "Search by recipient email…",
+        "filter_status": "Status",
+        "filter_source": "Source",
+        "filter_item": "Item type",
+        "filter_all": "All",
+        "table": {
+          "created": "Created",
+          "recipient": "Recipient",
+          "item": "Item",
+          "source": "Source",
+          "status": "Status",
+          "amount": "Amount",
+          "actions": "Actions"
+        },
+        "source_admin": "Admin grant",
+        "source_user": "User purchase",
+        "empty": "No gifts match these filters.",
+        "view_cta": "View",
+        "revoke_cta": "Revoke",
+        "resend_cta": "Resend"
+      },
+      "create": {
+        "heading": "Grant a free gift",
+        "subheading": "Give a book, session, or booking to a recipient — no payment required.",
+        "back_cta": "Back to gifts",
+        "submit_cta": "Grant gift",
+        "submit_loading": "Granting…",
+        "tabs": {
+          "book": "Books",
+          "session": "Sessions",
+          "booking": "Bookings"
+        },
+        "form_recipient_label": "Recipient email",
+        "form_recipient_placeholder": "name@example.com",
+        "form_locale_label": "Recipient's preferred language",
+        "form_message_label": "Note for the recipient (optional)",
+        "form_message_placeholder": "A short note from the team…",
+        "success": "Gift granted.",
+        "errors": {
+          "validation": "Please review the form and try again.",
+          "self_gift": "You can't grant a gift to yourself.",
+          "item_unavailable": "This item is no longer available.",
+          "recipient_already_owns": "The recipient already owns this item.",
+          "recipient_already_booked": "The recipient already holds this booking.",
+          "no_capacity": "This booking has no remaining capacity.",
+          "rate_limited": "Slow down a bit and try again.",
+          "db_failed": "Something went wrong. Please retry."
+        }
+      },
+      "detail": {
+        "heading": "Gift detail",
+        "back_cta": "Back to gifts",
+        "section_overview": "Overview",
+        "section_timeline": "Timeline",
+        "section_email": "Email delivery",
+        "label_token": "Token",
+        "label_recipient": "Recipient",
+        "label_sender": "Sender",
+        "label_admin_granted_by": "Granted by",
+        "label_status": "Status",
+        "label_source": "Source",
+        "label_item": "Item",
+        "label_item_type": "Type",
+        "label_amount": "Amount",
+        "label_locale": "Locale",
+        "label_created": "Created",
+        "label_expires": "Expires",
+        "label_claimed": "Claimed",
+        "label_revoked": "Revoked",
+        "label_revoked_reason": "Reason",
+        "label_refunded": "Refunded",
+        "label_email_sent": "Email sent",
+        "label_email_failed": "Email send failure",
+        "stripe_link": "Open in admin orders",
+        "revoke_cta": "Revoke gift",
+        "resend_cta": "Resend email",
+        "no_email_yet": "No email send recorded yet."
+      },
+      "revoke_modal": {
+        "title": "Revoke this gift",
+        "body_pending": "Revoking this gift will prevent the recipient from claiming it. This cannot be undone.",
+        "body_claimed": "This gift was already claimed. Revoking will remove the recipient's access immediately.",
+        "stripe_note": "Stripe refunds are not automatic. Use the orders admin to refund the sender separately if appropriate.",
+        "reason_label": "Reason (5-200 characters)",
+        "reason_placeholder": "Why are you revoking this gift?",
+        "submit_cta": "Revoke gift",
+        "cancel_cta": "Cancel",
+        "submit_loading": "Revoking…",
+        "success": "Gift revoked.",
+        "errors": {
+          "validation": "Please provide a reason between 5 and 200 characters.",
+          "wrong_state": "This gift is already in a terminal state.",
+          "not_found": "Gift not found.",
+          "unknown": "Something went wrong. Please retry."
+        }
+      }
     }
   },
   "about_teaser": {
@@ -2089,6 +2208,7 @@
       "bookings": "Bookings",
       "ask": "Ask Dr. Khaled",
       "tests": "Tests",
+      "gifts": "Gifts",
       "settings": "Settings"
     },
     "recent_bookings": {
@@ -2286,6 +2406,43 @@
       "empty_cta": "Browse tests",
       "row_review": "Review",
       "row_score_aria": "You scored {score}"
+    },
+    "gifts": {
+      "meta": {
+        "title": "Your gifts",
+        "description": "Sent and received gifts."
+      },
+      "heading": "Your gifts",
+      "subheading": "Track what you've sent and what you've received.",
+      "send_cta": "Send a new gift",
+      "section_sent": "Sent gifts",
+      "section_received": "Received gifts",
+      "empty_sent": "You haven't sent any gifts yet.",
+      "empty_received": "You haven't received any gifts yet.",
+      "row": {
+        "from": "From",
+        "from_admin_grant": "Dr. Khaled's team",
+        "from_unknown": "Unknown sender",
+        "to": "To",
+        "amount": "Amount",
+        "type_book": "Book",
+        "type_session": "Session",
+        "type_booking": "Booking",
+        "status_pending": "Pending",
+        "status_claimed": "Claimed",
+        "status_expired": "Expired",
+        "status_revoked": "Revoked",
+        "status_refunded": "Refunded",
+        "open_cta": "Open",
+        "resend_cta": "Resend email",
+        "cancel_cta": "Cancel",
+        "cancel_dialog_title": "Cancel this gift",
+        "cancel_dialog_body": "Stripe-paid gifts can only be canceled by an admin. Please contact support for a refund.",
+        "cancel_dialog_close": "Close",
+        "resend_success": "Email resent.",
+        "resend_rate_limited": "You can only resend once per day.",
+        "resend_failed": "Couldn't resend the email."
+      }
     }
   },
   "library": {
@@ -2583,5 +2740,96 @@
   "checkout_success": {
     "start_now_cta": "Start now",
     "go_to_library_cta": "Go to library"
+  },
+  "gifts": {
+    "meta": {
+      "send_title": "Send a gift",
+      "send_description": "Gift a book, session, or booking to a friend.",
+      "claim_title": "Claim your gift",
+      "claim_description": "You've received a gift through Dr. Khaled Ghattass."
+    },
+    "send": {
+      "eyebrow": "Send a gift",
+      "heading": "Share what moved you",
+      "subheading": "Choose a book, session, or booking and send it to someone who would value it.",
+      "step_pick_item": "Pick an item",
+      "step_recipient": "Who's it for?",
+      "step_summary": "Review and send",
+      "tabs": {
+        "book": "Books",
+        "session": "Sessions",
+        "booking": "Bookings"
+      },
+      "empty_books": "No books available right now.",
+      "empty_sessions": "No sessions available right now.",
+      "empty_bookings": "No bookings available right now.",
+      "select_item_first": "Pick an item to continue.",
+      "form_recipient_label": "Recipient email",
+      "form_recipient_placeholder": "name@example.com",
+      "form_locale_label": "Recipient's preferred language",
+      "form_locale_ar": "Arabic",
+      "form_locale_en": "English",
+      "form_message_label": "Add a personal note (optional)",
+      "form_message_placeholder": "A few words for them …",
+      "form_message_counter": "{count}/500",
+      "policy_note": "By sending a gift, you agree to our gift policy: refunds are at our discretion if the gift is unclaimed within 30 days.",
+      "summary_heading": "Your gift",
+      "summary_recipient": "Recipient",
+      "summary_amount": "Amount",
+      "summary_item": "Item",
+      "summary_type": "Type",
+      "submit_cta": "Send gift ({amount})",
+      "submit_loading": "Redirecting to checkout…",
+      "login_required": "Sign in to send a gift",
+      "login_cta": "Sign in",
+      "feature_disabled": "Gift sending is currently unavailable. Please check back later.",
+      "errors": {
+        "validation": "Please review the form and try again.",
+        "self_gift": "You can't send a gift to yourself.",
+        "item_unavailable": "This item is no longer available.",
+        "recipient_already_owns": "The recipient already owns this item. Choose another item or recipient.",
+        "recipient_already_booked": "The recipient already has this booking. Choose another item or recipient.",
+        "no_capacity": "This booking just sold out. Please pick another item.",
+        "rate_limited": "You've sent several gifts recently. Please wait an hour and try again.",
+        "stripe_unconfigured": "Payments aren't configured right now. Please try again later.",
+        "stripe_failed": "Stripe couldn't open checkout. Please retry.",
+        "feature_disabled": "Gift sending is currently unavailable.",
+        "db_failed": "Something went wrong on our side. Please retry."
+      },
+      "checkout_cancelled": "Your gift checkout was cancelled. You weren't charged.",
+      "checkout_success": "Your gift is on its way. We've emailed the recipient."
+    },
+    "claim": {
+      "eyebrow": "Your gift",
+      "invalid_heading": "This gift link isn't valid",
+      "invalid_body": "It may have already been claimed, expired, or the link could be incorrect.",
+      "invalid_browse_cta": "Browse the site",
+      "logged_out_heading": "You've received a gift!",
+      "logged_out_body": "Sign in or create an account with the email this gift was sent to in order to claim it.",
+      "email_hint": "Sign in with the email this gift was sent to: {email}.",
+      "logged_out_signin_cta": "Sign in",
+      "logged_out_register_cta": "Create account",
+      "ready_heading": "Your gift is ready",
+      "ready_body": "Press the button below to claim it.",
+      "ready_cta": "Claim your gift",
+      "verifying_heading": "Almost there",
+      "verifying_body": "Check your email for a verification link, then return here to claim.",
+      "verifying_refresh_cta": "I've verified — refresh",
+      "mismatch_heading": "This gift is not for this account",
+      "mismatch_body": "Sign out and sign in with the correct email to claim.",
+      "mismatch_signout_cta": "Sign out",
+      "from_label": "From",
+      "from_admin": "Dr. Khaled Ghattass team",
+      "expires_at": "Expires on {date}",
+      "errors": {
+        "invalid_or_expired": "This gift link isn't valid or has expired.",
+        "login_required": "Please sign in to claim this gift.",
+        "email_mismatch": "This gift is not for this account.",
+        "email_verification_pending": "Please verify your email first.",
+        "rate_limited": "Too many attempts. Please wait and try again.",
+        "item_unavailable": "The item linked to this gift is no longer available.",
+        "db_failed": "Something went wrong. Please retry."
+      }
+    }
   }
 }

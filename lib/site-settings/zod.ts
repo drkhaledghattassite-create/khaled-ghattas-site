@@ -28,6 +28,7 @@ const navigationSchema = z
     show_nav_corporate: z.boolean().optional(),
     show_nav_booking: z.boolean().optional(),
     show_nav_tests: z.boolean().optional(),
+    show_nav_send_gift: z.boolean().optional(),
     show_locale_switcher: z.boolean().optional(),
   })
   .strict()
@@ -77,6 +78,7 @@ const adminSchema = z
     show_admin_booking: z.boolean().optional(),
     show_admin_questions: z.boolean().optional(),
     show_admin_tests: z.boolean().optional(),
+    show_admin_gifts: z.boolean().optional(),
   })
   .strict()
 
@@ -90,7 +92,14 @@ const dashboardSchema = z
     show_bookings_tab: z.boolean().optional(),
     show_ask_tab: z.boolean().optional(),
     show_tests_tab: z.boolean().optional(),
+    show_gifts_tab: z.boolean().optional(),
     show_settings_tab: z.boolean().optional(),
+  })
+  .strict()
+
+const giftsSchema = z
+  .object({
+    allow_user_to_user: z.boolean().optional(),
   })
   .strict()
 
@@ -109,6 +118,7 @@ export const siteSettingsPatchSchema = z
     maintenance: maintenanceSchema.optional(),
     admin: adminSchema.optional(),
     dashboard: dashboardSchema.optional(),
+    gifts: giftsSchema.optional(),
     coming_soon_pages: comingSoonPagesSchema.optional(),
   })
   .strict()

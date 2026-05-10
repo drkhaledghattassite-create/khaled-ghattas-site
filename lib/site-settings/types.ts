@@ -46,6 +46,13 @@ export type SiteSettings = {
      * section-scoped visibility toggle that does NOT block the route.
      */
     show_nav_tests: boolean
+    /**
+     * Phase D — when true, the public "Send a gift" link surfaces in the
+     * header nav and footer. Default OFF so gifting isn't promoted to
+     * casual visitors before Dr. Khaled flips it on. The /gifts/send route
+     * stays accessible regardless (deep link preserved).
+     */
+    show_nav_send_gift: boolean
     show_locale_switcher: boolean
   }
   footer: {
@@ -87,6 +94,11 @@ export type SiteSettings = {
      * toggle pattern as the other show_admin_* flags.
      */
     show_admin_tests: boolean
+    /**
+     * Phase D — when false, the "Gifts" admin sidebar entry is hidden.
+     * The /admin/gifts route still resolves via deep link.
+     */
+    show_admin_gifts: boolean
   }
   dashboard: {
     /**
@@ -113,12 +125,29 @@ export type SiteSettings = {
      * via deep link.
      */
     show_tests_tab: boolean
+    /**
+     * Phase D — when false, the dashboard "Gifts" tab is hidden from the
+     * sticky tab bar. Same pattern as `show_tests_tab`: hides the tab but
+     * does NOT block the route — `/dashboard/gifts` still resolves via
+     * deep link.
+     */
+    show_gifts_tab: boolean
     show_settings_tab: boolean
   }
   maintenance: {
     message_ar: string
     message_en: string
     until: string | null
+  }
+  /**
+   * Phase D — gift feature kill-switch + sub-toggles. `allow_user_to_user`
+   * is the master switch for /gifts/send (sender-initiated paid gifts);
+   * when false, the public form hides the submit CTA and the action
+   * returns 'feature_disabled' defensively. Admin grants are always
+   * available via /admin/gifts/new (no kill switch by design).
+   */
+  gifts: {
+    allow_user_to_user: boolean
   }
   coming_soon_pages: ComingSoonPage[]
 }

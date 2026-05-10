@@ -45,6 +45,7 @@ export function AdminTopbar({
   pendingQuestionCount = 0,
   showAdminTests = true,
   draftTestCount = 0,
+  showAdminGifts = true,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
@@ -52,6 +53,7 @@ export function AdminTopbar({
   pendingQuestionCount?: number
   showAdminTests?: boolean
   draftTestCount?: number
+  showAdminGifts?: boolean
 }) {
   const pathname = usePathname()
   const locale = useLocale()
@@ -109,6 +111,7 @@ export function AdminTopbar({
             pendingQuestionCount={pendingQuestionCount}
             showAdminTests={showAdminTests}
             draftTestCount={draftTestCount}
+            showAdminGifts={showAdminGifts}
             onNavigate={() => setDrawerOpen(false)}
           />
         </SheetContent>
