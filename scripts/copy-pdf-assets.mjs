@@ -12,7 +12,7 @@
 //     failed", glyph rendering bugs).
 //
 // This script is wired into the `postinstall` npm hook, so `npm install`
-// (locally and on Netlify CI) auto-syncs them after every dependency
+// (locally and on Vercel CI) auto-syncs them after every dependency
 // install. The corresponding paths in /public are gitignored.
 //
 // Run manually:  node scripts/copy-pdf-assets.mjs

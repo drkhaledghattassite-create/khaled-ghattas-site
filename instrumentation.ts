@@ -22,7 +22,7 @@ export async function register() {
 }
 
 // Captures the full error + stack before Next.js redacts it in production
-// builds. Without this, the only thing that surfaces in Netlify function
+// builds. Without this, the only thing that surfaces in Vercel function
 // logs is "An error occurred in the Server Components render" with a digest.
 // Once the deploy goes green, remove this if you want — but it costs nothing.
 export const onRequestError: Instrumentation.onRequestError = async (

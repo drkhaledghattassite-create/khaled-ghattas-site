@@ -21,8 +21,8 @@ import * as schema from './schema'
  * WebSocket constructor:
  *   - Node 22+ has native `globalThis.WebSocket` and the `ws` shim is a no-op
  *     fallback.
- *   - Node 20 (Netlify's default) requires the explicit `ws` package, which
- *     we wire up unconditionally so production works regardless of runtime.
+ *   - Node 20 requires the explicit `ws` package, which we wire up
+ *     unconditionally so production works regardless of runtime.
  *   - Edge runtimes have native WebSocket and ignore this assignment.
  *
  * Lazy connection:

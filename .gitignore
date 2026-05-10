@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # Mock storage adapter dev sandbox — keep the dir + README, ignore content.
-# PDFs and audio are committed so the demo reader/player works on Netlify.
+# PDFs and audio are committed so the demo reader/player works on Vercel.
 /public/placeholder-content/*
 !/public/placeholder-content/README.md
 !/public/placeholder-content/*.pdf
@@ -53,6 +53,3 @@ next-env.d.ts
 /public/pdf.worker.min.mjs
 /public/cmaps/
 /public/standard_fonts/
-
-# Local Netlify folder
-.netlify

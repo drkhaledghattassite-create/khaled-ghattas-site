@@ -63,7 +63,7 @@ Setting `digitalFile` without swapping the adapter would email buyers
 a link that 404s.
 
 Plan:
-1. Implement `lib/storage/netlify-blobs-adapter.ts` (or R2, Cloudflare
+1. Implement `lib/storage/vercel-blob-adapter.ts` (or R2, Cloudflare
    Stream — whichever provider Dr. Khaled lands on) against the
    `StorageAdapter` interface in `lib/storage/types.ts`.
 2. Swap the import in `lib/storage/index.ts` from `mockAdapter` to the

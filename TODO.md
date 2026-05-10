@@ -19,7 +19,7 @@ uploads:
    `ArticleForm`, `BookForm`, `InterviewForm`, `EventForm`, `BulkUpload`,
    and `GalleryAdminGrid` with the new `ImageUpload` component.
 6. Add `UPLOADTHING_TOKEN` to `.env.local.example` and document required
-   env var on Netlify.
+   env var on Vercel.
 
 ## Stripe checkout integration (Phase 6)
 

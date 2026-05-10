@@ -4,10 +4,10 @@ Run through these in order before flipping `drkhaledghattass.com` live.
 
 ## 1. Infrastructure
 
-- [ ] Provision Neon PostgreSQL project; copy connection string into Netlify env as `DATABASE_URL`.
-- [ ] Generate `BETTER_AUTH_SECRET`: `openssl rand -base64 32`. Add to Netlify env.
+- [ ] Provision Neon PostgreSQL project; copy connection string into Vercel env as `DATABASE_URL`.
+- [ ] Generate `BETTER_AUTH_SECRET`: `openssl rand -base64 32`. Add to Vercel env.
 - [ ] Set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to the production origin (e.g. `https://drkhaledghattass.com`).
-- [ ] Generate `REVALIDATE_TOKEN`: `openssl rand -hex 32`. Add to Netlify env.
+- [ ] Generate `REVALIDATE_TOKEN`: `openssl rand -hex 32`. Add to Vercel env.
 
 ## 2. Database
 
@@ -30,7 +30,7 @@ Run through these in order before flipping `drkhaledghattass.com` live.
 ## 3. Auth
 
 - [ ] (Optional) Create Google OAuth credentials at https://console.cloud.google.com — populate `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-- [ ] Confirm `MOCK_AUTH` is unset (or absent) in Netlify environment variables. `NODE_ENV=production` hard-disables mock auth regardless, but explicit absence is cleaner.
+- [ ] Confirm `MOCK_AUTH` is unset (or absent) in Vercel environment variables. `NODE_ENV=production` hard-disables mock auth regardless, but explicit absence is cleaner.
 - [ ] Set `NEXT_PUBLIC_AUTH_ENABLED=true` so the public site shows Sign In / Sign Up.
 - [ ] Promote yourself to ADMIN: `node --env-file=.env.local scripts/promote-admin.mjs you@example.com ADMIN`.
 - [ ] Promote Dr. Khaled to CLIENT: same script with `CLIENT` as the second arg.
@@ -46,16 +46,16 @@ Run through these in order before flipping `drkhaledghattass.com` live.
       to the domain's DNS zone.
 - [ ] Wait for Resend to mark the domain as **Verified** (can take 24–48
       hours).
-- [ ] Add `RESEND_API_KEY` to Netlify env.
-- [ ] Set `EMAIL_FROM` on Netlify to a verified address, e.g.
+- [ ] Add `RESEND_API_KEY` to Vercel env.
+- [ ] Set `EMAIL_FROM` on Vercel to a verified address, e.g.
       `Dr. Khaled Ghattass <noreply@drkhaledghattass.com>`. Without it the
       app falls back to the same default — but only after the domain is
       verified.
-- [ ] Set `SUPPORT_EMAIL` on Netlify to the public support inbox shown in
+- [ ] Set `SUPPORT_EMAIL` on Vercel to the public support inbox shown in
       transactional-email footers. Falls back to `Team@drkhaledghattass.com`
       if unset, but **production should set explicitly** (the fallback is
       a safety net, not a configuration).
-- [ ] Set `CORPORATE_INBOX_EMAIL` on Netlify to the inbox that should
+- [ ] Set `CORPORATE_INBOX_EMAIL` on Vercel to the inbox that should
       receive `/api/corporate/request` form submissions. Same fallback +
       explicit-set guidance as `SUPPORT_EMAIL`.
 - [ ] Trigger a test email by completing a Stripe test-mode purchase
@@ -99,7 +99,7 @@ adapter lands.
 
 ## 5. Stripe
 
-- [ ] Add `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` to Netlify env.
+- [ ] Add `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` to Vercel env.
 - [ ] In Stripe dashboard, add a webhook endpoint pointing to
       `https://drkhaledghattass.com/api/stripe/webhook` with events:
       `checkout.session.completed`, `checkout.session.expired`,
@@ -107,7 +107,7 @@ adapter lands.
       `charge.refunded`. (`checkout.session.expired` is REQUIRED for the
       booking-domain hold cleanup — without it, expired Stripe sessions
       leave orphan holds until they TTL out.)
-- [ ] Copy the signing secret into `STRIPE_WEBHOOK_SECRET` in Netlify env.
+- [ ] Copy the signing secret into `STRIPE_WEBHOOK_SECRET` in Vercel env.
 
 ### 5b. Booking-domain end-to-end smoke test
 
@@ -161,7 +161,7 @@ guard.
 
 ## 6. Rate limiting
 
-- [ ] Create Upstash Redis database; copy REST URL + token into Netlify
+- [ ] Create Upstash Redis database; copy REST URL + token into Vercel
       env as `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
       Without these, ALL `tryRateLimit` calls fail open (logs
       `X-RateLimit-Bypass: no-redis`) — the site still works but loses
@@ -198,11 +198,14 @@ Replace placeholder content per `CONTENT-NEEDED.md`:
 - [ ] Smoke-test account: edit profile, change preferences, delete account (cookie clears)
 - [ ] Confirm Lighthouse score ≥ 90 on home / about / contact / a book detail page
 - [ ] Verify security headers in production: `curl -I https://drkhaledghattass.com` should include HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- [ ] Confirm gift-expiry cron runs: Vercel Dashboard → Cron Jobs → click the entry → "Run" once, then check Logs for `[gift-cron] sweep complete`. A 401 means `CRON_SECRET` is not set.
 
 ## 9. DNS + go-live
 
-- [ ] Point apex + `www` to Netlify
+- [ ] Point apex + `www` to Vercel (Project → Settings → Domains; Vercel issues SSL automatically once DNS resolves)
 - [ ] Verify SSL certificate
-- [ ] Enable HTTPS-only redirect
+- [ ] Enable HTTPS-only redirect (Vercel does this by default; confirm in Project → Settings → Security)
+- [ ] Disable Deployment Protection on the Production environment (Project → Settings → Deployment Protection → "Vercel Authentication" → set to "Only Preview Deployments" or "Disabled" for production), otherwise public visitors hit a Vercel SSO login page.
+- [ ] Confirm Vercel Cron is registered: Project → Settings → Cron Jobs should list `/api/cron/expire-gifts` running daily at 03:00 UTC. Set `CRON_SECRET` env var so the route accepts the scheduled invocation.
 - [ ] Submit sitemap to Google Search Console
 - [ ] Verify on PageSpeed Insights and BrowserStack (mobile Safari, Chrome, Firefox, Edge)

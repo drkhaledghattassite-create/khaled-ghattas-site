@@ -58,7 +58,7 @@ What's stubbed:
 
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`) + Neon Postgres (serverless).
-- Schema: `lib/db/schema.ts` — **34 tables**, **13 enums**.
+- Schema: `lib/db/schema.ts` — **35 tables**, **16 enums**.
   - Tables: `users`, `sessions`, `accounts`, `verifications`, `articles`,
     `books`, `interviews`, `gallery`, `events`, `orders`, `orderItems`,
     `subscribers`, `contactMessages`, `siteSettings`, `contentBlocks`,
@@ -66,11 +66,12 @@ What's stubbed:
     `corporatePrograms`, `corporateClients`, `corporateRequests`, `tours`,
     `tourSuggestions`, `bookings`, `bookingInterest`, `bookingsPendingHolds`,
     `bookingOrders`, `userQuestions`, `tests`, `testQuestions`,
-    `testOptions`, `testAttempts`, `testAttemptAnswers`.
+    `testOptions`, `testAttempts`, `testAttemptAnswers`, `gifts`.
   - Enums: `userRole`, `contentStatus`, `orderStatus`, `messageStatus`,
     `subscriberStatus`, `eventStatus`, `articleCategory`, `productType`,
     `sessionItemType`, `corporateRequestStatus`, `bookingProductType`,
-    `bookingState`, `questionStatus`.
+    `bookingState`, `questionStatus`, `giftStatus`, `giftItemType`,
+    `giftSource`.
   - Cross-table notes: `sessionItems.sessionId` references `books.id`
     (sessions live in `books` with `productType='SESSION'`); the
     productType invariant is enforced in app code, not by FK.
@@ -85,7 +86,7 @@ What's stubbed:
     — the submit action returns `validation` if the seed data violates it.
     `testAttempts` cascade-delete on user/test removal; `testAttemptAnswers`
     cascade-delete on attempt/question/option removal.
-- Migrations: `lib/db/migrations/0000…0010`. Apply with `npm run db:migrate`.
+- Migrations: `lib/db/migrations/0000…0011`. Apply with `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point.
   Drizzle when `DATABASE_URL` is a real Neon URL; falls back to
   `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
@@ -171,7 +172,7 @@ financial / analytics view, planned).
   chain.**
 - `playwright@^1.56` — devDep only (`scripts/visual-check.mjs`).
 
-Deploy target: **Netlify**.
+Deploy target: **Vercel**.
 
 ## PDF.js — pinned to legacy build (do not "modernize")
 
@@ -282,7 +283,7 @@ route groups.
 `/books/[slug]` · `/interviews` · `/interviews/[slug]` · `/events` ·
 `/corporate` · `/booking` · `/booking/success` · `/contact` ·
 `/checkout/success` · `/tests` · `/tests/[slug]` ·
-`/tests/[slug]/result/[attemptId]`
+`/tests/[slug]/result/[attemptId]` · `/gifts/send` · `/gifts/claim`
 
 Notes:
 - No `/shop` route. The product surface is `/books` (with `productType`
@@ -295,6 +296,12 @@ Notes:
 - `/tests` (Phase C1) — public catalog of free reflection tests. Detail
   page renders three CTA states (logged out / logged in / has attempt).
   Result page is auth-gated and 404s on cross-user attempt access.
+- `/gifts/send` (Phase D) — public landing for sender-initiated paid
+  gifts. Browse-able logged-out; auth required at submit. Stripe Checkout
+  on submit. Gated by `gifts.allow_user_to_user` site setting.
+- `/gifts/claim?token=…` (Phase D) — recipient redemption. Renders five
+  states (INVALID / LOGGED_OUT / EMAIL_MISMATCH / EMAIL_VERIFICATION_PENDING
+  / READY). Token is opaque (~43 chars, base64url, gen via `randomBytes(32)`).
 
 ### Focus (`app/[locale]/(focus)/`)
 `/tests/[slug]/take`
@@ -309,7 +316,8 @@ to `/login` with the take URL preserved as `?redirect=`.
 ### Dashboard (`app/[locale]/(dashboard)/`)
 `/dashboard` · `/dashboard/ask` · `/dashboard/library` ·
 `/dashboard/library/read/[bookId]` · `/dashboard/library/session/[sessionId]` ·
-`/dashboard/bookings` · `/dashboard/tests` · `/dashboard/settings`
+`/dashboard/bookings` · `/dashboard/tests` · `/dashboard/gifts` ·
+`/dashboard/settings`
 
 Surface-specific architecture:
 - `/dashboard/library/read/[bookId]` → `docs/architecture/pdf-reader.md`
@@ -338,6 +346,11 @@ Surface-specific architecture:
   for metadata + questions + options + correctness + explanations;
   per-test analytics with score distribution, per-question selection
   bars, and recent attempts. Sidebar gated on `admin.show_admin_tests`.
+- `/admin/gifts[/new][/[id]]` — Gifts admin queue (Phase D). List with
+  status/source/itemType filters + recipient-email search; admin grant
+  form (no Stripe); detail view with overview/timeline/email-delivery +
+  revoke modal. Sidebar entry sits in the commerce group, gated on
+  `admin.show_admin_gifts`.
 - `/admin/corporate` · `/admin/corporate/{programs,clients,requests}/...`
 - `/admin/booking` · `/admin/booking/{tours,bookings,interest,tour-suggestions,orders}/...`
   (sidebar gated on `admin.show_admin_booking`)
@@ -366,7 +379,11 @@ Surface-specific architecture:
   `charge.refunded`, `payment_intent.payment_failed`,
   `payment_intent.succeeded`. Sends post-purchase email best-effort
   (no-op when `RESEND_API_KEY` missing). Booking-flavoured branches
-  documented in `docs/architecture/booking-domain.md`.
+  documented in `docs/architecture/booking-domain.md`. Phase D adds a
+  GIFT branch to each event: idempotent gift-row creation + booking_order
+  link + gift_received/gift_sent emails on completion; hold release on
+  expired; markGiftRefunded on refund (with revoke emails); voidGiftForPaymentFailure
+  on payment_failed.
 - `content/access` — POST. Authenticated, origin-checked, ownership-gated.
   Returns `{ url, expiresAt }` from the storage adapter for an owned
   BOOK or SESSION_ITEM. Rate-limited per-user
@@ -569,8 +586,8 @@ of a human, say so explicitly rather than implying success.
   i18n, api, seo, stripe, site-settings, storage, video, hooks).
 - `lib/storage/` — Phase-1 storage abstraction. `index.ts` exports a
   single `storage: StorageAdapter` that every signed-URL caller uses.
-  `mock-adapter.ts` is the dev placeholder; the real adapter (Netlify
-  Blobs / R2 / Cloudflare Stream — pending Dr. Khaled's storage
+  `mock-adapter.ts` is the dev placeholder; the real adapter (Vercel
+  Blob / R2 / Cloudflare Stream — pending Dr. Khaled's storage
   decision) drops in by editing the single import in
   `lib/storage/index.ts`. Nothing else moves.
 - `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
@@ -677,6 +694,7 @@ Optional / feature-gated:
 | `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
 | `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
+| `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. |
 
 Runtime flags (string-equality `'true'` / `'false'`):
 
@@ -710,7 +728,7 @@ in `.claude/agents/README.md`.
 ## Path to launch
 
 1. Provision Neon, generate `BETTER_AUTH_SECRET` + `REVALIDATE_TOKEN`,
-   populate `.env.local` (production values go on Netlify).
+   populate `.env.local` (production values go on Vercel).
 2. Apply migrations to Neon (`npm run db:migrate`); seed if desired.
 3. Confirm mock auth is OFF in production env (the default — leave
    `MOCK_AUTH` unset). Even with `MOCK_AUTH=true`,
@@ -721,7 +739,7 @@ in `.claude/agents/README.md`.
    favicon — see `CONTENT-NEEDED.md`).
 6. Run the agent team: `security-auditor`, `seo-checker`,
    `accessibility-checker`, `code-reviewer`. Resolve all critical/high.
-7. Deploy to Netlify staging. Send URL to Dr. Khaled. Iterate.
+7. Deploy to Vercel preview. Send URL to Dr. Khaled. Iterate.
 8. Production deploy + DNS.
 
 Estimated 1–2 weeks calendar time, mostly waiting on content +

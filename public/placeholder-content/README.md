@@ -15,7 +15,7 @@ storage adapter is wired up. Anything you put here is also served as a
 static asset by Next.js, which is fine for a dev sandbox but **not** how
 production delivery will work.
 
-When the real adapter (Netlify Blobs, R2, Cloudflare Stream, Bunny.net,
+When the real adapter (Vercel Blob, R2, Cloudflare Stream, Bunny.net,
 TBD) is chosen, swap `lib/storage/index.ts` to point at it. Nothing else
 in the codebase needs to change.
 

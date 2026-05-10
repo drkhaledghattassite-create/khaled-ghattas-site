@@ -7,7 +7,7 @@ import { accounts, sessions, users, verifications } from '@/lib/db/schema'
 // SECURITY [C-1]: Better Auth signs session cookies with this secret. If we
 // fall back to a hardcoded string, anyone who reads the public repo can mint
 // signed admin cookies — that's a full auth bypass. So:
-//   - Production with no secret => throw at module load. Netlify build/runtime
+//   - Production with no secret => throw at module load. Vercel build/runtime
 //     will fail loudly, which is what we want — better than a silent compromise.
 //   - Dev with no secret        => use a random per-process secret, so sessions
 //     break across restarts (forcing a developer to notice and set the env var)

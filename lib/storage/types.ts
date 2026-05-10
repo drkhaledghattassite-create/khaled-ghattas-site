@@ -4,7 +4,7 @@
  * Every signed-URL flow on the site (book PDF download, session video stream,
  * post-purchase email link) flows through `StorageAdapter.getSignedUrl`. The
  * adapter is selected once in `lib/storage/index.ts` so swapping providers
- * (Netlify Blobs, R2, Cloudflare Stream, etc.) is a one-import change.
+ * (Vercel Blob, R2, Cloudflare Stream, etc.) is a one-import change.
  *
  * `productType` is intentionally narrower than `db.productType` — we only
  * differentiate at the storage layer between a "book" (single PDF asset) and a
@@ -20,8 +20,8 @@ export type GetSignedUrlInput = {
   /** UUID of the book (for BOOK) or the session_item (for SESSION_ITEM). */
   productId: string
   /** Opaque key returned by the row in the database. The adapter decides what
-   * the format means — for a Netlify Blobs adapter it's the blob key, for an
-   * R2 adapter it's the object key, for Cloudflare Stream it's the video uid. */
+   * the format means — for a Vercel Blob adapter it's the blob pathname, for
+   * an R2 adapter it's the object key, for Cloudflare Stream it's the video uid. */
   storageKey: string
   /** The user requesting the URL. Adapters may include this in audit logs or
    * scope short-lived signed URLs to the requester (e.g. with watermarking). */

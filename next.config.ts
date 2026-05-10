@@ -49,7 +49,7 @@ if (process.env.NEXT_PUBLIC_APP_URL) {
     remotePatterns.push({ protocol: 'https', hostname: ownHost })
   } catch {
     // Malformed NEXT_PUBLIC_APP_URL — skip the dynamic entry, keep the static
-    // allowlist. This branch is hit at build time on Netlify when the env var
+    // allowlist. This branch is hit at build time on Vercel when the env var
     // is set wrong; we'd rather build with a partial allowlist than crash.
   }
 }
