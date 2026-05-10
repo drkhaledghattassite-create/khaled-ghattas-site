@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { getBookingOrderByStripeSessionId } from '@/lib/db/queries'
+import { getServerSession } from '@/lib/auth/server'
 import { PendingPoller } from './PendingPoller'
 
 type Props = {
@@ -33,11 +34,25 @@ export default async function BookingSuccessPage({
   const sessionId = typeof sp.session_id === 'string' ? sp.session_id : null
   const isRtl = locale === 'ar'
 
-  const order = sessionId
-    ? await getBookingOrderByStripeSessionId(sessionId).catch(() => null)
-    : null
+  // Auth + ownership gate. Anonymous visitors and signed-in users probing a
+  // session_id that isn't theirs see the same generic "pending" state — we
+  // never confirm or deny the existence of an order to a non-owner. Mirrors
+  // the API poller at app/api/booking/order-status/route.ts:38-46 so the
+  // server-rendered shell and the live poll agree.
+  const session = await getServerSession().catch(() => null)
+  const rawOrder =
+    session && sessionId
+      ? await getBookingOrderByStripeSessionId(sessionId).catch(() => null)
+      : null
+  const order =
+    rawOrder && rawOrder.userId && rawOrder.userId === session?.user.id
+      ? rawOrder
+      : null
 
   const isPaid = order?.status === 'PAID'
+  // Pending state covers: known-pending order, OR session_id present without
+  // a confirmed match (could be unauth, mid-webhook, or cross-user probe —
+  // all collapse to the same generic message).
   const isPending = order?.status === 'PENDING' || (sessionId && !order)
 
   return (

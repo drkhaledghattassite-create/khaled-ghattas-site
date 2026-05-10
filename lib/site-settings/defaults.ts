@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_nav_contact: true,
     show_nav_corporate: true,
     show_nav_booking: true,
+    show_nav_tests: true,
     show_locale_switcher: true,
   },
   footer: {
@@ -58,12 +59,14 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   admin: {
     show_admin_booking: true,
     show_admin_questions: true,
+    show_admin_tests: true,
   },
   dashboard: {
     show_account_tab: true,
     show_library_tab: true,
     show_bookings_tab: true,
     show_ask_tab: true,
+    show_tests_tab: true,
     show_settings_tab: true,
   },
   coming_soon_pages: [],

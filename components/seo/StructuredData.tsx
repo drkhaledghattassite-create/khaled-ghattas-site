@@ -41,7 +41,10 @@ export function OrganizationJsonLd({ locale }: LocaleProps) {
     contactPoint: [
       {
         '@type': 'ContactPoint',
-        email: 'kamallchhimi@gmail.com',
+        // Hardcoded to match the surrounding fields (SITE_NAME, telephone,
+        // logo path) which are also constants. TODO: surface contact_email
+        // through site settings so admin can rotate it without a deploy.
+        email: 'Team@drkhaledghattass.com',
         telephone: '+9613579666',
         contactType: 'general',
         areaServed: 'LB',

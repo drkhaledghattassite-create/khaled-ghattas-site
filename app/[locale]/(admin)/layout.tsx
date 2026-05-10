@@ -6,7 +6,10 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { requireServerRole } from '@/lib/auth/server'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
-import { getPendingQuestionCount } from '@/lib/db/queries'
+import {
+  getDraftTestCount,
+  getPendingQuestionCount,
+} from '@/lib/db/queries'
 
 type Props = {
   children: ReactNode
@@ -40,15 +43,17 @@ export default async function AdminLayout({ children, params }: Props) {
   // Site-settings drives admin section visibility. Defaults are `true`
   // (see lib/site-settings/defaults.ts), so sections render unless an
   // admin has explicitly turned them off.
-  // Pending-count is read in parallel — it's a single COUNT(*) on a
-  // narrow indexed predicate (status = 'PENDING'), so the cost is
-  // negligible. It powers the sidebar badge for the Questions entry.
-  const [settings, pendingQuestionCount] = await Promise.all([
+  // Pending-count + draft-count are read in parallel — both are single
+  // COUNT(*) on narrow indexed predicates, so the cost is negligible.
+  // They power the sidebar badges (Questions + Tests).
+  const [settings, pendingQuestionCount, draftTestCount] = await Promise.all([
     getCachedSiteSettings().catch(() => null),
     getPendingQuestionCount().catch(() => 0),
+    getDraftTestCount().catch(() => 0),
   ])
   const showAdminBooking = settings?.admin?.show_admin_booking ?? true
   const showAdminQuestions = settings?.admin?.show_admin_questions ?? true
+  const showAdminTests = settings?.admin?.show_admin_tests ?? true
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -57,6 +62,8 @@ export default async function AdminLayout({ children, params }: Props) {
         showAdminBooking={showAdminBooking}
         showAdminQuestions={showAdminQuestions}
         pendingQuestionCount={pendingQuestionCount}
+        showAdminTests={showAdminTests}
+        draftTestCount={draftTestCount}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
@@ -64,6 +71,8 @@ export default async function AdminLayout({ children, params }: Props) {
           showAdminBooking={showAdminBooking}
           showAdminQuestions={showAdminQuestions}
           pendingQuestionCount={pendingQuestionCount}
+          showAdminTests={showAdminTests}
+          draftTestCount={draftTestCount}
         />
         <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
       </div>

@@ -940,6 +940,201 @@ export const userQuestions = pgTable(
 )
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Phase C1 — Tests & Quizzes
+ *
+ * Free reflection tests written by Dr. Khaled. A user picks one option per
+ * question, submits, sees a score + per-question review. Attempts are
+ * permanent records (retaking is a NEW row; the old attempt stays).
+ *
+ * Schema decisions:
+ *  - `tests.is_paid` + `tests.price_usd` are FORWARD-COMPAT-ONLY. v1 ships
+ *    every test as free; the columns exist so a future paywall can land
+ *    without a destructive migration. Do not read them in v1 UI; do not
+ *    write anything but `false` / `null`.
+ *  - `tests.category` is plain text (matches the `userQuestions.category`
+ *    pattern) with the allowed vocabulary enforced by zod in
+ *    `lib/validators/test.ts`. Lets admin tweak the list without a migration.
+ *  - "Exactly one correct option per question" is enforced at the app layer
+ *    (Phase C2 admin form will validate). No DB trigger.
+ *  - `test_attempts.total_count` is captured at attempt time so historical
+ *    scores stay correct even if admin later edits the test. Edit-after-
+ *    attempt prompt-text drift is documented as a v1-known concern (Phase
+ *    C2 may snapshot prompts/options if it becomes a real issue).
+ *  - `test_attempt_answers.is_correct` is denormalised at write time for
+ *    fast result rendering. The score (correct_count / total_count) is the
+ *    canonical truth; the boolean is a convenience.
+ *  - All FKs cascade on delete — wipe a test, lose its questions, options,
+ *    attempts, and answer rows. Wipe a user, lose their attempts. Acceptable
+ *    for v1; analytics aggregations (Phase C2) read while data is live.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const tests = pgTable(
+  'tests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    titleAr: text('title_ar').notNull(),
+    titleEn: text('title_en').notNull(),
+    introAr: text('intro_ar').notNull(),
+    introEn: text('intro_en').notNull(),
+    descriptionAr: text('description_ar').notNull(),
+    descriptionEn: text('description_en').notNull(),
+    // Free text — vocabulary enforced at the validator layer, NOT in DB.
+    // Keep the values aligned with userQuestions.category for cross-feature
+    // consistency: psychology / education / relationships / society /
+    // career / general.
+    category: text('category').notNull(),
+    estimatedMinutes: integer('estimated_minutes').notNull(),
+    coverImageUrl: text('cover_image_url'),
+    // Paywall hooks — v1 ALWAYS null / false. Do not read in v1 UI.
+    priceUsd: numeric('price_usd', { precision: 10, scale: 2 }),
+    isPaid: boolean('is_paid').notNull().default(false),
+    // Catalog visibility. Defaults false because Phase C2 admin will use it;
+    // v1 has no admin UI, so seed rows must be inserted with isPublished=true
+    // (or via SQL until Phase C2 ships).
+    isPublished: boolean('is_published').notNull().default(false),
+    displayOrder: integer('display_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex('tests_slug_idx').on(t.slug),
+    publishedIdx: index('tests_published_idx').on(
+      t.isPublished,
+      t.displayOrder,
+      t.createdAt.desc(),
+    ),
+    categoryIdx: index('tests_category_idx').on(t.category, t.isPublished),
+  }),
+)
+
+export const testQuestions = pgTable(
+  'test_questions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    testId: uuid('test_id')
+      .notNull()
+      .references(() => tests.id, { onDelete: 'cascade' }),
+    displayOrder: integer('display_order').notNull(),
+    promptAr: text('prompt_ar').notNull(),
+    promptEn: text('prompt_en').notNull(),
+    // Dr. Khaled's reasoning for the correct answer, shown after submission.
+    // Optional — empty string would render nothing on the result page.
+    explanationAr: text('explanation_ar'),
+    explanationEn: text('explanation_en'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    testIdx: index('test_questions_test_idx').on(t.testId, t.displayOrder),
+  }),
+)
+
+export const testOptions = pgTable(
+  'test_options',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => testQuestions.id, { onDelete: 'cascade' }),
+    displayOrder: integer('display_order').notNull(),
+    labelAr: text('label_ar').notNull(),
+    labelEn: text('label_en').notNull(),
+    // App-layer constraint: each question must have exactly one isCorrect=true
+    // option. Phase C2 admin form enforces it; v1 trusts the seed data.
+    isCorrect: boolean('is_correct').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    questionIdx: index('test_options_question_idx').on(
+      t.questionId,
+      t.displayOrder,
+    ),
+  }),
+)
+
+export const testAttempts = pgTable(
+  'test_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    testId: uuid('test_id')
+      .notNull()
+      .references(() => tests.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // 0-100 inclusive. Computed at submit time as
+    // round((correct_count / total_count) * 100).
+    scorePercentage: integer('score_percentage').notNull(),
+    correctCount: integer('correct_count').notNull(),
+    // Captured at attempt time so admin edits to the live test don't
+    // corrupt historical scores.
+    totalCount: integer('total_count').notNull(),
+    // We don't track in-progress attempts (no "save and finish later" by
+    // design). completedAt is set on submit and never updated.
+    completedAt: timestamp('completed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    userIdx: index('test_attempts_user_idx').on(
+      t.userId,
+      t.completedAt.desc(),
+    ),
+    testIdx: index('test_attempts_test_idx').on(
+      t.testId,
+      t.completedAt.desc(),
+    ),
+    // Detail-page lookup ("have you taken this test?").
+    userTestIdx: index('test_attempts_user_test_idx').on(
+      t.userId,
+      t.testId,
+      t.completedAt.desc(),
+    ),
+  }),
+)
+
+export const testAttemptAnswers = pgTable(
+  'test_attempt_answers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => testAttempts.id, { onDelete: 'cascade' }),
+    questionId: uuid('question_id')
+      .notNull()
+      .references(() => testQuestions.id, { onDelete: 'cascade' }),
+    selectedOptionId: uuid('selected_option_id')
+      .notNull()
+      .references(() => testOptions.id, { onDelete: 'cascade' }),
+    // Denormalised at write time. Score is canonical (correct/total); this
+    // boolean lets the result page render without re-joining is_correct
+    // through test_options on every read.
+    isCorrect: boolean('is_correct').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    attemptIdx: index('test_attempt_answers_attempt_idx').on(t.attemptId),
+    questionIdx: index('test_attempt_answers_question_idx').on(t.questionId),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -1020,6 +1215,63 @@ export const tourSuggestionsRelations = relations(
     user: one(users, {
       fields: [tourSuggestions.userId],
       references: [users.id],
+    }),
+  }),
+)
+
+export const testsRelations = relations(tests, ({ many }) => ({
+  questions: many(testQuestions),
+  attempts: many(testAttempts),
+}))
+
+export const testQuestionsRelations = relations(
+  testQuestions,
+  ({ one, many }) => ({
+    test: one(tests, {
+      fields: [testQuestions.testId],
+      references: [tests.id],
+    }),
+    options: many(testOptions),
+    attemptAnswers: many(testAttemptAnswers),
+  }),
+)
+
+export const testOptionsRelations = relations(testOptions, ({ one }) => ({
+  question: one(testQuestions, {
+    fields: [testOptions.questionId],
+    references: [testQuestions.id],
+  }),
+}))
+
+export const testAttemptsRelations = relations(
+  testAttempts,
+  ({ one, many }) => ({
+    test: one(tests, {
+      fields: [testAttempts.testId],
+      references: [tests.id],
+    }),
+    user: one(users, {
+      fields: [testAttempts.userId],
+      references: [users.id],
+    }),
+    answers: many(testAttemptAnswers),
+  }),
+)
+
+export const testAttemptAnswersRelations = relations(
+  testAttemptAnswers,
+  ({ one }) => ({
+    attempt: one(testAttempts, {
+      fields: [testAttemptAnswers.attemptId],
+      references: [testAttempts.id],
+    }),
+    question: one(testQuestions, {
+      fields: [testAttemptAnswers.questionId],
+      references: [testQuestions.id],
+    }),
+    selectedOption: one(testOptions, {
+      fields: [testAttemptAnswers.selectedOptionId],
+      references: [testOptions.id],
     }),
   }),
 )
@@ -1173,4 +1425,15 @@ export type BookingState = (typeof bookingState.enumValues)[number]
 
 export type UserQuestion = InferSelectModel<typeof userQuestions>
 export type NewUserQuestion = InferInsertModel<typeof userQuestions>
+
+export type Test = InferSelectModel<typeof tests>
+export type NewTest = InferInsertModel<typeof tests>
+export type TestQuestion = InferSelectModel<typeof testQuestions>
+export type NewTestQuestion = InferInsertModel<typeof testQuestions>
+export type TestOption = InferSelectModel<typeof testOptions>
+export type NewTestOption = InferInsertModel<typeof testOptions>
+export type TestAttempt = InferSelectModel<typeof testAttempts>
+export type NewTestAttempt = InferInsertModel<typeof testAttempts>
+export type TestAttemptAnswer = InferSelectModel<typeof testAttemptAnswers>
+export type NewTestAttemptAnswer = InferInsertModel<typeof testAttemptAnswers>
 export type QuestionStatus = (typeof questionStatus.enumValues)[number]

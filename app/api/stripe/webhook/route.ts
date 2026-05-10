@@ -40,7 +40,7 @@ const POST_PURCHASE_LINK_EXPIRY_SECONDS = POST_PURCHASE_LINK_EXPIRY_DAYS * 24 * 
 // route post-purchase replies to a different inbox than the corporate one if
 // needed; default mirrors the team address used elsewhere on the site.
 const SUPPORT_EMAIL =
-  process.env.SUPPORT_EMAIL ?? 'kamallchhimi@gmail.com'
+  process.env.SUPPORT_EMAIL ?? 'Team@drkhaledghattass.com'
 
 function pickPublicImageUrl(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -532,9 +532,18 @@ async function handleBookingCheckoutCompleted(
     amountPaid: totalCents,
   })
   if (!result) {
-    console.error('[stripe/webhook] markBookingOrderPaid failed', {
-      sessionId,
-    })
+    // The UPDATE is gated on `status='PENDING'`, so a null result here means
+    // a sibling webhook delivery already processed this session (concurrent
+    // retry) — there's nothing to do. The outer `existing.status === 'PAID'`
+    // check usually catches re-delivery, but two truly concurrent deliveries
+    // can both pass it; this is the second-line defense. Drop the hold
+    // defensively in case the prior delivery raced past it, then return
+    // success so Stripe stops retrying.
+    console.info(
+      '[stripe/webhook] BOOKING already processed (race) — no-op',
+      { sessionId },
+    )
+    await deleteHoldByStripeSessionId(sessionId)
     return
   }
   console.info('[stripe/webhook] BOOKING checkout.session.completed processed', {

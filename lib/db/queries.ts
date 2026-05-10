@@ -35,6 +35,11 @@ import {
   sessionItems,
   siteSettings,
   subscribers,
+  testAttemptAnswers,
+  testAttempts,
+  testOptions,
+  testQuestions,
+  tests,
   tours,
   tourSuggestions,
   userQuestions,
@@ -70,6 +75,11 @@ import {
   type SessionItem,
   type SiteSetting,
   type Subscriber,
+  type Test,
+  type TestAttempt,
+  type TestAttemptAnswer,
+  type TestOption,
+  type TestQuestion,
   type Tour,
   type TourSuggestion,
   type User,
@@ -105,6 +115,9 @@ import {
   placeholderOrders,
   placeholderSettings,
   placeholderSubscribers,
+  placeholderTestOptions,
+  placeholderTestQuestions,
+  placeholderTests,
   placeholderTourSuggestions,
   placeholderTours,
   placeholderUsers,
@@ -3486,6 +3499,17 @@ export async function getBookingOrderByStripeSessionId(
  * Webhook handler: completed payment.
  * Atomically: marks order PAID + increments bookedCount + flips SOLD_OUT if
  * we just hit max + deletes the hold by stripeSessionId.
+ *
+ * Concurrency: the UPDATE is gated on `status='PENDING'`. Two concurrent
+ * webhook deliveries can both pass the outer `existing.status === 'PAID'`
+ * idempotency check (TOCTOU) — without the AND-status guard here, both
+ * would then increment bookedCount. With the guard, the second UPDATE
+ * matches zero rows, returns null, and the caller no-ops. Exactly one
+ * PAID transition + one bookedCount increment per stripeSessionId.
+ *
+ * Returns null when the order is already PAID (or doesn't exist) — the
+ * caller should treat null as "already processed" and proceed to clean
+ * up any orphaned hold defensively.
  */
 export async function markBookingOrderPaid(input: {
   stripeSessionId: string
@@ -3509,7 +3533,12 @@ export async function markBookingOrderPaid(input: {
           confirmedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(bookingOrders.stripeSessionId, input.stripeSessionId))
+        .where(
+          and(
+            eq(bookingOrders.stripeSessionId, input.stripeSessionId),
+            eq(bookingOrders.status, 'PENDING'),
+          ),
+        )
         .returning()
       if (!order) return null
       const [b] = await tx
@@ -4801,6 +4830,1756 @@ export async function getPendingQuestionCount(): Promise<number> {
   }
 }
 
+/* ── Tests & Quizzes (Phase C1) ─────────────────────────────────────────── */
+
+export type TestWithQuestionCount = Test & { questionCount: number }
+
+export type TestWithDetail = Test & {
+  questions: Array<TestQuestion & { options: TestOption[] }>
+}
+
+export type TestAttemptWithTestSummary = TestAttempt & {
+  test: Pick<Test, 'id' | 'slug' | 'titleAr' | 'titleEn' | 'category'>
+}
+
+export type TestAttemptWithDetail = TestAttempt & {
+  test: Test
+  answers: Array<
+    TestAttemptAnswer & {
+      question: TestQuestion & { options: TestOption[] }
+      selectedOption: TestOption
+    }
+  >
+}
+
+/**
+ * Sort placeholder/DB tests for the catalog: displayOrder ASC, then
+ * createdAt DESC (newest within the same display bucket appears first).
+ */
+function sortCatalog<T extends { displayOrder: number; createdAt: Date }>(
+  list: T[],
+): T[] {
+  return list
+    .slice()
+    .sort(
+      (a, b) =>
+        a.displayOrder - b.displayOrder ||
+        b.createdAt.getTime() - a.createdAt.getTime(),
+    )
+}
+
+/**
+ * Mock-mode catalog source — merges admin-edited rows from the mock store
+ * over the static `placeholderTests` baseline. The store is empty until the
+ * first admin write; once an id appears in the store, the store's row wins
+ * (an admin can effectively "delete" a placeholder by removing it).
+ *
+ * Phase C2 introduced this layering so admin CRUD in mock-auth dev is
+ * end-to-end testable without a real DB. Production never executes this
+ * branch — `MOCK_AUTH_ENABLED` is hard-disabled when `NODE_ENV=production`.
+ */
+function readMockTestCatalog(): {
+  tests: Test[]
+  questionsByTestId: Map<string, TestQuestion[]>
+  optionsByQuestionId: Map<string, TestOption[]>
+} {
+  const store = readStore()
+  // Start from placeholder data so first-time admins see seeded tests.
+  // Once an admin has performed any write, the store carries the full
+  // current state and the placeholder layer is effectively a no-op for
+  // those ids.
+  const testsById = new Map<string, Test>()
+  for (const t of placeholderTests) testsById.set(t.id, t)
+  // Apply mock-store overrides: full row replacement (including delete via
+  // removeTest, which we implement as a hard delete from the map).
+  for (const [id, t] of store.tests) testsById.set(id, t)
+  // Tests in the placeholder layer that aren't in the store stay visible.
+  // Tests added via admin (not in placeholders) get inserted by the line
+  // above. Tests deleted via admin get removed by `tests.delete()` on the
+  // store side; we then need to reflect the delete here too. The simplest
+  // correctness model: if the mock store has any entries at all, treat
+  // its key set as authoritative for ids that EXIST in the store; absence
+  // means "not yet edited," not "deleted." So track a tombstone set.
+  // For v1 we go simpler: hard-deleted tests are removed from the store
+  // map and we DON'T tombstone — the placeholder will re-appear. Document
+  // in self-critique.
+  const allTests = Array.from(testsById.values())
+  // Same merge for questions / options.
+  const questionsByTestId = new Map<string, TestQuestion[]>()
+  for (const q of placeholderTestQuestions) {
+    const list = questionsByTestId.get(q.testId) ?? []
+    list.push(q)
+    questionsByTestId.set(q.testId, list)
+  }
+  for (const [testId, list] of store.testQuestions) {
+    questionsByTestId.set(testId, list)
+  }
+  const optionsByQuestionId = new Map<string, TestOption[]>()
+  for (const o of placeholderTestOptions) {
+    const list = optionsByQuestionId.get(o.questionId) ?? []
+    list.push(o)
+    optionsByQuestionId.set(o.questionId, list)
+  }
+  for (const [questionId, list] of store.testOptions) {
+    optionsByQuestionId.set(questionId, list)
+  }
+  return {
+    tests: allTests,
+    questionsByTestId,
+    optionsByQuestionId,
+  }
+}
+
+/**
+ * Catalog read for `/tests`. Includes a per-test question count so the card
+ * can render "{n} questions" without a separate fetch per row.
+ *
+ * Default: every published test, no category filter.
+ */
+export async function getPublishedTests(options?: {
+  category?: string
+  limit?: number
+}): Promise<TestWithQuestionCount[]> {
+  const { category, limit } = options ?? {}
+  if (HAS_DB) {
+    try {
+      const conditions = [eq(tests.isPublished, true)]
+      if (category && category !== 'all')
+        conditions.push(eq(tests.category, category))
+      const rows = await db
+        .select({
+          test: tests,
+          questionCount: sql<number>`COUNT(${testQuestions.id})::int`,
+        })
+        .from(tests)
+        .leftJoin(testQuestions, eq(testQuestions.testId, tests.id))
+        .where(and(...conditions))
+        .groupBy(tests.id)
+        .orderBy(asc(tests.displayOrder), desc(tests.createdAt))
+        .limit(limit ?? 100)
+      return rows.map((r) => ({ ...r.test, questionCount: r.questionCount }))
+    } catch (err) {
+      console.error('[getPublishedTests] DB error, falling back', err)
+    }
+  }
+  // Phase C2: mock-mode admins can publish/unpublish. Layer the store on
+  // top of placeholders so public catalog reflects admin state.
+  const source = MOCK_AUTH_ENABLED
+    ? readMockTestCatalog()
+    : {
+        tests: [...placeholderTests],
+        questionsByTestId: new Map<string, TestQuestion[]>(
+          Array.from(
+            placeholderTestQuestions.reduce((acc, q) => {
+              const list = acc.get(q.testId) ?? []
+              list.push(q)
+              acc.set(q.testId, list)
+              return acc
+            }, new Map<string, TestQuestion[]>()),
+          ),
+        ),
+        optionsByQuestionId: new Map<string, TestOption[]>(),
+      }
+  let list = source.tests.filter((t) => t.isPublished)
+  if (category && category !== 'all')
+    list = list.filter((t) => t.category === category)
+  list = sortCatalog(list)
+  if (limit) list = list.slice(0, limit)
+  return list.map((t) => ({
+    ...t,
+    questionCount: (source.questionsByTestId.get(t.id) ?? []).length,
+  }))
+}
+
+/**
+ * Detail read with all questions and their options, in display order.
+ *
+ * Returns null when the slug doesn't match OR when the test is not
+ * published. Anonymous and authenticated visitors share the same gate;
+ * Phase C2 admin preview will need a separate, role-gated path.
+ */
+export async function getTestBySlug(
+  slug: string,
+): Promise<TestWithDetail | null> {
+  if (HAS_DB) {
+    try {
+      const [row] = await db
+        .select()
+        .from(tests)
+        .where(and(eq(tests.slug, slug), eq(tests.isPublished, true)))
+        .limit(1)
+      if (!row) return null
+      const qRows = await db
+        .select()
+        .from(testQuestions)
+        .where(eq(testQuestions.testId, row.id))
+        .orderBy(asc(testQuestions.displayOrder))
+      if (qRows.length === 0) return { ...row, questions: [] }
+      const oRows = await db
+        .select()
+        .from(testOptions)
+        .where(
+          inArray(
+            testOptions.questionId,
+            qRows.map((q) => q.id),
+          ),
+        )
+        .orderBy(asc(testOptions.displayOrder))
+      const optionsByQ = new Map<string, TestOption[]>()
+      for (const o of oRows) {
+        const list = optionsByQ.get(o.questionId) ?? []
+        list.push(o)
+        optionsByQ.set(o.questionId, list)
+      }
+      return {
+        ...row,
+        questions: qRows.map((q) => ({
+          ...q,
+          options: optionsByQ.get(q.id) ?? [],
+        })),
+      }
+    } catch (err) {
+      console.error('[getTestBySlug] DB error, falling back', err)
+    }
+  }
+  // Phase C2 — mock-mode reads layer the admin store on top of placeholders.
+  if (MOCK_AUTH_ENABLED) {
+    const source = readMockTestCatalog()
+    const test = source.tests.find(
+      (t) => t.slug === slug && t.isPublished,
+    )
+    if (!test) return null
+    const qList = (source.questionsByTestId.get(test.id) ?? [])
+      .slice()
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+    const questions = qList.map((q) => ({
+      ...q,
+      options: (source.optionsByQuestionId.get(q.id) ?? [])
+        .slice()
+        .sort((a, b) => a.displayOrder - b.displayOrder),
+    }))
+    return { ...test, questions }
+  }
+  const test = placeholderTests.find(
+    (t) => t.slug === slug && t.isPublished,
+  )
+  if (!test) return null
+  const questions = placeholderTestQuestions
+    .filter((q) => q.testId === test.id)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((q) => ({
+      ...q,
+      options: placeholderTestOptions
+        .filter((o) => o.questionId === q.id)
+        .sort((a, b) => a.displayOrder - b.displayOrder),
+    }))
+  return { ...test, questions }
+}
+
+/**
+ * Detail page → "you took this test" check. Returns the most recent
+ * attempt this user has on this test, or null if none.
+ */
+export async function getLatestAttemptForUserAndTest(
+  userId: string,
+  testId: string,
+): Promise<TestAttempt | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const list = store.testAttempts
+      .filter((a) => a.userId === userId && a.testId === testId)
+      .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())
+    return list[0] ?? null
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(userId) || !isUuid(testId)) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(testAttempts)
+      .where(
+        and(eq(testAttempts.userId, userId), eq(testAttempts.testId, testId)),
+      )
+      .orderBy(desc(testAttempts.completedAt))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[getLatestAttemptForUserAndTest]', err)
+    return null
+  }
+}
+
+/**
+ * Set of testIds this user has attempted at least once. Used by the catalog
+ * to render the "Taken" pill / "Take again" CTA. One round-trip per page,
+ * not one per card.
+ */
+export async function getTestIdsTakenByUser(
+  userId: string,
+): Promise<Set<string>> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return new Set(
+      store.testAttempts
+        .filter((a) => a.userId === userId)
+        .map((a) => a.testId),
+    )
+  }
+  if (!HAS_DB) return new Set()
+  if (!isUuid(userId)) return new Set()
+  try {
+    const rows = await db
+      .selectDistinct({ testId: testAttempts.testId })
+      .from(testAttempts)
+      .where(eq(testAttempts.userId, userId))
+    return new Set(rows.map((r) => r.testId))
+  } catch (err) {
+    console.error('[getTestIdsTakenByUser]', err)
+    return new Set()
+  }
+}
+
+/**
+ * Dashboard history list. Joined with the minimal test identity (id, slug,
+ * titles, category) so the row can render without a second fetch.
+ */
+export async function getTestAttemptsByUserId(
+  userId: string,
+  options?: { limit?: number },
+): Promise<TestAttemptWithTestSummary[]> {
+  const limit = options?.limit ?? 50
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const testById = new Map(placeholderTests.map((t) => [t.id, t]))
+    return store.testAttempts
+      .filter((a) => a.userId === userId)
+      .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())
+      .slice(0, limit)
+      .map((a) => {
+        const t = testById.get(a.testId)
+        return {
+          ...a,
+          test: t
+            ? {
+                id: t.id,
+                slug: t.slug,
+                titleAr: t.titleAr,
+                titleEn: t.titleEn,
+                category: t.category,
+              }
+            : { id: a.testId, slug: '', titleAr: '', titleEn: '', category: 'general' },
+        }
+      })
+  }
+  if (!HAS_DB) return []
+  if (!isUuid(userId)) return []
+  try {
+    const rows = await db
+      .select({
+        attempt: testAttempts,
+        test: {
+          id: tests.id,
+          slug: tests.slug,
+          titleAr: tests.titleAr,
+          titleEn: tests.titleEn,
+          category: tests.category,
+        },
+      })
+      .from(testAttempts)
+      .leftJoin(tests, eq(tests.id, testAttempts.testId))
+      .where(eq(testAttempts.userId, userId))
+      .orderBy(desc(testAttempts.completedAt))
+      .limit(limit)
+    return rows
+      .map((r) => {
+        if (!r.test) return null
+        return { ...r.attempt, test: r.test }
+      })
+      .filter((r): r is TestAttemptWithTestSummary => r !== null)
+  } catch (err) {
+    console.error('[getTestAttemptsByUserId]', err)
+    return []
+  }
+}
+
+/**
+ * Result page payload — the attempt + the test it was taken on + every
+ * answer joined with its question, the question's options, and the option
+ * the user picked. Returns null if (a) the attempt doesn't exist, (b) it
+ * belongs to a different user (cross-user enumeration guard), or (c) the
+ * test backing it has been wiped.
+ */
+export async function getTestAttemptById(
+  attemptId: string,
+  userId: string,
+): Promise<TestAttemptWithDetail | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const att = store.testAttempts.find(
+      (a) => a.id === attemptId && a.userId === userId,
+    )
+    if (!att) return null
+    const test = placeholderTests.find((t) => t.id === att.testId)
+    if (!test) return null
+    const questions = placeholderTestQuestions.filter(
+      (q) => q.testId === test.id,
+    )
+    const optionsByQ = new Map<string, TestOption[]>()
+    for (const o of placeholderTestOptions) {
+      const list = optionsByQ.get(o.questionId) ?? []
+      list.push(o)
+      optionsByQ.set(o.questionId, list)
+    }
+    const optionById = new Map(placeholderTestOptions.map((o) => [o.id, o]))
+    const questionById = new Map(questions.map((q) => [q.id, q]))
+    const answers = att.answers
+      .map((ans) => {
+        const q = questionById.get(ans.questionId)
+        const sel = optionById.get(ans.selectedOptionId)
+        if (!q || !sel) return null
+        return {
+          ...ans,
+          question: {
+            ...q,
+            options: (optionsByQ.get(q.id) ?? []).slice().sort(
+              (a, b) => a.displayOrder - b.displayOrder,
+            ),
+          },
+          selectedOption: sel,
+        }
+      })
+      .filter(
+        (
+          x,
+        ): x is TestAttemptAnswer & {
+          question: TestQuestion & { options: TestOption[] }
+          selectedOption: TestOption
+        } => x !== null,
+      )
+      .sort((a, b) => a.question.displayOrder - b.question.displayOrder)
+    return { ...att, test, answers }
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(attemptId) || !isUuid(userId)) return null
+  try {
+    const [att] = await db
+      .select()
+      .from(testAttempts)
+      .where(
+        and(
+          eq(testAttempts.id, attemptId),
+          eq(testAttempts.userId, userId),
+        ),
+      )
+      .limit(1)
+    if (!att) return null
+    const [test] = await db
+      .select()
+      .from(tests)
+      .where(eq(tests.id, att.testId))
+      .limit(1)
+    if (!test) return null
+    const ansRows = await db
+      .select({
+        answer: testAttemptAnswers,
+        question: testQuestions,
+        selectedOption: testOptions,
+      })
+      .from(testAttemptAnswers)
+      .leftJoin(
+        testQuestions,
+        eq(testQuestions.id, testAttemptAnswers.questionId),
+      )
+      .leftJoin(
+        testOptions,
+        eq(testOptions.id, testAttemptAnswers.selectedOptionId),
+      )
+      .where(eq(testAttemptAnswers.attemptId, att.id))
+    if (ansRows.length === 0) {
+      return { ...att, test, answers: [] }
+    }
+    const questionIds = ansRows
+      .map((r) => r.question?.id)
+      .filter((id): id is string => !!id)
+    const allOptions = questionIds.length
+      ? await db
+          .select()
+          .from(testOptions)
+          .where(inArray(testOptions.questionId, questionIds))
+          .orderBy(asc(testOptions.displayOrder))
+      : []
+    const optionsByQ = new Map<string, TestOption[]>()
+    for (const o of allOptions) {
+      const list = optionsByQ.get(o.questionId) ?? []
+      list.push(o)
+      optionsByQ.set(o.questionId, list)
+    }
+    const answers = ansRows
+      .map((r) => {
+        if (!r.question || !r.selectedOption) return null
+        return {
+          ...r.answer,
+          question: {
+            ...r.question,
+            options: optionsByQ.get(r.question.id) ?? [],
+          },
+          selectedOption: r.selectedOption,
+        }
+      })
+      .filter(
+        (
+          x,
+        ): x is TestAttemptAnswer & {
+          question: TestQuestion & { options: TestOption[] }
+          selectedOption: TestOption
+        } => x !== null,
+      )
+      .sort((a, b) => a.question.displayOrder - b.question.displayOrder)
+    return { ...att, test, answers }
+  } catch (err) {
+    console.error('[getTestAttemptById]', err)
+    return null
+  }
+}
+
+/**
+ * Submit-attempt write. Creates the attempt row + all denormalised answer
+ * rows. Sequential inserts (no transaction) — Neon HTTP doesn't support
+ * `db.transaction()`. If the attempt insert succeeds and the answer inserts
+ * fail, the attempt row is deleted as best-effort cleanup so the result
+ * page won't render an empty review.
+ */
+export async function createTestAttempt(input: {
+  userId: string
+  testId: string
+  answers: Array<{
+    questionId: string
+    selectedOptionId: string
+    isCorrect: boolean
+  }>
+  scorePercentage: number
+  correctCount: number
+  totalCount: number
+}): Promise<TestAttempt | null> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const now = new Date()
+    const attemptId = crypto.randomUUID()
+    const answers: TestAttemptAnswer[] = input.answers.map((a) => ({
+      id: crypto.randomUUID(),
+      attemptId,
+      questionId: a.questionId,
+      selectedOptionId: a.selectedOptionId,
+      isCorrect: a.isCorrect,
+      createdAt: now,
+    }))
+    const attempt: TestAttempt = {
+      id: attemptId,
+      testId: input.testId,
+      userId: input.userId,
+      scorePercentage: input.scorePercentage,
+      correctCount: input.correctCount,
+      totalCount: input.totalCount,
+      completedAt: now,
+      createdAt: now,
+    }
+    store.testAttempts.unshift({ ...attempt, answers })
+    writeStore(store)
+    return attempt
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.userId) || !isUuid(input.testId)) return null
+  try {
+    const [attempt] = await db
+      .insert(testAttempts)
+      .values({
+        userId: input.userId,
+        testId: input.testId,
+        scorePercentage: input.scorePercentage,
+        correctCount: input.correctCount,
+        totalCount: input.totalCount,
+      })
+      .returning()
+    if (!attempt) return null
+    try {
+      await db.insert(testAttemptAnswers).values(
+        input.answers.map((a) => ({
+          attemptId: attempt.id,
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId,
+          isCorrect: a.isCorrect,
+        })),
+      )
+    } catch (err) {
+      // Best-effort cleanup. If the attempt row outlived the failed answer
+      // inserts, the result page would render an empty review with the
+      // computed score — confusing for the user. Better to fail the whole
+      // submission and let them retry.
+      console.error('[createTestAttempt] answers insert failed', err)
+      try {
+        await db.delete(testAttempts).where(eq(testAttempts.id, attempt.id))
+      } catch (cleanupErr) {
+        console.error(
+          '[createTestAttempt] cleanup of orphaned attempt failed',
+          cleanupErr,
+        )
+      }
+      return null
+    }
+    return attempt
+  } catch (err) {
+    console.error('[createTestAttempt]', err)
+    return null
+  }
+}
+
+/* ── Tests & Quizzes admin (Phase C2) ──────────────────────────────────── */
+
+export type AdminTestRow = Test & {
+  questionCount: number
+  attemptCount: number
+  averageScore: number | null
+}
+
+export type AdminTestDetail = Test & {
+  questions: Array<TestQuestion & { options: TestOption[] }>
+}
+
+export type AdminTestAnalytics = {
+  test: Test
+  totalAttempts: number
+  uniqueUsers: number
+  averageScore: number | null
+  scoreDistribution: Array<{
+    band: 'low' | 'medium' | 'high'
+    count: number
+  }>
+  questions: Array<{
+    question: TestQuestion
+    options: Array<{
+      option: TestOption
+      selectionCount: number
+      selectionPercentage: number
+      isCorrect: boolean
+    }>
+    correctCount: number
+    correctPercentage: number
+  }>
+  recentAttempts: Array<
+    TestAttempt & {
+      user: Pick<User, 'id' | 'name' | 'email'>
+    }
+  >
+}
+
+export type AdminTestListInput = {
+  search?: string
+  status?: 'all' | 'published' | 'draft'
+  category?: string
+}
+
+export type CreateAdminTestInput = {
+  slug: string
+  titleAr: string
+  titleEn: string
+  descriptionAr: string
+  descriptionEn: string
+  introAr: string
+  introEn: string
+  category: string
+  estimatedMinutes: number
+  coverImageUrl: string | null
+  isPublished: boolean
+  displayOrder: number
+  questions: Array<{
+    promptAr: string
+    promptEn: string
+    explanationAr: string | null
+    explanationEn: string | null
+    options: Array<{
+      labelAr: string
+      labelEn: string
+      isCorrect: boolean
+    }>
+  }>
+}
+
+export type UpdateAdminTestInput = CreateAdminTestInput & {
+  id: string
+  questions: Array<
+    CreateAdminTestInput['questions'][number] & {
+      id?: string
+      options: Array<
+        CreateAdminTestInput['questions'][number]['options'][number] & {
+          id?: string
+        }
+      >
+    }
+  >
+}
+
+/**
+ * Sort tests for the admin list: drafts first (so admins see what needs
+ * publishing), then displayOrder ASC, then createdAt DESC. The "drafts
+ * first" rule is the reason we don't reuse `sortCatalog`.
+ */
+function sortAdminCatalog<T extends { isPublished: boolean; displayOrder: number; createdAt: Date }>(
+  list: T[],
+): T[] {
+  return list
+    .slice()
+    .sort((a, b) => {
+      // Boolean false (draft) sorts before true (published).
+      const aPub = a.isPublished ? 1 : 0
+      const bPub = b.isPublished ? 1 : 0
+      if (aPub !== bPub) return aPub - bPub
+      if (a.displayOrder !== b.displayOrder)
+        return a.displayOrder - b.displayOrder
+      return b.createdAt.getTime() - a.createdAt.getTime()
+    })
+}
+
+/**
+ * Admin list — every test (drafts + published) with rolled-up question
+ * count, attempt count, and average score per row.
+ *
+ * DB query plan: a single SELECT joining `tests` LEFT JOIN counts on
+ * `test_questions` (question count) and a correlated subquery on
+ * `test_attempts` (attempt count + AVG). The correlated subquery
+ * avoids the GROUP BY explosion that LEFT JOIN + LEFT JOIN would
+ * cause when a test has many attempts.
+ */
+export async function getAllTestsForAdmin(
+  input?: AdminTestListInput,
+): Promise<AdminTestRow[]> {
+  const { search, status = 'all', category } = input ?? {}
+  if (HAS_DB) {
+    try {
+      const conditions = []
+      if (status === 'published') conditions.push(eq(tests.isPublished, true))
+      else if (status === 'draft') conditions.push(eq(tests.isPublished, false))
+      if (category && category !== 'all')
+        conditions.push(eq(tests.category, category))
+      if (search && search.trim().length > 0) {
+        const term = `%${search.trim()}%`
+        conditions.push(
+          or(ilike(tests.titleEn, term), ilike(tests.titleAr, term))!,
+        )
+      }
+      const rows = await db
+        .select({
+          test: tests,
+          questionCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${testQuestions}
+            WHERE ${testQuestions.testId} = ${tests.id}
+          )`,
+          attemptCount: sql<number>`(
+            SELECT COUNT(*)::int FROM ${testAttempts}
+            WHERE ${testAttempts.testId} = ${tests.id}
+          )`,
+          averageScore: sql<number | null>`(
+            SELECT AVG(${testAttempts.scorePercentage})::float FROM ${testAttempts}
+            WHERE ${testAttempts.testId} = ${tests.id}
+          )`,
+        })
+        .from(tests)
+        .where(conditions.length ? and(...conditions) : undefined)
+        .orderBy(
+          asc(tests.isPublished),
+          asc(tests.displayOrder),
+          desc(tests.createdAt),
+        )
+      return rows.map((r) => ({
+        ...r.test,
+        questionCount: Number(r.questionCount) || 0,
+        attemptCount: Number(r.attemptCount) || 0,
+        averageScore:
+          r.averageScore != null ? Math.round(Number(r.averageScore)) : null,
+      }))
+    } catch (err) {
+      console.error('[getAllTestsForAdmin] DB error, falling back', err)
+    }
+  }
+  const source = readMockTestCatalog()
+  let list = source.tests
+  if (status === 'published') list = list.filter((t) => t.isPublished)
+  else if (status === 'draft') list = list.filter((t) => !t.isPublished)
+  if (category && category !== 'all')
+    list = list.filter((t) => t.category === category)
+  if (search && search.trim().length > 0) {
+    const term = search.trim().toLowerCase()
+    list = list.filter(
+      (t) =>
+        t.titleEn.toLowerCase().includes(term) ||
+        t.titleAr.toLowerCase().includes(term),
+    )
+  }
+  // Compute aggregates from the mock test-attempts list.
+  const store = readStore()
+  const attemptsByTestId = new Map<string, MockTestAttempt[]>()
+  for (const a of store.testAttempts) {
+    const list = attemptsByTestId.get(a.testId) ?? []
+    list.push(a)
+    attemptsByTestId.set(a.testId, list)
+  }
+  return sortAdminCatalog(list).map((t) => {
+    const attempts = attemptsByTestId.get(t.id) ?? []
+    const avg =
+      attempts.length === 0
+        ? null
+        : Math.round(
+            attempts.reduce((sum, a) => sum + a.scorePercentage, 0) /
+              attempts.length,
+          )
+    return {
+      ...t,
+      questionCount: (source.questionsByTestId.get(t.id) ?? []).length,
+      attemptCount: attempts.length,
+      averageScore: avg,
+    }
+  })
+}
+
+// MockTestAttempt is internal to the mock store — re-import the type alias
+// for the helper above. We don't want the action layer leaning on it.
+type MockTestAttempt = TestAttempt & { answers: TestAttemptAnswer[] }
+
+/**
+ * Sidebar badge count — number of unpublished tests. Cheap; one COUNT(*)
+ * on the `tests_published_idx` partial.
+ */
+export async function getDraftTestCount(): Promise<number> {
+  if (HAS_DB) {
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(tests)
+        .where(eq(tests.isPublished, false))
+      return Number(row?.count) || 0
+    } catch (err) {
+      console.error('[getDraftTestCount]', err)
+      return 0
+    }
+  }
+  if (MOCK_AUTH_ENABLED) {
+    const source = readMockTestCatalog()
+    return source.tests.filter((t) => !t.isPublished).length
+  }
+  return placeholderTests.filter((t) => !t.isPublished).length
+}
+
+/**
+ * Admin detail read by id (NOT slug) — admins use ids in URLs because slug
+ * may be edited mid-session. Includes ALL questions and options regardless
+ * of `isPublished` — admin needs draft access.
+ */
+export async function getTestForAdmin(
+  id: string,
+): Promise<AdminTestDetail | null> {
+  if (HAS_DB) {
+    if (!isUuid(id)) return null
+    try {
+      const [row] = await db
+        .select()
+        .from(tests)
+        .where(eq(tests.id, id))
+        .limit(1)
+      if (!row) return null
+      const qRows = await db
+        .select()
+        .from(testQuestions)
+        .where(eq(testQuestions.testId, row.id))
+        .orderBy(asc(testQuestions.displayOrder))
+      if (qRows.length === 0) return { ...row, questions: [] }
+      const oRows = await db
+        .select()
+        .from(testOptions)
+        .where(
+          inArray(
+            testOptions.questionId,
+            qRows.map((q) => q.id),
+          ),
+        )
+        .orderBy(asc(testOptions.displayOrder))
+      const optionsByQ = new Map<string, TestOption[]>()
+      for (const o of oRows) {
+        const list = optionsByQ.get(o.questionId) ?? []
+        list.push(o)
+        optionsByQ.set(o.questionId, list)
+      }
+      return {
+        ...row,
+        questions: qRows.map((q) => ({
+          ...q,
+          options: optionsByQ.get(q.id) ?? [],
+        })),
+      }
+    } catch (err) {
+      console.error('[getTestForAdmin]', err)
+    }
+  }
+  const source = readMockTestCatalog()
+  const test = source.tests.find((t) => t.id === id)
+  if (!test) return null
+  const questions = (source.questionsByTestId.get(test.id) ?? [])
+    .slice()
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((q) => ({
+      ...q,
+      options: (source.optionsByQuestionId.get(q.id) ?? [])
+        .slice()
+        .sort((a, b) => a.displayOrder - b.displayOrder),
+    }))
+  return { ...test, questions }
+}
+
+/**
+ * Aggregate analytics for one test. Three queries, plain by design:
+ *   Q1: attempt-level aggregates from `test_attempts`
+ *   Q2: per-option selection counts from `test_attempt_answers`
+ *   Q3: 20 most recent attempts joined with users
+ *
+ * Score-band thresholds match the user-side AnswerCard: low=<50,
+ * medium=50–79, high=≥80.
+ */
+export async function getTestAnalytics(
+  testId: string,
+): Promise<AdminTestAnalytics | null> {
+  if (HAS_DB) {
+    if (!isUuid(testId)) return null
+    try {
+      const [test] = await db
+        .select()
+        .from(tests)
+        .where(eq(tests.id, testId))
+        .limit(1)
+      if (!test) return null
+      const qRows = await db
+        .select()
+        .from(testQuestions)
+        .where(eq(testQuestions.testId, test.id))
+        .orderBy(asc(testQuestions.displayOrder))
+      const oRows =
+        qRows.length === 0
+          ? []
+          : await db
+              .select()
+              .from(testOptions)
+              .where(
+                inArray(
+                  testOptions.questionId,
+                  qRows.map((q) => q.id),
+                ),
+              )
+              .orderBy(asc(testOptions.displayOrder))
+      const optionsByQ = new Map<string, TestOption[]>()
+      for (const o of oRows) {
+        const list = optionsByQ.get(o.questionId) ?? []
+        list.push(o)
+        optionsByQ.set(o.questionId, list)
+      }
+      // Q1
+      const [agg] = await db
+        .select({
+          totalAttempts: sql<number>`COUNT(*)::int`,
+          uniqueUsers: sql<number>`COUNT(DISTINCT ${testAttempts.userId})::int`,
+          averageScore: sql<number | null>`AVG(${testAttempts.scorePercentage})::float`,
+          lowCount: sql<number>`SUM(CASE WHEN ${testAttempts.scorePercentage} < 50 THEN 1 ELSE 0 END)::int`,
+          medCount: sql<number>`SUM(CASE WHEN ${testAttempts.scorePercentage} >= 50 AND ${testAttempts.scorePercentage} < 80 THEN 1 ELSE 0 END)::int`,
+          highCount: sql<number>`SUM(CASE WHEN ${testAttempts.scorePercentage} >= 80 THEN 1 ELSE 0 END)::int`,
+        })
+        .from(testAttempts)
+        .where(eq(testAttempts.testId, test.id))
+      const totalAttempts = Number(agg?.totalAttempts) || 0
+      const uniqueUsers = Number(agg?.uniqueUsers) || 0
+      const averageScore =
+        agg?.averageScore != null
+          ? Math.round(Number(agg.averageScore))
+          : null
+      const scoreDistribution: AdminTestAnalytics['scoreDistribution'] = [
+        { band: 'low', count: Number(agg?.lowCount) || 0 },
+        { band: 'medium', count: Number(agg?.medCount) || 0 },
+        { band: 'high', count: Number(agg?.highCount) || 0 },
+      ]
+      // Q2 — per-option selection counts. We join through attempts to
+      // confine to this test only (attempt_answers cascades on attempt
+      // delete, but a stale row at the boundary would otherwise leak in).
+      const optionRows =
+        qRows.length === 0
+          ? []
+          : await db
+              .select({
+                questionId: testAttemptAnswers.questionId,
+                selectedOptionId: testAttemptAnswers.selectedOptionId,
+                count: sql<number>`COUNT(*)::int`,
+              })
+              .from(testAttemptAnswers)
+              .innerJoin(
+                testAttempts,
+                eq(testAttempts.id, testAttemptAnswers.attemptId),
+              )
+              .where(eq(testAttempts.testId, test.id))
+              .groupBy(
+                testAttemptAnswers.questionId,
+                testAttemptAnswers.selectedOptionId,
+              )
+      const selectionByQO = new Map<string, number>()
+      for (const r of optionRows) {
+        selectionByQO.set(`${r.questionId}:${r.selectedOptionId}`, Number(r.count) || 0)
+      }
+      // Q3 — recent attempts.
+      const recentRows = await db
+        .select({
+          attempt: testAttempts,
+          user: { id: users.id, name: users.name, email: users.email },
+        })
+        .from(testAttempts)
+        .leftJoin(users, eq(users.id, testAttempts.userId))
+        .where(eq(testAttempts.testId, test.id))
+        .orderBy(desc(testAttempts.completedAt))
+        .limit(20)
+      const recentAttempts: AdminTestAnalytics['recentAttempts'] = recentRows
+        .map((r) => {
+          if (!r.user) return null
+          return {
+            ...r.attempt,
+            user: {
+              id: r.user.id,
+              name: r.user.name,
+              email: r.user.email,
+            },
+          }
+        })
+        .filter(
+          (
+            x,
+          ): x is TestAttempt & {
+            user: Pick<User, 'id' | 'name' | 'email'>
+          } => x !== null,
+        )
+      // Per-question rollup with correct-percentage.
+      const questions: AdminTestAnalytics['questions'] = qRows.map((q) => {
+        const opts = optionsByQ.get(q.id) ?? []
+        const correctOption = opts.find((o) => o.isCorrect)
+        const optionRollups = opts.map((o) => {
+          const selectionCount = selectionByQO.get(`${q.id}:${o.id}`) ?? 0
+          const selectionPercentage =
+            totalAttempts > 0
+              ? Math.round((selectionCount / totalAttempts) * 100)
+              : 0
+          return {
+            option: o,
+            selectionCount,
+            selectionPercentage,
+            isCorrect: o.isCorrect,
+          }
+        })
+        const correctCount = correctOption
+          ? selectionByQO.get(`${q.id}:${correctOption.id}`) ?? 0
+          : 0
+        const correctPercentage =
+          totalAttempts > 0
+            ? Math.round((correctCount / totalAttempts) * 100)
+            : 0
+        return {
+          question: q,
+          options: optionRollups,
+          correctCount,
+          correctPercentage,
+        }
+      })
+      return {
+        test,
+        totalAttempts,
+        uniqueUsers,
+        averageScore,
+        scoreDistribution,
+        questions,
+        recentAttempts,
+      }
+    } catch (err) {
+      console.error('[getTestAnalytics]', err)
+      return null
+    }
+  }
+  // Mock-mode fallback: compute everything in-memory.
+  const source = readMockTestCatalog()
+  const test = source.tests.find((t) => t.id === testId)
+  if (!test) return null
+  const store = readStore()
+  const attempts = store.testAttempts.filter((a) => a.testId === testId)
+  const totalAttempts = attempts.length
+  const uniqueUsers = new Set(attempts.map((a) => a.userId)).size
+  const averageScore =
+    totalAttempts === 0
+      ? null
+      : Math.round(
+          attempts.reduce((s, a) => s + a.scorePercentage, 0) / totalAttempts,
+        )
+  const lowCount = attempts.filter((a) => a.scorePercentage < 50).length
+  const medCount = attempts.filter(
+    (a) => a.scorePercentage >= 50 && a.scorePercentage < 80,
+  ).length
+  const highCount = attempts.filter((a) => a.scorePercentage >= 80).length
+  const qList = (source.questionsByTestId.get(test.id) ?? [])
+    .slice()
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+  const selectionByQO = new Map<string, number>()
+  for (const att of attempts) {
+    for (const ans of att.answers) {
+      const key = `${ans.questionId}:${ans.selectedOptionId}`
+      selectionByQO.set(key, (selectionByQO.get(key) ?? 0) + 1)
+    }
+  }
+  // Mock recent attempts can't join users — surface a stub user object so
+  // the UI doesn't crash on null. mock users are anonymous in this view.
+  const recentAttempts = attempts
+    .slice()
+    .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())
+    .slice(0, 20)
+    .map((a) => ({
+      ...a,
+      user: {
+        id: a.userId,
+        name: 'Mock user',
+        email: `${a.userId}@mock.local`,
+      },
+    }))
+  const questions: AdminTestAnalytics['questions'] = qList.map((q) => {
+    const opts = (source.optionsByQuestionId.get(q.id) ?? [])
+      .slice()
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+    const correctOption = opts.find((o) => o.isCorrect)
+    const optionRollups = opts.map((o) => {
+      const selectionCount = selectionByQO.get(`${q.id}:${o.id}`) ?? 0
+      const selectionPercentage =
+        totalAttempts > 0
+          ? Math.round((selectionCount / totalAttempts) * 100)
+          : 0
+      return {
+        option: o,
+        selectionCount,
+        selectionPercentage,
+        isCorrect: o.isCorrect,
+      }
+    })
+    const correctCount = correctOption
+      ? selectionByQO.get(`${q.id}:${correctOption.id}`) ?? 0
+      : 0
+    const correctPercentage =
+      totalAttempts > 0 ? Math.round((correctCount / totalAttempts) * 100) : 0
+    return { question: q, options: optionRollups, correctCount, correctPercentage }
+  })
+  return {
+    test,
+    totalAttempts,
+    uniqueUsers,
+    averageScore,
+    scoreDistribution: [
+      { band: 'low', count: lowCount },
+      { band: 'medium', count: medCount },
+      { band: 'high', count: highCount },
+    ],
+    questions,
+    recentAttempts,
+  }
+}
+
+/**
+ * How many historical answers attach to the given questions? Used by the
+ * update flow to surface "{N} historical attempts will be affected" in the
+ * confirm-removals modal BEFORE the cascade-delete fires.
+ */
+export async function countAttemptAnswersForQuestions(
+  questionIds: string[],
+): Promise<number> {
+  if (questionIds.length === 0) return 0
+  if (HAS_DB) {
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(testAttemptAnswers)
+        .where(inArray(testAttemptAnswers.questionId, questionIds))
+      return Number(row?.count) || 0
+    } catch (err) {
+      console.error('[countAttemptAnswersForQuestions]', err)
+      return 0
+    }
+  }
+  const store = readStore()
+  const set = new Set(questionIds)
+  let count = 0
+  for (const att of store.testAttempts) {
+    for (const ans of att.answers) {
+      if (set.has(ans.questionId)) count++
+    }
+  }
+  return count
+}
+
+/** True iff the slug is taken by ANOTHER test (excludeId optional). */
+export async function isTestSlugTaken(
+  slug: string,
+  excludeId?: string,
+): Promise<boolean> {
+  if (HAS_DB) {
+    try {
+      const conditions = [eq(tests.slug, slug)]
+      if (excludeId && isUuid(excludeId))
+        conditions.push(ne(tests.id, excludeId))
+      const [row] = await db
+        .select({ id: tests.id })
+        .from(tests)
+        .where(and(...conditions))
+        .limit(1)
+      return !!row
+    } catch (err) {
+      console.error('[isTestSlugTaken]', err)
+      return false
+    }
+  }
+  const source = readMockTestCatalog()
+  return source.tests.some(
+    (t) => t.slug === slug && (!excludeId || t.id !== excludeId),
+  )
+}
+
+/**
+ * Create a test row + its questions + their options.
+ *
+ * Sequential inserts (Neon HTTP doesn't support transactions). On
+ * child-insert failure, best-effort cleanup deletes the parent so we don't
+ * orphan a test row with no questions. Returns null on any failure; the
+ * action layer maps to a translated error.
+ */
+export async function createTest(
+  input: CreateAdminTestInput,
+): Promise<Test | null> {
+  if (HAS_DB) {
+    try {
+      const [test] = await db
+        .insert(tests)
+        .values({
+          slug: input.slug,
+          titleAr: input.titleAr,
+          titleEn: input.titleEn,
+          introAr: input.introAr,
+          introEn: input.introEn,
+          descriptionAr: input.descriptionAr,
+          descriptionEn: input.descriptionEn,
+          category: input.category,
+          estimatedMinutes: input.estimatedMinutes,
+          coverImageUrl: input.coverImageUrl,
+          isPublished: input.isPublished,
+          displayOrder: input.displayOrder,
+        })
+        .returning()
+      if (!test) return null
+      try {
+        for (let qi = 0; qi < input.questions.length; qi++) {
+          const q = input.questions[qi]
+          const [qRow] = await db
+            .insert(testQuestions)
+            .values({
+              testId: test.id,
+              displayOrder: qi,
+              promptAr: q.promptAr,
+              promptEn: q.promptEn,
+              explanationAr: q.explanationAr,
+              explanationEn: q.explanationEn,
+            })
+            .returning()
+          if (!qRow) throw new Error('question insert returned no row')
+          if (q.options.length > 0) {
+            await db.insert(testOptions).values(
+              q.options.map((o, oi) => ({
+                questionId: qRow.id,
+                displayOrder: oi,
+                labelAr: o.labelAr,
+                labelEn: o.labelEn,
+                isCorrect: o.isCorrect,
+              })),
+            )
+          }
+        }
+      } catch (childErr) {
+        console.error('[createTest] child insert failed; cleaning up', childErr)
+        try {
+          await db.delete(tests).where(eq(tests.id, test.id))
+        } catch (cleanupErr) {
+          console.error(
+            '[createTest] cleanup of orphaned test row failed',
+            cleanupErr,
+          )
+        }
+        return null
+      }
+      return test
+    } catch (err) {
+      // Concrete error code "23505" = unique_violation. Surface as null —
+      // the action layer pre-checks the slug, but two concurrent admin
+      // creates can race past that check.
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code?: string }).code === '23505'
+      ) {
+        console.warn('[createTest] unique_violation — slug taken')
+        return null
+      }
+      console.error('[createTest]', err)
+      return null
+    }
+  }
+  // Mock-mode write — seed from placeholders on first write so admins start
+  // with the seeded catalog.
+  const store = readStore()
+  if (store.tests.size === 0) {
+    for (const t of placeholderTests) store.tests.set(t.id, t)
+    for (const q of placeholderTestQuestions) {
+      const list = store.testQuestions.get(q.testId) ?? []
+      list.push(q)
+      store.testQuestions.set(q.testId, list)
+    }
+    for (const o of placeholderTestOptions) {
+      const list = store.testOptions.get(o.questionId) ?? []
+      list.push(o)
+      store.testOptions.set(o.questionId, list)
+    }
+  }
+  // Slug uniqueness check in mock too.
+  for (const t of store.tests.values()) {
+    if (t.slug === input.slug) return null
+  }
+  const now = new Date()
+  const testId = crypto.randomUUID()
+  const newTest: Test = {
+    id: testId,
+    slug: input.slug,
+    titleAr: input.titleAr,
+    titleEn: input.titleEn,
+    introAr: input.introAr,
+    introEn: input.introEn,
+    descriptionAr: input.descriptionAr,
+    descriptionEn: input.descriptionEn,
+    category: input.category,
+    estimatedMinutes: input.estimatedMinutes,
+    coverImageUrl: input.coverImageUrl,
+    priceUsd: null,
+    isPaid: false,
+    isPublished: input.isPublished,
+    displayOrder: input.displayOrder,
+    createdAt: now,
+    updatedAt: now,
+  }
+  store.tests.set(testId, newTest)
+  const newQuestions: TestQuestion[] = []
+  for (let qi = 0; qi < input.questions.length; qi++) {
+    const q = input.questions[qi]
+    const questionId = crypto.randomUUID()
+    newQuestions.push({
+      id: questionId,
+      testId,
+      displayOrder: qi,
+      promptAr: q.promptAr,
+      promptEn: q.promptEn,
+      explanationAr: q.explanationAr,
+      explanationEn: q.explanationEn,
+      createdAt: now,
+      updatedAt: now,
+    })
+    const newOpts: TestOption[] = q.options.map((o, oi) => ({
+      id: crypto.randomUUID(),
+      questionId,
+      displayOrder: oi,
+      labelAr: o.labelAr,
+      labelEn: o.labelEn,
+      isCorrect: o.isCorrect,
+      createdAt: now,
+    }))
+    store.testOptions.set(questionId, newOpts)
+  }
+  store.testQuestions.set(testId, newQuestions)
+  writeStore(store)
+  return newTest
+}
+
+/**
+ * Update a test row + diff its questions/options against the existing.
+ *
+ * Diff semantics:
+ *   - Question/option WITH id present → UPDATE existing fields
+ *   - Question/option WITHOUT id → INSERT new row
+ *   - Existing question/option NOT in payload → DELETE (cascades to
+ *     test_attempt_answers)
+ *
+ * Sequential operations, no transaction. Like createTest, child-insert
+ * failure leaves partial state; the action layer revalidates so the next
+ * fetch shows truth, not the optimistic admin form payload.
+ */
+export type UpdateTestResult =
+  | { ok: true; test: Test }
+  | { ok: false; error: 'not_found' | 'slug_taken' | 'database_error' }
+
+export async function updateTest(
+  input: UpdateAdminTestInput,
+): Promise<UpdateTestResult> {
+  if (HAS_DB) {
+    if (!isUuid(input.id)) return { ok: false, error: 'not_found' }
+    try {
+      const [existing] = await db
+        .select()
+        .from(tests)
+        .where(eq(tests.id, input.id))
+        .limit(1)
+      if (!existing) return { ok: false, error: 'not_found' }
+      // Slug-uniqueness check: another row with the same slug?
+      if (input.slug !== existing.slug) {
+        const [taken] = await db
+          .select({ id: tests.id })
+          .from(tests)
+          .where(and(eq(tests.slug, input.slug), ne(tests.id, input.id)))
+          .limit(1)
+        if (taken) return { ok: false, error: 'slug_taken' }
+      }
+      // Update parent row.
+      const [updated] = await db
+        .update(tests)
+        .set({
+          slug: input.slug,
+          titleAr: input.titleAr,
+          titleEn: input.titleEn,
+          introAr: input.introAr,
+          introEn: input.introEn,
+          descriptionAr: input.descriptionAr,
+          descriptionEn: input.descriptionEn,
+          category: input.category,
+          estimatedMinutes: input.estimatedMinutes,
+          coverImageUrl: input.coverImageUrl,
+          isPublished: input.isPublished,
+          displayOrder: input.displayOrder,
+          updatedAt: new Date(),
+        })
+        .where(eq(tests.id, input.id))
+        .returning()
+      if (!updated) return { ok: false, error: 'database_error' }
+      // Diff questions.
+      const existingQuestions = await db
+        .select()
+        .from(testQuestions)
+        .where(eq(testQuestions.testId, input.id))
+      const existingQById = new Map(existingQuestions.map((q) => [q.id, q]))
+      const incomingQIds = new Set<string>()
+      for (let qi = 0; qi < input.questions.length; qi++) {
+        const q = input.questions[qi]
+        if (q.id && existingQById.has(q.id)) {
+          incomingQIds.add(q.id)
+          await db
+            .update(testQuestions)
+            .set({
+              displayOrder: qi,
+              promptAr: q.promptAr,
+              promptEn: q.promptEn,
+              explanationAr: q.explanationAr,
+              explanationEn: q.explanationEn,
+              updatedAt: new Date(),
+            })
+            .where(eq(testQuestions.id, q.id))
+          // Diff options for this question.
+          const existingOpts = await db
+            .select()
+            .from(testOptions)
+            .where(eq(testOptions.questionId, q.id))
+          const existingOById = new Map(existingOpts.map((o) => [o.id, o]))
+          const incomingOIds = new Set<string>()
+          for (let oi = 0; oi < q.options.length; oi++) {
+            const o = q.options[oi]
+            if (o.id && existingOById.has(o.id)) {
+              incomingOIds.add(o.id)
+              await db
+                .update(testOptions)
+                .set({
+                  displayOrder: oi,
+                  labelAr: o.labelAr,
+                  labelEn: o.labelEn,
+                  isCorrect: o.isCorrect,
+                })
+                .where(eq(testOptions.id, o.id))
+            } else {
+              await db.insert(testOptions).values({
+                questionId: q.id,
+                displayOrder: oi,
+                labelAr: o.labelAr,
+                labelEn: o.labelEn,
+                isCorrect: o.isCorrect,
+              })
+            }
+          }
+          // Delete options absent from payload.
+          const removedOIds = existingOpts
+            .filter((o) => !incomingOIds.has(o.id))
+            .map((o) => o.id)
+          if (removedOIds.length > 0) {
+            await db
+              .delete(testOptions)
+              .where(inArray(testOptions.id, removedOIds))
+          }
+        } else {
+          // New question.
+          const [qRow] = await db
+            .insert(testQuestions)
+            .values({
+              testId: input.id,
+              displayOrder: qi,
+              promptAr: q.promptAr,
+              promptEn: q.promptEn,
+              explanationAr: q.explanationAr,
+              explanationEn: q.explanationEn,
+            })
+            .returning()
+          if (qRow && q.options.length > 0) {
+            await db.insert(testOptions).values(
+              q.options.map((o, oi) => ({
+                questionId: qRow.id,
+                displayOrder: oi,
+                labelAr: o.labelAr,
+                labelEn: o.labelEn,
+                isCorrect: o.isCorrect,
+              })),
+            )
+          }
+        }
+      }
+      // Delete questions absent from payload — cascades to options + answers.
+      const removedQIds = existingQuestions
+        .filter((q) => !incomingQIds.has(q.id))
+        .map((q) => q.id)
+      if (removedQIds.length > 0) {
+        await db
+          .delete(testQuestions)
+          .where(inArray(testQuestions.id, removedQIds))
+      }
+      return { ok: true, test: updated }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code?: string }).code === '23505'
+      ) {
+        return { ok: false, error: 'slug_taken' }
+      }
+      console.error('[updateTest]', err)
+      return { ok: false, error: 'database_error' }
+    }
+  }
+  // Mock-mode update.
+  const store = readStore()
+  if (store.tests.size === 0) {
+    for (const t of placeholderTests) store.tests.set(t.id, t)
+    for (const q of placeholderTestQuestions) {
+      const list = store.testQuestions.get(q.testId) ?? []
+      list.push(q)
+      store.testQuestions.set(q.testId, list)
+    }
+    for (const o of placeholderTestOptions) {
+      const list = store.testOptions.get(o.questionId) ?? []
+      list.push(o)
+      store.testOptions.set(o.questionId, list)
+    }
+  }
+  const existing = store.tests.get(input.id)
+  if (!existing) return { ok: false, error: 'not_found' }
+  for (const t of store.tests.values()) {
+    if (t.id !== input.id && t.slug === input.slug)
+      return { ok: false, error: 'slug_taken' }
+  }
+  const now = new Date()
+  const updated: Test = {
+    ...existing,
+    slug: input.slug,
+    titleAr: input.titleAr,
+    titleEn: input.titleEn,
+    introAr: input.introAr,
+    introEn: input.introEn,
+    descriptionAr: input.descriptionAr,
+    descriptionEn: input.descriptionEn,
+    category: input.category,
+    estimatedMinutes: input.estimatedMinutes,
+    coverImageUrl: input.coverImageUrl,
+    isPublished: input.isPublished,
+    displayOrder: input.displayOrder,
+    updatedAt: now,
+  }
+  store.tests.set(input.id, updated)
+  // Rebuild the question + option maps for this test from the payload.
+  const existingQList = store.testQuestions.get(input.id) ?? []
+  const existingQById = new Map(existingQList.map((q) => [q.id, q]))
+  const incomingQIds = new Set<string>()
+  const newQList: TestQuestion[] = []
+  for (let qi = 0; qi < input.questions.length; qi++) {
+    const q = input.questions[qi]
+    if (q.id && existingQById.has(q.id)) {
+      incomingQIds.add(q.id)
+      const prev = existingQById.get(q.id)!
+      newQList.push({
+        ...prev,
+        displayOrder: qi,
+        promptAr: q.promptAr,
+        promptEn: q.promptEn,
+        explanationAr: q.explanationAr,
+        explanationEn: q.explanationEn,
+        updatedAt: now,
+      })
+      // Options diff for this question.
+      const prevOpts = store.testOptions.get(q.id) ?? []
+      const prevOById = new Map(prevOpts.map((o) => [o.id, o]))
+      const newOpts: TestOption[] = []
+      for (let oi = 0; oi < q.options.length; oi++) {
+        const o = q.options[oi]
+        if (o.id && prevOById.has(o.id)) {
+          const prevO = prevOById.get(o.id)!
+          newOpts.push({
+            ...prevO,
+            displayOrder: oi,
+            labelAr: o.labelAr,
+            labelEn: o.labelEn,
+            isCorrect: o.isCorrect,
+          })
+        } else {
+          newOpts.push({
+            id: crypto.randomUUID(),
+            questionId: q.id,
+            displayOrder: oi,
+            labelAr: o.labelAr,
+            labelEn: o.labelEn,
+            isCorrect: o.isCorrect,
+            createdAt: now,
+          })
+        }
+      }
+      store.testOptions.set(q.id, newOpts)
+    } else {
+      // New question.
+      const newId = crypto.randomUUID()
+      newQList.push({
+        id: newId,
+        testId: input.id,
+        displayOrder: qi,
+        promptAr: q.promptAr,
+        promptEn: q.promptEn,
+        explanationAr: q.explanationAr,
+        explanationEn: q.explanationEn,
+        createdAt: now,
+        updatedAt: now,
+      })
+      store.testOptions.set(
+        newId,
+        q.options.map((o, oi) => ({
+          id: crypto.randomUUID(),
+          questionId: newId,
+          displayOrder: oi,
+          labelAr: o.labelAr,
+          labelEn: o.labelEn,
+          isCorrect: o.isCorrect,
+          createdAt: now,
+        })),
+      )
+    }
+  }
+  // Drop options for removed questions.
+  for (const prev of existingQList) {
+    if (!incomingQIds.has(prev.id)) {
+      store.testOptions.delete(prev.id)
+    }
+  }
+  store.testQuestions.set(input.id, newQList)
+  writeStore(store)
+  return { ok: true, test: updated }
+}
+
+/**
+ * Hard delete. Cascades to questions, options, attempts, attempt_answers
+ * via FK ON DELETE CASCADE per the C1 schema.
+ *
+ * Idempotent — no-op if the row is already gone.
+ */
+export async function deleteTest(id: string): Promise<boolean> {
+  if (HAS_DB) {
+    if (!isUuid(id)) return true
+    try {
+      await db.delete(tests).where(eq(tests.id, id))
+      return true
+    } catch (err) {
+      console.error('[deleteTest]', err)
+      return false
+    }
+  }
+  const store = readStore()
+  // Seeding the store from placeholders on delete would let an admin "see"
+  // a test reappear after deletion (because placeholder data backs the
+  // catalog when the store is empty). Instead, on first delete we seed
+  // and immediately drop the target.
+  if (store.tests.size === 0) {
+    for (const t of placeholderTests) store.tests.set(t.id, t)
+    for (const q of placeholderTestQuestions) {
+      const list = store.testQuestions.get(q.testId) ?? []
+      list.push(q)
+      store.testQuestions.set(q.testId, list)
+    }
+    for (const o of placeholderTestOptions) {
+      const list = store.testOptions.get(o.questionId) ?? []
+      list.push(o)
+      store.testOptions.set(o.questionId, list)
+    }
+  }
+  const existing = store.tests.get(id)
+  if (existing) {
+    store.tests.delete(id)
+    const qList = store.testQuestions.get(id) ?? []
+    for (const q of qList) store.testOptions.delete(q.id)
+    store.testQuestions.delete(id)
+    // Cascade attempts + answers.
+    store.testAttempts = store.testAttempts.filter((a) => a.testId !== id)
+    writeStore(store)
+  }
+  return true
+}
+
+/** Toggle `tests.is_published`. Returns the updated row or null. */
+export async function setTestPublished(
+  id: string,
+  isPublished: boolean,
+): Promise<Test | null> {
+  if (HAS_DB) {
+    if (!isUuid(id)) return null
+    try {
+      const [row] = await db
+        .update(tests)
+        .set({ isPublished, updatedAt: new Date() })
+        .where(eq(tests.id, id))
+        .returning()
+      return row ?? null
+    } catch (err) {
+      console.error('[setTestPublished]', err)
+      return null
+    }
+  }
+  const store = readStore()
+  if (store.tests.size === 0) {
+    for (const t of placeholderTests) store.tests.set(t.id, t)
+  }
+  const existing = store.tests.get(id)
+  if (!existing) return null
+  const updated: Test = {
+    ...existing,
+    isPublished,
+    updatedAt: new Date(),
+  }
+  store.tests.set(id, updated)
+  writeStore(store)
+  return updated
+}
+
 export type {
   Article,
   ArticleCategory,
@@ -4831,6 +6610,11 @@ export type {
   SiteSetting,
   Subscriber,
   SubscriberStatus,
+  Test,
+  TestAttempt,
+  TestAttemptAnswer,
+  TestOption,
+  TestQuestion,
   Tour,
   TourSuggestion,
   User,

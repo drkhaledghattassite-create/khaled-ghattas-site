@@ -43,11 +43,15 @@ export function AdminTopbar({
   showAdminBooking = true,
   showAdminQuestions = true,
   pendingQuestionCount = 0,
+  showAdminTests = true,
+  draftTestCount = 0,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
   showAdminQuestions?: boolean
   pendingQuestionCount?: number
+  showAdminTests?: boolean
+  draftTestCount?: number
 }) {
   const pathname = usePathname()
   const locale = useLocale()
@@ -103,6 +107,8 @@ export function AdminTopbar({
             showAdminBooking={showAdminBooking}
             showAdminQuestions={showAdminQuestions}
             pendingQuestionCount={pendingQuestionCount}
+            showAdminTests={showAdminTests}
+            draftTestCount={draftTestCount}
             onNavigate={() => setDrawerOpen(false)}
           />
         </SheetContent>
@@ -178,7 +184,7 @@ export function AdminTopbar({
             <span aria-hidden className="block h-7 w-7 shrink-0 rounded-full bg-fg1/80" />
             <span className="hidden truncate sm:inline">{user.name}</span>
           </DropdownMenuTrigger>
-          {/* min-w-[260px] gives long emails (e.g., kamallchhimi@gmail.com)
+          {/* min-w-[260px] gives long emails (e.g., Team@drkhaledghattass.com)
               room to render without horizontal-clip truncation that hid the
               first few characters in RTL. */}
           <DropdownMenuContent align="end" className="min-w-[260px]">
@@ -217,6 +223,8 @@ function lookupNavKey(segment: string): string | null {
     content: 'content',
     media: 'media',
     questions: 'questions',
+    tests: 'tests',
+    analytics: 'analytics',
     new: 'new',
     edit: 'edit',
   }

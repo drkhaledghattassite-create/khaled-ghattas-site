@@ -33,9 +33,24 @@ import type {
   BookingInterest,
   PdfBookmark,
   SessionItem,
+  Test,
+  TestAttempt,
+  TestAttemptAnswer,
+  TestOption,
+  TestQuestion,
   TourSuggestion,
   UserQuestion,
 } from './schema'
+
+/**
+ * Phase C1 mock-store shape for a test attempt — the row + all of its
+ * answers in a single envelope. Mirrors the action's "create attempt + N
+ * answer rows" contract. The result page reads via `attemptId`, the
+ * dashboard history reads via `userId`.
+ */
+export type MockTestAttempt = TestAttempt & {
+  answers: TestAttemptAnswer[]
+}
 
 export type MockProgressEntry = {
   lastPage: number
@@ -77,6 +92,22 @@ export type MockStore = {
   // mock-auth dev. Filtered by userId at read time. Status updates land here
   // too (PENDING → ANSWERED / ARCHIVED) once Phase B2 admin actions ship.
   userQuestions: UserQuestion[]
+  // Phase C1 — append-only list of completed test attempts. Each entry holds
+  // the attempt header + its denormalised answer rows (the same shape the
+  // result page consumes after a JOIN). Read paths filter by attemptId or
+  // userId.
+  testAttempts: MockTestAttempt[]
+  // Phase C2 — admin-managed catalog. When an admin first writes via the
+  // /admin/tests CRUD in mock-auth dev mode, the C2 query helpers seed
+  // these maps from `placeholderTests`/etc and apply the mutation on top.
+  // Reads layered: store-first, placeholder-fallback (the seed is
+  // idempotent, so subsequent reads see the merged state).
+  // Keyed by test id. Tracks the FULL Test row (including isPublished).
+  tests: Map<string, Test>
+  // Keyed by testId → list of questions in displayOrder.
+  testQuestions: Map<string, TestQuestion[]>
+  // Keyed by questionId → list of options in displayOrder.
+  testOptions: Map<string, TestOption[]>
 }
 
 // JSON shape on disk — Maps serialised as [key, value][].
@@ -119,6 +150,31 @@ type SerializedUserQuestion = Omit<
   answeredAt: string | null
   archivedAt: string | null
 }
+type SerializedTestAttemptAnswer = Omit<TestAttemptAnswer, 'createdAt'> & {
+  createdAt: string
+}
+type SerializedTestAttempt = Omit<
+  TestAttempt,
+  'completedAt' | 'createdAt'
+> & {
+  completedAt: string
+  createdAt: string
+  answers: SerializedTestAttemptAnswer[]
+}
+type SerializedTest = Omit<Test, 'createdAt' | 'updatedAt'> & {
+  createdAt: string
+  updatedAt: string
+}
+type SerializedTestQuestion = Omit<
+  TestQuestion,
+  'createdAt' | 'updatedAt'
+> & {
+  createdAt: string
+  updatedAt: string
+}
+type SerializedTestOption = Omit<TestOption, 'createdAt'> & {
+  createdAt: string
+}
 type SerializedStore = {
   progress: Array<[string, SerializedProgressEntry]>
   bookmarks: Array<[string, SerializedBookmark[]]>
@@ -127,6 +183,10 @@ type SerializedStore = {
   bookingInterest?: Array<[string, SerializedBookingInterest]>
   tourSuggestions?: SerializedTourSuggestion[]
   userQuestions?: SerializedUserQuestion[]
+  testAttempts?: SerializedTestAttempt[]
+  tests?: Array<[string, SerializedTest]>
+  testQuestions?: Array<[string, SerializedTestQuestion[]]>
+  testOptions?: Array<[string, SerializedTestOption[]]>
 }
 
 const STORE_FILE = join(
@@ -145,6 +205,10 @@ function emptyStore(): MockStore {
     bookingInterest: new Map(),
     tourSuggestions: [],
     userQuestions: [],
+    testAttempts: [],
+    tests: new Map(),
+    testQuestions: new Map(),
+    testOptions: new Map(),
   }
 }
 
@@ -280,6 +344,100 @@ export function readStore(): MockStore {
         updatedAt: !Number.isNaN(updatedAt.getTime()) ? updatedAt : createdAt,
       })
     }
+    const testAttemptsList: MockTestAttempt[] = []
+    for (const entry of parsed.testAttempts ?? []) {
+      const completedAt = new Date(entry.completedAt)
+      if (Number.isNaN(completedAt.getTime())) continue
+      const createdAt = new Date(entry.createdAt)
+      const answers: TestAttemptAnswer[] = []
+      for (const a of entry.answers ?? []) {
+        const aCreatedAt = new Date(a.createdAt)
+        if (Number.isNaN(aCreatedAt.getTime())) continue
+        answers.push({
+          id: a.id,
+          attemptId: a.attemptId,
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId,
+          isCorrect: Boolean(a.isCorrect),
+          createdAt: aCreatedAt,
+        })
+      }
+      testAttemptsList.push({
+        id: entry.id,
+        testId: entry.testId,
+        userId: entry.userId,
+        scorePercentage: Number(entry.scorePercentage) || 0,
+        correctCount: Number(entry.correctCount) || 0,
+        totalCount: Number(entry.totalCount) || 0,
+        completedAt,
+        createdAt: !Number.isNaN(createdAt.getTime()) ? createdAt : completedAt,
+        answers,
+      })
+    }
+    const testsMap = new Map<string, Test>()
+    for (const [key, entry] of parsed.tests ?? []) {
+      const createdAt = new Date(entry.createdAt)
+      const updatedAt = new Date(entry.updatedAt)
+      if (Number.isNaN(createdAt.getTime())) continue
+      testsMap.set(key, {
+        id: entry.id,
+        slug: entry.slug,
+        titleAr: entry.titleAr,
+        titleEn: entry.titleEn,
+        introAr: entry.introAr,
+        introEn: entry.introEn,
+        descriptionAr: entry.descriptionAr,
+        descriptionEn: entry.descriptionEn,
+        category: entry.category,
+        estimatedMinutes: Number(entry.estimatedMinutes) || 0,
+        coverImageUrl: entry.coverImageUrl ?? null,
+        priceUsd: entry.priceUsd ?? null,
+        isPaid: Boolean(entry.isPaid),
+        isPublished: Boolean(entry.isPublished),
+        displayOrder: Number(entry.displayOrder) || 0,
+        createdAt,
+        updatedAt: !Number.isNaN(updatedAt.getTime()) ? updatedAt : createdAt,
+      })
+    }
+    const testQuestionsMap = new Map<string, TestQuestion[]>()
+    for (const [key, list] of parsed.testQuestions ?? []) {
+      const next: TestQuestion[] = []
+      for (const q of list) {
+        const createdAt = new Date(q.createdAt)
+        const updatedAt = new Date(q.updatedAt)
+        if (Number.isNaN(createdAt.getTime())) continue
+        next.push({
+          id: q.id,
+          testId: q.testId,
+          displayOrder: Number(q.displayOrder) || 0,
+          promptAr: q.promptAr,
+          promptEn: q.promptEn,
+          explanationAr: q.explanationAr ?? null,
+          explanationEn: q.explanationEn ?? null,
+          createdAt,
+          updatedAt: !Number.isNaN(updatedAt.getTime()) ? updatedAt : createdAt,
+        })
+      }
+      testQuestionsMap.set(key, next)
+    }
+    const testOptionsMap = new Map<string, TestOption[]>()
+    for (const [key, list] of parsed.testOptions ?? []) {
+      const next: TestOption[] = []
+      for (const o of list) {
+        const createdAt = new Date(o.createdAt)
+        if (Number.isNaN(createdAt.getTime())) continue
+        next.push({
+          id: o.id,
+          questionId: o.questionId,
+          displayOrder: Number(o.displayOrder) || 0,
+          labelAr: o.labelAr,
+          labelEn: o.labelEn,
+          isCorrect: Boolean(o.isCorrect),
+          createdAt,
+        })
+      }
+      testOptionsMap.set(key, next)
+    }
     return {
       progress,
       bookmarks,
@@ -288,6 +446,10 @@ export function readStore(): MockStore {
       bookingInterest: bookingInterestMap,
       tourSuggestions: tourSuggestionsList,
       userQuestions: userQuestionsList,
+      testAttempts: testAttemptsList,
+      tests: testsMap,
+      testQuestions: testQuestionsMap,
+      testOptions: testOptionsMap,
     }
   } catch (err) {
     console.warn(
@@ -384,6 +546,74 @@ export function writeStore(store: MockStore): void {
       createdAt: q.createdAt.toISOString(),
       updatedAt: q.updatedAt.toISOString(),
     })),
+    testAttempts: store.testAttempts.map((a) => ({
+      id: a.id,
+      testId: a.testId,
+      userId: a.userId,
+      scorePercentage: a.scorePercentage,
+      correctCount: a.correctCount,
+      totalCount: a.totalCount,
+      completedAt: a.completedAt.toISOString(),
+      createdAt: a.createdAt.toISOString(),
+      answers: a.answers.map((ans) => ({
+        id: ans.id,
+        attemptId: ans.attemptId,
+        questionId: ans.questionId,
+        selectedOptionId: ans.selectedOptionId,
+        isCorrect: ans.isCorrect,
+        createdAt: ans.createdAt.toISOString(),
+      })),
+    })),
+    tests: Array.from(store.tests.entries()).map(([k, t]) => [
+      k,
+      {
+        id: t.id,
+        slug: t.slug,
+        titleAr: t.titleAr,
+        titleEn: t.titleEn,
+        introAr: t.introAr,
+        introEn: t.introEn,
+        descriptionAr: t.descriptionAr,
+        descriptionEn: t.descriptionEn,
+        category: t.category,
+        estimatedMinutes: t.estimatedMinutes,
+        coverImageUrl: t.coverImageUrl ?? null,
+        priceUsd: t.priceUsd ?? null,
+        isPaid: t.isPaid,
+        isPublished: t.isPublished,
+        displayOrder: t.displayOrder,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+      },
+    ]),
+    testQuestions: Array.from(store.testQuestions.entries()).map(
+      ([k, list]) => [
+        k,
+        list.map((q) => ({
+          id: q.id,
+          testId: q.testId,
+          displayOrder: q.displayOrder,
+          promptAr: q.promptAr,
+          promptEn: q.promptEn,
+          explanationAr: q.explanationAr ?? null,
+          explanationEn: q.explanationEn ?? null,
+          createdAt: q.createdAt.toISOString(),
+          updatedAt: q.updatedAt.toISOString(),
+        })),
+      ],
+    ),
+    testOptions: Array.from(store.testOptions.entries()).map(([k, list]) => [
+      k,
+      list.map((o) => ({
+        id: o.id,
+        questionId: o.questionId,
+        displayOrder: o.displayOrder,
+        labelAr: o.labelAr,
+        labelEn: o.labelEn,
+        isCorrect: o.isCorrect,
+        createdAt: o.createdAt.toISOString(),
+      })),
+    ]),
   }
   try {
     mkdirSync(dirname(STORE_FILE), { recursive: true })

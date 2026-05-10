@@ -27,6 +27,7 @@ const navigationSchema = z
     show_nav_contact: z.boolean().optional(),
     show_nav_corporate: z.boolean().optional(),
     show_nav_booking: z.boolean().optional(),
+    show_nav_tests: z.boolean().optional(),
     show_locale_switcher: z.boolean().optional(),
   })
   .strict()
@@ -75,6 +76,7 @@ const adminSchema = z
   .object({
     show_admin_booking: z.boolean().optional(),
     show_admin_questions: z.boolean().optional(),
+    show_admin_tests: z.boolean().optional(),
   })
   .strict()
 
@@ -87,6 +89,7 @@ const dashboardSchema = z
     show_library_tab: z.boolean().optional(),
     show_bookings_tab: z.boolean().optional(),
     show_ask_tab: z.boolean().optional(),
+    show_tests_tab: z.boolean().optional(),
     show_settings_tab: z.boolean().optional(),
   })
   .strict()

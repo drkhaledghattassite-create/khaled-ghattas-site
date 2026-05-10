@@ -75,7 +75,10 @@
       "PowerShell(netlify api *)",
       "PowerShell(*)",
       "WebFetch(domain:design.claude.com)",
-      "WebFetch(domain:design.claude.ai)"
+      "WebFetch(domain:design.claude.ai)",
+      "Bash(mkdir -p .design-bundle)",
+      "Bash(cp /c/Users/OATech/.claude/projects/C--Users-OATech-Desktop-drkhaledghattass/c0ef3a8c-b9df-401b-b395-6f978e58e8f8/tool-results/webfetch-1778405548810-2zk5g1.bin .design-bundle/bundle.tar.gz)",
+      "Bash(tar -xzf .design-bundle/bundle.tar.gz -C .design-bundle/)"
     ]
   }
 }

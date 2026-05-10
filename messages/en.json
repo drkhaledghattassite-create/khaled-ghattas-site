@@ -36,6 +36,7 @@
     "events": "Events",
     "corporate": "For Corporations",
     "booking": "Services for Individuals",
+    "tests": "Tests",
     "menu": "Menu",
     "close": "Close",
     "primary": "Primary navigation",
@@ -314,7 +315,7 @@
     "info": {
       "heading": "Contact information",
       "description": "Reach us by email, by phone, or in person at the Khaled Ghattass Library in Burja, Lebanon:",
-      "email": "kamallchhimi@gmail.com",
+      "email": "Team@drkhaledghattass.com",
       "phone": "009613579666",
       "location": "Khaled Ghattass Library — Burja, Lebanon",
       "social": "Follow:",
@@ -633,9 +634,9 @@
     "body_interviews": "A selection of television, radio, and podcast interviews is being assembled. Watch this space for the full conversation library.",
     "body_events": "The 2025–2026 tour calendar is being finalized. Upcoming lectures, workshops, and engagements will be listed here soon.",
     "body_about": "The biography page is being polished. A full account of Dr. Khaled's career, books, and the Al-Warsheh initiative is on its way.",
-    "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via kamallchhimi@gmail.com in the meantime.",
-    "body_corporate": "The corporate programs page is being prepared. For direct inquiries about leadership, influence, or talent-management programs, please reach out via kamallchhimi@gmail.com.",
-    "body_booking": "Tour dates, the next Reconsider cohort, and online sessions are being finalized. Booking will open here shortly — for direct inquiries please reach out via kamallchhimi@gmail.com.",
+    "body_contact": "The contact channel will open shortly. For urgent inquiries, please reach out via Team@drkhaledghattass.com in the meantime.",
+    "body_corporate": "The corporate programs page is being prepared. For direct inquiries about leadership, influence, or talent-management programs, please reach out via Team@drkhaledghattass.com.",
+    "body_booking": "Tour dates, the next Reconsider cohort, and online sessions are being finalized. Booking will open here shortly — for direct inquiries please reach out via Team@drkhaledghattass.com.",
     "folio_books": "Nº 03",
     "folio_articles": "Nº 02",
     "folio_interviews": "Nº 04",
@@ -687,6 +688,8 @@
       "corporate_requests": "Corporate requests",
       "questions": "Questions",
       "questions_pending_aria": "{count, plural, one {# pending question} other {# pending questions}}",
+      "tests": "Tests",
+      "tests_drafts_aria": "{count, plural, one {# draft test} other {# draft tests}}",
       "booking_tours": "Tours",
       "booking_bookings": "Bookings",
       "booking_tour_suggestions": "Tour suggestions",
@@ -1544,6 +1547,7 @@
         "show_nav_contact": "Contact",
         "show_nav_corporate": "For Corporations",
         "show_nav_booking": "Services for Individuals",
+        "show_nav_tests": "Tests",
         "show_locale_switcher": "Locale switcher (AR ⇄ EN)",
         "bottom_nav_note": "The mobile bottom bar mirrors these toggles automatically."
       },
@@ -1577,7 +1581,9 @@
         "show_admin_booking": "Booking admin section",
         "show_admin_booking_desc": "Show the entire Booking group (Tours, Bookings, Suggestions, Interest, Orders) in the /admin sidebar.",
         "show_admin_questions": "Questions admin entry",
-        "show_admin_questions_desc": "Show the Questions entry (with pending count badge) in the audience group of the /admin sidebar."
+        "show_admin_questions_desc": "Show the Questions entry (with pending count badge) in the audience group of the /admin sidebar.",
+        "show_admin_tests": "Tests admin entry",
+        "show_admin_tests_desc": "Show the Tests entry (with draft count badge) in the content group of the /admin sidebar."
       },
       "dashboard": {
         "show_account_tab": "Account tab (always on)",
@@ -1588,6 +1594,8 @@
         "show_bookings_tab_desc": "Show the Bookings tab (confirmed cohort sessions and courses). The /dashboard/bookings route stays accessible when hidden.",
         "show_ask_tab": "\"Ask Dr. Khaled\" tab",
         "show_ask_tab_desc": "Show the Ask tab in the customer dashboard nav. The /dashboard/ask route stays accessible via direct URL even when hidden.",
+        "show_tests_tab": "Tests tab",
+        "show_tests_tab_desc": "Show the Tests tab (the user's test history) in the customer dashboard nav. The /dashboard/tests route stays accessible via direct URL even when hidden.",
         "show_settings_tab": "Settings tab",
         "show_settings_tab_desc": "Show the Settings tab (preferences, account deletion). The /dashboard/settings route stays accessible when hidden."
       },
@@ -1630,6 +1638,183 @@
       },
       "upload": "Upload",
       "upload_coming": "Real upload pipeline lands in Phase 6."
+    },
+    "tests": {
+      "list": {
+        "heading": "Tests & Quizzes",
+        "description": "Author and review reflection tests, then watch how readers answer.",
+        "cta_new": "New test",
+        "search_placeholder": "Search by title",
+        "filter": {
+          "status_aria": "Filter tests by status",
+          "status_all": "All",
+          "status_published": "Published",
+          "status_draft": "Drafts",
+          "category_label": "Category"
+        },
+        "table": {
+          "col_title": "Title",
+          "col_slug": "Slug",
+          "col_category": "Category",
+          "col_status": "Status",
+          "col_questions": "Questions",
+          "col_attempts": "Attempts",
+          "col_avg_score": "Avg score",
+          "col_created": "Created",
+          "col_actions": "Actions"
+        },
+        "empty": {
+          "title": "No tests yet",
+          "body": "Create the first reflection test to start collecting answers.",
+          "cta": "New test"
+        },
+        "actions": {
+          "view_analytics": "View analytics",
+          "edit": "Edit",
+          "publish": "Publish",
+          "unpublish": "Unpublish",
+          "delete": "Delete"
+        },
+        "toast": {
+          "publish_success": "Test published.",
+          "unpublish_success": "Test unpublished.",
+          "delete_success": "Test deleted.",
+          "error_no_questions": "Cannot publish a test with no questions.",
+          "error_not_found": "That test no longer exists.",
+          "error_generic": "Action failed. Please try again."
+        }
+      },
+      "modal": {
+        "publish": {
+          "title_publish": "Publish this test",
+          "title_unpublish": "Unpublish this test",
+          "body_publish": "\"{title}\" will appear in the public catalog and become available to readers.",
+          "body_unpublish": "\"{title}\" will be hidden from the public catalog. Existing attempts and historical data are preserved.",
+          "confirm_publish": "Publish",
+          "confirm_unpublish": "Unpublish"
+        },
+        "delete": {
+          "title": "Delete this test",
+          "body": "\"{title}\" will be removed permanently. This deletes {questionCount, plural, one {# question} other {# questions}} and {attemptCount, plural, one {# historical attempt} other {# historical attempts}}. This cannot be undone.",
+          "confirm_word": "delete",
+          "confirm_word_label": "Type {word} to confirm",
+          "confirm": "Delete"
+        },
+        "removal_warning": {
+          "title": "Confirm removals",
+          "body": "Saving this change removes {questionCount, plural, one {# question} other {# questions}} and {optionCount, plural, one {# option} other {# options}}. {attemptCount, plural, =0 {No historical attempts will be affected.} one {# historical answer will be deleted.} other {# historical answers will be deleted.}}",
+          "confirm": "Save changes"
+        }
+      },
+      "builder": {
+        "heading_create": "New test",
+        "heading_edit": "Edit test",
+        "section": {
+          "metadata": "Test details",
+          "questions": "Questions",
+          "visibility": "Visibility"
+        },
+        "field": {
+          "slug_label": "Slug",
+          "slug_help": "Lowercase letters, numbers, and hyphens only. Used in the public URL.",
+          "slug_warn_changing": "Changing the slug breaks any existing public URL or bookmark.",
+          "title_ar": "Title (Arabic)",
+          "title_en": "Title (English)",
+          "description_ar": "Short description (Arabic)",
+          "description_en": "Short description (English)",
+          "intro_ar": "Intro paragraph (Arabic)",
+          "intro_en": "Intro paragraph (English)",
+          "category_label": "Category",
+          "estimated_minutes_label": "Estimated minutes",
+          "cover_image_url_label": "Cover image URL",
+          "cover_image_url_help": "Paste a hosted image URL. Optional.",
+          "display_order_label": "Display order",
+          "display_order_help": "Lower numbers appear first in the catalog.",
+          "is_published_label": "Published",
+          "is_published_help": "Published tests appear in the public catalog and can be taken by readers."
+        },
+        "question": {
+          "heading": "Question {n}",
+          "add_question": "Add question",
+          "remove_question": "Remove question",
+          "move_up": "Move question {n} up",
+          "move_down": "Move question {n} down",
+          "prompt_ar_label": "Prompt (Arabic)",
+          "prompt_en_label": "Prompt (English)",
+          "options_label": "Options",
+          "add_option": "Add option",
+          "remove_option": "Remove option",
+          "option_label_ar": "Arabic label",
+          "option_label_en": "English label",
+          "correct_label": "Correct",
+          "explanation_ar_label": "Explanation (Arabic)",
+          "explanation_en_label": "Explanation (English)",
+          "explanation_help": "Optional. Shown to readers after they submit. Use this to share your reasoning."
+        },
+        "sidebar": {
+          "save": "Save",
+          "save_publish": "Save and publish",
+          "cancel": "Cancel",
+          "view_analytics": "View analytics",
+          "delete_test": "Delete test",
+          "validation": {
+            "questions_count": "{count, plural, one {# question} other {# questions}}",
+            "options_count": "{count, plural, one {# option} other {# options}}",
+            "correct_marked": "All questions have a correct answer marked.",
+            "translations_complete": "All Arabic and English fields filled.",
+            "translations_missing": "{count, plural, one {# field missing translation} other {# fields missing translation}}"
+          }
+        },
+        "toast": {
+          "created": "Test created.",
+          "updated": "Saved.",
+          "error_validation": "Please review the highlighted fields.",
+          "error_slug_taken": "That slug is already in use.",
+          "error_not_found": "That test no longer exists.",
+          "error_generic": "Save failed. Please try again."
+        },
+        "errors": {
+          "exactly_one_correct": "Each question must have exactly one correct answer.",
+          "min_options": "Each question needs at least 2 options.",
+          "max_options": "Maximum 6 options per question.",
+          "field_required": "This field is required.",
+          "invalid_slug": "Slug must be lowercase letters, numbers, and hyphens only.",
+          "slug_taken": "That slug is already in use."
+        }
+      },
+      "analytics": {
+        "heading": "Analytics",
+        "cta": {
+          "edit": "Edit test",
+          "view_on_site": "View on site"
+        },
+        "stats": {
+          "total_attempts": "Total attempts",
+          "unique_users": "Unique readers",
+          "average_score": "Average score",
+          "score_distribution": "Score distribution",
+          "score_band_low": "Low",
+          "score_band_medium": "Medium",
+          "score_band_high": "High"
+        },
+        "questions": {
+          "heading": "Question breakdown",
+          "correct_summary": "{percent}% answered correctly",
+          "option_count": "{count} selected ({percent}%)",
+          "view_explanation": "View explanation",
+          "hide_explanation": "Hide explanation"
+        },
+        "recent": {
+          "heading": "Recent attempts",
+          "col_user": "Reader",
+          "col_score": "Score",
+          "col_date": "Completed"
+        },
+        "empty": {
+          "title": "No attempts yet",
+          "body": "Once readers take this test, the data will appear here."
+        }
+      }
     },
     "products": {
       "coming_soon_title": "Products",
@@ -1795,12 +1980,115 @@
       "google_failed": "Google sign-in failed."
     }
   },
+  "tests": {
+    "meta": {
+      "title": "Tests — Dr. Khaled Ghattass",
+      "description": "A space to reflect. I designed these tests to share with you the questions on my mind — in psychology, in behaviour, in the nature of relationships."
+    },
+    "hero": {
+      "eyebrow": "A space to reflect",
+      "title": "Dr. Khaled's <em>tests</em>",
+      "body_a": "I designed these tests to share with you the questions on my mind — in psychology, in behaviour, in the nature of relationships. They are not pass-or-fail tests, and they are not clinical assessments.",
+      "body_b": "They are a space to think with me. And when many of you answer the same question, I return to the answers and reflect: what binds us? what divides us? That is what I take to my next lecture.",
+      "note_name": "Dr. Khaled Ghattass",
+      "note_role": "The teacher",
+      "note_body": "When you take a test, think before you choose. A quick answer doesn't tell me much — what tells me a lot is what you choose when you slow down. And don't be embarrassed to leave it after a question or two; come back when you're ready.",
+      "note_sig": "— Khaled"
+    },
+    "landing": {
+      "count_tests": "{count} tests available",
+      "category_psychology": "Psychology",
+      "category_education": "Education",
+      "category_relationships": "Relationships",
+      "category_society": "Society",
+      "category_career": "Career",
+      "category_general": "General"
+    },
+    "catalog": {
+      "filter_aria": "Filter by category",
+      "filter_all": "All",
+      "empty_title": "Dr. Khaled is preparing the first tests.",
+      "empty_body": "Check back soon — we'll have something here worth your reflection."
+    },
+    "card": {
+      "questions_count": "{count} questions",
+      "estimated_minutes": "~{minutes} min",
+      "start": "Start test",
+      "take_again": "Take again",
+      "taken": "Taken"
+    },
+    "detail": {
+      "author_attribution": "By Dr. Khaled Ghattass",
+      "free": "Free",
+      "cta": {
+        "signed_out_heading": "Sign in to take this test",
+        "signed_out_body": "Free to take, your answers are saved to your account so you can come back anytime.",
+        "signed_out_button": "Sign in",
+        "signed_out_secondary": "Don't have an account? Create one.",
+        "ready_heading": "Ready when you are.",
+        "ready_body": "No timer, no pressure. Take your time with each question.",
+        "ready_button": "Start test",
+        "taken_eyebrow": "You've taken this test before",
+        "taken_title": "You took this on {date} and scored {score}.",
+        "taken_body": "You can review your previous answers or take it again. Both attempts are saved.",
+        "taken_review": "Review your answers",
+        "taken_retake": "Take again",
+        "empty_test": "This test isn't ready yet"
+      }
+    },
+    "take": {
+      "meta": {
+        "title": "Taking a test",
+        "description": "Reflect through one question at a time."
+      },
+      "mark_aria": "Exit test and return to catalog",
+      "exit": "Exit",
+      "progress": "Question {current} of {total}",
+      "question_number": "Question {current}",
+      "options_aria": "Answer options",
+      "previous": "Previous",
+      "next": "Next",
+      "submit": "Submit test",
+      "keyboard_hint": "Use 1–6 to choose, ← → to navigate",
+      "error_rate_limited": "You've taken too many tests recently. Please wait an hour and try again.",
+      "error_unauthorized": "Your session has expired. Please sign in and try again.",
+      "error_not_found": "This test is no longer available.",
+      "error_validation": "Something went wrong with your submission. Please try again.",
+      "error_generic": "Could not submit your test. Please try again.",
+      "exit_modal": {
+        "title": "Leave this test?",
+        "body": "Your progress will not be saved. You can start fresh later.",
+        "confirm": "Yes, leave",
+        "cancel": "Stay in test"
+      }
+    },
+    "result": {
+      "meta": {
+        "title": "Your result",
+        "description": "Your test score and a per-question review."
+      },
+      "eyebrow": "You finished",
+      "headline": "You scored <em>{pct}</em>",
+      "tally": "{correct} of {total} answers correct",
+      "reflection": "Thank you for taking the time. The real value is in the review below — there might be a thought there you hadn't met yet.",
+      "review_heading": "Review",
+      "review_count": "{count} questions",
+      "your_answer": "Your answer",
+      "correct_answer": "Correct answer",
+      "explanation_label": "A note from Dr. Khaled",
+      "cta": {
+        "retake": "Take this test again",
+        "browse": "Browse other tests"
+      }
+    }
+  },
   "dashboard": {
     "tabs": {
       "account": "Account",
       "library": "Library",
       "bookings": "Bookings",
       "ask": "Ask Dr. Khaled",
+      "tests": "Tests",
       "settings": "Settings"
     },
     "recent_bookings": {
@@ -1985,6 +2273,19 @@
         "body": "When a question worth pondering occurs to you, write it. Dr. Khaled reads what reaches him — and may answer publicly on one of his channels.",
         "cta": "Write your first question"
       }
+    },
+    "tests": {
+      "meta": {
+        "title": "Your test history",
+        "description": "Every test you've taken — most recent first."
+      },
+      "heading": "Your test history",
+      "subheading": "Every test you've taken — most recent first.",
+      "empty_title": "You haven't taken any tests yet",
+      "empty_body": "Browse Dr. Khaled's tests to start exploring.",
+      "empty_cta": "Browse tests",
+      "row_review": "Review",
+      "row_score_aria": "You scored {score}"
     }
   },
   "library": {

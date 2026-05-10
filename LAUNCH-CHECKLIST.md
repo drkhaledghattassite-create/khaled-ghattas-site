@@ -30,16 +30,72 @@ Run through these in order before flipping `drkhaledghattass.com` live.
 ## 3. Auth
 
 - [ ] (Optional) Create Google OAuth credentials at https://console.cloud.google.com — populate `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-- [ ] Set `MOCK_AUTH=false` and `NEXT_PUBLIC_MOCK_AUTH=false` in Netlify env to disable mock auth.
+- [ ] Confirm `MOCK_AUTH` is unset (or absent) in Netlify environment variables. `NODE_ENV=production` hard-disables mock auth regardless, but explicit absence is cleaner.
 - [ ] Set `NEXT_PUBLIC_AUTH_ENABLED=true` so the public site shows Sign In / Sign Up.
 - [ ] Promote yourself to ADMIN: `node --env-file=.env.local scripts/promote-admin.mjs you@example.com ADMIN`.
 - [ ] Promote Dr. Khaled to CLIENT: same script with `CLIENT` as the second arg.
 
 ## 4. Email
 
-- [ ] Configure Resend domain (verify DNS records).
+> **DNS propagation can take 24–48 hours.** Start this section at least
+> 2 days before intended launch.
+
+- [ ] Add the sender domain (e.g. `drkhaledghattass.com`) to the Resend
+      dashboard.
+- [ ] Resend will provide SPF, DKIM, and DMARC records — add **all three**
+      to the domain's DNS zone.
+- [ ] Wait for Resend to mark the domain as **Verified** (can take 24–48
+      hours).
 - [ ] Add `RESEND_API_KEY` to Netlify env.
-- [ ] Send test email to confirm deliverability.
+- [ ] Set `EMAIL_FROM` on Netlify to a verified address, e.g.
+      `Dr. Khaled Ghattass <noreply@drkhaledghattass.com>`. Without it the
+      app falls back to the same default — but only after the domain is
+      verified.
+- [ ] Set `SUPPORT_EMAIL` on Netlify to the public support inbox shown in
+      transactional-email footers. Falls back to `Team@drkhaledghattass.com`
+      if unset, but **production should set explicitly** (the fallback is
+      a safety net, not a configuration).
+- [ ] Set `CORPORATE_INBOX_EMAIL` on Netlify to the inbox that should
+      receive `/api/corporate/request` form submissions. Same fallback +
+      explicit-set guidance as `SUPPORT_EMAIL`.
+- [ ] Trigger a test email by completing a Stripe test-mode purchase
+      against the staging deploy.
+- [ ] Verify the email lands in the **inbox** (not spam) on at least
+      Gmail web + Gmail mobile + iOS Mail + Outlook web. If any of these
+      route to spam, recheck DNS propagation and SPF alignment before
+      flipping live.
+
+## 4b. Storage adapter readiness (digital-delivery products)
+
+`lib/storage/index.ts` currently exports `mockAdapter`, which returns
+`/placeholder-content/<key>` URLs that **do not exist in production**
+(the directory is gitignored and never deployed). Until the production
+storage adapter ships, every BOOK with `digitalFile` set will email the
+buyer a link that 404s.
+
+**v1 launch constraint:** every book in the database must have
+`externalUrl` set and `digital_file` NULL. Books fulfill via the
+existing storefront (WP shop, Gumroad, etc.) until the production
+adapter lands.
+
+- [ ] Run this SQL against the production Neon DB before launch:
+
+      ```sql
+      SELECT id, title_en, external_url, digital_file
+      FROM books
+      WHERE digital_file IS NOT NULL;
+      ```
+
+      Expected result: **zero rows.** Any row returned is a launch blocker
+      for that book — either set `digital_file = NULL` and supply
+      `external_url`, or hold the product until the storage adapter
+      ships.
+
+- [ ] Same constraint applies to `session_items.storage_key` — sessions
+      cannot launch until the production adapter ships. If sessions are
+      in scope for v1, this is a hard blocker; if v1 is books-only,
+      confirm there are no SESSION-typed rows in the catalog or that
+      they're hidden by `coming_soon_pages` / `is_active=false`.
 
 ## 5. Stripe
 
@@ -142,7 +198,6 @@ Replace placeholder content per `CONTENT-NEEDED.md`:
 - [ ] Smoke-test account: edit profile, change preferences, delete account (cookie clears)
 - [ ] Confirm Lighthouse score ≥ 90 on home / about / contact / a book detail page
 - [ ] Verify security headers in production: `curl -I https://drkhaledghattass.com` should include HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
-- [ ] Tighten `next.config.ts` `images.remotePatterns` to specific CDN hosts once an image pipeline is chosen (Uploadthing / ImageKit). The current `**` wildcard is convenient but invites abuse.
 
 ## 9. DNS + go-live
 

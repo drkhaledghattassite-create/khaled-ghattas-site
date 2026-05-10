@@ -26,6 +26,9 @@ import type {
   Order,
   SiteSetting,
   Subscriber,
+  Test,
+  TestOption,
+  TestQuestion,
   Tour,
   TourSuggestion,
   User,
@@ -750,7 +753,7 @@ export const placeholderSettings: SiteSetting[] = [
   { id: 's-6', key: 'facebook_url',        value: 'https://facebook.com/drkhaledghattas',                                           valueJson: null, updatedAt: NOW },
   { id: 's-7', key: 'youtube_url',         value: 'https://youtube.com/@drkhaledghattass',                                          valueJson: null, updatedAt: NOW },
   { id: 's-8', key: 'instagram_url',       value: 'https://instagram.com/drkhaledghattas',                                          valueJson: null, updatedAt: NOW },
-  { id: 's-9', key: 'contact_email',       value: 'kamallchhimi@gmail.com',                                                      valueJson: null, updatedAt: NOW },
+  { id: 's-9', key: 'contact_email',       value: 'Team@drkhaledghattass.com',                                                   valueJson: null, updatedAt: NOW },
   { id: 's-10', key: 'contact_phone',      value: '009613579666',                                                                   valueJson: null, updatedAt: NOW },
   { id: 's-11', key: 'contact_address_ar', value: 'مكتبة خالد غطاس — برجا، لبنان',                                                  valueJson: null, updatedAt: NOW },
   { id: 's-12', key: 'contact_address_en', value: 'Khaled Ghattass Library — Burja, Lebanon',                                       valueJson: null, updatedAt: NOW },
@@ -1644,3 +1647,292 @@ export const placeholderBookings: Booking[] = [
 export const placeholderBookingInterest: BookingInterest[] = []
 export const placeholderBookingHolds: BookingsPendingHold[] = []
 export const placeholderBookingOrders: BookingOrder[] = []
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase C1 — Tests & Quizzes placeholder catalog.
+ *
+ * Three published tests across three categories so the /tests catalog,
+ * filter pills, detail page, take flow, and result page all render in
+ * dev mode (DATABASE_URL unset). UUIDs are fixed so that mock-mode users
+ * can submit attempts and the result page can resolve them deterministically.
+ * Copy is lifted from the design bundle's TQ_COPY/TESTS array.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const TEST_COG_ID = '11111111-1111-4111-8111-111111111111'
+const TEST_FAMILY_ID = '22222222-2222-4222-8222-222222222222'
+const TEST_ATTACH_ID = '33333333-3333-4333-8333-333333333333'
+
+export const placeholderTests: Test[] = [
+  {
+    id: TEST_COG_ID,
+    slug: 'cognitive-distortions',
+    titleAr: 'كيف يفكّر عقلك حين يخطئ؟',
+    titleEn: 'How does your mind think when it errs?',
+    introAr:
+      'في علم النفس المعرفي، نُسمّي بعض أنماط التفكير "تشوّهات" — لا لأنّها مرضية، بل لأنّها تُشوّه الواقع قبل أن نراه. كلّنا نقع فيها. الفرق أنّ من يعرفها يستطيع أن يتراجع عنها.\n\nفي هذا الاختبار سترى أربعة مواقف من الحياة، وفي كلّ موقفٍ ستختار التفسير الذي يبدو لك الأقرب إلى الصواب. لا تستعجل. هدفي أن تتعرّف على نفسك، لا أن تثبت لي شيئاً.\n\nهذا اختبار للتأمّل، لا تشخيص. إن وجدتَ نفسك في موقفٍ صعب، فاطلب مساعدة مختصّ.',
+    introEn:
+      "In cognitive psychology we call some patterns of thinking 'distortions' — not because they're pathological, but because they distort reality before we see it. We all fall into them. The difference is that those who know them can step back.\n\nIn this test you'll see four everyday situations. In each one, you'll choose the interpretation that seems closest to the truth. Don't rush. My aim is for you to meet yourself — not to prove anything to me.\n\nThis is a test for reflection, not diagnosis. If you find yourself in real difficulty, please reach out to a professional.",
+    descriptionAr:
+      'أربعة أنماط شائعة من التشوّهات المعرفية — تعرّف عليها في أمثلةٍ من الحياة اليومية.',
+    descriptionEn:
+      'Four common cognitive distortions — recognise them in everyday examples from your own life.',
+    category: 'psychology',
+    estimatedMinutes: 6,
+    coverImageUrl: null,
+    priceUsd: null,
+    isPaid: false,
+    isPublished: true,
+    displayOrder: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: TEST_FAMILY_ID,
+    slug: 'arab-family-roles',
+    titleAr: 'أدوار العائلة العربية: ماذا تغيّر؟',
+    titleEn: 'Roles in the Arab family: what has shifted?',
+    introAr:
+      'كلّما تحدّثتُ مع جدّي، شعرتُ أنّ بيننا لغتين. ولمّا تحدّثتُ مع أبنائي، شعرتُ بالشيء نفسه — لكن من الجهة المقابلة.\n\nهذا الاختبار يحاول أن يضع أمامك مواقف عائلية نعرفها جميعاً، ويسألك: ما الذي تتوقّعه أنت؟ ما الذي تجده عادياً؟ ما الذي يستفزّك؟ الإجابات لا تخصّك وحدك — تخصّ جيلاً كاملاً.',
+    introEn:
+      'Every time I speak with my grandfather I feel there are two languages between us. And when I speak with my own children, I feel the same — only from the other side.\n\nThis test puts in front of you family situations we all know, and asks: what do you expect? what feels normal? what bothers you? Your answers belong not only to you — they belong to a whole generation.',
+    descriptionAr:
+      'سؤال في كلّ جيل، وأنت في أيّ جيل؟ ثلاثة أسئلة عن السلطة، الرعاية، والعتب.',
+    descriptionEn:
+      'A question per generation — which one is yours? Three questions on authority, care, and reproach.',
+    category: 'society',
+    estimatedMinutes: 4,
+    coverImageUrl: null,
+    priceUsd: null,
+    isPaid: false,
+    isPublished: true,
+    displayOrder: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: TEST_ATTACH_ID,
+    slug: 'attachment-patterns',
+    titleAr: 'كيف تتعلّق بمن تحبّ؟',
+    titleEn: 'How do you attach to those you love?',
+    introAr:
+      'نظرية التعلّق ليست خرافة عاطفية — هي بحثٌ علميّ عمره ستّون سنة. تقول إنّنا، حين نتعلّق بشخص، نُكرّر دون أن نشعر نمط العلاقة الأوّل في حياتنا.\n\nفي هذا الاختبار ثلاثة مواقف قد تحدث في علاقةٍ قريبة. اقرأها، واختر ما يشبهك. حاول أن تكون صادقاً مع نفسك، لا مع صورتك المثالية.',
+    introEn:
+      "Attachment theory isn't sentimental folklore — it's sixty years of research. It says that when we attach to someone, we unconsciously repeat the first relational pattern of our lives.\n\nIn this test there are three situations that might happen in a close relationship. Read them and choose what looks like you. Try to be honest with yourself — not with your ideal of yourself.",
+    descriptionAr:
+      'نظرية التعلّق في ثلاثة أسئلة — تعرّف على نمطك بين القلق والتجنّب والأمان.',
+    descriptionEn:
+      'Attachment theory in three questions — meet your pattern between anxiety, avoidance, and security.',
+    category: 'relationships',
+    estimatedMinutes: 5,
+    coverImageUrl: null,
+    priceUsd: null,
+    isPaid: false,
+    isPublished: true,
+    displayOrder: 2,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+]
+
+/**
+ * Cognitive-distortions test — 4 questions × 4 options each, with the second
+ * option ("answer separates event from identity") correct on the failure
+ * question. Lifted from the design bundle's QUESTIONS_COG.
+ */
+export const placeholderTestQuestions: TestQuestion[] = [
+  // cognitive-distortions
+  {
+    id: 'aaaaaaaa-0001-4001-8001-000000000001',
+    testId: TEST_COG_ID,
+    displayOrder: 0,
+    promptAr:
+      'أرسلتَ رسالةً إلى صديقٍ ولم يردّ عليك خلال ثلاث ساعات. ما أوّل تفسيرٍ يخطر لك؟',
+    promptEn:
+      'You sent a message to a friend and they have not replied for three hours. What is your first interpretation?',
+    explanationAr:
+      'الإجابة الأولى تتجنّب ما نسمّيه "القراءة الذهنية" — أن نفترض ما يدور في رأس الآخر دون دليل. غياب الردّ في حدّ ذاته ليس دليلاً.',
+    explanationEn:
+      "The first answer avoids what we call 'mind-reading' — assuming what is in another's head without evidence. The absence of a reply, by itself, is not evidence.",
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'aaaaaaaa-0002-4002-8002-000000000002',
+    testId: TEST_COG_ID,
+    displayOrder: 1,
+    promptAr: 'فشلتَ في عرضٍ مهنيّ مهم. ما الجملة التي تشبه ما تقوله لنفسك؟',
+    promptEn:
+      'You failed at an important professional pitch. Which sentence sounds like what you say to yourself?',
+    explanationAr:
+      'الإجابة الثانية تَفصل بين "الحدث" و"الهويّة". التعميم — "أنا فاشل" — هو من أخطر التشوّهات لأنّه يحوّل ضربةً واحدة إلى حكمٍ على الذات كلّها.',
+    explanationEn:
+      "The second answer separates 'the event' from 'the identity.' Overgeneralisation — 'I'm a failure' — is among the most dangerous distortions because it turns a single blow into a verdict on the whole self.",
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'aaaaaaaa-0003-4003-8003-000000000003',
+    testId: TEST_COG_ID,
+    displayOrder: 2,
+    promptAr: 'أُلقي عليك مديح في جلسةٍ عامّة. ما أوّل ردّ فعلٍ داخليّ؟',
+    promptEn: 'You receive praise in a public setting. What is your first inner reaction?',
+    // intentionally null to demo the "no explanation" review variant
+    explanationAr: null,
+    explanationEn: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'aaaaaaaa-0004-4004-8004-000000000004',
+    testId: TEST_COG_ID,
+    displayOrder: 3,
+    promptAr: 'تأخّرتَ خمس دقائق على موعد. ما الذي تشعر به؟',
+    promptEn: 'You arrive five minutes late to an appointment. What do you feel?',
+    explanationAr:
+      'خمس دقائق ليست كارثة. ضخامة ردّ الفعل علامة على ما نسمّيه "التضخيم" — أن نُكبّر الحدث الصغير حتى يصير مشكلةً كاملة.',
+    explanationEn:
+      "Five minutes is not a catastrophe. The size of the reaction is a marker of 'magnification' — enlarging a small event until it becomes a whole problem.",
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  // arab-family-roles — 3 questions, all single-correct
+  {
+    id: 'bbbbbbbb-0001-4001-8001-000000000001',
+    testId: TEST_FAMILY_ID,
+    displayOrder: 0,
+    promptAr: 'حين يختلف ابنك مع جدّه، ما الذي تتوقّعه منهما؟',
+    promptEn: 'When your child disagrees with their grandparent, what do you expect from them?',
+    explanationAr:
+      'الفرق بين الجيلين ليس خطأ في أحدهما، بل تحوّل في معنى السلطة نفسه. فهم هذا التحوّل أوّل خطوة نحو الحوار.',
+    explanationEn:
+      "The gap between generations is not an error in either — it is a shift in what authority itself means. Understanding the shift is the first step toward dialogue.",
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'bbbbbbbb-0002-4002-8002-000000000002',
+    testId: TEST_FAMILY_ID,
+    displayOrder: 1,
+    promptAr: 'ما مفهومك عن "العتب" بين أفراد العائلة؟',
+    promptEn: 'What does "reproach" between family members mean to you?',
+    explanationAr: null,
+    explanationEn: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'bbbbbbbb-0003-4003-8003-000000000003',
+    testId: TEST_FAMILY_ID,
+    displayOrder: 2,
+    promptAr: 'عند اتّخاذ قرار عائليّ مهم، إلى رأي مَن تنحاز؟',
+    promptEn: 'When the family makes a major decision, whose view do you lean toward?',
+    explanationAr:
+      'الحوار العائلي السليم لا يُلغي الاختلاف، بل يُنظّمه — كلّ صوتٍ يُسمَع وكلّ موقعٍ يُحترم.',
+    explanationEn:
+      'Healthy family dialogue does not erase disagreement; it orchestrates it — every voice heard, every position respected.',
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  // attachment-patterns
+  {
+    id: 'cccccccc-0001-4001-8001-000000000001',
+    testId: TEST_ATTACH_ID,
+    displayOrder: 0,
+    promptAr: 'حين يتأخّر شريكك في الردّ على رسالتك، ما أوّل ما يدور في ذهنك؟',
+    promptEn: 'When your partner is slow to respond to a message, what comes to mind first?',
+    explanationAr:
+      'الإجابة الأولى تشير إلى نمط الأمان — افتراض حسن النيّة دون قراءة الذهن. هذا النمط يُحفّز التهدئة الذاتية.',
+    explanationEn:
+      'The first answer reflects a secure pattern — assuming goodwill without mind-reading. It activates self-soothing.',
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'cccccccc-0002-4002-8002-000000000002',
+    testId: TEST_ATTACH_ID,
+    displayOrder: 1,
+    promptAr: 'بعد جدالٍ مع من تحبّ، ما الذي تحتاجه قبل الحوار؟',
+    promptEn: 'After an argument with someone you love, what do you need before reconciling?',
+    explanationAr: null,
+    explanationEn: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'cccccccc-0003-4003-8003-000000000003',
+    testId: TEST_ATTACH_ID,
+    displayOrder: 2,
+    promptAr: 'حين تشعر بالحاجة، إلى مَن تذهب أوّلاً؟',
+    promptEn: 'When you feel a need rise, who do you turn to first?',
+    explanationAr:
+      'لا توجد إجابة "صحيحة" مطلقة هنا — لكنّ النمط الذي اخترتَه يكشف ما اعتدتَ أن تجده مكانًا للراحة.',
+    explanationEn:
+      "There isn't an absolute 'correct' here — but the pattern you chose reveals where you have learned to find rest.",
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+]
+
+const opt = (
+  id: string,
+  questionId: string,
+  displayOrder: number,
+  labelAr: string,
+  labelEn: string,
+  isCorrect: boolean,
+): TestOption => ({
+  id,
+  questionId,
+  displayOrder,
+  labelAr,
+  labelEn,
+  isCorrect,
+  createdAt: NOW,
+})
+
+export const placeholderTestOptions: TestOption[] = [
+  // q1 — cognitive-distortions
+  opt('aaaaaaaa-0001-4001-8001-0000000000a1', 'aaaaaaaa-0001-4001-8001-000000000001', 0, 'هو منشغل، سيردّ حين يستطيع.', "He's busy and will reply when he can.", true),
+  opt('aaaaaaaa-0001-4001-8001-0000000000a2', 'aaaaaaaa-0001-4001-8001-000000000001', 1, 'لا بدّ أنّ شيئاً قلتُه أزعجه.', 'Something I said must have upset him.', false),
+  opt('aaaaaaaa-0001-4001-8001-0000000000a3', 'aaaaaaaa-0001-4001-8001-000000000001', 2, 'بات لا يُبالي بي كما في السابق.', 'He no longer cares about me the way he used to.', false),
+  opt('aaaaaaaa-0001-4001-8001-0000000000a4', 'aaaaaaaa-0001-4001-8001-000000000001', 3, 'ربّما حدث له شيء — أتمنّى أن يكون بخير.', "Maybe something happened to him — I hope he's well.", false),
+  // q2
+  opt('aaaaaaaa-0002-4002-8002-0000000000a1', 'aaaaaaaa-0002-4002-8002-000000000002', 0, 'أنا فاشل في كلّ شيء.', "I'm a failure at everything.", false),
+  opt('aaaaaaaa-0002-4002-8002-0000000000a2', 'aaaaaaaa-0002-4002-8002-000000000002', 1, 'هذا العرض لم ينجح، وسأرى ما الذي أتعلّمه منه.', "This pitch didn't land, and I'll see what I can learn.", true),
+  opt('aaaaaaaa-0002-4002-8002-0000000000a3', 'aaaaaaaa-0002-4002-8002-000000000002', 2, 'لا أصلح لهذه المهنة، يجب أن أتركها.', "I'm not cut out for this work, I should quit.", false),
+  opt('aaaaaaaa-0002-4002-8002-0000000000a4', 'aaaaaaaa-0002-4002-8002-000000000002', 3, 'كلّ شيء على ما يرام، لا تستحقّ التفكير.', "Everything's fine, it's not worth thinking about.", false),
+  // q3
+  opt('aaaaaaaa-0003-4003-8003-0000000000a1', 'aaaaaaaa-0003-4003-8003-000000000003', 0, 'أشكر وأقبل المديح.', 'I thank them and accept it.', true),
+  opt('aaaaaaaa-0003-4003-8003-0000000000a2', 'aaaaaaaa-0003-4003-8003-000000000003', 1, 'يقولون هذا من باب اللياقة فقط.', "They're just being polite.", false),
+  opt('aaaaaaaa-0003-4003-8003-0000000000a3', 'aaaaaaaa-0003-4003-8003-000000000003', 2, 'أُغيّر الموضوع بسرعة.', 'I change the subject quickly.', false),
+  opt('aaaaaaaa-0003-4003-8003-0000000000a4', 'aaaaaaaa-0003-4003-8003-000000000003', 3, 'لو كانوا يعرفونني حقّاً لما قالوا ذلك.', "If they really knew me they wouldn't say that.", false),
+  // q4
+  opt('aaaaaaaa-0004-4004-8004-0000000000a1', 'aaaaaaaa-0004-4004-8004-000000000004', 0, 'أعتذر وأكمل الجلسة بشكلٍ طبيعي.', 'I apologise and continue normally.', true),
+  opt('aaaaaaaa-0004-4004-8004-0000000000a2', 'aaaaaaaa-0004-4004-8004-000000000004', 1, 'يجب أن أعوّض هذا التأخّر طوال الجلسة.', 'I must compensate for this lateness all session.', false),
+  opt('aaaaaaaa-0004-4004-8004-0000000000a3', 'aaaaaaaa-0004-4004-8004-000000000004', 2, 'الناس سيظنّون أنّي شخصٌ غير محترم.', "People will think I'm disrespectful.", false),
+  opt('aaaaaaaa-0004-4004-8004-0000000000a4', 'aaaaaaaa-0004-4004-8004-000000000004', 3, 'أنا دائماً أتأخّر، لا أمل لي.', "I'm always late, there's no hope for me.", false),
+  // arab-family-roles q1
+  opt('bbbbbbbb-0001-4001-8001-0000000000b1', 'bbbbbbbb-0001-4001-8001-000000000001', 0, 'أن يحترم رأي الجدّ ويصمت.', 'They should respect the grandparent and stay silent.', false),
+  opt('bbbbbbbb-0001-4001-8001-0000000000b2', 'bbbbbbbb-0001-4001-8001-000000000001', 1, 'أن يُعبّر عن رأيه بأدب، وأن يُصغي الجدّ بصبر.', 'They should express their view politely, and the grandparent should listen patiently.', true),
+  opt('bbbbbbbb-0001-4001-8001-0000000000b3', 'bbbbbbbb-0001-4001-8001-000000000001', 2, 'أن يُجادل بحرّية، فلا قيمة للأكبر سنّاً وحده.', "They should argue freely — age alone doesn't grant authority.", false),
+  // q2
+  opt('bbbbbbbb-0002-4002-8002-0000000000b1', 'bbbbbbbb-0002-4002-8002-000000000002', 0, 'لغة مشاعر مشروعة، تستحقّ الإصغاء.', 'A legitimate language of feeling that deserves listening.', true),
+  opt('bbbbbbbb-0002-4002-8002-0000000000b2', 'bbbbbbbb-0002-4002-8002-000000000002', 1, 'عبء عاطفيّ يُرهق العلاقات.', 'An emotional burden that strains relationships.', false),
+  opt('bbbbbbbb-0002-4002-8002-0000000000b3', 'bbbbbbbb-0002-4002-8002-000000000002', 2, 'مفهوم قديم، لم يعد له مكان.', 'An old notion with no place anymore.', false),
+  // q3
+  opt('bbbbbbbb-0003-4003-8003-0000000000b1', 'bbbbbbbb-0003-4003-8003-000000000003', 0, 'إلى رأي الأكبر سنّاً.', "Toward the elder's view.", false),
+  opt('bbbbbbbb-0003-4003-8003-0000000000b2', 'bbbbbbbb-0003-4003-8003-000000000003', 1, 'إلى رأي مَن سيتأثّر بالقرار أكثر.', 'Toward the one most affected by the decision.', true),
+  opt('bbbbbbbb-0003-4003-8003-0000000000b3', 'bbbbbbbb-0003-4003-8003-000000000003', 2, 'إلى رأي مَن يدفع التكلفة المالية.', 'Toward the one paying for it.', false),
+  // attachment-patterns q1
+  opt('cccccccc-0001-4001-8001-0000000000c1', 'cccccccc-0001-4001-8001-000000000001', 0, 'هو منشغل، سيردّ متى استطاع.', "They're busy and will reply when they can.", true),
+  opt('cccccccc-0001-4001-8001-0000000000c2', 'cccccccc-0001-4001-8001-000000000001', 1, 'بدأ يبتعد عنّي.', "They're starting to drift away.", false),
+  opt('cccccccc-0001-4001-8001-0000000000c3', 'cccccccc-0001-4001-8001-000000000001', 2, 'لا أُبالي، سأصمت أنا أيضاً.', "I don't mind — I'll go quiet too.", false),
+  // q2
+  opt('cccccccc-0002-4002-8002-0000000000c1', 'cccccccc-0002-4002-8002-000000000002', 0, 'وقت قصير وحدي قبل الحوار.', 'A short while alone before talking.', true),
+  opt('cccccccc-0002-4002-8002-0000000000c2', 'cccccccc-0002-4002-8002-000000000002', 1, 'حوار فوريّ لإغلاق الموضوع.', 'An immediate conversation to close it.', false),
+  opt('cccccccc-0002-4002-8002-0000000000c3', 'cccccccc-0002-4002-8002-000000000002', 2, 'صمت طويل حتى يبادر هو.', 'Long silence until they reach out first.', false),
+  // q3
+  opt('cccccccc-0003-4003-8003-0000000000c1', 'cccccccc-0003-4003-8003-000000000003', 0, 'إلى نفسي. أحتاج صمتاً قبل أن أسمع.', 'To myself. I need silence before I can hear.', true),
+  opt('cccccccc-0003-4003-8003-0000000000c2', 'cccccccc-0003-4003-8003-000000000003', 1, 'إلى شخصٍ ثقة. أحتاج أن أُقال الكلام.', 'To someone I trust. I need to say it out loud.', false),
+  opt('cccccccc-0003-4003-8003-0000000000c3', 'cccccccc-0003-4003-8003-000000000003', 2, 'لا أحدّد. أنتظر أن يهدأ الشعور.', "I don't pick. I wait for the feeling to settle.", false),
+]

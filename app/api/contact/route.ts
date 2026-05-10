@@ -3,8 +3,12 @@ import { contactSchema } from '@/lib/validators/contact'
 import { createContactMessage } from '@/lib/db/queries'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { apiError, errInternal, parseJsonBody } from '@/lib/api/errors'
+import { assertSameOrigin } from '@/lib/api/origin'
 
 export async function POST(req: Request) {
+  const originErr = assertSameOrigin(req)
+  if (originErr) return originErr
+
   const body = await parseJsonBody(req, contactSchema)
   if (!body.ok) return body.response
 

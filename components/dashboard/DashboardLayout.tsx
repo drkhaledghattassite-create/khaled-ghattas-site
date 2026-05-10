@@ -7,7 +7,7 @@ import { Link, usePathname } from '@/lib/i18n/navigation'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import type { SiteSettings } from '@/lib/site-settings/types'
 
-type TabKey = 'account' | 'library' | 'bookings' | 'ask' | 'settings'
+type TabKey = 'account' | 'library' | 'bookings' | 'ask' | 'tests' | 'settings'
 
 // Maps each tab key to the site-settings flag that gates its visibility.
 // Adding a new tab? Add the flag to `SiteSettings.dashboard` first, then
@@ -17,6 +17,7 @@ const TAB_VISIBILITY_KEY: Record<TabKey, keyof SiteSettings['dashboard']> = {
   library: 'show_library_tab',
   bookings: 'show_bookings_tab',
   ask: 'show_ask_tab',
+  tests: 'show_tests_tab',
   settings: 'show_settings_tab',
 }
 
@@ -28,6 +29,10 @@ const TABS = [
   // surface (creator-side) sits between consumption (bookings) and account
   // chrome (settings).
   { key: 'ask' as const, href: '/dashboard/ask' },
+  // 'tests' sits next to 'ask' — both are reflective surfaces from
+  // Dr. Khaled's editorial side. Tests history is a personal record;
+  // settings still anchors the trailing edge as account chrome.
+  { key: 'tests' as const, href: '/dashboard/tests' },
   { key: 'settings' as const, href: '/dashboard/settings' },
 ] as const
 
@@ -38,6 +43,7 @@ const ALL_TABS_VISIBLE: SiteSettings['dashboard'] = {
   show_library_tab: true,
   show_bookings_tab: true,
   show_ask_tab: true,
+  show_tests_tab: true,
   show_settings_tab: true,
 }
 

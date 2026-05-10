@@ -55,6 +55,27 @@ Books with `productType: 'BOOK'` need `digitalFile` URLs pointing to
 real PDF files (or external store URLs in `externalUrl`). Currently
 none are wired.
 
+**Production-storage prerequisite.** Before any book can ship with
+`digitalFile` set, the production storage adapter has to land. Today
+`lib/storage/index.ts` exports `mockAdapter`, which returns
+`/placeholder-content/<key>` URLs that don't exist in production.
+Setting `digitalFile` without swapping the adapter would email buyers
+a link that 404s.
+
+Plan:
+1. Implement `lib/storage/netlify-blobs-adapter.ts` (or R2, Cloudflare
+   Stream — whichever provider Dr. Khaled lands on) against the
+   `StorageAdapter` interface in `lib/storage/types.ts`.
+2. Swap the import in `lib/storage/index.ts` from `mockAdapter` to the
+   new adapter. Add any provider env vars to `.env.local.example`.
+3. Upload PDFs to the storage; populate `digitalFile` storage keys.
+4. Same applies to `session_items.storage_key` — sessions cannot launch
+   until the adapter is live.
+
+Estimated effort: 2–3 hours for the adapter + integration test.
+**Blocks:** digital book delivery, session_items media. Required before
+the launch checklist's Section 4b SQL check can return non-zero rows.
+
 ## New items to confirm with Dr. Khaled
 
 - [ ] Footer brand quote signature line — currently

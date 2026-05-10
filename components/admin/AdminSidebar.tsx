@@ -9,6 +9,7 @@ import {
   Building2,
   Calendar,
   CalendarDays,
+  ClipboardList,
   CreditCard,
   FileEdit,
   FileText,
@@ -86,6 +87,8 @@ function buildGroups(
   showBooking: boolean,
   showQuestions: boolean,
   pendingQuestionCount: number,
+  showTests: boolean,
+  draftTestCount: number,
 ): NavGroup[] {
   const audienceItems: NavItem[] = [
     { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
@@ -105,17 +108,30 @@ function buildGroups(
     })
   }
 
+  const contentItems: NavItem[] = [
+    { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
+    { href: '/admin/articles', key: 'articles', icon: FileText },
+    { href: '/admin/books', key: 'books', icon: BookOpen },
+    { href: '/admin/interviews', key: 'interviews', icon: Video },
+    { href: '/admin/gallery', key: 'gallery', icon: Images },
+    { href: '/admin/events', key: 'events', icon: Calendar },
+  ]
+  if (showTests) {
+    contentItems.push({
+      href: '/admin/tests',
+      key: 'tests',
+      icon: ClipboardList,
+      // Drafts surface in the badge — the cue Dr. Khaled needs to know
+      // there's a test waiting on him to publish.
+      badgeCount: draftTestCount,
+      badgeAriaLabelKey: 'tests_drafts_aria',
+    })
+  }
+
   const groups: NavGroup[] = [
     {
       key: 'content',
-      items: [
-        { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
-        { href: '/admin/articles', key: 'articles', icon: FileText },
-        { href: '/admin/books', key: 'books', icon: BookOpen },
-        { href: '/admin/interviews', key: 'interviews', icon: Video },
-        { href: '/admin/gallery', key: 'gallery', icon: Images },
-        { href: '/admin/events', key: 'events', icon: Calendar },
-      ],
+      items: contentItems,
     },
     {
       key: 'commerce',
@@ -156,6 +172,8 @@ export function AdminSidebarContent({
   showAdminBooking = true,
   showAdminQuestions = true,
   pendingQuestionCount = 0,
+  showAdminTests = true,
+  draftTestCount = 0,
 }: {
   user: ServerSessionUser
   onNavigate?: () => void
@@ -178,6 +196,16 @@ export function AdminSidebarContent({
    * Sourced from getPendingQuestionCount() in the layout.
    */
   pendingQuestionCount?: number
+  /**
+   * Phase C2 — gates the Tests entry in the content group. Sourced from
+   * `admin.show_admin_tests`.
+   */
+  showAdminTests?: boolean
+  /**
+   * Phase C2 — number of unpublished tests. Drives the badge on the
+   * Tests sidebar entry; 0 hides it.
+   */
+  draftTestCount?: number
 }) {
   const pathname = usePathname()
   const tNav = useTranslations('admin.nav')
@@ -188,6 +216,8 @@ export function AdminSidebarContent({
     showAdminBooking,
     showAdminQuestions,
     pendingQuestionCount,
+    showAdminTests,
+    draftTestCount,
   )
 
   return (
@@ -312,11 +342,15 @@ export function AdminSidebar({
   showAdminBooking = true,
   showAdminQuestions = true,
   pendingQuestionCount = 0,
+  showAdminTests = true,
+  draftTestCount = 0,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
   showAdminQuestions?: boolean
   pendingQuestionCount?: number
+  showAdminTests?: boolean
+  draftTestCount?: number
 }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
@@ -325,6 +359,8 @@ export function AdminSidebar({
         showAdminBooking={showAdminBooking}
         showAdminQuestions={showAdminQuestions}
         pendingQuestionCount={pendingQuestionCount}
+        showAdminTests={showAdminTests}
+        draftTestCount={draftTestCount}
       />
     </aside>
   )

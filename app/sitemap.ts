@@ -4,6 +4,7 @@ import {
   getArticles,
   getBooks,
   getInterviews,
+  getPublishedTests,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import type { ComingSoonPage } from '@/lib/site-settings/types'
@@ -14,6 +15,7 @@ const STATIC_PATHS = [
   '/articles',
   '/books',
   '/interviews',
+  '/tests',
   '/events',
   '/corporate',
   '/contact',
@@ -54,11 +56,12 @@ const PATH_TO_COMING_SOON_KEY: Record<string, ComingSoonPage> = {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [settings, articles, books, interviews] = await Promise.all([
+  const [settings, articles, books, interviews, testsList] = await Promise.all([
     getCachedSiteSettings(),
     getArticles({ limit: 500 }),
     getBooks({ limit: 200 }),
     getInterviews({ limit: 200 }),
+    getPublishedTests({ limit: 200 }),
   ])
 
   const hidden = new Set<ComingSoonPage>(settings.coming_soon_pages)
@@ -128,6 +131,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           alternates: alternatesFor(path),
         })
       }
+    }
+  }
+
+  // Tests have no coming-soon key in v1; the catalog and per-test detail
+  // pages are always indexable when there are published rows.
+  for (const t of testsList) {
+    const path = `/tests/${t.slug}`
+    const lastModified = t.updatedAt ?? t.createdAt ?? new Date()
+    for (const loc of LOCALES) {
+      entries.push({
+        url: localizedUrl(loc, path),
+        lastModified,
+        changeFrequency: 'monthly',
+        alternates: alternatesFor(path),
+      })
     }
   }
 

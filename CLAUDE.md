@@ -58,14 +58,15 @@ What's stubbed:
 
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`) + Neon Postgres (serverless).
-- Schema: `lib/db/schema.ts` — **29 tables**, **13 enums**.
+- Schema: `lib/db/schema.ts` — **34 tables**, **13 enums**.
   - Tables: `users`, `sessions`, `accounts`, `verifications`, `articles`,
     `books`, `interviews`, `gallery`, `events`, `orders`, `orderItems`,
     `subscribers`, `contactMessages`, `siteSettings`, `contentBlocks`,
     `readingProgress`, `pdfBookmarks`, `mediaProgress`, `sessionItems`,
     `corporatePrograms`, `corporateClients`, `corporateRequests`, `tours`,
     `tourSuggestions`, `bookings`, `bookingInterest`, `bookingsPendingHolds`,
-    `bookingOrders`, `userQuestions`.
+    `bookingOrders`, `userQuestions`, `tests`, `testQuestions`,
+    `testOptions`, `testAttempts`, `testAttemptAnswers`.
   - Enums: `userRole`, `contentStatus`, `orderStatus`, `messageStatus`,
     `subscriberStatus`, `eventStatus`, `articleCategory`, `productType`,
     `sessionItemType`, `corporateRequestStatus`, `bookingProductType`,
@@ -77,7 +78,14 @@ What's stubbed:
     `bookingOrders.userId` is `ON DELETE SET NULL`; `bookingOrders.bookingId`
     is `ON DELETE RESTRICT` so admin can't delete a booking with orders.
     `bookingOrders.status` reuses the canonical `orderStatus` enum.
-- Migrations: `lib/db/migrations/0000…0009`. Apply with `npm run db:migrate`.
+    Tests-domain (Phase C1) is plain text-validated for `tests.category`
+    (no enum); `tests.priceUsd` + `tests.isPaid` exist as forward-compat
+    paywall hooks but v1 always writes null/false. "Exactly one correct
+    option per question" is enforced at the app layer, not by DB trigger
+    — the submit action returns `validation` if the seed data violates it.
+    `testAttempts` cascade-delete on user/test removal; `testAttemptAnswers`
+    cascade-delete on attempt/question/option removal.
+- Migrations: `lib/db/migrations/0000…0010`. Apply with `npm run db:migrate`.
 - **Unified data layer**: `lib/db/queries.ts` is the single import point.
   Drizzle when `DATABASE_URL` is a real Neon URL; falls back to
   `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
@@ -273,7 +281,8 @@ route groups.
 `/` · `/about` · `/articles` · `/articles/[slug]` · `/books` ·
 `/books/[slug]` · `/interviews` · `/interviews/[slug]` · `/events` ·
 `/corporate` · `/booking` · `/booking/success` · `/contact` ·
-`/checkout/success`
+`/checkout/success` · `/tests` · `/tests/[slug]` ·
+`/tests/[slug]/result/[attemptId]`
 
 Notes:
 - No `/shop` route. The product surface is `/books` (with `productType`
@@ -283,6 +292,16 @@ Notes:
 - `/corporate` has an in-page anchor `#request` wired to per-card
   CTAs via the `kg:corporate:select-program` CustomEvent.
 - `/booking` — see `docs/architecture/booking-domain.md`.
+- `/tests` (Phase C1) — public catalog of free reflection tests. Detail
+  page renders three CTA states (logged out / logged in / has attempt).
+  Result page is auth-gated and 404s on cross-user attempt access.
+
+### Focus (`app/[locale]/(focus)/`)
+`/tests/[slug]/take`
+
+A separate route group with a minimal layout (no SiteHeader/Footer) so
+the take page renders its own focus-mode chrome. Auth-gated; redirects
+to `/login` with the take URL preserved as `?redirect=`.
 
 ### Auth (`app/[locale]/(auth)/`)
 `/login` · `/register` · `/forgot-password` · `/reset-password`
@@ -290,7 +309,7 @@ Notes:
 ### Dashboard (`app/[locale]/(dashboard)/`)
 `/dashboard` · `/dashboard/ask` · `/dashboard/library` ·
 `/dashboard/library/read/[bookId]` · `/dashboard/library/session/[sessionId]` ·
-`/dashboard/bookings` · `/dashboard/settings`
+`/dashboard/bookings` · `/dashboard/tests` · `/dashboard/settings`
 
 Surface-specific architecture:
 - `/dashboard/library/read/[bookId]` → `docs/architecture/pdf-reader.md`
@@ -314,6 +333,11 @@ Surface-specific architecture:
 - `/admin/content` (content-blocks editor) · `/admin/media` (media library)
 - `/admin/questions` — Q&A admin queue (Phase B2; see
   `docs/architecture/ask-dr-khaled.md`)
+- `/admin/tests[/new][/[id]/edit][/[id]/analytics]` — Tests & Quizzes
+  admin (Phase C2). List with search + status/category filters; builder
+  for metadata + questions + options + correctness + explanations;
+  per-test analytics with score distribution, per-question selection
+  bars, and recent attempts. Sidebar gated on `admin.show_admin_tests`.
 - `/admin/corporate` · `/admin/corporate/{programs,clients,requests}/...`
 - `/admin/booking` · `/admin/booking/{tours,bookings,interest,tour-suggestions,orders}/...`
   (sidebar gated on `admin.show_admin_booking`)
@@ -445,11 +469,13 @@ Stored as a single JSON blob in `site_settings.value_json` under the
   `requireAdmin(req)` and per-admin rate-limited).
 - Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
 
-Toggle groups: `homepage`, `navigation` (incl. `show_nav_corporate`),
-`footer`, `hero_ctas`, `featured`, `features` (`auth_enabled`,
-`newsletter_form_enabled`, `maintenance_mode`), `maintenance` (message
-+ until date), `admin` (`show_admin_booking`, `show_admin_questions`),
-`dashboard` (`show_ask_tab`), `coming_soon_pages` (incl. `'corporate'`).
+Toggle groups: `homepage`, `navigation` (incl. `show_nav_corporate`,
+`show_nav_tests`), `footer`, `hero_ctas`, `featured`, `features`
+(`auth_enabled`, `newsletter_form_enabled`, `maintenance_mode`),
+`maintenance` (message + until date), `admin` (`show_admin_booking`,
+`show_admin_questions`, `show_admin_tests`), `dashboard`
+(`show_ask_tab`, `show_tests_tab`),
+`coming_soon_pages` (incl. `'corporate'`).
 
 **Coming Soon ≠ Hide.** Two independent concerns:
 - A page in `coming_soon_pages` renders the `ComingSoon` placeholder
@@ -516,6 +542,11 @@ of a human, say so explicitly rather than implying success.
   future "owned but not ready" shells).
 - `components/dashboard/ask/` — Q&A user-facing surface (Phase B1).
 - `components/admin/questions/` — Q&A admin queue (Phase B2).
+- `components/admin/tests/` — Tests & Quizzes admin (Phase C2). Test
+  builder + analytics view; reuses the C1 query helpers and extends them
+  with admin-side CRUD + aggregate query plans. Mock-store layered on
+  top of `placeholderTests` so admin CRUD is end-to-end testable in
+  mock-auth dev mode.
 - `components/layout/` — site chrome: `SiteHeader` (with mobile
   hamburger), `SiteFooter`, `MobileMenu`, `LocaleSwitcher`, `ThemeToggle`,
   `AuthMenu`, `UserMenuDropdown`, `AppLoader`, `LoadingSequence`,
@@ -640,8 +671,10 @@ Optional / feature-gated:
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 6 |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limiting |
 | `RESEND_API_KEY` | Transactional email |
-| `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. |
-| `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. |
+| `EMAIL_FROM` | Verified Resend sender address used by every transactional email. Format `Display Name <addr@domain>`. Falls back to `Dr. Khaled Ghattass <noreply@drkhaledghattass.com>` — only works once that domain is Verified in Resend with SPF/DKIM/DMARC propagated. **Production should set this explicitly.** |
+| `EMAIL_FORCE_SEND` | Dev-only `'true'` flag that forces real Resend sends outside production (overrides the dev-preview short-circuit in `lib/email/send.ts`). Do NOT set in production. |
+| `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly. |
+| `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
 | `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
 

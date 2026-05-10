@@ -1,7 +1,7 @@
 /**
  * Corporate-program request — internal notification email.
  *
- * Sent to the team inbox (default kamallchhimi@gmail.com, override via
+ * Sent to the team inbox (default Team@drkhaledghattass.com, override via
  * `CORPORATE_INBOX_EMAIL`) every time a public form submission lands. Best-
  * effort: the API route swallows send failures so the user never sees a
  * 500 just because Resend is unconfigured.
@@ -22,7 +22,7 @@ export type CorporateRequestEmailInput = {
   message?: string | null
 }
 
-const DEFAULT_INBOX = 'kamallchhimi@gmail.com'
+const DEFAULT_INBOX = 'Team@drkhaledghattass.com'
 
 function escape(value: string | null | undefined): string {
   if (!value) return ''

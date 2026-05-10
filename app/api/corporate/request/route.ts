@@ -6,9 +6,13 @@ import {
 } from '@/lib/db/queries'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { apiError, errInternal, parseJsonBody } from '@/lib/api/errors'
+import { assertSameOrigin } from '@/lib/api/origin'
 import { sendCorporateRequestEmail } from '@/lib/email/templates/corporate-request'
 
 export async function POST(req: Request) {
+  const originErr = assertSameOrigin(req)
+  if (originErr) return originErr
+
   const body = await parseJsonBody(req, corporateRequestSchema)
   if (!body.ok) return body.response
 

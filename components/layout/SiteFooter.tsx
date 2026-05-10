@@ -34,6 +34,7 @@ type NavToggles = {
   show_nav_contact: boolean
   show_nav_corporate: boolean
   show_nav_booking: boolean
+  show_nav_tests: boolean
 }
 
 const DEFAULT_FOOTER: FooterToggles = {
@@ -52,6 +53,7 @@ const DEFAULT_NAV: NavToggles = {
   show_nav_contact: true,
   show_nav_corporate: true,
   show_nav_booking: true,
+  show_nav_tests: true,
 }
 
 type Props = {
@@ -76,6 +78,7 @@ export function SiteFooter({
   const showContact = nav.show_nav_contact
   const showCorporate = nav.show_nav_corporate
   const showBooking = nav.show_nav_booking
+  const showTests = nav.show_nav_tests
 
   const allCols: Array<{
     title: string
@@ -108,6 +111,7 @@ export function SiteFooter({
         ...(showBooking
           ? [{ label: tNav('booking'), href: '/booking' }]
           : []),
+        ...(showTests ? [{ label: tNav('tests'), href: '/tests' }] : []),
         ...(showContact ? [{ label: tNav('contact'), href: '/contact' }] : []),
       ],
     },

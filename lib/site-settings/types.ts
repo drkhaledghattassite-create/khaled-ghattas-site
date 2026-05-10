@@ -40,6 +40,12 @@ export type SiteSettings = {
     show_nav_contact: boolean
     show_nav_corporate: boolean
     show_nav_booking: boolean
+    /**
+     * Phase C1 — when false, the public-site "Tests" link is hidden from
+     * the header nav and footer. Mirrors `show_nav_booking`'s pattern: a
+     * section-scoped visibility toggle that does NOT block the route.
+     */
+    show_nav_tests: boolean
     show_locale_switcher: boolean
   }
   footer: {
@@ -75,6 +81,12 @@ export type SiteSettings = {
      * Mirrors `show_admin_booking`'s pattern: a section-scoped toggle.
      */
     show_admin_questions: boolean
+    /**
+     * Phase C2 — when false, the "Tests" admin sidebar entry is hidden.
+     * The /admin/tests route still resolves via deep link. Same scoped-
+     * toggle pattern as the other show_admin_* flags.
+     */
+    show_admin_tests: boolean
   }
   dashboard: {
     /**
@@ -94,6 +106,13 @@ export type SiteSettings = {
     show_library_tab: boolean
     show_bookings_tab: boolean
     show_ask_tab: boolean
+    /**
+     * Phase C1 — when false, the dashboard "Tests" tab is hidden from
+     * the sticky tab bar. Same pattern as `show_ask_tab`: hides the tab
+     * but does NOT block the route — `/dashboard/tests` still resolves
+     * via deep link.
+     */
+    show_tests_tab: boolean
     show_settings_tab: boolean
   }
   maintenance: {

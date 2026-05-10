@@ -242,6 +242,11 @@ export function SiteSettingsForm({
             onCheckedChange={(v) => update('navigation', { show_nav_booking: v })}
           />
           <ToggleRow
+            label={t('navigation.show_nav_tests')}
+            checked={settings.navigation.show_nav_tests}
+            onCheckedChange={(v) => update('navigation', { show_nav_tests: v })}
+          />
+          <ToggleRow
             label={t('navigation.show_locale_switcher')}
             checked={settings.navigation.show_locale_switcher}
             onCheckedChange={(v) => update('navigation', { show_locale_switcher: v })}
@@ -397,6 +402,12 @@ export function SiteSettingsForm({
             checked={settings.admin.show_admin_questions}
             onCheckedChange={(v) => update('admin', { show_admin_questions: v })}
           />
+          <ToggleRow
+            label={t('admin.show_admin_tests')}
+            description={t('admin.show_admin_tests_desc')}
+            checked={settings.admin.show_admin_tests}
+            onCheckedChange={(v) => update('admin', { show_admin_tests: v })}
+          />
         </div>
       </Card>
 
@@ -425,6 +436,12 @@ export function SiteSettingsForm({
             description={t('dashboard.show_ask_tab_desc')}
             checked={settings.dashboard.show_ask_tab}
             onCheckedChange={(v) => update('dashboard', { show_ask_tab: v })}
+          />
+          <ToggleRow
+            label={t('dashboard.show_tests_tab')}
+            description={t('dashboard.show_tests_tab_desc')}
+            checked={settings.dashboard.show_tests_tab}
+            onCheckedChange={(v) => update('dashboard', { show_tests_tab: v })}
           />
           <ToggleRow
             label={t('dashboard.show_settings_tab')}

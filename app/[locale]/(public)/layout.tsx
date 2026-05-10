@@ -30,6 +30,8 @@ function buildNavItems(settings: Awaited<ReturnType<typeof getCachedSiteSettings
     items.push({ key: 'corporate', href: '/corporate' })
   if (navigation.show_nav_booking)
     items.push({ key: 'booking', href: '/booking' })
+  if (navigation.show_nav_tests)
+    items.push({ key: 'tests', href: '/tests' })
   if (navigation.show_nav_contact) items.push({ key: 'contact', href: '/contact' })
   return items
 }
