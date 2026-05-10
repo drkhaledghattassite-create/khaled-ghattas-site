@@ -63,6 +63,7 @@ export async function POST(req: Request) {
           preferredDate: row.preferredDate,
           attendeeCount: row.attendeeCount,
           message: row.message,
+          requestId: row.id,
         })
       } catch (mailErr) {
         console.error('[api/corporate/request] notification failed', mailErr)

@@ -129,6 +129,15 @@ export function OrderActions({ order }: { order: Order }) {
                 email: order.customerEmail,
               })}
             </AlertDialogDescription>
+            {/* Phase D — gift-aware refund warning. Refunding a gift-claimed
+                order cascades through markGiftRefunded → deleteOrderForGift,
+                removing the recipient's library access. Surface that
+                explicitly before the admin commits. */}
+            {order.giftId && (
+              <AlertDialogDescription className="mt-2 rounded-md border border-accent/40 bg-accent-soft/60 px-3 py-2 text-accent">
+                {tConfirm('refund_gift_warning')}
+              </AlertDialogDescription>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>

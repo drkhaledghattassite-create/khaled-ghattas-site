@@ -20,6 +20,9 @@ export type CorporateRequestEmailInput = {
   preferredDate?: string | null
   attendeeCount?: number | null
   message?: string | null
+  /** Phase D2 — corporate_requests row id, threaded to the queue row's
+   * relatedEntityId so admin can trace this email back to the request. */
+  requestId?: string | null
 }
 
 const DEFAULT_INBOX = 'Team@drkhaledghattass.com'
@@ -97,8 +100,13 @@ export async function sendCorporateRequestEmail(
     to,
     subject: `New corporate request — ${input.organization}`,
     html: buildHtml(input),
-    // Resend supports reply_to via the `replyTo` field, but our shared
-    // wrapper only exposes the basics — use `from` to set a friendly name
-    // and let the user reply via the address listed in the body.
+    // Plain-text fallback derived from the rendered HTML so spam filters
+    // and text-only clients still get a readable message.
+    text: `New corporate request from ${input.name} (${input.email}) at ${input.organization}.\n\n${input.message ?? ''}`,
+    replyTo: input.email,
+    previewLabel: 'corporate-request',
+    emailType: 'corporate_request',
+    relatedEntityType: input.requestId ? 'corporate_request' : null,
+    relatedEntityId: input.requestId ?? null,
   })
 }

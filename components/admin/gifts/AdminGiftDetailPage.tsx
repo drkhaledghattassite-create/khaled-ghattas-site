@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import type { GiftItemType, GiftSource, GiftStatus } from '@/lib/db/schema'
 import {
   resendAdminGiftEmailAction,
@@ -102,8 +103,18 @@ export function AdminGiftDetailPage({
       })
       if (!result.ok) {
         setErrorKey(result.error)
+        // Pick the most specific revoke-modal error message we have, else
+        // fall back to the catch-all 'unknown' bucket.
+        const knownErrorKey =
+          result.error === 'validation' ||
+          result.error === 'wrong_state' ||
+          result.error === 'not_found'
+            ? `errors.${result.error}`
+            : 'errors.unknown'
+        toast.error(tRev(knownErrorKey as 'errors.unknown'))
         return
       }
+      toast.success(tRev('success'))
       setRevokeOpen(false)
       router.refresh()
     })
@@ -114,10 +125,16 @@ export function AdminGiftDetailPage({
     setErrorKey(null)
     startTransition(async () => {
       const result = await resendAdminGiftEmailAction({ giftId: gift.id })
-      if (result.ok) setFeedback(tStatus('resend_success'))
-      else if (result.error === 'rate_limited')
+      if (result.ok) {
+        setFeedback(tStatus('resend_success'))
+        toast.success(tStatus('resend_success'))
+      } else if (result.error === 'rate_limited') {
         setFeedback(tStatus('resend_rate_limited'))
-      else setFeedback(tStatus('resend_failed'))
+        toast.error(tStatus('resend_rate_limited'))
+      } else {
+        setFeedback(tStatus('resend_failed'))
+        toast.error(tStatus('resend_failed'))
+      }
     })
   }
 

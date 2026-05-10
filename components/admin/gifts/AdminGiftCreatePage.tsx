@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import { useRouter } from '@/lib/i18n/navigation'
 import type { Book, BookingWithHolds } from '@/lib/db/queries'
 import { createAdminGiftAction } from '@/app/[locale]/(admin)/admin/gifts/actions'
@@ -56,8 +57,10 @@ export function AdminGiftCreatePage({
       })
       if (!result.ok) {
         setErrorKey(result.error)
+        toast.error(t(`errors.${result.error}`))
         return
       }
+      toast.success(t('success'))
       router.push('/admin/gifts')
     })
   }

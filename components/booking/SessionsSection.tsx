@@ -19,6 +19,12 @@ type Props = {
    * card during a render that already iterates `sessions.length` times.
    */
   paidBookingIds: Set<string>
+  /**
+   * Phase D — when true, render a "Send as gift" link beneath each open
+   * session card's Reserve CTA. Sourced from the gifts.allow_user_to_user
+   * site-setting at the page boundary.
+   */
+  allowGifting: boolean
 }
 
 type Filter = 'all' | 'open' | 'sold_out' | 'closed'
@@ -49,6 +55,7 @@ export function SessionsSection({
   onReserve,
   onInterest,
   paidBookingIds,
+  allowGifting,
 }: Props) {
   const t = useTranslations('booking.sessions')
   const tShared = useTranslations('booking.shared')
@@ -345,6 +352,23 @@ export function SessionsSection({
                       </button>
                     )}
                   </div>
+                  {/* Phase D — quiet gift CTA below the price row. Only on
+                      open + not-already-booked cards (no point gifting a
+                      sold-out session to someone; capacity is shared with
+                      the recipient's eventual claim). stopPropagation so a
+                      tap routes to /gifts/send instead of the card's
+                      Reserve handler. */}
+                  {allowGifting && isOpen && (
+                    <Link
+                      href={`/gifts/send?type=booking&id=${s.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`mt-1 inline-flex items-center self-start text-[12px] underline text-[var(--color-fg3)] hover:text-[var(--color-fg1)] transition-colors ${
+                        isRtl ? 'font-arabic-body' : 'font-display'
+                      }`}
+                    >
+                      {tShared('send_as_gift')}
+                    </Link>
+                  )}
                 </motion.article>
               )
             })}

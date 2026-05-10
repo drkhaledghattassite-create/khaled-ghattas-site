@@ -84,9 +84,6 @@ export default async function GiftsClaimRoute({ params, searchParams }: Props) {
           ? {
               id: session.user.id,
               email: session.user.email ?? '',
-              emailVerified:
-                (session.user as typeof session.user & { emailVerified?: boolean })
-                  .emailVerified ?? true,
             }
           : null
       }

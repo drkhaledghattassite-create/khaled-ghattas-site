@@ -37,6 +37,7 @@
     "corporate": "للشركات والمؤسسات",
     "booking": "خدمات للأفراد",
     "tests": "الاختبارات",
+    "send_gift": "أرسل هدية",
     "menu": "القائمة",
     "close": "إغلاق",
     "primary": "القائمة الأساسية",
@@ -253,7 +254,7 @@
   },
   "book": {
     "buy": "اشترِ الآن",
-    "sample": "اقرأ عينة",
+    "send_as_gift": "أرسلها هدية",
     "format": "الصيغة",
     "format_digital": "كتاب رقمي PDF",
     "format_print": "كتاب مطبوع",
@@ -566,7 +567,8 @@
       "error_validation": "تحقّق من البيانات وحاول مرة أخرى.",
       "already_booked": "محجوز مسبقاً",
       "already_booked_body": "لقد حجزت مقعداً في هذه الدفعة مسبقاً. أدِر حجزك من لوحة التحكم.",
-      "view_in_dashboard": "افتح في لوحة التحكم"
+      "view_in_dashboard": "افتح في لوحة التحكم",
+      "send_as_gift": "أو أرسلها هدية"
     },
     "success": {
       "heading": "تمّ الحجز",
@@ -691,6 +693,8 @@
       "tests": "الاختبارات",
       "tests_drafts_aria": "{count, plural, zero {لا اختبارات في المسودة} one {اختبار واحد في المسودة} two {اختباران في المسودة} few {# اختبارات في المسودة} many {# اختباراً في المسودة} other {# اختبار في المسودة}}",
       "gifts": "الهدايا",
+      "email_queue": "صفوف البريد",
+      "email_queue_attention_aria": "{count, plural, zero {لا رسائل تحتاج إلى مراجعة} one {رسالة واحدة تحتاج إلى مراجعة} two {رسالتان تحتاجان إلى مراجعة} few {# رسائل تحتاج إلى مراجعة} many {# رسالة تحتاج إلى مراجعة} other {# رسالة تحتاج إلى مراجعة}}",
       "booking_tours": "الجولات",
       "booking_bookings": "الحجوزات",
       "booking_tour_suggestions": "اقتراحات الجولات",
@@ -1033,6 +1037,7 @@
       "cancel_order": "إلغاء",
       "open_stripe": "فتح في Stripe",
       "back_to_orders": "كل الطلبات",
+      "gift_claim_badge": "طلب من هدية — عرض الهدية",
       "confirm": {
         "back": "رجوع",
         "fulfill_title": "تأكيد تنفيذ هذا الطلب؟",
@@ -1040,6 +1045,7 @@
         "fulfill_confirm": "تم التنفيذ",
         "refund_title": "استرداد قيمة هذا الطلب؟",
         "refund_description": "سيُجرى استرداد فعلي بمبلغ {amount} لحساب {email} عبر Stripe. تُعاد القيمة إلى بطاقة العميل ولا يمكن التراجع عن هذا الإجراء من اللوحة — يلزم تدخّل البنك إن أردت إلغاءه.",
+        "refund_gift_warning": "تنبيه: هذا الطلب أُنشئ من هدية. الاسترداد سيلغي وصول المستلم إلى هذا العنصر.",
         "refund_confirm": "نعم، استرداد {amount}",
         "refunding": "جارٍ الاسترداد…",
         "cancel_title": "إلغاء هذا الطلب؟",
@@ -1434,7 +1440,8 @@
       "edit_booking": "فتح الحجز",
       "not_set": "—",
       "type_reconsider": "دورة Reconsider",
-      "type_session": "جلسة أونلاين"
+      "type_session": "جلسة أونلاين",
+      "gift_claim_badge": "حجز من هدية — عرض الهدية"
     },
     "booking_actions": {
       "success_created": "تم الإنشاء",
@@ -1469,6 +1476,7 @@
       "delete_booking_confirm": "حذف",
       "refund_title": "استرداد هذا الطلب؟",
       "refund_body": "استرداد {amount} إلى {email}؟ سيؤدي ذلك إلى:\n• تنفيذ استرداد عبر Stripe (لا يمكن التراجع عنه)\n• إنقاص bookedCount واحدًا (عبر webhook)\n• تحديث حالة الطلب المحلية إلى \"مُستردّ\"\n\nملاحظة: حالة \"اكتمل العدد\" لن تتغيّر تلقائياً.",
+      "refund_gift_warning": "تنبيه: هذا الحجز أُنشئ من هدية. الاسترداد سيلغي مقعد المستلم.",
       "refund_confirm": "استرداد",
       "purge_title": "حذف الطلبات المعلّقة القديمة؟",
       "purge_body": "حذف كل صفوف booking_orders ذات الحالة 'PENDING' وعمر أكثر من 24 ساعة. هذه عمليات Stripe Checkout مهجورة لم يكتمل دفعها.",
@@ -1590,7 +1598,9 @@
         "show_admin_tests": "إدخال الاختبارات في الإدارة",
         "show_admin_tests_desc": "إظهار إدخال «الاختبارات» (مع شارة عدد المسودات) ضمن مجموعة المحتوى في الشريط الجانبي للإدارة.",
         "show_admin_gifts": "إدخال الهدايا في الإدارة",
-        "show_admin_gifts_desc": "إظهار إدخال «الهدايا» ضمن مجموعة التجارة في الشريط الجانبي للإدارة. مسار /admin/gifts يبقى متاحاً عبر الرابط المباشر."
+        "show_admin_gifts_desc": "إظهار إدخال «الهدايا» ضمن مجموعة التجارة في الشريط الجانبي للإدارة. مسار /admin/gifts يبقى متاحاً عبر الرابط المباشر.",
+        "show_admin_email_queue": "إدخال صفوف البريد في الإدارة",
+        "show_admin_email_queue_desc": "إظهار إدخال «صفوف البريد» (مع شارة عدد الرسائل المتعطّلة + المرفوضة) ضمن مجموعة الموقع في الشريط الجانبي. مسار /admin/email-queue يبقى متاحاً عبر الرابط المباشر."
       },
       "dashboard": {
         "show_account_tab": "تبويب «حسابي» (دائماً ظاهر)",
@@ -1881,6 +1891,8 @@
         "form_message_placeholder": "ملاحظة قصيرة من الفريق…",
         "success": "تمّ منح الهدية.",
         "errors": {
+          "unauthorized": "يجب تسجيل الدخول كمسؤول لإرسال هدية.",
+          "forbidden": "ليس لديك صلاحية لإرسال هدايا.",
           "validation": "راجع النموذج وأعد المحاولة.",
           "self_gift": "لا يمكنك منح هدية لنفسك.",
           "item_unavailable": "هذا العنصر لم يعد متاحاً.",
@@ -1938,6 +1950,98 @@
           "unknown": "حدث خطأ. أعد المحاولة."
         }
       }
+    },
+    "email_queue": {
+      "heading": "صفوف البريد",
+      "description": "صندوق صادر دائم للرسائل الآلية. الرسائل الفاشلة تُعاد المحاولة وفق الجدول 1د → 5د → 15د → ساعة؛ الرسائل التي استنفدت محاولاتها تظهر هنا للمراجعة اليدوية.",
+      "empty": "لا توجد رسائل تطابق هذه المرشحات.",
+      "search_placeholder": "ابحث ببريد المستلم",
+      "filters": {
+        "label": "تصفية",
+        "all": "الكل",
+        "pending": "قيد الانتظار",
+        "sending": "قيد الإرسال",
+        "sent": "أُرسلت",
+        "failed": "فاشلة",
+        "exhausted": "نَفِدت المحاولات",
+        "type_all": "كل الأنواع",
+        "type_post_purchase": "بعد الشراء",
+        "type_booking_confirmation": "تأكيد الحجز",
+        "type_gift_received": "استلام هدية",
+        "type_gift_sent": "إرسال هدية",
+        "type_gift_claimed_recipient": "تأكيد استلام الهدية (للمستلم)",
+        "type_gift_claimed_sender": "تأكيد استلام الهدية (للمُرسِل)",
+        "type_gift_revoked": "إلغاء هدية",
+        "type_admin_gift_granted": "هدية من الإدارة",
+        "type_question_answered": "إجابة على سؤال",
+        "type_corporate_request": "طلب للشركات",
+        "type_unknown": "أخرى"
+      },
+      "status": {
+        "pending": "قيد الانتظار",
+        "sending": "قيد الإرسال",
+        "sent": "أُرسلت",
+        "failed": "فاشلة",
+        "exhausted": "نَفِدت المحاولات"
+      },
+      "col": {
+        "created": "أُنشئت",
+        "recipient": "المستلم",
+        "type": "النوع",
+        "status": "الحالة",
+        "attempts": "المحاولات",
+        "next_attempt": "المحاولة التالية",
+        "last_error": "آخر خطأ",
+        "actions": "إجراءات"
+      },
+      "actions": {
+        "view": "عرض",
+        "retry": "أعد المحاولة الآن",
+        "mark_failed": "تعليم كفاشلة"
+      },
+      "detail": {
+        "heading": "تفاصيل الرسالة",
+        "back": "العودة إلى الصفوف",
+        "section_overview": "نظرة عامة",
+        "section_attempt": "المحاولات",
+        "section_preview": "معاينة",
+        "section_related": "الكيان المرتبط",
+        "label_id": "معرّف الصف",
+        "label_type": "النوع",
+        "label_status": "الحالة",
+        "label_recipient": "المستلم",
+        "label_subject": "الموضوع",
+        "label_from": "المُرسِل",
+        "label_reply_to": "الرد إلى",
+        "label_attempts": "المحاولات",
+        "label_next_attempt": "المحاولة التالية",
+        "label_last_attempt": "آخر محاولة",
+        "label_last_error": "آخر خطأ",
+        "label_resend_id": "معرّف Resend",
+        "label_created": "أُنشئت",
+        "label_updated": "حُدّثت",
+        "related_link": "افتح الكيان المرتبط",
+        "no_related": "لا يوجد كيان مرتبط",
+        "preview_iframe_label": "معاينة الرسالة"
+      },
+      "modal": {
+        "retry_title": "إعادة المحاولة لهذه الرسالة؟",
+        "retry_body": "سنُعيد ضبط وقت المحاولة التالية إلى الآن ونعيد الحالة إلى «قيد الانتظار». عدّاد المحاولات يبقى كما هو — إن فشلت مجدّداً ستعود إلى «نَفِدت المحاولات».",
+        "retry_confirm": "أعد المحاولة الآن",
+        "mark_failed_title": "تعليم هذه الرسالة كفاشلة؟",
+        "mark_failed_body": "هذا تعليم يدوي — سيتوقّف الـ cron عن إعادة محاولة هذا الصف. لا يزال بإمكان الإدارة إعادة المحاولة يدوياً.",
+        "mark_failed_reason_label": "السبب (للتدقيق)",
+        "mark_failed_reason_placeholder": "مثال: عنوان البريد غير صالح",
+        "mark_failed_confirm": "تعليم كفاشلة",
+        "cancel": "إغلاق"
+      },
+      "toast": {
+        "retry_success": "تمّت إضافة الرسالة لإعادة المحاولة",
+        "mark_failed_success": "تمّ تعليم الرسالة كفاشلة",
+        "error_generic": "حدث خطأ. أعد المحاولة."
+      },
+      "schedule_note": "جدول إعادة المحاولة: 1د ← 5د ← 15د ← ساعة ← انتهاء",
+      "pii_note": "تحتوي هذه الصفوف على نسخ مُجهّزة من الرسائل. تعامل معها بنفس حساسية مراسلات العملاء."
     }
   },
   "about_teaser": {
@@ -2746,7 +2850,34 @@
       "send_title": "أرسل هدية",
       "send_description": "أهدِ كتاباً أو جلسة أو حجزاً لشخص تحبّه.",
       "claim_title": "استلم هديتك",
-      "claim_description": "تلقّيت هدية من موقع د. خالد غطاس."
+      "claim_description": "تلقّيت هدية من موقع د. خالد غطاس.",
+      "success_title": "هديتك في الطريق",
+      "success_description": "تمّ تجهيز هديتك للمستلم."
+    },
+    "success": {
+      "eyebrow": "هديتك جاهزة",
+      "heading_paid": "هديتك في طريقها",
+      "heading_pending": "نُجهّز هديتك الآن",
+      "body_paid": "أرسلنا بريداً إلى {email}. إذا لم يصل خلال دقائق، يمكنك مشاركة الرابط المباشر أدناه.",
+      "body_pending": "نتحقّق من دفعتك مع Stripe. يستغرق ذلك ثوانٍ معدودة.",
+      "recipient_label": "أُرسلت إلى",
+      "share_heading": "شارك الرابط مباشرة",
+      "share_body": "إذا لم يَرَ المستلم البريد، أرسل له هذا الرابط عبر واتساب أو أي تطبيق محادثة. لن يستطيع استلامها إلا هو.",
+      "copy_link": "انسخ الرابط",
+      "copied": "تمّ نسخ الرابط",
+      "copy_failed": "تعذّر النسخ",
+      "open_link": "افتح الرابط",
+      "expires_at": "تنتهي صلاحية هذه الهدية بتاريخ {date}",
+      "go_dashboard": "افتح في لوحة التحكم",
+      "send_another": "أرسل هدية أخرى",
+      "confirming": "جارٍ التأكيد مع Stripe…",
+      "not_found_heading": "لم نعثر على هذه الهدية",
+      "not_found_body": "إن كنت قد دفعت للتوّ، أمهلنا لحظات ثمّ حدّث الصفحة. وإلّا فقد يكون الرابط قد فُتح خطأ.",
+      "resend_email": "أعد إرسال البريد للمستلم",
+      "resend_sending": "جارٍ الإرسال…",
+      "resend_success": "تمّ الإرسال",
+      "resend_failed": "تعذّر الإرسال الآن",
+      "resend_rate_limited": "يرجى الانتظار يوماً قبل إعادة الإرسال"
     },
     "send": {
       "eyebrow": "أرسل هدية",
@@ -2784,6 +2915,8 @@
       "login_cta": "تسجيل الدخول",
       "feature_disabled": "إرسال الهدايا غير متاح حالياً. تفقّد الصفحة لاحقاً.",
       "errors": {
+        "unauthorized": "يرجى تسجيل الدخول لإرسال هدية.",
+        "select_item_first": "يرجى اختيار عنصر قبل المتابعة.",
         "validation": "راجع النموذج وأعد المحاولة.",
         "self_gift": "لا يمكنك إرسال هدية لنفسك.",
         "item_unavailable": "هذا العنصر لم يعد متاحاً.",
@@ -2812,9 +2945,6 @@
       "ready_heading": "هديتك جاهزة",
       "ready_body": "اضغط الزر أدناه لاستلامها.",
       "ready_cta": "استلم هديتك",
-      "verifying_heading": "خطوة أخيرة",
-      "verifying_body": "تفقّد بريدك للحصول على رابط التحقّق، ثم عُد إلى هنا للاستلام.",
-      "verifying_refresh_cta": "تمّ التحقّق — تحديث",
       "mismatch_heading": "هذه الهدية ليست لهذا الحساب",
       "mismatch_body": "سجّل خروجك ثمّ أعد الدخول بالبريد الصحيح للاستلام.",
       "mismatch_signout_cta": "تسجيل الخروج",
@@ -2825,7 +2955,6 @@
         "invalid_or_expired": "رابط الهدية غير صالح أو منتهي الصلاحية.",
         "login_required": "سجّل الدخول لاستلام الهدية.",
         "email_mismatch": "هذه الهدية ليست لهذا الحساب.",
-        "email_verification_pending": "يرجى التحقّق من بريدك أولاً.",
         "rate_limited": "محاولات كثيرة. انتظر قليلاً وأعد المحاولة.",
         "item_unavailable": "العنصر المرتبط بهذه الهدية لم يعد متاحاً.",
         "db_failed": "حدث خطأ. أعد المحاولة."

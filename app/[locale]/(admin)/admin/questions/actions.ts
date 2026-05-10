@@ -161,6 +161,7 @@ export async function updateQuestionStatusAction(
           },
           question: { subject: existing.subject },
           answerUrl: answerReferenceForWrite,
+          questionId: existing.id,
         })
         if (result.ok) {
           emailOutcome = 'sent'

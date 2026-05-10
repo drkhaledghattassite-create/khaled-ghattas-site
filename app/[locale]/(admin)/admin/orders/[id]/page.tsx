@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Gift } from 'lucide-react'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import { OrderActions } from '@/components/admin/OrderActions'
 import { getOrderById } from '@/lib/db/queries'
@@ -26,6 +26,20 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         <ChevronLeft className="h-3 w-3 rtl:rotate-180" aria-hidden />
         {t('back_to_orders')}
       </Link>
+
+      {/* Phase D — gift-claim badge. When set, this order was created by
+          the gift claim flow (recipient redeeming a USER_PURCHASE or
+          ADMIN_GRANT gift). Refunding here will revoke the recipient's
+          access — the OrderActions modal surfaces an extra warning. */}
+      {order.giftId && (
+        <Link
+          href={`/admin/gifts/${order.giftId}`}
+          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/60 px-3 py-2 text-[12px] font-display font-semibold text-accent transition-colors hover:border-accent hover:bg-accent-soft"
+        >
+          <Gift className="h-3.5 w-3.5" aria-hidden />
+          {t('gift_claim_badge')}
+        </Link>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <section className="space-y-4 rounded-md border border-dashed border-border bg-bg-elevated p-6">

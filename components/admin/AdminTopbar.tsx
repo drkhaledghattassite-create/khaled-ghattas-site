@@ -46,6 +46,8 @@ export function AdminTopbar({
   showAdminTests = true,
   draftTestCount = 0,
   showAdminGifts = true,
+  showAdminEmailQueue = true,
+  emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
@@ -54,6 +56,8 @@ export function AdminTopbar({
   showAdminTests?: boolean
   draftTestCount?: number
   showAdminGifts?: boolean
+  showAdminEmailQueue?: boolean
+  emailQueueAttentionCount?: number
 }) {
   const pathname = usePathname()
   const locale = useLocale()
@@ -112,6 +116,8 @@ export function AdminTopbar({
             showAdminTests={showAdminTests}
             draftTestCount={draftTestCount}
             showAdminGifts={showAdminGifts}
+            showAdminEmailQueue={showAdminEmailQueue}
+            emailQueueAttentionCount={emailQueueAttentionCount}
             onNavigate={() => setDrawerOpen(false)}
           />
         </SheetContent>

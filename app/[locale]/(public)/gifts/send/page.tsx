@@ -11,7 +11,10 @@ import { getServerSession } from '@/lib/auth/server'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 
-type Props = { params: Promise<{ locale: string }> }
+type Props = {
+  params: Promise<{ locale: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -26,9 +29,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
-export default async function GiftsSendRoute({ params }: Props) {
+function normaliseType(raw: string | string[] | undefined): 'book' | 'session' | 'booking' | null {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value === 'book' || value === 'session' || value === 'booking') return value
+  return null
+}
+
+function normaliseId(raw: string | string[] | undefined): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string') return null
+  // Cheap UUID-shape guard — the SendGiftPage falls back gracefully if no
+  // match is found, but we don't want to ship arbitrary strings into the
+  // client component's state.
+  if (!/^[0-9a-f-]{8,40}$/i.test(value)) return null
+  return value
+}
+
+export default async function GiftsSendRoute({ params, searchParams }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+  const sp = await searchParams
 
   const settings = await getCachedSiteSettings()
 
@@ -56,6 +76,10 @@ export default async function GiftsSendRoute({ params }: Props) {
     ...onlineSessions.filter((b) => b.bookingState === 'OPEN'),
   ]
 
+  const preselectedType = normaliseType(sp.type)
+  const preselectedId = normaliseId(sp.id)
+  const cancelled = sp.cancelled === '1'
+
   return (
     <SendGiftPage
       locale={locale}
@@ -64,6 +88,9 @@ export default async function GiftsSendRoute({ params }: Props) {
       bookings={bookings}
       isLoggedIn={!!session}
       featureEnabled={settings.gifts.allow_user_to_user}
+      preselectedType={preselectedType}
+      preselectedId={preselectedId}
+      cancelled={cancelled}
     />
   )
 }

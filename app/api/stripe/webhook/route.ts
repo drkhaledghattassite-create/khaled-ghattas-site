@@ -17,7 +17,6 @@ import {
   markGiftRefunded,
   setGiftStripePaymentIntent,
   updateOrderStatusByPaymentIntentId,
-  voidGiftForPaymentFailure,
   type Gift,
 } from '@/lib/db/queries'
 import { sendEmail } from '@/lib/email/send'
@@ -349,18 +348,11 @@ export async function POST(req: Request) {
 
     case 'payment_intent.payment_failed': {
       const pi = event.data.object as Stripe.PaymentIntent
-      // GIFT branch first — try voiding any gift created PENDING but never
-      // paid. Per spec edge-case (q): mark status=REFUNDED with reason
-      // 'payment_failed' so the recipient (if notified) gets the revoke email.
-      const voidedGift = await voidGiftByPaymentIntent(pi.id)
-      if (voidedGift) {
-        console.info(
-          '[stripe/webhook] payment_intent.payment_failed → GIFT voided',
-          { giftId: voidedGift.id },
-        )
-        break
-      }
-
+      // GIFT events on payment_failed are no-ops because gifts are only
+      // created on checkout.session.completed, after which payment failure
+      // cannot occur. If a gift somehow needs voiding, use the admin
+      // revoke flow.
+      //
       // BOOKING next. We don't currently store paymentIntentId on
       // booking_orders before completion, so this only matches if the PI
       // was already linked (via a prior succeeded then failed sequence — rare
@@ -534,6 +526,9 @@ async function sendPostPurchaseEmail(args: {
     html,
     text,
     previewLabel: 'post-purchase',
+    emailType: 'post_purchase',
+    relatedEntityType: 'order',
+    relatedEntityId: args.orderId,
   })
 
   if (!result.ok) {
@@ -705,6 +700,9 @@ async function handleBookingCheckoutCompleted(
       html,
       text,
       previewLabel: 'booking-confirmation',
+      emailType: 'booking_confirmation',
+      relatedEntityType: 'booking_order',
+      relatedEntityId: result.bookingOrder.id,
     })
     if (!sendResult.ok) {
       if (sendResult.reason === 'preview-only') {
@@ -927,6 +925,9 @@ async function handleGiftCheckoutCompleted(
       html,
       text,
       previewLabel: 'gift-sent',
+      emailType: 'gift_sent',
+      relatedEntityType: 'gift',
+      relatedEntityId: created.id,
     })
   } catch (err) {
     console.error('[stripe/webhook] gift_sent email failed', err)
@@ -987,6 +988,9 @@ async function refundGiftByPaymentIntent(
             supportEmail: SUPPORT_EMAIL,
           }),
           previewLabel: 'gift-refunded-recipient',
+          emailType: 'gift_revoked',
+          relatedEntityType: 'gift',
+          relatedEntityId: refunded.id,
         })
         if (refunded.senderUserId) {
           const sender = await getUserById(refunded.senderUserId)
@@ -1013,6 +1017,9 @@ async function refundGiftByPaymentIntent(
                 supportEmail: SUPPORT_EMAIL,
               }),
               previewLabel: 'gift-refunded-sender',
+              emailType: 'gift_revoked',
+              relatedEntityType: 'gift',
+              relatedEntityId: refunded.id,
             })
           }
         }
@@ -1027,22 +1034,3 @@ async function refundGiftByPaymentIntent(
   }
 }
 
-async function voidGiftByPaymentIntent(
-  paymentIntentId: string,
-): Promise<Gift | null> {
-  try {
-    const { db } = await import('@/lib/db')
-    const { gifts } = await import('@/lib/db/schema')
-    const { eq } = await import('drizzle-orm')
-    const [row] = await db
-      .select()
-      .from(gifts)
-      .where(eq(gifts.stripePaymentIntentId, paymentIntentId))
-      .limit(1)
-    if (!row) return null
-    return await voidGiftForPaymentFailure(row.id)
-  } catch (err) {
-    console.error('[stripe/webhook] voidGiftByPaymentIntent failed', err)
-    return null
-  }
-}

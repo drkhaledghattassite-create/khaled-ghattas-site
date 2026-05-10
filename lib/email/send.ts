@@ -1,23 +1,41 @@
 /**
- * Single send wrapper around Resend. All transactional email goes through
- * here so we get a uniform no-op-when-not-configured story plus consistent
- * error logging. Templates live alongside this file in `./templates/`.
+ * Single send wrapper around the email queue. All transactional email goes
+ * through here so we get a uniform no-op-when-not-configured story plus
+ * consistent error logging. Templates live alongside this file in
+ * `./templates/`.
+ *
+ * Phase D2 — durable queue
+ * ────────────────────────
+ * In production, sendEmail does NOT call Resend synchronously. It enqueues
+ * the rendered email into the `email_queue` table and returns immediately.
+ * A Vercel cron at /api/cron/process-email-queue drains the queue with
+ * retry + backoff (5 attempts, 1m / 5m / 15m / 1h schedule). The "ok"
+ * return semantic shifted from "Resend accepted it" to "queued for
+ * delivery" — admin can inspect actual delivery state at /admin/email-queue.
+ *
+ * Existing callers compile unchanged; the result type is backwards-compatible.
+ * New callers should pass `emailType` (required for the queue row) and
+ * `relatedEntityType` / `relatedEntityId` (so admin can trace queue rows
+ * back to gifts / orders / questions / etc.).
  *
  * Dev preview mode
  * ────────────────
  * When `NODE_ENV !== 'production'` OR `MOCK_AUTH_ENABLED === 'true'`, real
- * Resend calls are skipped by default. Instead we:
+ * Resend calls are skipped by default AND the queue is bypassed entirely.
+ * Instead we:
  *   1. Log a clearly-tagged preview to the dev console
  *   2. Best-effort write the rendered HTML to
  *      `.next/cache/email-previews/{ts}-{to}.html` for inspection
  *
- * This keeps Resend's quota clean during dev iteration and prevents fake
- * emails reaching real addresses while a developer is exercising the
- * checkout flow against a real customer-email account.
+ * No queue row is created in dev preview mode — the file write IS the
+ * artifact developers inspect.
  *
- * Override: set `EMAIL_FORCE_SEND=true` in `.env.local` to actually call
- * Resend in dev — useful for "test the real Gmail render once before I
- * declare done."
+ * Escape hatches:
+ *   - `EMAIL_FORCE_SEND=true` — bypass dev preview, hit Resend AND the
+ *     queue in dev. Same code path as production.
+ *   - `EMAIL_FORCE_SYNC=true` — bypass the queue entirely and send via
+ *     Resend synchronously. Useful for the cron worker itself + dev
+ *     debugging the Resend integration without waiting on the cron.
  *
  * Sender address selection
  * ────────────────────────
@@ -31,7 +49,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-import { getResend } from './index'
+import { enqueueEmail, type EmailRelatedEntityType } from '@/lib/db/queries'
+import { sendViaResend } from './queue-send'
 import {
   buildQuestionAnsweredEmail,
   type QuestionAnsweredLocale,
@@ -41,18 +60,37 @@ export type SendEmailInput = {
   to: string
   subject: string
   html: string
-  /** Optional plain-text fallback. Resend will auto-derive one if omitted. */
+  /** Plain-text fallback. Strongly recommended — clients without HTML
+   * support (or aggressive spam filters) drop messages without a text
+   * part. Defaults to empty string for the rare caller that omits it. */
   text?: string
-  /** Defaults to `EMAIL_FROM` env var, then a sensible fallback. */
+  /** Defaults to `EMAIL_FROM` env var, then a sensible per-env fallback. */
   from?: string
+  /** Optional reply-to address (e.g., corporate inbox forwarding). */
+  replyTo?: string
   /** Hint for the dev preview filename so the saved HTML is identifiable.
-   * Falls back to 'email' when omitted. */
+   * Falls back to 'email' when omitted. Independent of `emailType` —
+   * dev preview can use a more descriptive label than the queue row's
+   * discriminator. */
   previewLabel?: string
+  /** Required in production. Drives queue routing + admin filtering.
+   * Dev preview ignores it. Examples: 'gift_received', 'post_purchase'. */
+  emailType?: string
+  /** Loose pointer back to the business entity that triggered this send.
+   * Lets admin email-queue detail link to the gift / order / question
+   * the email is about. Optional but strongly encouraged. */
+  relatedEntityType?: EmailRelatedEntityType | null
+  /** UUID of the related entity. Skipped silently when malformed. */
+  relatedEntityId?: string | null
 }
 
 export type SendEmailResult =
-  | { ok: true; id: string | null }
-  | { ok: false; reason: 'no-api-key' | 'send-failed' | 'preview-only'; error?: unknown }
+  | { ok: true; id: string | null; queued?: boolean }
+  | {
+      ok: false
+      reason: 'no-api-key' | 'send-failed' | 'preview-only' | 'enqueue-failed'
+      error?: unknown
+    }
 
 // Resend ships a pre-verified sandbox sender that requires zero DNS setup.
 // Useful on dev + Vercel preview deploys where the production domain may
@@ -93,6 +131,10 @@ function isDevPreviewMode(): boolean {
   return false
 }
 
+function isSyncBypass(): boolean {
+  return process.env.EMAIL_FORCE_SYNC === 'true'
+}
+
 async function writePreview(
   input: SendEmailInput,
   text: string | null,
@@ -123,8 +165,8 @@ async function writePreview(
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  // Dev preview short-circuit — runs BEFORE we even ask getResend(), so a
-  // dev box without an API key still gets full preview output.
+  // Dev preview short-circuit — runs BEFORE we touch the queue OR Resend,
+  // so a dev box without an API key still gets full preview output.
   if (isDevPreviewMode()) {
     const file = await writePreview(input, input.text ?? null)
     console.info(
@@ -145,28 +187,53 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { ok: false, reason: 'preview-only' }
   }
 
-  const resend = getResend()
-  if (!resend) return { ok: false, reason: 'no-api-key' }
-
   const from = resolveFromAddress(input.from)
+  const text = input.text ?? ''
 
-  try {
-    const { data, error } = await resend.emails.send({
+  // Sync bypass — used by the cron worker (which has already dequeued a
+  // row and just wants to hit Resend) and the EMAIL_FORCE_SYNC dev path.
+  // Skips the queue entirely.
+  if (isSyncBypass()) {
+    const result = await sendViaResend({
       from,
       to: input.to,
       subject: input.subject,
       html: input.html,
-      ...(input.text ? { text: input.text } : {}),
+      text,
+      replyTo: input.replyTo ?? null,
     })
-    if (error) {
-      console.error('[email/send] resend returned error', error)
-      return { ok: false, reason: 'send-failed', error }
-    }
-    return { ok: true, id: data?.id ?? null }
-  } catch (err) {
-    console.error('[email/send] threw', err)
-    return { ok: false, reason: 'send-failed', error: err }
+    if (result.ok) return { ok: true, id: result.id }
+    if (result.error === 'no-api-key') return { ok: false, reason: 'no-api-key' }
+    return { ok: false, reason: 'send-failed', error: result.error }
   }
+
+  // Queue path. The row is the source of truth for delivery state; the
+  // cron worker takes over from here.
+  const recipient = input.to.trim().toLowerCase()
+  const emailType = input.emailType ?? 'unknown'
+  const row = await enqueueEmail({
+    emailType,
+    recipientEmail: recipient,
+    subject: input.subject,
+    htmlBody: input.html,
+    textBody: text,
+    fromAddress: from,
+    replyTo: input.replyTo ?? null,
+    relatedEntityType: input.relatedEntityType ?? null,
+    relatedEntityId: input.relatedEntityId ?? null,
+  })
+  if (!row) {
+    // Enqueue failed — typically DB unavailable. We don't fall back to a
+    // synchronous send because the caller's "best effort" semantics
+    // expect us to surface the failure for logging. If DB is down, the
+    // upstream action handler decides whether to retry.
+    console.error('[email/send] enqueueEmail returned null', {
+      to: recipient,
+      emailType,
+    })
+    return { ok: false, reason: 'enqueue-failed' }
+  }
+  return { ok: true, id: row.id, queued: true }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -192,12 +259,23 @@ export type AnsweredEmailUser = {
 
 export type AnsweredEmailResult =
   | { ok: true; id: string | null }
-  | { ok: false; reason: 'no-api-key' | 'send-failed' | 'preview-only' | 'invalid-recipient' }
+  | {
+      ok: false
+      reason:
+        | 'no-api-key'
+        | 'send-failed'
+        | 'preview-only'
+        | 'invalid-recipient'
+        | 'enqueue-failed'
+    }
 
 export async function sendAnsweredNotificationEmail(args: {
   user: AnsweredEmailUser
   question: { subject: string }
   answerUrl: string
+  /** Question id — passed through to the queue row's relatedEntityId so
+   * admin can trace this notification back to the question in /admin/questions. */
+  questionId?: string
 }): Promise<AnsweredEmailResult> {
   const recipient = args.user.email?.trim()
   if (!recipient) {
@@ -224,6 +302,9 @@ export async function sendAnsweredNotificationEmail(args: {
     html: built.html,
     text: built.text,
     previewLabel: 'question-answered',
+    emailType: 'question_answered',
+    relatedEntityType: args.questionId ? 'question' : null,
+    relatedEntityId: args.questionId ?? null,
   })
   if (result.ok) return { ok: true, id: result.id }
   return { ok: false, reason: result.reason }

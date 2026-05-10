@@ -79,6 +79,7 @@ const adminSchema = z
     show_admin_questions: z.boolean().optional(),
     show_admin_tests: z.boolean().optional(),
     show_admin_gifts: z.boolean().optional(),
+    show_admin_email_queue: z.boolean().optional(),
   })
   .strict()
 

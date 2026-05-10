@@ -99,6 +99,13 @@ export type SiteSettings = {
      * The /admin/gifts route still resolves via deep link.
      */
     show_admin_gifts: boolean
+    /**
+     * Phase D2 — when false, the "Email queue" admin sidebar entry is
+     * hidden. The /admin/email-queue route still resolves via deep link.
+     * Defaults true — operators need visibility into delivery failures
+     * for the queue to actually be useful.
+     */
+    show_admin_email_queue: boolean
   }
   dashboard: {
     /**

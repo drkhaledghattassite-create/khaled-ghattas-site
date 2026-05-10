@@ -25,6 +25,7 @@ import {
   corporateClients,
   corporatePrograms,
   corporateRequests,
+  emailQueue,
   events,
   gallery,
   gifts,
@@ -60,6 +61,8 @@ import {
   type CorporateProgram,
   type CorporateRequest,
   type CorporateRequestStatus,
+  type EmailQueueRow,
+  type EmailStatus,
   type Event,
   type GalleryItem,
   type Gift,
@@ -6969,16 +6972,34 @@ async function deleteOrderForGift(giftId: string): Promise<void> {
  * Booking-side of revoke for CLAIMED gifts. Transfers the booking_orders
  * row back to the original sender (per spec: "sender paid, so they keep
  * the booking after revoke") and clears the giftId pointer. Capacity is
- * NOT decremented — the seat stays. Returns the senderUserId for the email
- * recipient logic.
+ * NOT decremented — the seat stays.
+ *
+ * Reads the gift first to recover senderUserId. For USER_PURCHASE gifts
+ * that's the original buyer; for ADMIN_GRANT gifts it's null and we only
+ * clear the giftId pointer (no one to transfer back to — the admin's
+ * adminGrantedByUserId isn't a user-facing owner).
  */
 async function unlinkBookingOrderFromGift(giftId: string): Promise<void> {
   if (!HAS_DB) return
   if (!isUuid(giftId)) return
   try {
+    const [g] = await db
+      .select({ senderUserId: gifts.senderUserId })
+      .from(gifts)
+      .where(eq(gifts.id, giftId))
+      .limit(1)
+    const senderUserId = g?.senderUserId ?? null
     await db
       .update(bookingOrders)
-      .set({ giftId: null, updatedAt: new Date() })
+      .set({
+        // For USER_PURCHASE, transfer userId back to the original buyer so
+        // they retain the seat they paid for. For ADMIN_GRANT (senderUserId
+        // null), leave userId untouched — there's no original buyer to
+        // restore ownership to.
+        ...(senderUserId ? { userId: senderUserId } : {}),
+        giftId: null,
+        updatedAt: new Date(),
+      })
       .where(eq(bookingOrders.giftId, giftId))
   } catch (err) {
     console.error('[queries.unlinkBookingOrderFromGift]', err)
@@ -7092,58 +7113,6 @@ export async function markGiftRefunded(giftId: string): Promise<Gift | null> {
     return row
   } catch (err) {
     console.error('[queries.markGiftRefunded]', err)
-    return null
-  }
-}
-
-/**
- * Direct status setter — used by the webhook's payment_failed branch to void
- * a gift that was created PENDING but never paid. Kept separate from
- * markGiftRefunded so the email + audit trail can distinguish "Stripe refund"
- * from "payment never succeeded".
- */
-export async function voidGiftForPaymentFailure(
-  giftId: string,
-): Promise<Gift | null> {
-  const now = new Date()
-  if (MOCK_AUTH_ENABLED) {
-    const store = readStore()
-    const idx = store.gifts.findIndex((g) => g.id === giftId)
-    if (idx === -1) return null
-    const g = store.gifts[idx]!
-    if (g.status === 'REFUNDED' || g.status === 'REVOKED') return g
-    const updated: Gift = {
-      ...g,
-      status: 'REFUNDED',
-      refundedAt: now,
-      revokedReason: 'payment_failed',
-      updatedAt: now,
-    }
-    store.gifts[idx] = updated
-    writeStore(store)
-    return updated
-  }
-  if (!HAS_DB) return null
-  if (!isUuid(giftId)) return null
-  try {
-    const [row] = await db
-      .update(gifts)
-      .set({
-        status: 'REFUNDED',
-        refundedAt: now,
-        revokedReason: 'payment_failed',
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(gifts.id, giftId),
-          inArray(gifts.status, ['PENDING']),
-        ),
-      )
-      .returning()
-    return row ?? null
-  } catch (err) {
-    console.error('[queries.voidGiftForPaymentFailure]', err)
     return null
   }
 }
@@ -7770,6 +7739,477 @@ export async function createGiftBookingOrder(input: {
   }
 }
 
+/**
+ * Admin BOOKING grant: insert a booking_order in PAID state (no Stripe path)
+ * linked to the gift, then bump bookedCount + SOLD_OUT flip, and release the
+ * hold that gated the capacity check.
+ *
+ * Semantics:
+ *   - Auto-claimed (recipient is an existing user): `recipientUserId` is set,
+ *     booking_order.userId = recipientUserId. Recipient sees the booking
+ *     immediately in /dashboard/bookings.
+ *   - Not auto-claimed (PENDING gift): booking_order.userId = null.
+ *     `transferBookingOrderToRecipient` populates it on claim.
+ *
+ * stripeSessionId is a sentinel — `admin-grant:{giftId}` — since
+ * booking_orders.stripeSessionId is NOT NULL with a unique index. The
+ * sentinel keeps the column populated and uniquely keyed per gift.
+ *
+ * Capacity bump and SOLD_OUT flip mirror markGiftBookingOrderPaid's
+ * transaction logic. The hold (created by the action layer before this call)
+ * is deleted as the final step inside the same transaction.
+ *
+ * Mock-mode: synthesizes a fake bookingOrderId so the action's downstream
+ * side effects (email, revalidation) still fire. The mock store doesn't
+ * model booking_orders.
+ */
+export async function createAdminGrantBookingOrder(input: {
+  giftId: string
+  bookingId: string
+  recipientUserId: string | null
+  currency: string
+  holdId: string
+}): Promise<{
+  bookingOrderId: string
+  newBookedCount: number
+  flippedToSoldOut: boolean
+} | null> {
+  if (MOCK_AUTH_ENABLED) {
+    return {
+      bookingOrderId: `admin-grant-mock-${input.giftId.slice(0, 8)}`,
+      newBookedCount: 0,
+      flippedToSoldOut: false,
+    }
+  }
+  if (!HAS_DB) return null
+  if (!isUuid(input.giftId) || !isUuid(input.bookingId) || !isUuid(input.holdId)) {
+    return null
+  }
+  if (input.recipientUserId && !isUuid(input.recipientUserId)) return null
+  try {
+    return await db.transaction(async (tx) => {
+      const now = new Date()
+      const [order] = await tx
+        .insert(bookingOrders)
+        .values({
+          userId: input.recipientUserId ?? null,
+          bookingId: input.bookingId,
+          stripeSessionId: `admin-grant:${input.giftId}`,
+          amountPaid: 0,
+          currency: input.currency.toUpperCase(),
+          status: 'PAID',
+          giftId: input.giftId,
+          confirmedAt: now,
+        })
+        .returning({ id: bookingOrders.id })
+      if (!order) return null
+      // Mirrors markGiftBookingOrderPaid's bookedCount bump + SOLD_OUT flip.
+      // Kept inline rather than extracted because Drizzle's PgTransaction
+      // type would need to thread through every call site; the duplication
+      // is bounded to two places and clearer than the type gymnastics.
+      const [b] = await tx
+        .update(bookings)
+        .set({
+          bookedCount: sql`${bookings.bookedCount} + 1`,
+          updatedAt: now,
+        })
+        .where(eq(bookings.id, input.bookingId))
+        .returning({
+          id: bookings.id,
+          bookedCount: bookings.bookedCount,
+          maxCapacity: bookings.maxCapacity,
+          bookingState: bookings.bookingState,
+        })
+      let flippedToSoldOut = false
+      if (b && b.bookedCount >= b.maxCapacity && b.bookingState === 'OPEN') {
+        await tx
+          .update(bookings)
+          .set({ bookingState: 'SOLD_OUT', updatedAt: now })
+          .where(eq(bookings.id, b.id))
+        flippedToSoldOut = true
+      }
+      await tx
+        .delete(bookingsPendingHolds)
+        .where(eq(bookingsPendingHolds.id, input.holdId))
+      return {
+        bookingOrderId: order.id,
+        newBookedCount: b?.bookedCount ?? 0,
+        flippedToSoldOut,
+      }
+    })
+  } catch (err) {
+    console.error('[queries.createAdminGrantBookingOrder]', err)
+    return null
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase D2 — Email queue
+ *
+ * Durable outbox for every transactional email. Callers enqueue rendered
+ * messages at the action layer; a Vercel cron at /api/cron/process-email-queue
+ * drains the queue with retry + backoff.
+ *
+ * Concurrency: pickPendingEmails uses SELECT ... FOR UPDATE SKIP LOCKED so
+ * concurrent cron workers (Vercel can overlap if a previous run is still
+ * executing) can safely drain in parallel without double-sends. The
+ * partial index `email_queue_pending_idx` keeps the dequeue scan small
+ * even as SENT rows accumulate.
+ *
+ * Mock-mode: emailQueue is not modeled in mock-store. enqueueEmail
+ * returns a synthesized row + the dev-preview email file write still
+ * happens via lib/email/send.ts. Cron worker is a no-op in mock mode.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+import { nextAttemptDateFor, MAX_EMAIL_ATTEMPTS } from '../email/backoff'
+
+/**
+ * Loose-typed related-entity discriminator. Keeps the FK-less polymorphic
+ * pointer narrow at the type level without baking the set into a DB enum
+ * (new surfaces shouldn't require a migration).
+ */
+export type EmailRelatedEntityType =
+  | 'gift'
+  | 'order'
+  | 'booking'
+  | 'booking_order'
+  | 'question'
+  | 'corporate_request'
+
+export type EnqueueEmailInput = {
+  emailType: string
+  recipientEmail: string
+  subject: string
+  htmlBody: string
+  textBody: string
+  fromAddress: string
+  replyTo?: string | null
+  relatedEntityType?: EmailRelatedEntityType | null
+  relatedEntityId?: string | null
+}
+
+export async function enqueueEmail(
+  input: EnqueueEmailInput,
+): Promise<EmailQueueRow | null> {
+  const recipient = input.recipientEmail.trim().toLowerCase()
+  if (!HAS_DB) return null
+  try {
+    const [row] = await db
+      .insert(emailQueue)
+      .values({
+        emailType: input.emailType,
+        recipientEmail: recipient,
+        subject: input.subject,
+        htmlBody: input.htmlBody,
+        textBody: input.textBody,
+        fromAddress: input.fromAddress,
+        replyTo: input.replyTo ?? null,
+        status: 'PENDING',
+        attemptCount: 0,
+        maxAttempts: MAX_EMAIL_ATTEMPTS,
+        nextAttemptAt: new Date(),
+        relatedEntityType: input.relatedEntityType ?? null,
+        relatedEntityId:
+          input.relatedEntityId && isUuid(input.relatedEntityId)
+            ? input.relatedEntityId
+            : null,
+      })
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.enqueueEmail]', err)
+    return null
+  }
+}
+
+/**
+ * Atomic batched dequeue. Inside a single transaction:
+ *   1. SELECT up to `limit` rows WHERE status='PENDING' AND
+ *      nextAttemptAt <= now() FOR UPDATE SKIP LOCKED
+ *   2. UPDATE picked rows to status='SENDING' + lastAttemptAt=now()
+ *   3. Return the updated rows
+ *
+ * SKIP LOCKED is the standard pattern: a concurrent worker that races
+ * for the same rows simply skips them and picks others, instead of
+ * blocking on the lock. Lock is released when the transaction commits
+ * (immediately, since we don't keep it open past the UPDATE).
+ *
+ * Returns [] when nothing is pending.
+ */
+export async function pickPendingEmails(
+  limit: number,
+): Promise<EmailQueueRow[]> {
+  if (!HAS_DB) return []
+  const batchSize = Math.max(1, Math.min(100, Math.floor(limit)))
+  try {
+    return await db.transaction(async (tx) => {
+      const picked = await tx
+        .select({ id: emailQueue.id })
+        .from(emailQueue)
+        .where(
+          and(
+            eq(emailQueue.status, 'PENDING'),
+            lte(emailQueue.nextAttemptAt, sql`now()`),
+          ),
+        )
+        .orderBy(asc(emailQueue.nextAttemptAt))
+        .limit(batchSize)
+        .for('update', { skipLocked: true })
+
+      if (picked.length === 0) return []
+
+      const ids = picked.map((p) => p.id)
+      const now = new Date()
+      const updated = await tx
+        .update(emailQueue)
+        .set({
+          status: 'SENDING',
+          lastAttemptAt: now,
+          updatedAt: now,
+        })
+        .where(inArray(emailQueue.id, ids))
+        .returning()
+      return updated
+    })
+  } catch (err) {
+    console.error('[queries.pickPendingEmails]', err)
+    return []
+  }
+}
+
+export async function markEmailSent(
+  id: string,
+  resendMessageId: string | null,
+): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(id)) return
+  try {
+    await db
+      .update(emailQueue)
+      .set({
+        status: 'SENT',
+        resendMessageId: resendMessageId ?? null,
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailQueue.id, id))
+  } catch (err) {
+    console.error('[queries.markEmailSent]', err)
+  }
+}
+
+/**
+ * Bumps attemptCount + reschedules per the backoff schedule. When the
+ * post-increment attempt count hits MAX_EMAIL_ATTEMPTS, transitions to
+ * EXHAUSTED with no further nextAttemptAt change.
+ *
+ * Idempotent on EXHAUSTED — a stale worker that completes after a peer
+ * already marked the row exhausted is a no-op (the eq(id) WHERE doesn't
+ * filter on status, but EXHAUSTED rows are never re-picked, so the worst
+ * case is a status flip back to PENDING which gets re-corrected on next
+ * dequeue attempt).
+ */
+export async function markEmailRetry(id: string, error: string): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(id)) return
+  const truncatedError =
+    error.length > 2000 ? `${error.slice(0, 2000)}…` : error
+  try {
+    const [current] = await db
+      .select({ attemptCount: emailQueue.attemptCount })
+      .from(emailQueue)
+      .where(eq(emailQueue.id, id))
+      .limit(1)
+    if (!current) return
+    const nextCount = current.attemptCount + 1
+    const nextAttempt = nextAttemptDateFor(nextCount)
+    const exhausted = nextAttempt == null
+    await db
+      .update(emailQueue)
+      .set({
+        attemptCount: nextCount,
+        status: exhausted ? 'EXHAUSTED' : 'PENDING',
+        nextAttemptAt: nextAttempt ?? new Date(),
+        lastError: truncatedError,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailQueue.id, id))
+  } catch (err) {
+    console.error('[queries.markEmailRetry]', err)
+  }
+}
+
+/**
+ * Admin manual dead-letter. Used when operators give up on a stuck row
+ * (e.g., a recipient address is known-invalid and re-attempts won't help).
+ * The lastError is overwritten with the admin-supplied reason for audit.
+ */
+export async function markEmailFailed(
+  id: string,
+  reason: string,
+): Promise<void> {
+  if (!HAS_DB) return
+  if (!isUuid(id)) return
+  try {
+    await db
+      .update(emailQueue)
+      .set({
+        status: 'FAILED',
+        lastError: reason.slice(0, 2000),
+        updatedAt: new Date(),
+      })
+      .where(eq(emailQueue.id, id))
+  } catch (err) {
+    console.error('[queries.markEmailFailed]', err)
+  }
+}
+
+export type AdminEmailQueueFilter = {
+  status?: EmailStatus | 'all'
+  emailType?: string | 'all'
+  search?: string
+  relatedEntityType?: string | null
+  relatedEntityId?: string | null
+  page?: number
+  pageSize?: number
+}
+
+export type AdminEmailQueuePage = {
+  rows: EmailQueueRow[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAdminEmailQueue(
+  filter: AdminEmailQueueFilter,
+): Promise<AdminEmailQueuePage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = Math.min(100, Math.max(10, filter.pageSize ?? 50))
+  if (!HAS_DB) return { rows: [], total: 0, page, pageSize }
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(emailQueue.status, filter.status))
+    }
+    if (filter.emailType && filter.emailType !== 'all') {
+      conditions.push(eq(emailQueue.emailType, filter.emailType))
+    }
+    if (filter.search?.trim()) {
+      conditions.push(
+        ilike(emailQueue.recipientEmail, `%${filter.search.trim()}%`),
+      )
+    }
+    if (filter.relatedEntityType) {
+      conditions.push(eq(emailQueue.relatedEntityType, filter.relatedEntityType))
+    }
+    if (filter.relatedEntityId && isUuid(filter.relatedEntityId)) {
+      conditions.push(eq(emailQueue.relatedEntityId, filter.relatedEntityId))
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(emailQueue)
+      .where(whereClause)
+    const rows = await db
+      .select()
+      .from(emailQueue)
+      .where(whereClause)
+      .orderBy(desc(emailQueue.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return { rows, total: Number(count) || 0, page, pageSize }
+  } catch (err) {
+    console.error('[queries.getAdminEmailQueue]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+export async function getEmailQueueEntry(
+  id: string,
+): Promise<EmailQueueRow | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(emailQueue)
+      .where(eq(emailQueue.id, id))
+      .limit(1)
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.getEmailQueueEntry]', err)
+    return null
+  }
+}
+
+/**
+ * Admin "retry now" — flips status back to PENDING and resets
+ * nextAttemptAt to now() without resetting attemptCount, so the audit
+ * trail (this row has been tried N times) survives.
+ *
+ * The maxAttempts cap still applies: if attemptCount is already at the
+ * max, the row will go back to EXHAUSTED on the next failure. Admin can
+ * re-click to keep trying — manual operations decision, not automatic.
+ */
+export async function retryEmailManually(
+  id: string,
+): Promise<EmailQueueRow | null> {
+  if (!HAS_DB) return null
+  if (!isUuid(id)) return null
+  try {
+    const [row] = await db
+      .update(emailQueue)
+      .set({
+        status: 'PENDING',
+        nextAttemptAt: new Date(),
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailQueue.id, id))
+      .returning()
+    return row ?? null
+  } catch (err) {
+    console.error('[queries.retryEmailManually]', err)
+    return null
+  }
+}
+
+/**
+ * Returns a count per EmailStatus value. Used by the admin sidebar to
+ * surface EXHAUSTED + FAILED as a badge — admin attention bucket.
+ *
+ * One scan; the partial index doesn't help here (we read every status)
+ * but the table size is bounded by retention, so a full COUNT is fine.
+ */
+export async function countQueueByStatus(): Promise<Record<EmailStatus, number>> {
+  const empty: Record<EmailStatus, number> = {
+    PENDING: 0,
+    SENDING: 0,
+    SENT: 0,
+    FAILED: 0,
+    EXHAUSTED: 0,
+  }
+  if (!HAS_DB) return empty
+  try {
+    const rows = await db
+      .select({
+        status: emailQueue.status,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(emailQueue)
+      .groupBy(emailQueue.status)
+    const out = { ...empty }
+    for (const r of rows) {
+      out[r.status] = Number(r.count) || 0
+    }
+    return out
+  } catch (err) {
+    console.error('[queries.countQueueByStatus]', err)
+    return empty
+  }
+}
+
 export type {
   Article,
   ArticleCategory,
@@ -7786,6 +8226,8 @@ export type {
   CorporateProgram,
   CorporateRequest,
   CorporateRequestStatus,
+  EmailQueueRow,
+  EmailStatus,
   Event,
   GalleryItem,
   Gift,

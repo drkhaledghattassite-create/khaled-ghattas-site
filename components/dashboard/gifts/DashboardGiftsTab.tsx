@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { Link } from '@/lib/i18n/navigation'
 import {
   resendGiftEmailAction,
@@ -84,28 +85,23 @@ function GiftRow({
   const localeCtx = useLocale()
   const isRtl = localeCtx === 'ar'
   const [isPending, startTransition] = useTransition()
-  const [feedback, setFeedback] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
 
   function handleResend() {
-    setFeedback(null)
     startTransition(async () => {
       const result = await resendGiftEmailAction({ giftId: gift.id })
-      if (result.ok) setFeedback(t('resend_success'))
-      else if (result.error === 'rate_limited') setFeedback(t('resend_rate_limited'))
-      else setFeedback(t('resend_failed'))
+      if (result.ok) toast.success(t('resend_success'))
+      else if (result.error === 'rate_limited') toast.error(t('resend_rate_limited'))
+      else toast.error(t('resend_failed'))
     })
   }
 
   function handleCancel() {
-    setFeedback(null)
-    startTransition(async () => {
-      // For USER_PURCHASE this returns 'contact_support' — we surface the
-      // dialog as the UI affordance. The action call itself is for
-      // forward-compat (admin-driven cancellations).
-      void cancelGiftAction
-      setCancelOpen(true)
-    })
+    // For USER_PURCHASE this returns 'contact_support' — we surface the
+    // inline dialog as the UI affordance. The action call itself is kept
+    // available for forward-compat admin-driven cancellations.
+    void cancelGiftAction
+    setCancelOpen(true)
   }
 
   const itemTypeKey =
@@ -194,15 +190,6 @@ function GiftRow({
           </Link>
         )}
       </div>
-      {feedback && (
-        <p
-          className={`mt-2 m-0 text-[12px] text-[var(--color-fg3)] ${
-            isRtl ? 'font-arabic-body' : 'font-display'
-          }`}
-        >
-          {feedback}
-        </p>
-      )}
       {cancelOpen && (
         <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
           <p

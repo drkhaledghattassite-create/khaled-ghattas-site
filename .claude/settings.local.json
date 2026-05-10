@@ -78,7 +78,17 @@
       "WebFetch(domain:design.claude.ai)",
       "Bash(mkdir -p .design-bundle)",
       "Bash(cp /c/Users/OATech/.claude/projects/C--Users-OATech-Desktop-drkhaledghattass/c0ef3a8c-b9df-401b-b395-6f978e58e8f8/tool-results/webfetch-1778405548810-2zk5g1.bin .design-bundle/bundle.tar.gz)",
-      "Bash(tar -xzf .design-bundle/bundle.tar.gz -C .design-bundle/)"
+      "Bash(tar -xzf .design-bundle/bundle.tar.gz -C .design-bundle/)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__search_vercel_documentation",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_project",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "mcp__claude_ai_Vercel__get_deployment_build_logs",
+      "mcp__claude_ai_Vercel__web_fetch_vercel_url",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "mcp__claude_ai_Vercel__get_deployment"
     ]
   }
 }

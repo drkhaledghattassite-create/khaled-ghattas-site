@@ -53,6 +53,13 @@ type Props = {
    * Empty array for logged-out visitors.
    */
   paidBookingIds: string[]
+  /**
+   * Phase D — when true, render "Send as gift" links alongside Reserve
+   * CTAs so visitors discover the gifting flow. Sourced from
+   * `gifts.allow_user_to_user` in site settings; the action layer also
+   * defends, so flipping this off mid-session can't bypass the gate.
+   */
+  allowGifting: boolean
 }
 
 const SECTION_IDS = ['tours', 'reconsider', 'sessions'] as const
@@ -82,6 +89,7 @@ export function BookingPage({
   sessions,
   hasSession,
   paidBookingIds,
+  allowGifting,
 }: Props) {
   // Set lookup beats Array.includes in two-place lookup paths (handler
   // closures + render); cheap to construct once.
@@ -289,6 +297,7 @@ export function BookingPage({
             // section, so the bar doesn't pollute Tours / Sessions context.
             isInView={active === 'reconsider'}
             isAlreadyBooked={paidBookingIdSet.has(reconsider.id)}
+            allowGifting={allowGifting}
           />
         )}
 
@@ -298,6 +307,7 @@ export function BookingPage({
             onReserve={onSessionReserve}
             onInterest={onSessionInterest}
             paidBookingIds={paidBookingIdSet}
+            allowGifting={allowGifting}
           />
         )}
       </main>

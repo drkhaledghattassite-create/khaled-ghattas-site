@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Gift } from 'lucide-react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { StatusBadge } from '@/components/admin/StatusBadge'
@@ -49,6 +49,19 @@ export default async function AdminBookingOrderDetailPage({ params }: Props) {
         <ChevronLeft className="h-3 w-3 rtl:rotate-180" aria-hidden />
         {t('back_to_list')}
       </Link>
+
+      {/* Phase D — gift-claim badge. When set, this booking_order originated
+          from a gift (USER_PURCHASE via Stripe or ADMIN_GRANT). Refunding it
+          cascades through markGiftRefunded; the refund modal warns admin. */}
+      {order.giftId && (
+        <Link
+          href={`/admin/gifts/${order.giftId}`}
+          className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/60 px-3 py-2 text-[12px] font-display font-semibold text-accent transition-colors hover:border-accent hover:bg-accent-soft"
+        >
+          <Gift className="h-3.5 w-3.5" aria-hidden />
+          {t('gift_claim_badge')}
+        </Link>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left: order facts */}
@@ -216,6 +229,7 @@ export default async function AdminBookingOrderDetailPage({ params }: Props) {
                 amountPaid={order.amountPaid}
                 currency={order.currency || 'USD'}
                 email={order.userEmail || ''}
+                isGift={order.giftId != null}
               />
             </div>
           )}

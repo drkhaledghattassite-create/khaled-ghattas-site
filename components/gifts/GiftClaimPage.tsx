@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import type { Gift } from '@/lib/db/schema'
 import type { GiftableItemType } from '@/lib/validators/gift'
@@ -20,7 +21,6 @@ type ItemDisplay = {
 type SessionUser = {
   id: string
   email: string
-  emailVerified: boolean
 }
 
 function fmtDate(d: Date, locale: string): string {
@@ -71,16 +71,14 @@ export function GiftClaimPage({
   const giftEmailLc = gift?.recipientEmail?.toLowerCase() ?? null
   const emailMatch = sessionEmailLc != null && giftEmailLc != null && sessionEmailLc === giftEmailLc
 
-  let renderState:
-    | 'invalid'
-    | 'logged_out'
-    | 'mismatch'
-    | 'verifying'
-    | 'ready' = 'invalid'
+  // 4-state branching: invalid (no gift / expired) → logged_out → mismatch
+  // → ready. The 5th "verifying" state was removed when the action layer
+  // stopped gating on emailVerified — Better Auth's email-uniqueness is the
+  // proof-of-control, so an email-match user can claim immediately.
+  let renderState: 'invalid' | 'logged_out' | 'mismatch' | 'ready' = 'invalid'
   if (!valid) renderState = 'invalid'
   else if (!sessionUser) renderState = 'logged_out'
   else if (!emailMatch) renderState = 'mismatch'
-  else if (!sessionUser.emailVerified) renderState = 'verifying'
   else renderState = 'ready'
 
   const itemTitle =
@@ -95,8 +93,10 @@ export function GiftClaimPage({
       const result = await claimGiftAction({ token })
       if (!result.ok) {
         setErrorKey(result.error)
+        toast.error(t(`errors.${result.error}`))
         return
       }
+      toast.success(t('ready_heading'))
       router.push(result.redirectPath)
     })
   }
@@ -252,34 +252,6 @@ export function GiftClaimPage({
                   className="btn-pill btn-pill-primary"
                 >
                   {t('mismatch_signout_cta')}
-                </button>
-              </div>
-            </>
-          )}
-
-          {renderState === 'verifying' && (
-            <>
-              <h1
-                className={`mt-3 m-0 text-[24px] font-bold leading-[1.25] text-[var(--color-fg1)] ${
-                  isRtl ? 'font-arabic-display' : 'font-display'
-                }`}
-              >
-                {t('verifying_heading')}
-              </h1>
-              <p
-                className={`mt-3 m-0 text-[15px] leading-[1.55] text-[var(--color-fg2)] ${
-                  isRtl ? 'font-arabic-body' : 'font-display'
-                }`}
-              >
-                {t('verifying_body')}
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => router.refresh()}
-                  className="btn-pill btn-pill-primary"
-                >
-                  {t('verifying_refresh_cta')}
                 </button>
               </div>
             </>

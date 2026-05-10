@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import type { Book, BookingWithHolds } from '@/lib/db/queries'
 import { EASE_EDITORIAL, fadeUp } from '@/lib/motion/variants'
@@ -54,6 +55,9 @@ export function SendGiftPage({
   bookings,
   isLoggedIn,
   featureEnabled,
+  preselectedType,
+  preselectedId,
+  cancelled,
 }: {
   locale: string
   books: Book[]
@@ -61,13 +65,35 @@ export function SendGiftPage({
   bookings: BookingWithHolds[]
   isLoggedIn: boolean
   featureEnabled: boolean
+  preselectedType?: Tab | null
+  preselectedId?: string | null
+  cancelled?: boolean
 }) {
   const t = useTranslations('gifts.send')
   const localeCtx = useLocale()
   const isRtl = localeCtx === 'ar'
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('book')
-  const [selected, setSelected] = useState<SelectedItem | null>(null)
+
+  // Compute the initial tab + selected item from query-string pre-selection
+  // (e.g., user clicked "Send as gift" on /books/[slug]). Falls back to
+  // 'book' when no preselection or the id doesn't match anything live.
+  const initialState = useMemo<{ tab: Tab; selected: SelectedItem | null }>(() => {
+    if (!preselectedType || !preselectedId) return { tab: 'book', selected: null }
+    if (preselectedType === 'book') {
+      const b = books.find((x) => x.id === preselectedId)
+      if (b) return { tab: 'book', selected: bookToItem(b, 'book') }
+    } else if (preselectedType === 'session') {
+      const s = sessions.find((x) => x.id === preselectedId)
+      if (s) return { tab: 'session', selected: bookToItem(s, 'session') }
+    } else if (preselectedType === 'booking') {
+      const bk = bookings.find((x) => x.id === preselectedId)
+      if (bk) return { tab: 'booking', selected: bookingToItem(bk) }
+    }
+    return { tab: preselectedType, selected: null }
+  }, [preselectedType, preselectedId, books, sessions, bookings])
+
+  const [tab, setTab] = useState<Tab>(initialState.tab)
+  const [selected, setSelected] = useState<SelectedItem | null>(initialState.selected)
   const [recipientEmail, setRecipientEmail] = useState('')
   const [recipientLocale, setRecipientLocale] = useState<'ar' | 'en'>(
     locale === 'ar' ? 'ar' : 'en',
@@ -75,6 +101,14 @@ export function SendGiftPage({
   const [message, setMessage] = useState('')
   const [errorKey, setErrorKey] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Stripe cancel redirect: surface a non-blocking toast so the user
+  // knows why they're back on the form and isn't left guessing.
+  useEffect(() => {
+    if (cancelled) toast(t('checkout_cancelled'))
+    // run-once on mount with the value at-mount time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleSelect(item: SelectedItem) {
     setSelected(item)
@@ -109,6 +143,9 @@ export function SendGiftPage({
       })
       if (!result.ok) {
         setErrorKey(result.error)
+        // Surface a toast in addition to the inline error so users notice
+        // even when the form is scrolled below the fold.
+        toast.error(t(`errors.${result.error}`))
         return
       }
       window.location.href = result.checkoutUrl

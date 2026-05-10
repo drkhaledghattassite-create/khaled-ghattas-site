@@ -35,6 +35,7 @@ type NavToggles = {
   show_nav_corporate: boolean
   show_nav_booking: boolean
   show_nav_tests: boolean
+  show_nav_send_gift: boolean
 }
 
 const DEFAULT_FOOTER: FooterToggles = {
@@ -54,6 +55,9 @@ const DEFAULT_NAV: NavToggles = {
   show_nav_corporate: true,
   show_nav_booking: true,
   show_nav_tests: true,
+  // Mirrors the site-settings default — gifts aren't promoted in nav unless
+  // the admin flips the toggle on.
+  show_nav_send_gift: false,
 }
 
 type Props = {
@@ -79,6 +83,7 @@ export function SiteFooter({
   const showCorporate = nav.show_nav_corporate
   const showBooking = nav.show_nav_booking
   const showTests = nav.show_nav_tests
+  const showSendGift = nav.show_nav_send_gift
 
   const allCols: Array<{
     title: string
@@ -112,6 +117,9 @@ export function SiteFooter({
           ? [{ label: tNav('booking'), href: '/booking' }]
           : []),
         ...(showTests ? [{ label: tNav('tests'), href: '/tests' }] : []),
+        ...(showSendGift
+          ? [{ label: tNav('send_gift'), href: '/gifts/send' }]
+          : []),
         ...(showContact ? [{ label: tNav('contact'), href: '/contact' }] : []),
       ],
     },

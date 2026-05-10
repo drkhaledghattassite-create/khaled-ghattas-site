@@ -20,6 +20,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerSession } from '@/lib/auth/server'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import {
+  createAdminGrantBookingOrder,
   createBookingHold,
   createGift,
   createGiftClaimOrder,
@@ -152,15 +153,17 @@ export async function createAdminGiftAction(
   )
   if (!itemSummary) return { ok: false, error: 'item_unavailable' }
 
+  // Per-itemType pre-grant checks (already-owns / already-booked + capacity).
+  // For BOOKING, we hold capacity via createBookingHold here so it's still
+  // available when createAdminGrantBookingOrder runs below. The hold is
+  // released inside that helper's transaction as the final step.
+  let bookingHoldId: string | null = null
   if (data.itemType === 'BOOK' || data.itemType === 'SESSION') {
     const owns = await recipientEmailOwnsBookOrSession(recipientLc, data.itemId)
     if (owns) return { ok: false, error: 'recipient_already_owns' }
   } else if (data.itemType === 'BOOKING') {
     const has = await recipientEmailHasBooking(recipientLc, data.itemId)
     if (has) return { ok: false, error: 'recipient_already_booked' }
-    // For BOOKING admin grants we still need capacity — admin can't oversell.
-    // Use the same race-safe hold path; if no capacity, surface the error
-    // rather than auto-overbooking.
     const holdResult = await createBookingHold({
       userId: session.user.id,
       bookingId: data.itemId,
@@ -171,15 +174,7 @@ export async function createAdminGiftAction(
       }
       return { ok: false, error: 'db_failed' }
     }
-    // Convert the hold immediately. Admin grants don't go through Stripe;
-    // the hold is just the capacity gate.
-    await deleteHoldById(holdResult.holdId)
-    // For admin-granted bookings we DO want to consume capacity (one seat
-    // for the recipient). Increment bookedCount manually.
-    // Simpler approach: skip the hold path entirely and just check capacity
-    // before insert. But the race would re-emerge, so we keep the hold
-    // path. The booking_orders row creation happens via a small helper
-    // path below.
+    bookingHoldId = holdResult.holdId
   }
 
   const result = await createGift({
@@ -191,12 +186,22 @@ export async function createAdminGiftAction(
     locale: data.locale,
     adminGrantedByUserId: session.user.id,
   })
-  if (!result) return { ok: false, error: 'db_failed' }
+  if (!result) {
+    // createGift failed — release the hold we took so capacity returns to
+    // the pool. The action couldn't get past gift insert; nothing else to
+    // unwind.
+    if (bookingHoldId) await deleteHoldById(bookingHoldId)
+    return { ok: false, error: 'db_failed' }
+  }
 
-  // For auto-claimed (recipient existed) BOOK / SESSION grants, also create
-  // the orders row. BOOKING grants follow a different path (we skip auto-
-  // booking_orders creation in v1 — admin grants of bookings are a small
-  // edge case; the recipient still needs to claim through the gift flow).
+  // Side-effects per itemType:
+  //   - BOOK/SESSION + auto-claimed → insert orders row so recipient's
+  //     library access reflects the gift immediately.
+  //   - BOOKING (any claim state) → insert booking_orders row PAID +
+  //     bump bookedCount + SOLD_OUT flip + release the hold. For
+  //     auto-claimed grants userId = recipientUserId; for PENDING
+  //     grants userId = null and `transferBookingOrderToRecipient`
+  //     populates it on claim.
   if (
     result.autoClaimed &&
     result.recipientUserId &&
@@ -210,6 +215,22 @@ export async function createAdminGiftAction(
       priceCents: itemSummary.priceCents,
       currency: itemSummary.currency,
     })
+  } else if (data.itemType === 'BOOKING' && bookingHoldId) {
+    const bo = await createAdminGrantBookingOrder({
+      giftId: result.gift.id,
+      bookingId: data.itemId,
+      recipientUserId: result.autoClaimed ? result.recipientUserId : null,
+      currency: itemSummary.currency,
+      holdId: bookingHoldId,
+    })
+    if (!bo) {
+      // Booking-order insert + capacity bump failed AFTER the gift row was
+      // created. Best-effort cleanup: release the hold so the seat returns
+      // to the pool; leave the gift row in place (admin can revoke via the
+      // queue if recovery is needed).
+      await deleteHoldById(bookingHoldId)
+      return { ok: false, error: 'db_failed' }
+    }
   }
 
   // Send the admin-grant notification email.
@@ -245,6 +266,9 @@ export async function createAdminGiftAction(
       html,
       text,
       previewLabel: 'admin-gift-granted',
+      emailType: 'admin_gift_granted',
+      relatedEntityType: 'gift',
+      relatedEntityId: result.gift.id,
     })
     await markGiftEmailSent(
       result.gift.id,
@@ -316,6 +340,9 @@ export async function revokeGiftAction(
           supportEmail: SUPPORT_EMAIL,
         }),
         previewLabel: 'gift-revoked-recipient',
+        emailType: 'gift_revoked',
+        relatedEntityType: 'gift',
+        relatedEntityId: revoked.id,
       })
       // Sender (USER_PURCHASE only)
       if (revoked.source === 'USER_PURCHASE' && revoked.senderUserId) {
@@ -344,6 +371,9 @@ export async function revokeGiftAction(
               supportEmail: SUPPORT_EMAIL,
             }),
             previewLabel: 'gift-revoked-sender',
+            emailType: 'gift_revoked',
+            relatedEntityType: 'gift',
+            relatedEntityId: revoked.id,
           })
         }
       }
@@ -436,6 +466,9 @@ async function resendAdminGrantEmail(
     html,
     text,
     previewLabel: 'admin-gift-granted',
+    emailType: 'admin_gift_granted',
+    relatedEntityType: 'gift',
+    relatedEntityId: gift.id,
   })
   if (send.ok) return { ok: true, id: send.id }
   if (send.reason === 'preview-only') return { ok: true, id: null }

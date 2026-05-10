@@ -414,6 +414,12 @@ export function SiteSettingsForm({
             checked={settings.admin.show_admin_gifts}
             onCheckedChange={(v) => update('admin', { show_admin_gifts: v })}
           />
+          <ToggleRow
+            label={t('admin.show_admin_email_queue')}
+            description={t('admin.show_admin_email_queue_desc')}
+            checked={settings.admin.show_admin_email_queue}
+            onCheckedChange={(v) => update('admin', { show_admin_email_queue: v })}
+          />
         </div>
       </Card>
 

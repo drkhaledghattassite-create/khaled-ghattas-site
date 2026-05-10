@@ -135,6 +135,24 @@ export const giftSource = pgEnum('gift_source', [
   'USER_PURCHASE',
 ])
 
+// Phase D2 — Email queue lifecycle.
+//   PENDING → SENDING (cron worker picked up; atomic with SKIP LOCKED)
+//   SENDING → SENT (Resend accepted)
+//   SENDING → PENDING (transient Resend error → backoff retry)
+//   SENDING → EXHAUSTED (attemptCount reached maxAttempts)
+//   PENDING|SENDING → FAILED (admin manual dead-letter)
+// Terminal states (SENT, FAILED, EXHAUSTED) never transition further
+// automatically. Admin retry on EXHAUSTED/FAILED resets nextAttemptAt
+// + flips status back to PENDING; attemptCount is preserved so the
+// audit history is intact.
+export const emailStatus = pgEnum('email_status', [
+  'PENDING',
+  'SENDING',
+  'SENT',
+  'FAILED',
+  'EXHAUSTED',
+])
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Auth (Better Auth + role)
  * ──────────────────────────────────────────────────────────────────────── */
@@ -1275,6 +1293,86 @@ export const gifts = pgTable(
 )
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Phase D2 — Email queue
+ *
+ * Durable email outbox. Every transactional email is enqueued at the
+ * action layer with subject/html/text pre-rendered, then drained by the
+ * Vercel cron at /api/cron/process-email-queue.
+ *
+ * Pre-rendering at enqueue time means a deleted template module can't
+ * orphan an in-flight email. The trade-off: htmlBody can be ~10-50 KB
+ * per row and accumulates over time. v2 should add a TTL sweep (delete
+ * SENT rows older than 90 days; archive FAILED/EXHAUSTED bodies after
+ * the admin acks them).
+ *
+ * Concurrency: pickPendingEmails uses SELECT FOR UPDATE SKIP LOCKED so
+ * multiple cron workers can safely drain in parallel without double-sends.
+ * email_queue_pending_idx is a partial index on (status, next_attempt_at)
+ * WHERE status IN ('PENDING', 'SENDING') — keeps the index small even
+ * after the SENT pile grows.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const emailQueue = pgTable(
+  'email_queue',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Discriminator for filtering + admin display. Free text rather than
+    // an enum so callers from new surfaces don't require a migration —
+    // the admin UI's i18n labels are the constrained set.
+    emailType: text('email_type').notNull(),
+    recipientEmail: text('recipient_email').notNull(),
+    subject: text('subject').notNull(),
+    htmlBody: text('html_body').notNull(),
+    textBody: text('text_body').notNull(),
+    fromAddress: text('from_address').notNull(),
+    replyTo: text('reply_to'),
+    status: emailStatus('status').notNull().default('PENDING'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(5),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    // Resend's per-message id, captured on a successful send so admin can
+    // trace back to the Resend dashboard. Not a unique index — we never
+    // search by it; it's display-only.
+    resendMessageId: text('resend_message_id'),
+    // Loose pointer to whichever business entity triggered the email.
+    // Lets the admin queue detail page render a "View gift" / "View order"
+    // link without polymorphic FKs.
+    relatedEntityType: text('related_entity_type'),
+    relatedEntityId: uuid('related_entity_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    // Partial index: cron worker only ever scans PENDING/SENDING rows
+    // at the head of the queue. SENT/FAILED/EXHAUSTED pile up over time
+    // but are excluded from this index so the dequeue cost stays flat.
+    pendingIdx: index('email_queue_pending_idx')
+      .on(t.status, t.nextAttemptAt)
+      .where(sql`${t.status} IN ('PENDING','SENDING')`),
+    statusCreatedIdx: index('email_queue_status_created_idx').on(
+      t.status,
+      t.createdAt.desc(),
+    ),
+    recipientIdx: index('email_queue_recipient_idx').on(
+      t.recipientEmail,
+      t.createdAt.desc(),
+    ),
+    relatedIdx: index('email_queue_related_idx').on(
+      t.relatedEntityType,
+      t.relatedEntityId,
+    ),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Relations
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -1605,3 +1703,7 @@ export type NewGift = InferInsertModel<typeof gifts>
 export type GiftStatus = (typeof giftStatus.enumValues)[number]
 export type GiftItemType = (typeof giftItemType.enumValues)[number]
 export type GiftSource = (typeof giftSource.enumValues)[number]
+
+export type EmailQueueRow = InferSelectModel<typeof emailQueue>
+export type NewEmailQueueRow = InferInsertModel<typeof emailQueue>
+export type EmailStatus = (typeof emailStatus.enumValues)[number]

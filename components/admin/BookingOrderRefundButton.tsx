@@ -22,6 +22,13 @@ type Props = {
   amountPaid: number
   currency: string
   email: string
+  /**
+   * Phase D — true when the underlying booking_order has a giftId set.
+   * Surfaces an extra "this is a gift" warning above the refund confirm
+   * because refunding will revoke the recipient's seat via the gift's
+   * markGiftRefunded side effects.
+   */
+  isGift?: boolean
 }
 
 export function BookingOrderRefundButton({
@@ -29,6 +36,7 @@ export function BookingOrderRefundButton({
   amountPaid,
   currency,
   email,
+  isGift = false,
 }: Props) {
   const t = useTranslations('admin.booking_orders')
   const tForms = useTranslations('admin.forms')
@@ -103,6 +111,11 @@ export function BookingOrderRefundButton({
                 email: email || '—',
               })}
             </AlertDialogDescription>
+            {isGift && (
+              <AlertDialogDescription className="mt-2 rounded-md border border-accent/40 bg-accent-soft/60 px-3 py-2 text-accent">
+                {tConfirm('refund_gift_warning')}
+              </AlertDialogDescription>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>

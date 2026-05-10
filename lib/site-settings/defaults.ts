@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     show_admin_questions: true,
     show_admin_tests: true,
     show_admin_gifts: true,
+    show_admin_email_queue: true,
   },
   dashboard: {
     show_account_tab: true,

@@ -7,6 +7,7 @@ import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { requireServerRole } from '@/lib/auth/server'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import {
+  countQueueByStatus,
   getDraftTestCount,
   getPendingQuestionCount,
 } from '@/lib/db/queries'
@@ -46,15 +47,30 @@ export default async function AdminLayout({ children, params }: Props) {
   // Pending-count + draft-count are read in parallel — both are single
   // COUNT(*) on narrow indexed predicates, so the cost is negligible.
   // They power the sidebar badges (Questions + Tests).
-  const [settings, pendingQuestionCount, draftTestCount] = await Promise.all([
-    getCachedSiteSettings().catch(() => null),
-    getPendingQuestionCount().catch(() => 0),
-    getDraftTestCount().catch(() => 0),
-  ])
+  const [settings, pendingQuestionCount, draftTestCount, queueCounts] =
+    await Promise.all([
+      getCachedSiteSettings().catch(() => null),
+      getPendingQuestionCount().catch(() => 0),
+      getDraftTestCount().catch(() => 0),
+      countQueueByStatus().catch(() => ({
+        PENDING: 0,
+        SENDING: 0,
+        SENT: 0,
+        FAILED: 0,
+        EXHAUSTED: 0,
+      })),
+    ])
   const showAdminBooking = settings?.admin?.show_admin_booking ?? true
   const showAdminQuestions = settings?.admin?.show_admin_questions ?? true
   const showAdminTests = settings?.admin?.show_admin_tests ?? true
   const showAdminGifts = settings?.admin?.show_admin_gifts ?? true
+  const showAdminEmailQueue = settings?.admin?.show_admin_email_queue ?? true
+  // Attention bucket = automatic retries that gave up + admin-marked
+  // dead-letter rows. EXHAUSTED is the strong signal (we tried 5 times
+  // and still failed); FAILED is the manual signal (admin decided to
+  // stop retrying).
+  const emailQueueAttentionCount =
+    queueCounts.EXHAUSTED + queueCounts.FAILED
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -66,6 +82,8 @@ export default async function AdminLayout({ children, params }: Props) {
         showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
         showAdminGifts={showAdminGifts}
+        showAdminEmailQueue={showAdminEmailQueue}
+        emailQueueAttentionCount={emailQueueAttentionCount}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
@@ -76,6 +94,8 @@ export default async function AdminLayout({ children, params }: Props) {
           showAdminTests={showAdminTests}
           draftTestCount={draftTestCount}
           showAdminGifts={showAdminGifts}
+          showAdminEmailQueue={showAdminEmailQueue}
+          emailQueueAttentionCount={emailQueueAttentionCount}
         />
         <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
       </div>

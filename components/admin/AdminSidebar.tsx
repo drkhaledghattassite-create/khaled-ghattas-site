@@ -18,6 +18,7 @@ import {
   Heart,
   Image as ImageIcon,
   Images,
+  Inbox,
   LayoutDashboard,
   Lightbulb,
   LogOut,
@@ -91,6 +92,8 @@ function buildGroups(
   showTests: boolean,
   draftTestCount: number,
   showGifts: boolean,
+  showEmailQueue: boolean,
+  emailQueueAttentionCount: number,
 ): NavGroup[] {
   const audienceItems: NavItem[] = [
     { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
@@ -159,14 +162,28 @@ function buildGroups(
     },
   ]
   if (showBooking) groups.push(BOOKING_GROUP)
+  const siteItems: NavItem[] = [
+    { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
+    { href: '/admin/settings/site', key: 'site_settings', icon: SlidersHorizontal },
+    { href: '/admin/content', key: 'content', icon: FileEdit },
+    { href: '/admin/media', key: 'media', icon: ImageIcon },
+  ]
+  if (showEmailQueue) {
+    // Email-queue sidebar entry sits in the site group alongside other
+    // operator surfaces (settings, media). The badge surfaces the count
+    // of rows the admin needs to look at: EXHAUSTED (auto-retries gave
+    // up) + FAILED (admin previously dead-lettered but might re-retry).
+    siteItems.push({
+      href: '/admin/email-queue',
+      key: 'email_queue',
+      icon: Inbox,
+      badgeCount: emailQueueAttentionCount,
+      badgeAriaLabelKey: 'email_queue_attention_aria',
+    })
+  }
   groups.push({
     key: 'site',
-    items: [
-      { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
-      { href: '/admin/settings/site', key: 'site_settings', icon: SlidersHorizontal },
-      { href: '/admin/content', key: 'content', icon: FileEdit },
-      { href: '/admin/media', key: 'media', icon: ImageIcon },
-    ],
+    items: siteItems,
   })
   return groups
 }
@@ -180,6 +197,8 @@ export function AdminSidebarContent({
   showAdminTests = true,
   draftTestCount = 0,
   showAdminGifts = true,
+  showAdminEmailQueue = true,
+  emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
   onNavigate?: () => void
@@ -217,6 +236,16 @@ export function AdminSidebarContent({
    * `admin.show_admin_gifts`.
    */
   showAdminGifts?: boolean
+  /**
+   * Phase D2 — gates the Email queue entry in the site group. Sourced
+   * from `admin.show_admin_email_queue`.
+   */
+  showAdminEmailQueue?: boolean
+  /**
+   * Phase D2 — count of EXHAUSTED + FAILED queue rows. Drives the
+   * "attention needed" badge on the Email queue sidebar entry.
+   */
+  emailQueueAttentionCount?: number
 }) {
   const pathname = usePathname()
   const tNav = useTranslations('admin.nav')
@@ -230,6 +259,8 @@ export function AdminSidebarContent({
     showAdminTests,
     draftTestCount,
     showAdminGifts ?? true,
+    showAdminEmailQueue ?? true,
+    emailQueueAttentionCount,
   )
 
   return (
@@ -357,6 +388,8 @@ export function AdminSidebar({
   showAdminTests = true,
   draftTestCount = 0,
   showAdminGifts = true,
+  showAdminEmailQueue = true,
+  emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
   showAdminBooking?: boolean
@@ -365,6 +398,8 @@ export function AdminSidebar({
   showAdminTests?: boolean
   draftTestCount?: number
   showAdminGifts?: boolean
+  showAdminEmailQueue?: boolean
+  emailQueueAttentionCount?: number
 }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
@@ -376,6 +411,8 @@ export function AdminSidebar({
         showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
         showAdminGifts={showAdminGifts}
+        showAdminEmailQueue={showAdminEmailQueue}
+        emailQueueAttentionCount={emailQueueAttentionCount}
       />
     </aside>
   )

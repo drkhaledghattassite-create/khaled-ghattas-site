@@ -32,6 +32,12 @@ function buildNavItems(settings: Awaited<ReturnType<typeof getCachedSiteSettings
     items.push({ key: 'booking', href: '/booking' })
   if (navigation.show_nav_tests)
     items.push({ key: 'tests', href: '/tests' })
+  // Phase D — "Send a gift" sits after Tests in the nav order. Default OFF
+  // (see lib/site-settings/defaults.ts) so gifting isn't promoted to casual
+  // visitors before Dr. Khaled flips it on. /gifts/send remains reachable
+  // via direct URL regardless.
+  if (navigation.show_nav_send_gift)
+    items.push({ key: 'send_gift', href: '/gifts/send' })
   if (navigation.show_nav_contact) items.push({ key: 'contact', href: '/contact' })
   return items
 }

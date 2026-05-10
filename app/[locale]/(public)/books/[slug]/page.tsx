@@ -206,10 +206,19 @@ export default async function BookPage({ params }: Props) {
               >
                 {t('buy')}
               </BookBuyButton>
-              {!isSession && book.digitalFile && (
-                <button type="button" className="btn-pill btn-pill-secondary">
-                  {t('sample')}
-                </button>
+              {/* Phase D — surface the gifting feature on every giftable
+                  item. Gated on the gifts.allow_user_to_user kill switch so
+                  flipping the toggle off hides the CTA everywhere. The
+                  link pre-selects this item in /gifts/send via query
+                  params; unauthenticated visitors land on the public form
+                  and are bounced through /login on submit. */}
+              {settings.gifts.allow_user_to_user && (
+                <Link
+                  href={`/gifts/send?type=${isSession ? 'session' : 'book'}&id=${book.id}`}
+                  className="btn-pill btn-pill-secondary"
+                >
+                  {t('send_as_gift')}
+                </Link>
               )}
             </div>
 

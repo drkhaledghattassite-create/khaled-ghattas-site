@@ -34,6 +34,12 @@ type Props = {
    * looking; the user can scroll the curriculum / FAQ).
    */
   isAlreadyBooked: boolean
+  /**
+   * Phase D — show "Send as gift" link beneath Reserve when the
+   * `gifts.allow_user_to_user` site-setting is on. Always-on for the
+   * Reconsider product (no gating beyond the global toggle).
+   */
+  allowGifting: boolean
 }
 
 function effectiveRemaining(b: BookingWithHolds): number {
@@ -63,6 +69,7 @@ export function ReconsiderSection({
   onInterest,
   isInView,
   isAlreadyBooked,
+  allowGifting,
 }: Props) {
   const t = useTranslations('booking.reconsider')
   const tShared = useTranslations('booking.shared')
@@ -282,6 +289,21 @@ export function ReconsiderSection({
                 >
                   {t('panel_reserve_cta')}
                 </button>
+                {/* Phase D — gifting CTA mirrors the link on /books/[slug]
+                    and pre-selects the Reconsider course via query params.
+                    Rendered as a subtle text link beneath Reserve so it
+                    discovers the feature without competing with the
+                    primary purchase CTA. */}
+                {allowGifting && (
+                  <Link
+                    href={`/gifts/send?type=booking&id=${reconsider.id}`}
+                    className={`text-center text-[13px] underline text-[var(--color-fg2)] hover:text-[var(--color-fg1)] transition-colors ${
+                      isRtl ? 'font-arabic-body' : 'font-display'
+                    }`}
+                  >
+                    {tShared('send_as_gift')}
+                  </Link>
+                )}
                 <p
                   className={`text-center text-[12px] leading-[1.5] text-[var(--color-fg3)] ${
                     isRtl ? 'font-arabic-body' : 'font-display'

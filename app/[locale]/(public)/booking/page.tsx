@@ -85,6 +85,7 @@ export default async function BookingRoute({ params }: Props) {
       sessions={sessions}
       hasSession={!!session}
       paidBookingIds={paidBookingIds}
+      allowGifting={settings.gifts.allow_user_to_user}
     />
   )
 }

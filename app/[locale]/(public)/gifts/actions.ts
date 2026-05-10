@@ -240,7 +240,10 @@ export async function createUserGiftAction(
           quantity: 1,
         },
       ],
-      success_url: `${origin}/${locale}/gifts/send?success=1`,
+      // Stripe interpolates {CHECKOUT_SESSION_ID} at redirect time so the
+      // success page can poll /api/gifts/status until the webhook fires.
+      // The cancel path lands back on the form with a banner.
+      success_url: `${origin}/${locale}/gifts/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/${locale}/gifts/send?cancelled=1`,
       metadata: {
         productType: 'GIFT',
@@ -281,7 +284,6 @@ export type ClaimGiftActionResult =
       | 'invalid_or_expired'
       | 'login_required'
       | 'email_mismatch'
-      | 'email_verification_pending'
       | 'rate_limited'
       | 'item_unavailable'
       | 'db_failed'
@@ -331,20 +333,15 @@ export async function claimGiftAction(
   if (!session) return { ok: false, error: 'login_required' }
 
   const userEmailLc = (session.user.email ?? '').trim().toLowerCase()
-  if (userEmailLc !== gift.recipientEmail.toLowerCase()) {
+  if (userEmailLc !== gift.recipientEmail.trim().toLowerCase()) {
     // Don't leak that the gift exists — surface a generic "not for this account"
     // copy. The action returns the discrete code for UI branching.
+    //
+    // Better Auth's email uniqueness is the proof-of-control here; we don't
+    // gate on emailVerified because the Better Auth instance has no
+    // verification flow configured (password signups would otherwise be
+    // permanently locked out).
     return { ok: false, error: 'email_mismatch' }
-  }
-
-  // Email verification gate — if the session user hasn't verified email,
-  // we don't grant entitlement. Better Auth surfaces emailVerified on the
-  // user.
-  const sessionUser = session.user as typeof session.user & {
-    emailVerified?: boolean
-  }
-  if (sessionUser.emailVerified === false) {
-    return { ok: false, error: 'email_verification_pending' }
   }
 
   // Atomic claim — race-safe in DB; mock-mode replicates the same
@@ -408,6 +405,9 @@ export async function claimGiftAction(
       html,
       text,
       previewLabel: 'gift-claimed-recipient',
+      emailType: 'gift_claimed_recipient',
+      relatedEntityType: 'gift',
+      relatedEntityId: claimed.id,
     })
   } catch (err) {
     console.error('[gifts.claim] recipient email failed', err)
@@ -445,6 +445,9 @@ export async function claimGiftAction(
           html,
           text,
           previewLabel: 'gift-claimed-sender',
+          emailType: 'gift_claimed_sender',
+          relatedEntityType: 'gift',
+          relatedEntityId: claimed.id,
         })
       }
     } catch (err) {
@@ -588,6 +591,9 @@ export async function sendGiftReceivedEmail(
     html,
     text,
     previewLabel: 'gift-received',
+    emailType: 'gift_received',
+    relatedEntityType: 'gift',
+    relatedEntityId: gift.id,
   })
   if (result.ok) return { ok: true, id: result.id }
   if (result.reason === 'preview-only') return { ok: true, id: null }

@@ -37,6 +37,7 @@
     "corporate": "For Corporations",
     "booking": "Services for Individuals",
     "tests": "Tests",
+    "send_gift": "Send a gift",
     "menu": "Menu",
     "close": "Close",
     "primary": "Primary navigation",
@@ -253,7 +254,7 @@
   },
   "book": {
     "buy": "Buy now",
-    "sample": "Read sample",
+    "send_as_gift": "Send as gift",
     "format": "Format",
     "format_digital": "Digital PDF",
     "format_print": "Print edition",
@@ -566,7 +567,8 @@
       "error_validation": "Please check the form and try again.",
       "already_booked": "Already booked",
       "already_booked_body": "You've already reserved a seat in this cohort. Manage it from your dashboard.",
-      "view_in_dashboard": "View in dashboard"
+      "view_in_dashboard": "View in dashboard",
+      "send_as_gift": "Send as a gift instead"
     },
     "success": {
       "heading": "You're booked",
@@ -691,6 +693,8 @@
       "tests": "Tests",
       "tests_drafts_aria": "{count, plural, one {# draft test} other {# draft tests}}",
       "gifts": "Gifts",
+      "email_queue": "Email queue",
+      "email_queue_attention_aria": "{count, plural, one {# email needs attention} other {# emails need attention}}",
       "booking_tours": "Tours",
       "booking_bookings": "Bookings",
       "booking_tour_suggestions": "Tour suggestions",
@@ -1033,6 +1037,7 @@
       "cancel_order": "Cancel",
       "open_stripe": "Open in Stripe",
       "back_to_orders": "All orders",
+      "gift_claim_badge": "Gift-claimed order — view gift",
       "confirm": {
         "back": "Back",
         "fulfill_title": "Mark this order as fulfilled?",
@@ -1040,6 +1045,7 @@
         "fulfill_confirm": "Mark fulfilled",
         "refund_title": "Refund this order?",
         "refund_description": "This will issue a real refund of {amount} back to {email} via Stripe. The customer's card is credited and the action cannot be undone from the panel — only reversed by the customer's bank.",
+        "refund_gift_warning": "Heads up: this order originated from a gift. Refunding will revoke the recipient's access to this item.",
         "refund_confirm": "Yes, refund {amount}",
         "refunding": "Refunding…",
         "cancel_title": "Cancel this order?",
@@ -1434,7 +1440,8 @@
       "edit_booking": "Open booking",
       "not_set": "—",
       "type_reconsider": "Reconsider course",
-      "type_session": "Online session"
+      "type_session": "Online session",
+      "gift_claim_badge": "Gift-claimed booking — view gift"
     },
     "booking_actions": {
       "success_created": "Created",
@@ -1469,6 +1476,7 @@
       "delete_booking_confirm": "Delete",
       "refund_title": "Refund this order?",
       "refund_body": "Refund {amount} to {email}? This will:\n• Trigger an irreversible Stripe refund\n• Decrement bookedCount by 1 (via webhook)\n• Set local order status to REFUNDED\n\nThe booking's SOLD_OUT state will NOT auto-revert.",
+      "refund_gift_warning": "Heads up: this booking originated from a gift. Refunding will revoke the recipient's seat.",
       "refund_confirm": "Refund",
       "purge_title": "Purge stale PENDING orders?",
       "purge_body": "Delete every booking_orders row with status='PENDING' and createdAt older than 24 hours. These are abandoned Stripe Checkouts that never completed payment.",
@@ -1590,7 +1598,9 @@
         "show_admin_tests": "Tests admin entry",
         "show_admin_tests_desc": "Show the Tests entry (with draft count badge) in the content group of the /admin sidebar.",
         "show_admin_gifts": "Gifts admin entry",
-        "show_admin_gifts_desc": "Show the Gifts entry in the commerce group of the /admin sidebar. Route /admin/gifts stays accessible via direct URL."
+        "show_admin_gifts_desc": "Show the Gifts entry in the commerce group of the /admin sidebar. Route /admin/gifts stays accessible via direct URL.",
+        "show_admin_email_queue": "Email queue admin entry",
+        "show_admin_email_queue_desc": "Show the Email queue entry (with EXHAUSTED + FAILED count badge) in the site group of the /admin sidebar. Route /admin/email-queue stays accessible via direct URL."
       },
       "dashboard": {
         "show_account_tab": "Account tab (always on)",
@@ -1881,6 +1891,8 @@
         "form_message_placeholder": "A short note from the team…",
         "success": "Gift granted.",
         "errors": {
+          "unauthorized": "You must be signed in as an admin to send a gift.",
+          "forbidden": "You don't have permission to send gifts.",
           "validation": "Please review the form and try again.",
           "self_gift": "You can't grant a gift to yourself.",
           "item_unavailable": "This item is no longer available.",
@@ -1938,6 +1950,98 @@
           "unknown": "Something went wrong. Please retry."
         }
       }
+    },
+    "email_queue": {
+      "heading": "Email queue",
+      "description": "Durable outbox for transactional emails. Failed sends retry on a 1m / 5m / 15m / 1h schedule; rows that exhaust attempts land here for manual review.",
+      "empty": "No emails match these filters.",
+      "search_placeholder": "Search by recipient email",
+      "filters": {
+        "label": "Filter",
+        "all": "All",
+        "pending": "Pending",
+        "sending": "Sending",
+        "sent": "Sent",
+        "failed": "Failed",
+        "exhausted": "Exhausted",
+        "type_all": "All types",
+        "type_post_purchase": "Post-purchase",
+        "type_booking_confirmation": "Booking confirmation",
+        "type_gift_received": "Gift received",
+        "type_gift_sent": "Gift sent",
+        "type_gift_claimed_recipient": "Gift claimed (recipient)",
+        "type_gift_claimed_sender": "Gift claimed (sender)",
+        "type_gift_revoked": "Gift revoked",
+        "type_admin_gift_granted": "Admin gift granted",
+        "type_question_answered": "Question answered",
+        "type_corporate_request": "Corporate request",
+        "type_unknown": "Other"
+      },
+      "status": {
+        "pending": "Pending",
+        "sending": "Sending",
+        "sent": "Sent",
+        "failed": "Failed",
+        "exhausted": "Exhausted"
+      },
+      "col": {
+        "created": "Created",
+        "recipient": "Recipient",
+        "type": "Type",
+        "status": "Status",
+        "attempts": "Attempts",
+        "next_attempt": "Next attempt",
+        "last_error": "Last error",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View",
+        "retry": "Retry now",
+        "mark_failed": "Mark failed"
+      },
+      "detail": {
+        "heading": "Email detail",
+        "back": "Back to queue",
+        "section_overview": "Overview",
+        "section_attempt": "Attempts",
+        "section_preview": "Preview",
+        "section_related": "Related entity",
+        "label_id": "Queue ID",
+        "label_type": "Type",
+        "label_status": "Status",
+        "label_recipient": "Recipient",
+        "label_subject": "Subject",
+        "label_from": "From",
+        "label_reply_to": "Reply to",
+        "label_attempts": "Attempts",
+        "label_next_attempt": "Next attempt",
+        "label_last_attempt": "Last attempt",
+        "label_last_error": "Last error",
+        "label_resend_id": "Resend message id",
+        "label_created": "Created",
+        "label_updated": "Updated",
+        "related_link": "View related entity",
+        "no_related": "No related entity",
+        "preview_iframe_label": "Email preview"
+      },
+      "modal": {
+        "retry_title": "Retry this email?",
+        "retry_body": "We'll reset next-attempt-at to now and flip the row back to PENDING. The attempt counter is preserved — if this fails again, it will land back in EXHAUSTED.",
+        "retry_confirm": "Retry now",
+        "mark_failed_title": "Mark this email as failed?",
+        "mark_failed_body": "This is a manual dead-letter — the cron worker will stop retrying this row. The admin can still manually retry from here.",
+        "mark_failed_reason_label": "Reason (for audit)",
+        "mark_failed_reason_placeholder": "e.g., recipient address is invalid",
+        "mark_failed_confirm": "Mark failed",
+        "cancel": "Cancel"
+      },
+      "toast": {
+        "retry_success": "Email queued for retry",
+        "mark_failed_success": "Email marked as failed",
+        "error_generic": "Something went wrong. Please retry."
+      },
+      "schedule_note": "Retry schedule: 1m → 5m → 15m → 1h → exhausted",
+      "pii_note": "These rows contain rendered email bodies. Treat with the same sensitivity as customer correspondence."
     }
   },
   "about_teaser": {
@@ -2746,7 +2850,34 @@
       "send_title": "Send a gift",
       "send_description": "Gift a book, session, or booking to a friend.",
       "claim_title": "Claim your gift",
-      "claim_description": "You've received a gift through Dr. Khaled Ghattass."
+      "claim_description": "You've received a gift through Dr. Khaled Ghattass.",
+      "success_title": "Gift on its way",
+      "success_description": "Your gift has been prepared for the recipient."
+    },
+    "success": {
+      "eyebrow": "Your gift is ready",
+      "heading_paid": "Your gift is on its way",
+      "heading_pending": "We're preparing your gift",
+      "body_paid": "We sent an email to {email}. If they don't receive it within a few minutes, you can share the direct link below.",
+      "body_pending": "We're confirming your payment with Stripe. This usually takes only a few seconds.",
+      "recipient_label": "Sent to",
+      "share_heading": "Share the link directly",
+      "share_body": "If your recipient doesn't see the email, send them this link via WhatsApp, iMessage, or any chat app. Only they can claim it.",
+      "copy_link": "Copy link",
+      "copied": "Link copied to clipboard",
+      "copy_failed": "Couldn't copy the link",
+      "open_link": "Open the link",
+      "expires_at": "This gift expires on {date}",
+      "go_dashboard": "View in dashboard",
+      "send_another": "Send another gift",
+      "confirming": "Confirming with Stripe…",
+      "not_found_heading": "We can't find that gift",
+      "not_found_body": "If you just paid, give the webhook a moment and refresh. Otherwise, the link may have been opened in error.",
+      "resend_email": "Resend email to recipient",
+      "resend_sending": "Sending…",
+      "resend_success": "Email sent",
+      "resend_failed": "Couldn't resend right now",
+      "resend_rate_limited": "Please wait a day before resending again"
     },
     "send": {
       "eyebrow": "Send a gift",
@@ -2784,6 +2915,8 @@
       "login_cta": "Sign in",
       "feature_disabled": "Gift sending is currently unavailable. Please check back later.",
       "errors": {
+        "unauthorized": "Please sign in to send a gift.",
+        "select_item_first": "Please choose an item before continuing.",
         "validation": "Please review the form and try again.",
         "self_gift": "You can't send a gift to yourself.",
         "item_unavailable": "This item is no longer available.",
@@ -2812,9 +2945,6 @@
       "ready_heading": "Your gift is ready",
       "ready_body": "Press the button below to claim it.",
       "ready_cta": "Claim your gift",
-      "verifying_heading": "Almost there",
-      "verifying_body": "Check your email for a verification link, then return here to claim.",
-      "verifying_refresh_cta": "I've verified — refresh",
       "mismatch_heading": "This gift is not for this account",
       "mismatch_body": "Sign out and sign in with the correct email to claim.",
       "mismatch_signout_cta": "Sign out",
@@ -2825,7 +2955,6 @@
         "invalid_or_expired": "This gift link isn't valid or has expired.",
         "login_required": "Please sign in to claim this gift.",
         "email_mismatch": "This gift is not for this account.",
-        "email_verification_pending": "Please verify your email first.",
         "rate_limited": "Too many attempts. Please wait and try again.",
         "item_unavailable": "The item linked to this gift is no longer available.",
         "db_failed": "Something went wrong. Please retry."
