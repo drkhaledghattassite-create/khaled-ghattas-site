@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
 import { IBM_Plex_Sans_Arabic, Readex_Pro, Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers/Providers'
@@ -172,6 +173,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           <AppLoader />
           <Toaster richColors closeButton position="top-center" />
         </NextIntlClientProvider>
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
