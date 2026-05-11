@@ -1484,10 +1484,6 @@
       "back": "Back",
       "busy": "Working…"
     },
-    "booking_site_settings": {
-      "show_admin_booking": "Show booking admin section",
-      "show_admin_booking_hint": "Hide the entire Booking group from the admin sidebar."
-    },
     "settings": {
       "tabs": {
         "general": "General",
@@ -1529,8 +1525,6 @@
         "featured_desc": "Pin a specific item to lead each homepage section. Default uses the first published item.",
         "features_title": "Runtime features",
         "features_desc": "Top-level switches that affect site behavior, not just visual layout.",
-        "admin_title": "Admin panel",
-        "admin_desc": "Visibility controls for sections of the /admin sidebar. Routes still resolve via direct URL — these toggles only hide the nav entries.",
         "dashboard_title": "User dashboard",
         "dashboard_desc": "Visibility controls for tabs in the customer-facing /dashboard. Routes still resolve via direct URL when hidden.",
         "gifts_title": "Gifts",
@@ -1589,18 +1583,6 @@
         "newsletter_form_enabled_desc": "Allow new subscribers to submit the form.",
         "maintenance_mode": "Maintenance mode",
         "maintenance_mode_desc": "Show a site-wide banner above all pages."
-      },
-      "admin": {
-        "show_admin_booking": "Booking admin section",
-        "show_admin_booking_desc": "Show the entire Booking group (Tours, Bookings, Suggestions, Interest, Orders) in the /admin sidebar.",
-        "show_admin_questions": "Questions admin entry",
-        "show_admin_questions_desc": "Show the Questions entry (with pending count badge) in the audience group of the /admin sidebar.",
-        "show_admin_tests": "Tests admin entry",
-        "show_admin_tests_desc": "Show the Tests entry (with draft count badge) in the content group of the /admin sidebar.",
-        "show_admin_gifts": "Gifts admin entry",
-        "show_admin_gifts_desc": "Show the Gifts entry in the commerce group of the /admin sidebar. Route /admin/gifts stays accessible via direct URL.",
-        "show_admin_email_queue": "Email queue admin entry",
-        "show_admin_email_queue_desc": "Show the Email queue entry (with EXHAUSTED + FAILED count badge) in the site group of the /admin sidebar. Route /admin/email-queue stays accessible via direct URL."
       },
       "dashboard": {
         "show_account_tab": "Account tab (always on)",
@@ -2930,7 +2912,38 @@
         "db_failed": "Something went wrong on our side. Please retry."
       },
       "checkout_cancelled": "Your gift checkout was cancelled. You weren't charged.",
-      "checkout_success": "Your gift is on its way. We've emailed the recipient."
+      "checkout_success": "Your gift is on its way. We've emailed the recipient.",
+      "step_label": "Step {current} of {total}",
+      "step_titles": {
+        "item": "Pick something to send",
+        "recipient": "Who's this for?",
+        "note": "Write a short note",
+        "review": "Ready to send"
+      },
+      "step_subs": {
+        "item": "Choose a book, session, or booking — anything you'd be glad to share.",
+        "recipient": "We'll email them a private link only they can open.",
+        "note": "Optional. A line or two that explains why you chose this for them.",
+        "review": "One last look before checkout."
+      },
+      "nav": {
+        "back": "Back",
+        "next": "Next",
+        "hint": "Press Enter to continue",
+        "aria_label": "Gift flow navigation"
+      },
+      "note": {
+        "skip": "Skip the note",
+        "counter_left": "{count} characters left",
+        "counter_near": "{count} characters remaining"
+      },
+      "review": {
+        "label_note": "Note",
+        "no_note": "No personal note",
+        "back_to_edit": "Back to edit",
+        "locale_ar": "Email in Arabic",
+        "locale_en": "Email in English"
+      }
     },
     "claim": {
       "eyebrow": "Your gift",
@@ -2944,7 +2957,19 @@
       "logged_out_register_cta": "Create account",
       "ready_heading": "Your gift is ready",
       "ready_body": "Press the button below to claim it.",
-      "ready_cta": "Claim your gift",
+      "ready_cta": "Open your gift",
+      "ready_loading": "Opening…",
+      "yours_badge": "Yours",
+      "item_type": {
+        "book": "A book",
+        "session": "A session",
+        "booking": "A workshop seat"
+      },
+      "cta": {
+        "book": "Start reading",
+        "session": "Watch now",
+        "booking": "View your booking"
+      },
       "mismatch_heading": "This gift is not for this account",
       "mismatch_body": "Sign out and sign in with the correct email to claim.",
       "mismatch_signout_cta": "Sign out",

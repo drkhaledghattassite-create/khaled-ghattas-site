@@ -66,52 +66,28 @@ type NavGroup = {
   items: NavItem[]
 }
 
-// The booking group is split out so it can be conditionally inserted based on
-// the show_admin_booking site-setting. Default visibility is true (see
-// lib/site-settings/defaults.ts) — the group ALWAYS renders unless an admin
-// has explicitly toggled it off.
-const BOOKING_GROUP: NavGroup = {
-  key: 'booking',
-  items: [
-    { href: '/admin/booking/tours', key: 'booking_tours', icon: MapPin },
-    { href: '/admin/booking/bookings', key: 'booking_bookings', icon: CalendarDays },
-    {
-      href: '/admin/booking/tour-suggestions',
-      key: 'booking_tour_suggestions',
-      icon: Lightbulb,
-    },
-    { href: '/admin/booking/interest', key: 'booking_interest', icon: Heart },
-    { href: '/admin/booking/orders', key: 'booking_orders', icon: CreditCard },
-  ],
-}
-
+// Builds the admin sidebar nav. Every section is always rendered — the
+// admin viewing this panel IS the operator, so hiding their own sections
+// from themselves never made sense. The earlier `show_admin_*` site
+// settings were removed; only the live count badges (pending questions,
+// draft tests, email-queue attention) remain.
 function buildGroups(
-  showBooking: boolean,
-  showQuestions: boolean,
   pendingQuestionCount: number,
-  showTests: boolean,
   draftTestCount: number,
-  showGifts: boolean,
-  showEmailQueue: boolean,
   emailQueueAttentionCount: number,
 ): NavGroup[] {
   const audienceItems: NavItem[] = [
     { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
     { href: '/admin/messages', key: 'messages', icon: MessageSquare },
     { href: '/admin/users', key: 'users', icon: Users },
-  ]
-  // Questions entry sits alongside Messages/Subscribers — it's another
-  // inbound channel from the audience. The badge surfaces the pending
-  // queue size; rendering is gated on the show_admin_questions setting.
-  if (showQuestions) {
-    audienceItems.push({
+    {
       href: '/admin/questions',
       key: 'questions',
       icon: HelpCircle,
       badgeCount: pendingQuestionCount,
       badgeAriaLabelKey: 'questions_pending_aria',
-    })
-  }
+    },
+  ]
 
   const contentItems: NavItem[] = [
     { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
@@ -120,38 +96,26 @@ function buildGroups(
     { href: '/admin/interviews', key: 'interviews', icon: Video },
     { href: '/admin/gallery', key: 'gallery', icon: Images },
     { href: '/admin/events', key: 'events', icon: Calendar },
-  ]
-  if (showTests) {
-    contentItems.push({
+    {
       href: '/admin/tests',
       key: 'tests',
       icon: ClipboardList,
-      // Drafts surface in the badge — the cue Dr. Khaled needs to know
-      // there's a test waiting on him to publish.
       badgeCount: draftTestCount,
       badgeAriaLabelKey: 'tests_drafts_aria',
-    })
-  }
-
-  const groups: NavGroup[] = [
-    {
-      key: 'content',
-      items: contentItems,
     },
+  ]
+
+  return [
+    { key: 'content', items: contentItems },
     {
       key: 'commerce',
       items: [
         { href: '/admin/orders', key: 'orders', icon: ShoppingCart },
         { href: '/admin/products', key: 'products', icon: Package },
-        ...(showGifts
-          ? ([{ href: '/admin/gifts', key: 'gifts', icon: Gift }] as NavItem[])
-          : []),
+        { href: '/admin/gifts', key: 'gifts', icon: Gift },
       ],
     },
-    {
-      key: 'audience',
-      items: audienceItems,
-    },
+    { key: 'audience', items: audienceItems },
     {
       key: 'corporate',
       items: [
@@ -160,89 +124,60 @@ function buildGroups(
         { href: '/admin/corporate/requests', key: 'corporate_requests', icon: Send },
       ],
     },
+    {
+      key: 'booking',
+      items: [
+        { href: '/admin/booking/tours', key: 'booking_tours', icon: MapPin },
+        { href: '/admin/booking/bookings', key: 'booking_bookings', icon: CalendarDays },
+        {
+          href: '/admin/booking/tour-suggestions',
+          key: 'booking_tour_suggestions',
+          icon: Lightbulb,
+        },
+        { href: '/admin/booking/interest', key: 'booking_interest', icon: Heart },
+        { href: '/admin/booking/orders', key: 'booking_orders', icon: CreditCard },
+      ],
+    },
+    {
+      key: 'site',
+      items: [
+        { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
+        { href: '/admin/settings/site', key: 'site_settings', icon: SlidersHorizontal },
+        { href: '/admin/content', key: 'content', icon: FileEdit },
+        { href: '/admin/media', key: 'media', icon: ImageIcon },
+        {
+          href: '/admin/email-queue',
+          key: 'email_queue',
+          icon: Inbox,
+          badgeCount: emailQueueAttentionCount,
+          badgeAriaLabelKey: 'email_queue_attention_aria',
+        },
+      ],
+    },
   ]
-  if (showBooking) groups.push(BOOKING_GROUP)
-  const siteItems: NavItem[] = [
-    { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
-    { href: '/admin/settings/site', key: 'site_settings', icon: SlidersHorizontal },
-    { href: '/admin/content', key: 'content', icon: FileEdit },
-    { href: '/admin/media', key: 'media', icon: ImageIcon },
-  ]
-  if (showEmailQueue) {
-    // Email-queue sidebar entry sits in the site group alongside other
-    // operator surfaces (settings, media). The badge surfaces the count
-    // of rows the admin needs to look at: EXHAUSTED (auto-retries gave
-    // up) + FAILED (admin previously dead-lettered but might re-retry).
-    siteItems.push({
-      href: '/admin/email-queue',
-      key: 'email_queue',
-      icon: Inbox,
-      badgeCount: emailQueueAttentionCount,
-      badgeAriaLabelKey: 'email_queue_attention_aria',
-    })
-  }
-  groups.push({
-    key: 'site',
-    items: siteItems,
-  })
-  return groups
 }
 
 export function AdminSidebarContent({
   user,
   onNavigate,
-  showAdminBooking = true,
-  showAdminQuestions = true,
   pendingQuestionCount = 0,
-  showAdminTests = true,
   draftTestCount = 0,
-  showAdminGifts = true,
-  showAdminEmailQueue = true,
   emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
   onNavigate?: () => void
   /**
-   * Gates the Booking group's visibility. Sourced from the
-   * `admin.show_admin_booking` site-setting in the layout. Defaults to
-   * `true` for backward-compat with any caller that doesn't pass it
-   * (e.g., Storybook or a future test renderer).
-   */
-  showAdminBooking?: boolean
-  /**
-   * Phase B2 — gates the Questions entry in the audience group. Sourced
-   * from `admin.show_admin_questions`. Same back-compat default as
-   * showAdminBooking.
-   */
-  showAdminQuestions?: boolean
-  /**
-   * Phase B2 — number of PENDING user questions awaiting review. Drives
-   * the count badge on the Questions sidebar entry. 0 hides the badge.
-   * Sourced from getPendingQuestionCount() in the layout.
+   * Number of PENDING user questions awaiting review. Drives the count
+   * badge on the Questions sidebar entry. 0 hides the badge.
    */
   pendingQuestionCount?: number
   /**
-   * Phase C2 — gates the Tests entry in the content group. Sourced from
-   * `admin.show_admin_tests`.
-   */
-  showAdminTests?: boolean
-  /**
-   * Phase C2 — number of unpublished tests. Drives the badge on the
-   * Tests sidebar entry; 0 hides it.
+   * Number of unpublished tests. Drives the badge on the Tests sidebar
+   * entry; 0 hides it.
    */
   draftTestCount?: number
   /**
-   * Phase D — gates the Gifts entry in the commerce group. Sourced from
-   * `admin.show_admin_gifts`.
-   */
-  showAdminGifts?: boolean
-  /**
-   * Phase D2 — gates the Email queue entry in the site group. Sourced
-   * from `admin.show_admin_email_queue`.
-   */
-  showAdminEmailQueue?: boolean
-  /**
-   * Phase D2 — count of EXHAUSTED + FAILED queue rows. Drives the
+   * Count of EXHAUSTED + FAILED email-queue rows. Drives the
    * "attention needed" badge on the Email queue sidebar entry.
    */
   emailQueueAttentionCount?: number
@@ -253,13 +188,8 @@ export function AdminSidebarContent({
   const tCommon = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
   const groups = buildGroups(
-    showAdminBooking,
-    showAdminQuestions,
     pendingQuestionCount,
-    showAdminTests,
     draftTestCount,
-    showAdminGifts ?? true,
-    showAdminEmailQueue ?? true,
     emailQueueAttentionCount,
   )
 
@@ -382,36 +312,21 @@ export function AdminSidebarContent({
 
 export function AdminSidebar({
   user,
-  showAdminBooking = true,
-  showAdminQuestions = true,
   pendingQuestionCount = 0,
-  showAdminTests = true,
   draftTestCount = 0,
-  showAdminGifts = true,
-  showAdminEmailQueue = true,
   emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
-  showAdminBooking?: boolean
-  showAdminQuestions?: boolean
   pendingQuestionCount?: number
-  showAdminTests?: boolean
   draftTestCount?: number
-  showAdminGifts?: boolean
-  showAdminEmailQueue?: boolean
   emailQueueAttentionCount?: number
 }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-e border-border bg-bg-elevated md:flex">
       <AdminSidebarContent
         user={user}
-        showAdminBooking={showAdminBooking}
-        showAdminQuestions={showAdminQuestions}
         pendingQuestionCount={pendingQuestionCount}
-        showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
-        showAdminGifts={showAdminGifts}
-        showAdminEmailQueue={showAdminEmailQueue}
         emailQueueAttentionCount={emailQueueAttentionCount}
       />
     </aside>

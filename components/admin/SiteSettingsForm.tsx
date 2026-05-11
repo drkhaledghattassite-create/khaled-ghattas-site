@@ -388,41 +388,6 @@ export function SiteSettingsForm({
         </div>
       </Card>
 
-      <Card title={t('groups.admin_title')} description={t('groups.admin_desc')}>
-        <div className="grid gap-3 md:grid-cols-2">
-          <ToggleRow
-            label={t('admin.show_admin_booking')}
-            description={t('admin.show_admin_booking_desc')}
-            checked={settings.admin.show_admin_booking}
-            onCheckedChange={(v) => update('admin', { show_admin_booking: v })}
-          />
-          <ToggleRow
-            label={t('admin.show_admin_questions')}
-            description={t('admin.show_admin_questions_desc')}
-            checked={settings.admin.show_admin_questions}
-            onCheckedChange={(v) => update('admin', { show_admin_questions: v })}
-          />
-          <ToggleRow
-            label={t('admin.show_admin_tests')}
-            description={t('admin.show_admin_tests_desc')}
-            checked={settings.admin.show_admin_tests}
-            onCheckedChange={(v) => update('admin', { show_admin_tests: v })}
-          />
-          <ToggleRow
-            label={t('admin.show_admin_gifts')}
-            description={t('admin.show_admin_gifts_desc')}
-            checked={settings.admin.show_admin_gifts}
-            onCheckedChange={(v) => update('admin', { show_admin_gifts: v })}
-          />
-          <ToggleRow
-            label={t('admin.show_admin_email_queue')}
-            description={t('admin.show_admin_email_queue_desc')}
-            checked={settings.admin.show_admin_email_queue}
-            onCheckedChange={(v) => update('admin', { show_admin_email_queue: v })}
-          />
-        </div>
-      </Card>
-
       <Card title={t('groups.dashboard_title')} description={t('groups.dashboard_desc')}>
         <div className="grid gap-3 md:grid-cols-2">
           <ToggleRow

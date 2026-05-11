@@ -75,44 +75,11 @@ export type SiteSettings = {
     newsletter_form_enabled: boolean
     maintenance_mode: boolean
   }
-  admin: {
-    /**
-     * When false, the booking admin section is hidden from the sidebar.
-     * Useful when Dr. Khaled wants the public /booking page suspended
-     * (via coming_soon_pages) AND wants the operator UI hidden too.
-     */
-    show_admin_booking: boolean
-    /**
-     * Phase B2 — when false, the "Questions" admin sidebar entry is
-     * hidden. The /admin/questions route still resolves via deep link.
-     * Mirrors `show_admin_booking`'s pattern: a section-scoped toggle.
-     */
-    show_admin_questions: boolean
-    /**
-     * Phase C2 — when false, the "Tests" admin sidebar entry is hidden.
-     * The /admin/tests route still resolves via deep link. Same scoped-
-     * toggle pattern as the other show_admin_* flags.
-     */
-    show_admin_tests: boolean
-    /**
-     * Phase D — when false, the "Gifts" admin sidebar entry is hidden.
-     * The /admin/gifts route still resolves via deep link.
-     */
-    show_admin_gifts: boolean
-    /**
-     * Phase D2 — when false, the "Email queue" admin sidebar entry is
-     * hidden. The /admin/email-queue route still resolves via deep link.
-     * Defaults true — operators need visibility into delivery failures
-     * for the queue to actually be useful.
-     */
-    show_admin_email_queue: boolean
-  }
   dashboard: {
     /**
      * Per-tab visibility for the customer dashboard nav. Each toggle hides
      * the tab from the sticky tab bar but DOES NOT block the route — the
-     * page is still reachable via direct URL, by design (mirrors the
-     * `admin.show_admin_booking` pattern).
+     * page is still reachable via direct URL, by design.
      *
      * `show_account_tab` is a literal-true (always-on) — same pattern as
      * `homepage.show_hero`. The Account tab IS the /dashboard landing

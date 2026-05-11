@@ -1,6 +1,7 @@
 /**
  * Gift received email — sent to the recipient when a USER_PURCHASE gift is
- * created (after successful Stripe webhook). Warm, inviting tone.
+ * created (after successful Stripe webhook). Editorial tone, mirrors the
+ * cinematic claim page.
  *
  * Locale-switched (AR or EN, not bilingual). The recipient picks the locale
  * by way of the sender's choice on the gift form.
@@ -36,11 +37,10 @@ export type GiftReceivedEmailInput = {
 type Strings = {
   brand: string
   subject: (sender: string) => string
-  receiptLabel: string
+  eyebrow: string
   greeting: (sender: string) => string
   intro: string
-  detailsHeading: string
-  itemTypeLabel: string
+  fromLabel: (sender: string) => string
   expiresOn: (d: string) => string
   claimCta: string
   ifNotExpected: string
@@ -54,16 +54,14 @@ const L: Record<GiftEmailLocale, Strings> = {
   ar: {
     brand: 'د. خالد غطاس',
     subject: (sender) => `${sender} أرسل لك هدية`,
-    receiptLabel: 'هدية لك',
+    eyebrow: 'هدية لك',
     greeting: (sender) => `${sender} أرسل لك هدية`,
     intro:
       'لقد استلمت هدية عبر موقع د. خالد غطاس. اضغط الزر أدناه لاستلامها.',
-    detailsHeading: 'تفاصيل الهدية',
-    itemTypeLabel: 'النوع',
+    fromLabel: (sender) => `من ${sender}`,
     expiresOn: (d) => `تنتهي صلاحية هذه الهدية بتاريخ ${d}.`,
     claimCta: 'استلم هديتك',
-    ifNotExpected:
-      'إذا لم تكن تتوقع هذه الرسالة، يمكنك تجاهلها بأمان.',
+    ifNotExpected: 'إذا لم تكن تتوقع هذه الرسالة، يمكنك تجاهلها بأمان.',
     supportLine: (email) =>
       `للاستفسار، تواصل معنا على <a href="mailto:${email}" style="color:${PALETTE.accent};text-decoration:none">${email}</a>.`,
     copyright: '© د. خالد غطاس — جميع الحقوق محفوظة',
@@ -73,12 +71,11 @@ const L: Record<GiftEmailLocale, Strings> = {
   en: {
     brand: 'Dr. Khaled Ghattass',
     subject: (sender) => `${sender} sent you a gift`,
-    receiptLabel: 'A gift for you',
+    eyebrow: 'A gift for you',
     greeting: (sender) => `${sender} sent you a gift`,
     intro:
       "You've received a gift through Dr. Khaled Ghattass's website. Press the button below to claim it.",
-    detailsHeading: 'Gift details',
-    itemTypeLabel: 'Type',
+    fromLabel: (sender) => `From ${sender}`,
     expiresOn: (d) => `This gift expires on ${d}.`,
     claimCta: 'Claim your gift',
     ifNotExpected:
@@ -99,7 +96,15 @@ export function buildGiftReceivedSubject(
 }
 
 export function buildGiftReceivedHtml(input: GiftReceivedEmailInput): string {
-  const { locale, recipientEmail, senderDisplayName, item, claimUrl, expiresAt, supportEmail } = input
+  const {
+    locale,
+    recipientEmail,
+    senderDisplayName,
+    item,
+    claimUrl,
+    expiresAt,
+    supportEmail,
+  } = input
   const isRtl = locale === 'ar'
   const dir = isRtl ? 'rtl' : 'ltr'
   const lang = isRtl ? 'ar' : 'en'
@@ -111,6 +116,8 @@ export function buildGiftReceivedHtml(input: GiftReceivedEmailInput): string {
     item.coverImageUrl && /^https?:\/\//.test(item.coverImageUrl)
       ? item.coverImageUrl
       : null
+  const eyebrowSpacing = isRtl ? '0' : '0.12em'
+  const eyebrowCase = isRtl ? 'none' : 'uppercase'
 
   return `<!doctype html>
 <html lang="${lang}" dir="${dir}">
@@ -121,31 +128,39 @@ export function buildGiftReceivedHtml(input: GiftReceivedEmailInput): string {
 </head>
 <body style="margin:0;padding:0;background:${PALETTE.bgDeep};font-family:${font};color:${PALETTE.fg1};line-height:1.6;">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="height:4px;background:${PALETTE.accent};border-radius:2px;margin-bottom:24px;"></div>
-    <div style="background:${PALETTE.bgElevated};border:1px solid ${PALETTE.border};border-radius:12px;padding:36px 32px;">
-      <div style="font-size:13px;font-weight:600;letter-spacing:${isRtl ? '0' : '0.12em'};text-transform:${isRtl ? 'none' : 'uppercase'};color:${PALETTE.accent};margin-bottom:12px;">${t.receiptLabel}</div>
-      <h1 style="margin:0 0 8px 0;font-size:24px;line-height:1.3;font-weight:700;color:${PALETTE.fg1};">${t.greeting(senderDisplayName)}</h1>
-      <p style="margin:0 0 24px 0;font-size:16px;color:${PALETTE.fg2};">${t.intro}</p>
 
-      <div style="background:${PALETTE.bg};border:1px solid ${PALETTE.border};border-radius:8px;padding:20px;margin-bottom:24px;">
-        <div style="font-size:11.5px;font-weight:600;letter-spacing:${isRtl ? '0' : '0.12em'};text-transform:${isRtl ? 'none' : 'uppercase'};color:${PALETTE.fg3};margin-bottom:12px;">${t.detailsHeading}</div>
-        ${cover ? `<div style="text-align:center;margin-bottom:16px;"><img src="${cover}" alt="" style="max-width:160px;border-radius:6px;border:1px solid ${PALETTE.border};" /></div>` : ''}
-        <div style="font-size:18px;font-weight:700;color:${PALETTE.fg1};margin-bottom:8px;line-height:1.3;">${title}</div>
-        <div style="font-size:13px;color:${PALETTE.fg3};">${t.itemTypeLabel}: ${itemTypeLabel(item.itemType, locale)}</div>
+    <div style="text-align:center;padding:0 8px 20px 8px;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;color:${PALETTE.fg1};">${t.brand}</div>
+    </div>
+
+    <div style="background:${PALETTE.bgElevated};border:1px solid ${PALETTE.border};border-radius:12px;padding:40px 32px;">
+
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="display:inline-block;font-size:12px;font-weight:600;letter-spacing:${eyebrowSpacing};text-transform:${eyebrowCase};color:${PALETTE.accent};margin-bottom:14px;">${t.eyebrow}</div>
+        <h1 style="margin:0 0 12px 0;font-size:28px;line-height:1.2;font-weight:700;color:${PALETTE.fg1};">${t.greeting(senderDisplayName)}</h1>
+        <p style="margin:0;font-size:15px;color:${PALETTE.fg2};line-height:1.55;max-width:420px;margin-${isRtl ? 'right' : 'left'}:auto;margin-${isRtl ? 'left' : 'right'}:auto;">${t.intro}</p>
       </div>
 
-      ${message ? `<div style="background:${PALETTE.accentSoft};border-${isRtl ? 'right' : 'left'}:3px solid ${PALETTE.accent};padding:16px 20px;margin-bottom:24px;border-radius:6px;">
-        <div style="font-size:11.5px;font-weight:600;letter-spacing:${isRtl ? '0' : '0.12em'};text-transform:${isRtl ? 'none' : 'uppercase'};color:${PALETTE.accent};margin-bottom:6px;">${t.messageHeading}</div>
-        <p style="margin:0;font-size:15px;color:${PALETTE.fg1};font-style:italic;line-height:1.55;">${escapeHtml(message)}</p>
+      <div style="text-align:center;padding:12px 0 28px 0;border-top:1px solid ${PALETTE.border};">
+        ${cover ? `<div style="text-align:center;margin:24px 0 16px 0;"><img src="${cover}" alt="" style="max-width:160px;width:100%;border-radius:8px;border:1px solid ${PALETTE.border};display:block;margin:0 auto;" /></div>` : `<div style="height:24px;"></div>`}
+        <div style="font-size:12px;font-weight:600;letter-spacing:${eyebrowSpacing};text-transform:${eyebrowCase};color:${PALETTE.fg3};margin-bottom:8px;">${itemTypeLabel(item.itemType, locale)}</div>
+        <div style="font-size:22px;font-weight:700;color:${PALETTE.fg1};line-height:1.3;">${title}</div>
+      </div>
+
+      ${message ? `<div style="background:${PALETTE.bgDeep};border:1px solid ${PALETTE.border};border-radius:10px;padding:22px 24px;margin:0 0 28px 0;">
+        <div style="font-size:11.5px;font-weight:600;letter-spacing:${eyebrowSpacing};text-transform:${eyebrowCase};color:${PALETTE.accent};margin-bottom:10px;text-align:center;">${t.messageHeading}</div>
+        <p style="margin:0;font-size:15px;color:${PALETTE.fg1};font-style:${isRtl ? 'normal' : 'italic'};line-height:1.75;text-align:center;white-space:pre-wrap;">${escapeHtml(message)}</p>
+        <div style="margin-top:14px;text-align:center;font-size:13px;color:${PALETTE.fg3};">— ${senderDisplayName}</div>
       </div>` : ''}
 
-      <div style="text-align:center;margin-bottom:16px;">
+      <div style="text-align:center;margin-bottom:20px;">
         <a href="${claimUrl}" style="display:inline-block;background:${PALETTE.accent};color:${PALETTE.accentFg};padding:14px 32px;border-radius:9999px;font-size:15px;font-weight:600;text-decoration:none;">${t.claimCta}</a>
       </div>
 
-      <p style="margin:16px 0 0 0;font-size:13px;color:${PALETTE.fg3};text-align:center;">${t.expiresOn(fmtDate(expiresAt, locale))}</p>
-      <p style="margin:8px 0 0 0;font-size:12px;color:${PALETTE.fg3};text-align:center;">${t.ifNotExpected}</p>
+      <p style="margin:0 0 6px 0;font-size:13px;color:${PALETTE.fg3};text-align:center;">${t.expiresOn(fmtDate(expiresAt, locale))}</p>
+      <p style="margin:0;font-size:12px;color:${PALETTE.fg3};text-align:center;">${t.ifNotExpected}</p>
     </div>
+
     <div style="margin-top:24px;text-align:center;">
       <p style="margin:0 0 8px 0;font-size:13px;color:${PALETTE.fg2};">${t.supportLine(supportEmail)}</p>
       <p style="margin:0 0 4px 0;font-size:12px;color:${PALETTE.fg3};">${t.copyright}</p>
@@ -157,23 +172,32 @@ export function buildGiftReceivedHtml(input: GiftReceivedEmailInput): string {
 }
 
 export function buildGiftReceivedText(input: GiftReceivedEmailInput): string {
-  const { locale, recipientEmail, senderDisplayName, item, claimUrl, expiresAt, supportEmail } = input
+  const {
+    locale,
+    recipientEmail,
+    senderDisplayName,
+    item,
+    claimUrl,
+    expiresAt,
+    supportEmail,
+  } = input
   const t = L[locale]
   const title = itemTitle(item, locale)
   const message = clampMessage(input.senderMessage)
-  const lines = [
-    t.receiptLabel,
+  const lines: (string | null)[] = [
+    t.brand,
+    '',
+    t.eyebrow,
     '',
     t.greeting(senderDisplayName),
     '',
     t.intro,
     '',
-    `${t.detailsHeading}:`,
-    `  ${title}`,
-    `  ${t.itemTypeLabel}: ${itemTypeLabel(item.itemType, locale)}`,
+    `${itemTypeLabel(item.itemType, locale)}: ${title}`,
     '',
     message ? `${t.messageHeading}:` : null,
     message ? `  ${message}` : null,
+    message ? `  — ${senderDisplayName}` : null,
     message ? '' : null,
     `${t.claimCta}: ${claimUrl}`,
     '',
@@ -184,7 +208,7 @@ export function buildGiftReceivedText(input: GiftReceivedEmailInput): string {
     t.copyright,
     t.sentTo(recipientEmail),
   ]
-  return lines.filter((l) => l != null).join('\n')
+  return lines.filter((l): l is string => l != null).join('\n')
 }
 
 function escapeHtml(s: string): string {

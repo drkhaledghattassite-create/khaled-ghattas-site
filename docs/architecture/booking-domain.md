@@ -104,10 +104,12 @@ syncs. Admin doesn't mutate `booking_orders` directly.
 Button on the orders surface deletes `booking_orders` rows with
 `status='PENDING' AND createdAt < now() - interval '24 hours'`.
 
-### Visibility flag
+### Sidebar visibility
 
-`admin.show_admin_booking` (default `true`) gates the sidebar entry
-but NOT the routes themselves — deep links still work for admins.
+The booking group always shows in the admin sidebar — the previous
+`admin.show_admin_booking` site-setting was removed (hiding admin
+sections from the admin made no sense). Deep links to booking routes
+have always worked regardless of the sidebar entry.
 
 ## Schema
 

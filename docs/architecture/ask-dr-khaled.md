@@ -83,10 +83,11 @@ email defaults to `'ar'` (the site's primary locale). Adding
 ### Sidebar entry
 
 Sits in the Audience group with a pending-count badge powered by
-`getPendingQuestionCount()` in the admin layout. Visibility gated on
-`admin.show_admin_questions` site-setting (default `true`). Layout
-passes `showAdminQuestions` + `pendingQuestionCount` to both
-`AdminSidebar` and `AdminTopbar`.
+`getPendingQuestionCount()` in the admin layout. Always visible —
+the previous `admin.show_admin_questions` visibility toggle was
+removed (hiding admin sections from the admin made no sense). The
+layout passes `pendingQuestionCount` to both `AdminSidebar` and
+`AdminTopbar` for the badge only.
 
 ## Schema
 

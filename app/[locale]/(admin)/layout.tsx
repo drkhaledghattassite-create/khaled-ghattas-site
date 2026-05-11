@@ -5,7 +5,6 @@ import { setRequestLocale } from 'next-intl/server'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { requireServerRole } from '@/lib/auth/server'
-import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import {
   countQueueByStatus,
   getDraftTestCount,
@@ -41,15 +40,16 @@ export default async function AdminLayout({ children, params }: Props) {
     redirect(`/${locale === 'ar' ? '' : `${locale}/`}login`)
   }
 
-  // Site-settings drives admin section visibility. Defaults are `true`
-  // (see lib/site-settings/defaults.ts), so sections render unless an
-  // admin has explicitly turned them off.
   // Pending-count + draft-count are read in parallel — both are single
   // COUNT(*) on narrow indexed predicates, so the cost is negligible.
   // They power the sidebar badges (Questions + Tests).
-  const [settings, pendingQuestionCount, draftTestCount, queueCounts] =
+  //
+  // Admin sidebar visibility used to be gated by site-settings toggles
+  // (`admin.show_admin_*`). Those were removed — the admin viewing this
+  // panel IS the operator, so hiding their own sections from themselves
+  // never made sense. Every section is now always visible inside /admin.
+  const [pendingQuestionCount, draftTestCount, queueCounts] =
     await Promise.all([
-      getCachedSiteSettings().catch(() => null),
       getPendingQuestionCount().catch(() => 0),
       getDraftTestCount().catch(() => 0),
       countQueueByStatus().catch(() => ({
@@ -60,11 +60,6 @@ export default async function AdminLayout({ children, params }: Props) {
         EXHAUSTED: 0,
       })),
     ])
-  const showAdminBooking = settings?.admin?.show_admin_booking ?? true
-  const showAdminQuestions = settings?.admin?.show_admin_questions ?? true
-  const showAdminTests = settings?.admin?.show_admin_tests ?? true
-  const showAdminGifts = settings?.admin?.show_admin_gifts ?? true
-  const showAdminEmailQueue = settings?.admin?.show_admin_email_queue ?? true
   // Attention bucket = automatic retries that gave up + admin-marked
   // dead-letter rows. EXHAUSTED is the strong signal (we tried 5 times
   // and still failed); FAILED is the manual signal (admin decided to
@@ -76,25 +71,15 @@ export default async function AdminLayout({ children, params }: Props) {
     <div className="flex min-h-dvh bg-background">
       <AdminSidebar
         user={user}
-        showAdminBooking={showAdminBooking}
-        showAdminQuestions={showAdminQuestions}
         pendingQuestionCount={pendingQuestionCount}
-        showAdminTests={showAdminTests}
         draftTestCount={draftTestCount}
-        showAdminGifts={showAdminGifts}
-        showAdminEmailQueue={showAdminEmailQueue}
         emailQueueAttentionCount={emailQueueAttentionCount}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
           user={user}
-          showAdminBooking={showAdminBooking}
-          showAdminQuestions={showAdminQuestions}
           pendingQuestionCount={pendingQuestionCount}
-          showAdminTests={showAdminTests}
           draftTestCount={draftTestCount}
-          showAdminGifts={showAdminGifts}
-          showAdminEmailQueue={showAdminEmailQueue}
           emailQueueAttentionCount={emailQueueAttentionCount}
         />
         <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>

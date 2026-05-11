@@ -73,16 +73,6 @@ const maintenanceSchema = z
   })
   .strict()
 
-const adminSchema = z
-  .object({
-    show_admin_booking: z.boolean().optional(),
-    show_admin_questions: z.boolean().optional(),
-    show_admin_tests: z.boolean().optional(),
-    show_admin_gifts: z.boolean().optional(),
-    show_admin_email_queue: z.boolean().optional(),
-  })
-  .strict()
-
 const dashboardSchema = z
   .object({
     // Always-on like homepage.show_hero — accepts only `true` from a
@@ -117,7 +107,6 @@ export const siteSettingsPatchSchema = z
     featured: featuredSchema.optional(),
     features: featuresSchema.optional(),
     maintenance: maintenanceSchema.optional(),
-    admin: adminSchema.optional(),
     dashboard: dashboardSchema.optional(),
     gifts: giftsSchema.optional(),
     coming_soon_pages: comingSoonPagesSchema.optional(),

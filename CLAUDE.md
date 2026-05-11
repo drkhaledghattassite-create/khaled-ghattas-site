@@ -345,15 +345,18 @@ Surface-specific architecture:
   admin (Phase C2). List with search + status/category filters; builder
   for metadata + questions + options + correctness + explanations;
   per-test analytics with score distribution, per-question selection
-  bars, and recent attempts. Sidebar gated on `admin.show_admin_tests`.
+  bars, and recent attempts.
 - `/admin/gifts[/new][/[id]]` — Gifts admin queue (Phase D). List with
   status/source/itemType filters + recipient-email search; admin grant
   form (no Stripe); detail view with overview/timeline/email-delivery +
-  revoke modal. Sidebar entry sits in the commerce group, gated on
-  `admin.show_admin_gifts`.
+  revoke modal. Sits in the commerce group of the admin sidebar.
 - `/admin/corporate` · `/admin/corporate/{programs,clients,requests}/...`
 - `/admin/booking` · `/admin/booking/{tours,bookings,interest,tour-suggestions,orders}/...`
-  (sidebar gated on `admin.show_admin_booking`)
+
+The admin sidebar always shows every section — the previous
+`admin.show_admin_*` site-settings toggles were removed because the
+admin viewing the panel IS the operator. Hiding sections from
+yourself never made sense.
 
 ### Special / framework files
 - `app/[locale]/{layout,template,loading,not-found,error}.tsx`
@@ -487,12 +490,18 @@ Stored as a single JSON blob in `site_settings.value_json` under the
 - Admin UI: `/admin/settings/site` (`SiteSettingsForm`).
 
 Toggle groups: `homepage`, `navigation` (incl. `show_nav_corporate`,
-`show_nav_tests`), `footer`, `hero_ctas`, `featured`, `features`
-(`auth_enabled`, `newsletter_form_enabled`, `maintenance_mode`),
-`maintenance` (message + until date), `admin` (`show_admin_booking`,
-`show_admin_questions`, `show_admin_tests`), `dashboard`
-(`show_ask_tab`, `show_tests_tab`),
+`show_nav_tests`, `show_nav_send_gift`), `footer`, `hero_ctas`,
+`featured`, `features` (`auth_enabled`, `newsletter_form_enabled`,
+`maintenance_mode`), `maintenance` (message + until date), `dashboard`
+(`show_ask_tab`, `show_tests_tab`), `gifts` (`allow_user_to_user`),
 `coming_soon_pages` (incl. `'corporate'`).
+
+Nav/footer toggles apply EVERYWHERE the public chrome renders —
+both `(public)` and `(dashboard)` layouts call `buildNavItems` from
+`lib/site-settings/build-nav.ts` and pass the result to SiteHeader,
+plus pass `footer`+`nav` toggles to SiteFooter. Without that, hidden
+nav items used to reappear the moment a user signed in (the dashboard
+layout silently fell back to the unfiltered defaults).
 
 **Coming Soon ≠ Hide.** Two independent concerns:
 - A page in `coming_soon_pages` renders the `ComingSoon` placeholder

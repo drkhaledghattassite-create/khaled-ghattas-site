@@ -40,23 +40,13 @@ const QUICK_ACTIONS = [
 
 export function AdminTopbar({
   user,
-  showAdminBooking = true,
-  showAdminQuestions = true,
   pendingQuestionCount = 0,
-  showAdminTests = true,
   draftTestCount = 0,
-  showAdminGifts = true,
-  showAdminEmailQueue = true,
   emailQueueAttentionCount = 0,
 }: {
   user: ServerSessionUser
-  showAdminBooking?: boolean
-  showAdminQuestions?: boolean
   pendingQuestionCount?: number
-  showAdminTests?: boolean
   draftTestCount?: number
-  showAdminGifts?: boolean
-  showAdminEmailQueue?: boolean
   emailQueueAttentionCount?: number
 }) {
   const pathname = usePathname()
@@ -110,13 +100,8 @@ export function AdminTopbar({
           </SheetHeader>
           <AdminSidebarContent
             user={user}
-            showAdminBooking={showAdminBooking}
-            showAdminQuestions={showAdminQuestions}
             pendingQuestionCount={pendingQuestionCount}
-            showAdminTests={showAdminTests}
             draftTestCount={draftTestCount}
-            showAdminGifts={showAdminGifts}
-            showAdminEmailQueue={showAdminEmailQueue}
             emailQueueAttentionCount={emailQueueAttentionCount}
             onNavigate={() => setDrawerOpen(false)}
           />

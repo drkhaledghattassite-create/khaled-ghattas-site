@@ -59,13 +59,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     message_en: '',
     until: null,
   },
-  admin: {
-    show_admin_booking: true,
-    show_admin_questions: true,
-    show_admin_tests: true,
-    show_admin_gifts: true,
-    show_admin_email_queue: true,
-  },
   dashboard: {
     show_account_tab: true,
     show_library_tab: true,
@@ -98,7 +91,6 @@ export function mergeSettings(
     featured: { ...base.featured, ...patch.featured },
     features: { ...base.features, ...patch.features },
     maintenance: { ...base.maintenance, ...patch.maintenance },
-    admin: { ...base.admin, ...patch.admin },
     // Account tab is the /dashboard landing surface — same always-on
     // treatment as `show_hero`. Trailing override defends against a
     // patch that tries to set it false.

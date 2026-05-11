@@ -86,7 +86,9 @@ export function buildGiftClaimedRecipientHtml(
 </head>
 <body style="margin:0;padding:0;background:${PALETTE.bgDeep};font-family:${font};color:${PALETTE.fg1};line-height:1.6;">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="height:4px;background:${PALETTE.accent};border-radius:2px;margin-bottom:24px;"></div>
+    <div style="text-align:center;padding:0 8px 20px 8px;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;color:${PALETTE.fg1};">${t.brand}</div>
+    </div>
     <div style="background:${PALETTE.bgElevated};border:1px solid ${PALETTE.border};border-radius:12px;padding:36px 32px;">
       <div style="font-size:13px;font-weight:600;letter-spacing:${isRtl ? '0' : '0.12em'};text-transform:${isRtl ? 'none' : 'uppercase'};color:${PALETTE.accent};margin-bottom:12px;">${t.receiptLabel}</div>
       <h1 style="margin:0 0 8px 0;font-size:24px;line-height:1.3;font-weight:700;color:${PALETTE.fg1};">${t.heading}</h1>
