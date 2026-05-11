@@ -56,6 +56,13 @@ if (process.env.NEXT_PUBLIC_APP_URL) {
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  // Keep webpack's persistent cache (.next/cache/webpack — ~460 MB on this
+  // project) OUT of serverless function bundles. Without this exclude, every
+  // function ships ~467 MB of dependencies, the deploy phase hits the function-
+  // size warning, and the upload phase takes ~17 min and tends to ERROR.
+  outputFileTracingExcludes: {
+    '*': ['.next/cache/**', 'node_modules/@next/swc-*/**'],
+  },
   images: {
     remotePatterns,
   },
