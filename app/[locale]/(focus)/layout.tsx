@@ -17,7 +17,7 @@ export default async function FocusLayout({ children, params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
   return (
-    <main id="main-content" className="min-h-dvh bg-[var(--color-bg)]">
+    <main id="main-content" tabIndex={-1} className="min-h-dvh bg-[var(--color-bg)] focus:outline-none">
       {children}
     </main>
   )

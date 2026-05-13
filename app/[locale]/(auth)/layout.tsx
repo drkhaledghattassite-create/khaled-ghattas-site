@@ -20,7 +20,8 @@ export default async function AuthLayout({ children, params }: Props) {
   return (
     <main
       id="main-content"
-      className="min-h-dvh bg-[var(--color-bg)] grid md:grid-cols-[minmax(320px,460px)_1fr]"
+      tabIndex={-1}
+      className="min-h-dvh bg-[var(--color-bg)] grid md:grid-cols-[minmax(320px,460px)_1fr] focus:outline-none"
     >
       <AuthAside />
 

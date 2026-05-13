@@ -19,6 +19,8 @@ const STATIC_PATHS = [
   '/events',
   '/corporate',
   '/contact',
+  '/booking',
+  '/gifts/send',
 ] as const
 
 const LOCALES = ['ar', 'en'] as const
@@ -53,6 +55,10 @@ const PATH_TO_COMING_SOON_KEY: Record<string, ComingSoonPage> = {
   '/events': 'events',
   '/contact': 'contact',
   '/corporate': 'corporate',
+  '/booking': 'booking',
+  // '/gifts/send' has no coming-soon key in v1; it stays in the sitemap
+  // even when gifts.allow_user_to_user=false (the page itself renders the
+  // disabled-state copy). No SEO downside to keeping the URL discoverable.
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

@@ -63,7 +63,11 @@ async function requireAdminSession(): Promise<
 > {
   const session = await getServerSession()
   if (!session) return { ok: false, error: 'unauthorized' }
-  if (session.user.role !== 'ADMIN') return { ok: false, error: 'forbidden' }
+  // ADMIN (developer) + CLIENT (site owner) — both trusted operators.
+  // See lib/auth/admin-guard.ts for the project-wide role policy.
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'CLIENT') {
+    return { ok: false, error: 'forbidden' }
+  }
   return { ok: true }
 }
 

@@ -7,6 +7,7 @@ import {
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { apiError, errInternal, parseJsonBody } from '@/lib/api/errors'
 import { assertSameOrigin } from '@/lib/api/origin'
+import { getClientIp } from '@/lib/api/client-ip'
 import { sendCorporateRequestEmail } from '@/lib/email/templates/corporate-request'
 
 export async function POST(req: Request) {
@@ -16,10 +17,8 @@ export async function POST(req: Request) {
   const body = await parseJsonBody(req, corporateRequestSchema)
   if (!body.ok) return body.response
 
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'anon'
+  // QA P1 — spoof-resistant IP. See lib/api/client-ip.ts.
+  const ip = getClientIp(req)
 
   const rl = await tryRateLimit(`corporate-request:${ip}`)
   if (!rl.ok) {

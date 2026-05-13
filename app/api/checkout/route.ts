@@ -6,6 +6,7 @@ import { getBookById } from '@/lib/db/queries'
 import { getServerSession } from '@/lib/auth/server'
 import { apiError, errInternal, errNotFound, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
 import { assertSameOrigin } from '@/lib/api/origin'
+import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { SITE_URL } from '@/lib/constants'
 
 const checkoutSchema = z.object({
@@ -39,6 +40,17 @@ export async function POST(req: Request) {
   // be linked to a user account so they show up in the buyer's dashboard.
   const session = await getServerSession()
   if (!session) return errUnauthorized('Sign in to complete your purchase.')
+
+  // QA P2 — per-user rate limit. Without this, a logged-in attacker could
+  // rapid-fire checkout-session creations, racking up Stripe API usage
+  // (each call hits Stripe's API) and creating throwaway sessions that
+  // pollute admin reports. 10/min is generous for any legitimate flow
+  // (a user opening Stripe, cancelling, retrying a few times) but blocks
+  // scripted abuse. Fails open without Upstash (per lib/redis/ratelimit.ts).
+  const rl = await tryRateLimit(`checkout:${session.user.id}`)
+  if (!rl.ok) {
+    return apiError('RATE_LIMITED', 'Too many checkout attempts.', { status: 429 })
+  }
 
   const body = await parseJsonBody(req, checkoutSchema)
   if (!body.ok) return body.response

@@ -271,8 +271,9 @@ export function StoreShowcase({ books, featuredBookId }: StoreShowcaseProps) {
             </header>
 
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-[clamp(16px,2.5vw,28px)] list-none m-0 p-0">
-              {sessions.slice(0, 2).map((l) => {
+              {sessions.slice(0, 2).map((l, idx) => {
                 const title = isRtl ? l.titleAr : l.titleEn
+                const duration = isRtl ? l.subtitleAr : l.subtitleEn
                 const price = Math.round(Number(l.price))
 
                 return (
@@ -281,12 +282,14 @@ export function StoreShowcase({ books, featuredBookId }: StoreShowcaseProps) {
                       href={`/books/${l.slug}`}
                       className="grid grid-cols-1 gap-[18px] items-stretch h-full group"
                     >
-                      <div className="relative aspect-[16/10] overflow-hidden rounded-[4px] bg-[var(--color-fg1)]">
+                      <div className="relative aspect-[16/10] min-h-[180px] overflow-hidden rounded-[4px] bg-[var(--color-fg1)]">
                         <Image
                           src={l.coverImage}
                           alt=""
                           fill
                           sizes="(min-width: 768px) 50vw, 100vw"
+                          priority={idx === 0}
+                          loading={idx === 0 ? 'eager' : undefined}
                           className="object-cover [filter:brightness(0.78)_contrast(1.04)] group-hover:scale-[1.03] group-hover:[filter:brightness(0.85)] transition-[transform,filter] duration-[400ms] ease-[var(--ease-out)]"
                           style={{ viewTransitionName: `book-${l.slug}` }}
                         />
@@ -315,16 +318,15 @@ export function StoreShowcase({ books, featuredBookId }: StoreShowcaseProps) {
                         >
                           {title}
                         </h4>
-                        {/* Lecture foot — design qh-lecture-foot: gap 14, with 1×12px vertical separator before each item except first */}
+                        {/* Lecture foot — gap 14, with 1×12px vertical separator before price */}
                         <div className="flex items-center gap-3.5 flex-wrap">
-                          {/* Duration placeholder — uses descriptionEn/Ar where present */}
-                          {(isRtl ? l.descriptionAr : l.descriptionEn) && (
+                          {duration && (
                             <span
                               className={`text-[13px] font-medium text-[var(--color-fg3)] [font-feature-settings:'tnum'] ${
                                 isRtl ? 'font-arabic-body' : 'font-display tracking-[0.04em]'
                               }`}
                             >
-                              {isRtl ? l.descriptionAr : l.descriptionEn}
+                              {duration}
                             </span>
                           )}
                           <span

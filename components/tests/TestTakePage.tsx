@@ -279,8 +279,10 @@ export function TestTakePage({ locale, test }: Props) {
         </div>
       </header>
 
-      {/* Main question area */}
-      <main className="flex flex-1 items-start justify-center [padding:clamp(40px,6vw,72px)_clamp(20px,4vw,40px)_clamp(120px,14vw,160px)]">
+      {/* Main question area — `section` (not `main`) because the focus
+       * layout's <main id="main-content"> already wraps this page; nesting
+       * a second `<main>` is a WCAG 1.3.1 / ARIA-only-one-main violation. */}
+      <section className="flex flex-1 items-start justify-center [padding:clamp(40px,6vw,72px)_clamp(20px,4vw,40px)_clamp(120px,14vw,160px)]">
         <motion.div
           key={currentQuestion.id}
           initial={{ opacity: 0, y: 12 }}
@@ -397,7 +399,7 @@ export function TestTakePage({ locale, test }: Props) {
             </button>
           </div>
         </motion.div>
-      </main>
+      </section>
 
       {/* Mobile sticky bottom bar */}
       <div

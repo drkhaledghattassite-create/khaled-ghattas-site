@@ -280,7 +280,7 @@ export function BookingPage({
         sessionsOpen={metrics.sessionsOpen}
       />
 
-      <main>
+      <div>
         <ToursSection
           tours={tours}
           pastTours={pastTours}
@@ -310,7 +310,7 @@ export function BookingPage({
             allowGifting={allowGifting}
           />
         )}
-      </main>
+      </div>
 
       {modal?.kind === 'reserve' && (
         <ReserveModal payload={modal.payload} onClose={closeModal} />

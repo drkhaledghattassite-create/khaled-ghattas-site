@@ -380,29 +380,43 @@ export const events = pgTable(
  * Commerce
  * ──────────────────────────────────────────────────────────────────────── */
 
-export const orders = pgTable('orders', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  status: orderStatus('status').notNull().default('PENDING'),
-  totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
-  currency: text('currency').notNull().default('USD'),
-  stripePaymentIntentId: text('stripe_payment_intent_id'),
-  stripeSessionId: text('stripe_session_id'),
-  customerEmail: text('customer_email').notNull(),
-  customerName: text('customer_name'),
-  // Phase D — when set, this order represents a gift claim (recipient redeemed
-  // a BOOK or SESSION gift). Lets /admin/orders distinguish direct purchases
-  // from gift claims and gate the refund modal copy. Nullable + ON DELETE SET
-  // NULL: deleting the gift row leaves the order intact (the entitlement was
-  // already granted; deletion shouldn't ricochet through commerce history).
-  giftId: uuid('gift_id'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    status: orderStatus('status').notNull().default('PENDING'),
+    totalAmount: numeric('total_amount', { precision: 10, scale: 2 }).notNull(),
+    currency: text('currency').notNull().default('USD'),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    stripeSessionId: text('stripe_session_id'),
+    customerEmail: text('customer_email').notNull(),
+    customerName: text('customer_name'),
+    // Phase D — when set, this order represents a gift claim (recipient redeemed
+    // a BOOK or SESSION gift). Lets /admin/orders distinguish direct purchases
+    // from gift claims and gate the refund modal copy. Nullable + ON DELETE SET
+    // NULL: deleting the gift row leaves the order intact (the entitlement was
+    // already granted; deletion shouldn't ricochet through commerce history).
+    giftId: uuid('gift_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    // QA P0 — partial unique index on stripeSessionId. Without this, a
+    // duplicate webhook delivery would race past the check-then-insert in
+    // createOrderFromStripeSession and write a second `orders` row + second
+    // `order_items` cascade + a second post-purchase email. Partial (NOT NULL)
+    // so legacy + gift-claim orders (which carry no Stripe session id) don't
+    // collide.
+    stripeSessionIdx: uniqueIndex('orders_stripe_session_idx')
+      .on(t.stripeSessionId)
+      .where(sql`${t.stripeSessionId} IS NOT NULL`),
+  }),
+)
 
 export const orderItems = pgTable('order_items', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -1368,6 +1382,43 @@ export const emailQueue = pgTable(
     relatedIdx: index('email_queue_related_idx').on(
       t.relatedEntityType,
       t.relatedEntityId,
+    ),
+  }),
+)
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Stripe webhook idempotency (QA P2 — defense-in-depth)
+ *
+ * Per-branch SQL guards (PAID status-gated UPDATEs, unique stripe_session_id
+ * indexes on orders/booking_orders/gifts) already prevent double-processing
+ * for the common case of one Stripe event delivered twice. But Stripe can
+ * also re-deliver a DIFFERENT event for the same payment — e.g. a refund
+ * (`charge.refunded`) followed by a delayed `payment_intent.succeeded` from
+ * a chargeback reversal. The per-branch guards don't know about the prior
+ * event; only the Stripe event id does.
+ *
+ * Pattern: at the top of the webhook POST, INSERT the event id with
+ * ON CONFLICT DO NOTHING. If the insert returned no row (the id already
+ * existed), short-circuit with 200 and don't run any branch logic. Track
+ * `event_type` for observability + a window of 90-day rows for ops triage
+ * (longer than Stripe's own retry window of 3 days).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export const stripeWebhookEvents = pgTable(
+  'stripe_webhook_events',
+  {
+    // Stripe's `evt_…` event id is the natural primary key; we pin it as
+    // text so the ON CONFLICT path is unambiguous.
+    eventId: text('event_id').primaryKey(),
+    eventType: text('event_type').notNull(),
+    processedAt: timestamp('processed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    typeProcessedIdx: index('stripe_webhook_events_type_processed_idx').on(
+      t.eventType,
+      t.processedAt.desc(),
     ),
   }),
 )

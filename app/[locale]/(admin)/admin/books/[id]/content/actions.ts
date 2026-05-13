@@ -130,7 +130,9 @@ type ActionResult<T = void> =
 async function ensureAdminSession() {
   const session = await getServerSession()
   if (!session) return { ok: false as const, code: 'UNAUTHORIZED' }
-  if (session.user.role !== 'ADMIN') {
+  // ADMIN (developer) + CLIENT (site owner) — both trusted operators.
+  // See lib/auth/admin-guard.ts for the project-wide role policy.
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'CLIENT') {
     return { ok: false as const, code: 'FORBIDDEN' }
   }
   return { ok: true as const, session }

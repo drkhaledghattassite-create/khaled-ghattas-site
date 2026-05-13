@@ -208,25 +208,25 @@ export function AdminEmailQueueListPage({
           >
             <thead className="bg-bg-deep text-[11px] uppercase tracking-[0.08em] text-fg3">
               <tr>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.created')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.recipient')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.type')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.status')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.attempts')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.next_attempt')}
                 </th>
-                <th className={`${isRtl ? 'text-right' : 'text-left'} px-4 py-2`}>
+                <th className="text-start px-4 py-2">
                   {t('col.actions')}
                 </th>
               </tr>

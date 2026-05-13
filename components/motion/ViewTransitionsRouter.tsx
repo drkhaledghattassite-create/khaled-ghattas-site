@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 /**
  * Global anchor-click interceptor that wraps internal navigation in
@@ -10,6 +10,14 @@ import { useRouter } from 'next/navigation'
  *
  * Falls back silently in browsers that don't support the View Transitions API
  * — anchor clicks behave normally (Next.js Link's own onClick handles them).
+ *
+ * A11y:
+ *  - After SPA navigation (anchor-hijack OR any pathname change), shift focus
+ *    to the layout's `#main-content` so screen reader users hear the new page
+ *    landmark and Tab order resumes from the top of the new content rather
+ *    than continuing from the clicked link's position deep in the prior page
+ *    (WCAG 2.4.3 Focus Order). The receiver must carry `tabIndex={-1}` so it
+ *    is programmatically focusable.
  *
  * Behavior:
  *  - Capture-phase listener runs BEFORE Next.js Link's onClick. We preventDefault
@@ -24,6 +32,31 @@ import { useRouter } from 'next/navigation'
  */
 export function ViewTransitionsRouter() {
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Focus-reset on every pathname change. usePathname is updated by
+  // router.push, browser back/forward, and direct navigation alike, so a
+  // single effect handles all entry points (anchor hijack, programmatic
+  // router.push, popstate, locale switch). The initial-mount run is skipped
+  // implicitly because document.activeElement is body at first render and
+  // the visible focus indicator would not be perceived as a "jump".
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    // Skip the very first run on mount — initial page load doesn't need a
+    // synthetic focus shift; users land on the page already oriented.
+    if (sessionStorage.getItem('kg:vtr:initialized') !== '1') {
+      sessionStorage.setItem('kg:vtr:initialized', '1')
+      return
+    }
+    const main = document.getElementById('main-content')
+    if (!main) return
+    // requestAnimationFrame so the focus shift lands after the view
+    // transition's frame commit. Without rAF, screen readers can re-announce
+    // the prior page's region.
+    requestAnimationFrame(() => {
+      main.focus({ preventScroll: true })
+    })
+  }, [pathname])
 
   useEffect(() => {
     if (typeof document === 'undefined') return

@@ -3,6 +3,53 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 
+// QA P1 — Content-Security-Policy. Locks XSS impact by restricting what the
+// browser is allowed to load. Built as a single header here (rather than
+// computed per-route) so static pages and dynamic SSR share the same policy.
+//
+// Allowlist rationale per directive:
+//   default-src 'self'                       — fall-through; everything else is
+//                                              an explicit override below.
+//   script-src                               — Next.js inlines runtime + RSC
+//                                              chunks (require 'self'); Stripe
+//                                              Checkout overlay (js.stripe.com);
+//                                              Vercel analytics + speed-insights
+//                                              (va.vercel-scripts.com).
+//                                              'unsafe-inline' is needed for
+//                                              Next.js's `__next_f` inline
+//                                              chunks until we adopt nonces.
+//   style-src                                — Tailwind compiles to a single
+//                                              stylesheet (self), but next/font
+//                                              + motion/react use inline styles.
+//   img-src                                  — same hosts as next/image
+//                                              remotePatterns + data: for inline
+//                                              icons + blob: for canvas captures.
+//   font-src                                 — Google Fonts (gstatic.com).
+//   frame-src                                — Stripe Checkout iframes + YouTube
+//                                              embeds (interview videos).
+//   connect-src                              — Better Auth, Stripe API, Resend
+//                                              audit pings, Vercel analytics.
+//   frame-ancestors 'none'                   — paired with the X-Frame-Options
+//                                              DENY above; CSP supersedes XFO.
+//   form-action 'self' https://checkout.stripe.com — Stripe Checkout posts
+//                                              back to our domain via Vercel
+//                                              redirects; explicit allow.
+//   base-uri 'self'                          — prevents <base> tag tampering.
+//   upgrade-insecure-requests                — http:// hardlinks auto-upgrade.
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+  "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com",
+  "frame-ancestors 'none'",
+  "form-action 'self' https://checkout.stripe.com",
+  "base-uri 'self'",
+  'upgrade-insecure-requests',
+].join('; ')
+
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -12,6 +59,7 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   },
+  { key: 'Content-Security-Policy', value: cspDirectives },
 ]
 
 // SECURITY [H-3]: `remotePatterns` was previously `[{ hostname: '**' }]`,

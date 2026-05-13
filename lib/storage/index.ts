@@ -24,6 +24,31 @@
 import { mockAdapter } from './mock-adapter'
 import type { StorageAdapter } from './types'
 
+// QA P1 — production guard. The mock adapter serves /placeholder-content/<key>
+// URLs (no signing, no TTL enforcement) — it's a dev contract test, not a
+// production primitive. If a deploy lands without swapping `storage` to a real
+// adapter (Vercel Blob / R2 / Cloudflare Stream / Bunny), every signed-URL
+// caller silently leaks raw filesystem paths. Mirror the BETTER_AUTH_SECRET
+// guard pattern in lib/auth/index.ts: refuse to boot on production until a
+// real adapter is wired. Vercel preview + dev keep the mock so the team can
+// iterate without provisioning storage.
+//
+// To swap: replace the `mockAdapter` import + `storage` binding below with the
+// real adapter, then remove this guard.
+if (
+  process.env.NODE_ENV === 'production' &&
+  process.env.VERCEL_ENV === 'production' &&
+  process.env.ALLOW_MOCK_STORAGE_IN_PRODUCTION !== 'true'
+) {
+  throw new Error(
+    '[lib/storage] Mock storage adapter cannot run in production. ' +
+      'Swap `storage` in lib/storage/index.ts to a real adapter (Vercel Blob, ' +
+      'R2, Cloudflare Stream, Bunny.net) before deploying. To explicitly opt ' +
+      'in to the mock adapter on a production deployment (NOT recommended), ' +
+      'set ALLOW_MOCK_STORAGE_IN_PRODUCTION=true.',
+  )
+}
+
 export const storage: StorageAdapter = mockAdapter
 
 export type { StorageAdapter, GetSignedUrlInput, SignedUrlResult, StorageProductType } from './types'

@@ -142,12 +142,22 @@ function NoteCard({
   )
 }
 
+type RenderState =
+  | 'invalid'
+  | 'logged_out'
+  | 'mismatch'
+  | 'ready'
+  | 'already_claimed_by_you'
+  | 'temporary_error'
+
 export function GiftClaimPage({
   locale,
   token,
   gift,
   itemDisplay,
   senderDisplayName,
+  alreadyClaimedByViewer,
+  loadError,
   sessionUser,
 }: {
   locale: string
@@ -155,6 +165,8 @@ export function GiftClaimPage({
   gift: Gift | null
   itemDisplay: ItemDisplay | null
   senderDisplayName: string | null
+  alreadyClaimedByViewer: boolean
+  loadError: boolean
   sessionUser: SessionUser | null
 }) {
   const t = useTranslations('gifts.claim')
@@ -175,8 +187,13 @@ export function GiftClaimPage({
     giftEmailLc != null &&
     sessionEmailLc === giftEmailLc
 
-  let renderState: 'invalid' | 'logged_out' | 'mismatch' | 'ready' = 'invalid'
-  if (!valid) renderState = 'invalid'
+  // Cascade ordering matters. temporary_error wins over everything (we don't
+  // want to flash "invalid" while the DB is timing out). already_claimed_by_you
+  // wins over !valid because CLAIMED gifts fail the valid check.
+  let renderState: RenderState
+  if (loadError) renderState = 'temporary_error'
+  else if (alreadyClaimedByViewer) renderState = 'already_claimed_by_you'
+  else if (!valid) renderState = 'invalid'
   else if (!sessionUser) renderState = 'logged_out'
   else if (!emailMatch) renderState = 'mismatch'
   else renderState = 'ready'
@@ -216,6 +233,12 @@ export function GiftClaimPage({
       : itemType === 'SESSION'
         ? 'cta.session'
         : 'cta.booking'
+
+  // Mirror the action's redirect-path mapping (actions.ts: BOOK|SESSION →
+  // /dashboard/library, BOOKING → /dashboard/bookings) for the
+  // already_claimed_by_you state, which doesn't run the action.
+  const alreadyClaimedRedirectPath =
+    itemType === 'BOOKING' ? '/dashboard/bookings' : '/dashboard/library'
 
   const ribbonOrigin = isRtl ? 'right' : 'left'
 
@@ -551,6 +574,164 @@ export function GiftClaimPage({
                 </AnimatePresence>
               </div>
             </>
+          )}
+
+          {renderState === 'already_claimed_by_you' &&
+            itemDisplay &&
+            gift &&
+            itemTitle && (
+              <>
+                <header className="mb-6 text-center">
+                  <span
+                    className={`section-eyebrow ${
+                      isRtl ? 'eyebrow-invitation' : 'eyebrow-accent'
+                    }`}
+                  >
+                    {t('eyebrow')}
+                  </span>
+                  <h1
+                    className={`mt-3 m-0 text-[clamp(28px,4vw,36px)] font-bold leading-[1.2] text-[var(--color-fg1)] ${fontDisplay}`}
+                  >
+                    {t('already_claimed_heading')}
+                  </h1>
+                  <p
+                    className={`mt-3 m-0 text-[15px] leading-[1.55] text-[var(--color-fg2)] ${fontBody}`}
+                  >
+                    {t('already_claimed_body')}
+                  </p>
+                </header>
+
+                <ItemCard
+                  isRtl={isRtl}
+                  title={itemTitle}
+                  itemType={itemDisplay.itemType}
+                  coverImage={itemDisplay.coverImage}
+                  fromLabel={fromLabel}
+                />
+
+                {gift.senderMessage && (
+                  <NoteCard isRtl={isRtl} note={gift.senderMessage} />
+                )}
+
+                {/* Final-state visuals, no entrance animation. The user
+                    already saw the cinematic reveal on their first claim;
+                    on revisit we render the success shell directly. */}
+                <motion.div
+                  variants={
+                    prefersReducedMotion ? claimSuccessReducedMotion : claimYours
+                  }
+                  initial={false}
+                  animate="visible"
+                  className="mt-6 flex justify-center"
+                >
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] px-4 py-2 text-[13px] font-semibold text-[var(--color-accent)] ${fontBody}`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    {t('yours_badge')}
+                  </span>
+                </motion.div>
+
+                <div className="mt-7 flex flex-col items-center gap-3">
+                  <motion.div
+                    variants={
+                      prefersReducedMotion
+                        ? claimSuccessReducedMotion
+                        : claimForwardCta
+                    }
+                    initial={false}
+                    animate="visible"
+                  >
+                    <Link
+                      href={alreadyClaimedRedirectPath}
+                      className="btn-pill btn-pill-primary inline-flex items-center gap-2"
+                    >
+                      {t(forwardCtaKey as never)}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        style={{
+                          transform: isRtl ? 'scaleX(-1)' : undefined,
+                        }}
+                      >
+                        <path d="M5 12h14" />
+                        <path d="M13 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </motion.div>
+                </div>
+              </>
+            )}
+
+          {renderState === 'temporary_error' && (
+            <div className="text-center">
+              <span
+                className="mx-auto mb-4 flex h-12 w-12 items-center justify-center text-[var(--color-destructive)]"
+                aria-hidden="true"
+              >
+                <svg
+                  width="34"
+                  height="34"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="13" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </span>
+              <span
+                className={`section-eyebrow ${
+                  isRtl ? 'eyebrow-invitation' : 'eyebrow-accent'
+                }`}
+              >
+                {t('eyebrow')}
+              </span>
+              <h1
+                className={`mt-3 m-0 text-[24px] font-bold leading-[1.25] text-[var(--color-fg1)] ${fontDisplay}`}
+              >
+                {t('temporary_error_heading')}
+              </h1>
+              <p
+                className={`mt-3 m-0 text-[15px] leading-[1.55] text-[var(--color-fg2)] ${fontBody}`}
+              >
+                {t('temporary_error_body')}
+              </p>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') window.location.reload()
+                  }}
+                  className="btn-pill btn-pill-primary"
+                >
+                  {t('temporary_error_retry_cta')}
+                </button>
+              </div>
+            </div>
           )}
         </motion.div>
       </div>

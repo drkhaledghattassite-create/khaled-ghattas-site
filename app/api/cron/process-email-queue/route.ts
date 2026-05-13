@@ -30,6 +30,7 @@
  *   { ok: true, picked, sent, retried, exhausted, errors }
  */
 
+import { timingSafeEqual } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import {
   markEmailRetry,
@@ -45,13 +46,21 @@ export const maxDuration = 60
 
 const BATCH_SIZE = 20
 
+// QA P1 — timing-safe bearer compare. See expire-gifts/route.ts for the
+// rationale; both cron endpoints use the same secret.
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET ?? ''
   if (!secret) return false
   const auth = req.headers.get('authorization') ?? ''
   const parts = auth.split(' ')
   if (parts.length !== 2 || parts[0]!.toLowerCase() !== 'bearer') return false
-  return parts[1] === secret
+  const provided = parts[1] ?? ''
+  if (provided.length !== secret.length) return false
+  try {
+    return timingSafeEqual(Buffer.from(provided), Buffer.from(secret))
+  } catch {
+    return false
+  }
 }
 
 async function handle(req: NextRequest) {

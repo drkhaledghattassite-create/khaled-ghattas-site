@@ -43,7 +43,11 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
       {
-        src: '/apple-icon.png',
+        // Next.js serves the app/apple-icon.png file at /apple-icon (no
+        // .png extension) under the file-based metadata convention. The
+        // explicit /apple-icon.png path 404s; using the canonical Next
+        // URL keeps the iOS home-screen install icon correct.
+        src: '/apple-icon',
         sizes: '180x180',
         type: 'image/png',
       },

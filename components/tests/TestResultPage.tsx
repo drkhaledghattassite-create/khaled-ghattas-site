@@ -303,21 +303,19 @@ function AnswerCard({
   text: string
   isRtl: boolean
 }) {
-  // The two states use mix-with-bg colors so the result page reads on
-  // light + dark without a separate dark map. Success uses #1F6B3A,
-  // wrong uses #B6422A — these are NOT generic Qalem tokens but the
-  // result-specific palette from the design bundle's tests.css. They
-  // were deliberately picked to feel editorial, not alarmistic; we keep
-  // them inline because they're scoped to this surface only.
+  // Status colors come from the Qalem v2 --color-success / --color-danger
+  // tokens (added in app/globals.css). The mix-with-bg fills let the result
+  // page read on both light + dark without per-surface dark maps; the icon
+  // pill uses the solid token + its semantic foreground.
   const isCorrect = tone === 'correct'
   const wrap =
     'grid grid-cols-[28px_1fr] items-start gap-3.5 rounded-[var(--radius-md)] border px-5 py-4'
   const palette = isCorrect
-    ? 'bg-[color-mix(in_srgb,#1F6B3A_6%,var(--color-bg-elevated))] border-[color-mix(in_srgb,#1F6B3A_25%,var(--color-border))]'
-    : 'bg-[color-mix(in_srgb,#B6422A_6%,var(--color-bg-elevated))] border-[color-mix(in_srgb,#B6422A_25%,var(--color-border))]'
+    ? 'bg-[color-mix(in_srgb,var(--color-success)_6%,var(--color-bg-elevated))] border-[color-mix(in_srgb,var(--color-success)_25%,var(--color-border))]'
+    : 'bg-[color-mix(in_srgb,var(--color-danger)_6%,var(--color-bg-elevated))] border-[color-mix(in_srgb,var(--color-danger)_25%,var(--color-border))]'
   const iconBg = isCorrect
-    ? 'bg-[#1F6B3A] text-white'
-    : 'bg-[#B6422A] text-white'
+    ? 'bg-[var(--color-success)] text-[var(--color-success-fg)]'
+    : 'bg-[var(--color-danger)] text-[var(--color-danger-fg)]'
   const Icon = isCorrect ? Check : X
   return (
     <div className={`${wrap} ${palette}`}>

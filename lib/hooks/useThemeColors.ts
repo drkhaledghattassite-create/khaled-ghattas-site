@@ -11,6 +11,17 @@ export type ThemeColors = {
   border: string
 }
 
+/**
+ * SSR fallback values. These hex literals look like a Qalem-rule violation
+ * (hardcoded hex outside app/globals.css) but they only render during SSR
+ * and the first client paint — `read()` below replaces them with the live
+ * CSS-var values via `getComputedStyle` on mount and on every theme change.
+ *
+ * They are pinned to the Qalem v2 LIGHT palette in app/globals.css. If the
+ * tokens change there, update this object too (the audit cost is one extra
+ * find-and-replace; the benefit is zero CLS-from-color-shift on first
+ * paint of charts that depend on these tokens, like /admin overview).
+ */
 const DEFAULTS: ThemeColors = {
   grid: '#E5E5E5',
   text: '#0A0A0A',

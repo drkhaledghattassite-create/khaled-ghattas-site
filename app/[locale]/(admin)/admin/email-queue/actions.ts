@@ -26,6 +26,9 @@ type ActionErr<E extends string> = { ok: false; error: E }
 async function requireAdminSession() {
   const session = await getServerSession()
   if (!session) return { ok: false as const, error: 'unauthorized' as const }
+  // ADMIN (developer) AND CLIENT (site owner — Dr. Khaled) are both trusted
+  // operators; both can retry / dead-letter outbound mail. The two roles
+  // exist for audit clarity, not for privilege separation.
   if (session.user.role !== 'ADMIN' && session.user.role !== 'CLIENT') {
     return { ok: false as const, error: 'forbidden' as const }
   }

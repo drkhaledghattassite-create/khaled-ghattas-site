@@ -24,6 +24,7 @@
  *     a per-gift booking decrement) so this is headroom.
  */
 
+import { timingSafeEqual } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { expirePendingGifts } from '@/lib/db/queries'
 
@@ -31,13 +32,24 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
+// QA P1 — timing-safe bearer compare. Plain `===` short-circuits at the
+// first mismatching byte and leaks character-position timing on
+// CRON_SECRET. timingSafeEqual requires equal-length buffers, so we
+// length-check explicitly first (length disclosure is acceptable; the
+// secret is generated with openssl rand -hex 32 = 64 chars + always).
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET ?? ''
   if (!secret) return false
   const auth = req.headers.get('authorization') ?? ''
   const parts = auth.split(' ')
   if (parts.length !== 2 || parts[0]!.toLowerCase() !== 'bearer') return false
-  return parts[1] === secret
+  const provided = parts[1] ?? ''
+  if (provided.length !== secret.length) return false
+  try {
+    return timingSafeEqual(Buffer.from(provided), Buffer.from(secret))
+  } catch {
+    return false
+  }
 }
 
 async function handle(req: NextRequest) {

@@ -2,16 +2,9 @@ import { auth } from '@/lib/auth'
 import { toNextJsHandler } from 'better-auth/next-js'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { apiError } from '@/lib/api/errors'
+import { getClientIp } from '@/lib/api/client-ip'
 
 const handlers = toNextJsHandler(auth.handler)
-
-function clientIp(req: Request): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'anon'
-  )
-}
 
 // SECURITY [H-2]: Better Auth's catch-all serves sign-in, sign-up,
 // forgot-password, and OAuth flows over POST. Without rate limiting these
@@ -30,7 +23,8 @@ function clientIp(req: Request): string {
 //   - OAuth callbacks and reset-password verification GETs carry random
 //     unbruteforceable tokens, so per-IP limits add no security value.
 export async function POST(req: Request) {
-  const ip = clientIp(req)
+  // QA P1 — spoof-resistant IP. See lib/api/client-ip.ts.
+  const ip = getClientIp(req)
   const rl = await tryRateLimit(`auth:${ip}`)
   if (!rl.ok) {
     const res = apiError(

@@ -24,8 +24,9 @@ export default function ErrorBoundary({
   return (
     <main
       id="main-content"
+      tabIndex={-1}
       dir={isRtl ? 'rtl' : 'ltr'}
-      className="relative flex min-h-screen items-center justify-center px-[var(--section-pad-x)] py-[var(--section-pad-y)]"
+      className="relative flex min-h-screen items-center justify-center px-[var(--section-pad-x)] py-[var(--section-pad-y)] focus:outline-none"
     >
       <div className="container mx-auto max-w-3xl text-center">
         <p className="section-eyebrow mx-auto mb-8 justify-center">{t('eyebrow')}</p>

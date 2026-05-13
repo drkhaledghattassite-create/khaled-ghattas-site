@@ -5,11 +5,17 @@ const SITE_NAME_AR = 'د. خالد غطاس'
 
 type LocaleProps = { locale: string }
 
+// QA P2 — escape `<` in the serialized payload so a future admin-supplied
+// title / description containing `</script>` or `<!--` can't break out of
+// the surrounding <script> tag. The browser still parses the result as
+// valid JSON because `<` is the standard JSON escape for `<`. This
+// is the documented OWASP recommendation for inline JSON-in-HTML.
 function jsonLdScript(data: Record<string, unknown>) {
+  const safe = JSON.stringify(data).replace(/</g, '\\u003c')
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: safe }}
     />
   )
 }
@@ -188,7 +194,10 @@ export function EventJsonLd({ event, locale }: { event: Event; locale: string })
   const title = isAr ? event.titleAr : event.titleEn
   const description = isAr ? event.descriptionAr : event.descriptionEn
   const location = isAr ? event.locationAr : event.locationEn
-  const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/events/${event.slug}`
+  // The site has no /events/[slug] detail route — events render only in the
+  // /events listing. Point search engines at the listing page (with a fragment
+  // identifier per event slug) instead of an event-detail URL that would 404.
+  const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/events#${event.slug}`
 
   return jsonLdScript({
     '@context': 'https://schema.org',

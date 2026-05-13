@@ -116,6 +116,20 @@
   --color-input:                var(--color-bg-deep);
   --color-ring:                 var(--color-accent);
 
+  /* ---------- Semantic status tokens (Qalem v2) -------------------------
+   * Used by test-results, dashboard badges, and any "correct / wrong /
+   * notice" affordance. Light values; dark overrides live in the .dark
+   * scope further down. */
+  --color-success:        #1F6B3A;
+  --color-success-soft:   #DCEEDF;
+  --color-success-fg:     #FFFFFF;
+  --color-warn:           #8A6A1B;
+  --color-warn-soft:      #FBF1D7;
+  --color-warn-fg:        #FFFFFF;
+  --color-danger:         #B6422A;
+  --color-danger-soft:    #F8E4DE;
+  --color-danger-fg:      #FFFFFF;
+
   /* ---------- Typography ------------------------------------------------ */
   --font-arabic:         var(--font-arabic);
   --font-arabic-display: var(--font-arabic-display);
@@ -290,6 +304,19 @@
   --color-muted-foreground:     #737373;
   --color-accent-foreground:    #0A0A0A;
   --color-input:                #1F1F1F;
+
+  /* Semantic status — dark-mode overrides. Brighter foregrounds for
+   * readability against the deep neutrals; soft fills use alpha overlays
+   * so the chip blends into dark surfaces without losing contrast. */
+  --color-success:        #7DD49B;
+  --color-success-soft:   rgba(125,212,155,0.14);
+  --color-success-fg:     #0A0A0A;
+  --color-warn:           #E8C56C;
+  --color-warn-soft:      rgba(232,197,108,0.14);
+  --color-warn-fg:        #0A0A0A;
+  --color-danger:         #E89281;
+  --color-danger-soft:    rgba(232,146,129,0.14);
+  --color-danger-fg:      #0A0A0A;
 
   --shadow-card:  0 1px 2px rgba(0,0,0,0.3), 0 4px 16px -4px rgba(0,0,0,0.4);
   --shadow-lift:  0 2px 4px rgba(0,0,0,0.4), 0 16px 40px -12px rgba(0,0,0,0.6);

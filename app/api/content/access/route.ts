@@ -89,6 +89,21 @@ export async function POST(req: Request) {
     const item = await getSessionItemById(body.data.productId)
     if (!item) return errNotFound('Session item not found.')
 
+    // QA P2 — productType assertion at the access layer. `session_items.session_id`
+    // points at `books.id` without a FK CHECK enforcing that the parent has
+    // productType='SESSION' (app-level invariant per CLAUDE.md). If a bug ever
+    // misroutes a non-SESSION book id through here, ownership would resolve
+    // against a different commerce surface. Defensive check.
+    const parentBook = await getBookById(item.sessionId)
+    if (!parentBook || parentBook.productType !== 'SESSION') {
+      console.warn('[api/content/access] SESSION_ITEM parent invariant violated', {
+        sessionItemId: item.id,
+        parentBookId: item.sessionId,
+        parentProductType: parentBook?.productType ?? 'missing',
+      })
+      return errNotFound('Session item not found.')
+    }
+
     // Walk to the parent session (a books row) and check ownership.
     const owns = await userOwnsProduct(userId, item.sessionId)
     if (!owns) return errForbidden('You do not own this content.')

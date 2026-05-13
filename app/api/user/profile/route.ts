@@ -7,8 +7,9 @@ import { users } from '@/lib/db/schema'
 import { auth } from '@/lib/auth'
 import { getServerSession } from '@/lib/auth/server'
 import { isDbConnected, isValidUuid } from '@/lib/db/queries'
-import { errInternal, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
+import { apiError, errInternal, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
 import { assertSameOrigin } from '@/lib/api/origin'
+import { tryRateLimit } from '@/lib/redis/ratelimit'
 
 const profileSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -22,6 +23,14 @@ export async function PATCH(req: Request) {
 
   const session = await getServerSession()
   if (!session) return errUnauthorized()
+
+  // QA P2 — per-user rate limit on profile updates. Prevents enumeration
+  // probes against email validation and constrains accidental rapid-fire
+  // saves from an over-eager UI.
+  const rl = await tryRateLimit(`user-profile:${session.user.id}`)
+  if (!rl.ok) {
+    return apiError('RATE_LIMITED', 'Too many profile updates.', { status: 429 })
+  }
 
   const body = await parseJsonBody(req, profileSchema)
   if (!body.ok) return body.response
@@ -49,6 +58,16 @@ export async function DELETE(req: Request) {
 
   const session = await getServerSession()
   if (!session) return errUnauthorized()
+
+  // Tighter ceiling for account-delete: 3/min is enough for any legitimate
+  // misclick + confirm; rapid-fire deletes have no benign use case.
+  const rl = await tryRateLimit(`user-delete:${session.user.id}`, {
+    limit: 3,
+    window: '60 s',
+  })
+  if (!rl.ok) {
+    return apiError('RATE_LIMITED', 'Too many delete attempts.', { status: 429 })
+  }
 
   if (!isDbConnected || !isValidUuid(session.user.id)) {
     return NextResponse.json({ ok: true, mocked: true })

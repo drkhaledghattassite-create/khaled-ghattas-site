@@ -74,12 +74,14 @@ function relativeDays(iso: string, locale: 'ar' | 'en') {
 
 function scoreBandClass(score: number): string {
   // Visual-only bands per the design. ≥80 = success, 50-79 = warning,
-  // <50 = neutral. No interpretive copy attached.
+  // <50 = neutral. No interpretive copy attached. Colors flow through
+  // the Qalem v2 --color-success / --color-warn tokens so light + dark
+  // come for free via the .dark scope in app/globals.css.
   if (score >= 80) {
-    return 'bg-[#DCEEDF] text-[#1F6B3A] dark:bg-[rgba(125,212,155,0.14)] dark:text-[#7DD49B]'
+    return 'bg-[var(--color-success-soft)] text-[var(--color-success)]'
   }
   if (score >= 50) {
-    return 'bg-[#FBF1D7] text-[#8A6A1B] dark:bg-[rgba(232,197,108,0.14)] dark:text-[#E8C56C]'
+    return 'bg-[var(--color-warn-soft)] text-[var(--color-warn)]'
   }
   return 'bg-[var(--color-bg-deep)] text-[var(--color-fg2)]'
 }

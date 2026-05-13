@@ -28,7 +28,7 @@ export default async function PublicLayout({ children, params }: Props) {
         authSlot={<AuthMenu variant="compact" enabled={authEnabled} />}
         mobileAuthSlot={<AuthMenu variant="stacked" enabled={authEnabled} />}
       />
-      <main id="main-content" className="min-h-dvh">
+      <main id="main-content" tabIndex={-1} className="min-h-dvh focus:outline-none">
         {children}
       </main>
       <SiteFooter

@@ -15,6 +15,7 @@ import {
   markGiftBookingOrderPaid,
   markGiftEmailSent,
   markGiftRefunded,
+  recordStripeEvent,
   setGiftStripePaymentIntent,
   updateOrderStatusByPaymentIntentId,
   type Gift,
@@ -113,6 +114,23 @@ export async function POST(req: Request) {
     )
   }
 
+  // QA P2 — event-level idempotency. The per-branch SQL guards already
+  // make most flows safe under duplicate delivery, but Stripe sometimes
+  // re-delivers DIFFERENT events for the same payment (refund → reversal,
+  // etc.) and those guards don't know about prior events. Stamp this
+  // event id; if we've already processed it, ack with 200 and skip.
+  const isFirstDelivery = await recordStripeEvent({
+    eventId: event.id,
+    eventType: event.type,
+  })
+  if (!isFirstDelivery) {
+    console.info('[stripe/webhook] duplicate event delivery — skipping', {
+      eventId: event.id,
+      eventType: event.type,
+    })
+    return NextResponse.json({ received: true, deduplicated: true })
+  }
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
@@ -173,11 +191,16 @@ export async function POST(req: Request) {
           `[stripe/webhook] checkout.session.completed processed (orderId=${createdOrder?.id ?? 'unknown'})`,
         )
       } catch (err) {
-        console.error('[stripe/webhook] failed to record order', err)
-        return NextResponse.json(
-          { error: { code: 'INTERNAL', message: 'Failed to record order.' } },
-          { status: 500 },
-        )
+        // QA P2 — never 500 on duplicate webhook delivery. With the new
+        // partial unique index `orders_stripe_session_idx` (migration 0013),
+        // ON CONFLICT DO NOTHING in createOrderFromStripeSession is the
+        // only path that ever lands here on duplicate — a transient DB
+        // blip is the realistic remaining cause. Stripe retries with
+        // exponential backoff on 5xx, so returning 500 turned one bad
+        // moment into a retry storm. Log + acknowledge with 200; the
+        // missing order will surface in admin and be reconciled out-of-band.
+        console.error('[stripe/webhook] failed to record order; ack 200 to halt Stripe retries', err)
+        return NextResponse.json({ received: true, deferred: true })
       }
 
       // Post-purchase email is best-effort: an order is already recorded, and
@@ -377,7 +400,18 @@ export async function POST(req: Request) {
         })
         break
       }
-      if (existing.status === 'FAILED' || existing.status === 'REFUNDED') break
+      // QA P2 — guard against delayed failure events overwriting terminal
+      // success state. Stripe's payment_intent state machine is supposed to
+      // be terminal at `succeeded`, but in rare cases (off-session retries,
+      // disputed authorizations) a `payment_failed` event can arrive after a
+      // PAID transition. Treat PAID as terminal here too — chargebacks/
+      // disputes should flow through the admin tooling, not this fast-path
+      // auto-flip.
+      if (
+        existing.status === 'FAILED' ||
+        existing.status === 'REFUNDED' ||
+        existing.status === 'PAID'
+      ) break
       try {
         await updateOrderStatusByPaymentIntentId(pi.id, 'FAILED')
         console.info('[stripe/webhook] mirrored payment_intent.payment_failed → FAILED', {

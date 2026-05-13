@@ -37,6 +37,7 @@ import {
   readingProgress,
   sessionItems,
   siteSettings,
+  stripeWebhookEvents,
   subscribers,
   testAttemptAnswers,
   testAttempts,
@@ -664,14 +665,15 @@ export async function createOrderFromStripeSession(
     return null
   }
 
-  const [existing] = await db
-    .select()
-    .from(orders)
-    .where(eq(orders.stripeSessionId, input.stripeSessionId))
-    .limit(1)
-  if (existing) return existing
-
-  const [row] = await db
+  // Idempotent insert: the partial unique index `orders_stripe_session_idx`
+  // guarantees at most one row per stripeSessionId. On duplicate webhook
+  // delivery, ON CONFLICT DO NOTHING short-circuits cleanly; we then re-read
+  // and return the existing row. Previously this used a check-then-insert
+  // pattern which had a TOCTOU window: two concurrent webhook retries could
+  // both pass the SELECT and both attempt the INSERT (succeeding in the
+  // race era where there was no unique constraint at all, then 500-ing
+  // forever once the index was added — both bad).
+  const inserted = await db
     .insert(orders)
     .values({
       userId: input.userId && isUuid(input.userId) ? input.userId : null,
@@ -683,8 +685,25 @@ export async function createOrderFromStripeSession(
       customerEmail: input.customerEmail,
       customerName: input.customerName ?? null,
     })
+    .onConflictDoNothing({ target: orders.stripeSessionId })
     .returning()
+
+  let row = inserted[0] ?? null
+  const isNew = row != null
+  if (!row) {
+    // Conflict — re-read the row that another webhook delivery already wrote.
+    const [existing] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.stripeSessionId, input.stripeSessionId))
+      .limit(1)
+    row = existing ?? null
+  }
   if (!row) return null
+
+  // Only insert order_items on the FIRST successful insert. Replays must not
+  // re-insert items (would create duplicate library entries).
+  if (!isNew) return row
 
   const validItems = input.items.filter((it) => isUuid(it.bookId))
   if (validItems.length === 0) return row
@@ -692,7 +711,7 @@ export async function createOrderFromStripeSession(
   try {
     await db.insert(orderItems).values(
       validItems.map((it) => ({
-        orderId: row.id,
+        orderId: row!.id,
         bookId: it.bookId,
         quantity: it.quantity,
         priceAtPurchase: it.priceAtPurchase,
@@ -2168,6 +2187,13 @@ export async function createSubscriber(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2)
+  // QA P1 — upsert behavior: re-subscribe after unsubscribe must flip the
+  // status back to ACTIVE. Previously this was a plain INSERT, which threw
+  // unique-violation on re-subscribe; the route caught it and returned a
+  // fake-success `alreadySubscribed: true` while the user stayed UNSUBSCRIBED.
+  // Now we ON CONFLICT (email) DO UPDATE: restore status, refresh name/source
+  // if provided, keep the existing unsubscribe token (rotating it on every
+  // resubscribe breaks the old unsubscribe links in already-sent emails).
   const [row] = await db
     .insert(subscribers)
     .values({
@@ -2175,6 +2201,14 @@ export async function createSubscriber(
       nameEn: name ?? null,
       source: source ?? null,
       unsubscribeToken: token,
+    })
+    .onConflictDoUpdate({
+      target: subscribers.email,
+      set: {
+        status: 'ACTIVE',
+        nameEn: name ?? sql`${subscribers.nameEn}`,
+        source: source ?? sql`${subscribers.source}`,
+      },
     })
     .returning()
   return row ?? null
@@ -6838,6 +6872,17 @@ function cryptoRandomUuid(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
 
+/**
+ * Look up a gift by its opaque base64url token (~43 chars).
+ *
+ * Returns null for "token doesn't match any gift" (length-validation failures
+ * or a genuine miss). Throws on DB-level errors (Neon timeout, connection
+ * loss). Callers must distinguish — a null is not the same as a failed read.
+ * The /gifts/claim server component branches into a `temporary_error` render
+ * state on throw; claimGiftAction returns `{ ok: false, error: 'db_failed' }`.
+ * Swallowing here would render a Neon hiccup as "invalid gift link" to the
+ * user, which is what we used to do — see the gift-claim diagnostic Bug 3.
+ */
 export async function getGiftByToken(token: string): Promise<Gift | null> {
   if (!token || token.length < 16 || token.length > 64) return null
   if (MOCK_AUTH_ENABLED) {
@@ -6845,13 +6890,8 @@ export async function getGiftByToken(token: string): Promise<Gift | null> {
     return store.gifts.find((g) => g.token === token) ?? null
   }
   if (!HAS_DB) return null
-  try {
-    const [row] = await db.select().from(gifts).where(eq(gifts.token, token)).limit(1)
-    return row ?? null
-  } catch (err) {
-    console.error('[queries.getGiftByToken]', err)
-    return null
-  }
+  const [row] = await db.select().from(gifts).where(eq(gifts.token, token)).limit(1)
+  return row ?? null
 }
 
 export async function getGiftById(id: string): Promise<Gift | null> {
@@ -6900,14 +6940,27 @@ export async function getGiftByStripeSessionId(
  * or two browser tabs), exactly one's UPDATE matches a row and returns it;
  * the other returns null and the action layer surfaces 'invalid_or_expired'.
  *
+ * QA P2 — `expectedRecipientEmail` (optional but strongly recommended) is a
+ * defense-in-depth DB-level gate. The action layer (`claimGiftAction` in
+ * app/[locale]/(public)/gifts/actions.ts) already verifies the signed-in
+ * user's email matches the gift's recipientEmail BEFORE calling this fn —
+ * the WHERE clause here repeats the check so a future caller that bypasses
+ * the action wrapper still cannot succeed with a token belonging to a
+ * different account. Pass null when calling from a trusted context that
+ * has already verified ownership some other way (kept as a backdoor for
+ * tests + the legacy code path, but production callers should always
+ * pass the expected email).
+ *
  * Mock-mode replicates the same all-or-nothing semantics by checking + updating
  * the in-memory row inside a single readStore→write→writeStore sequence.
  */
 export async function claimGift(
   token: string,
   recipientUserId: string,
+  expectedRecipientEmail?: string | null,
 ): Promise<Gift | null> {
   if (!token) return null
+  const expectedLc = expectedRecipientEmail?.trim().toLowerCase() ?? null
   if (MOCK_AUTH_ENABLED) {
     const store = readStore()
     const now = new Date()
@@ -6916,6 +6969,12 @@ export async function claimGift(
     const g = store.gifts[idx]!
     if (g.status !== 'PENDING') return null
     if (g.expiresAt.getTime() <= now.getTime()) return null
+    if (
+      expectedLc != null &&
+      g.recipientEmail.trim().toLowerCase() !== expectedLc
+    ) {
+      return null
+    }
     const updated: Gift = {
       ...g,
       status: 'CLAIMED',
@@ -6930,6 +6989,16 @@ export async function claimGift(
   if (!HAS_DB) return null
   if (!isUuid(recipientUserId)) return null
   try {
+    const conditions = [
+      eq(gifts.token, token),
+      eq(gifts.status, 'PENDING'),
+      gt(gifts.expiresAt, sql`now()`),
+    ]
+    if (expectedLc != null) {
+      // The recipient_email column is already stored lowercased (see
+      // createGift's lcEmail helper); compare against the lowercased input.
+      conditions.push(eq(gifts.recipientEmail, expectedLc))
+    }
     const [row] = await db
       .update(gifts)
       .set({
@@ -6938,13 +7007,7 @@ export async function claimGift(
         recipientUserId,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(gifts.token, token),
-          eq(gifts.status, 'PENDING'),
-          gt(gifts.expiresAt, sql`now()`),
-        ),
-      )
+      .where(and(...conditions))
       .returning()
     return row ?? null
   } catch (err) {
@@ -7375,45 +7438,88 @@ export async function expirePendingGifts(): Promise<ExpirePendingGiftsResult> {
   if (!HAS_DB) return { expiredCount: 0, bookingReleasedCount: 0, errors }
 
   try {
-    const expiredRows = await db
-      .update(gifts)
-      .set({ status: 'EXPIRED', updatedAt: now })
+    // QA P1 — Per-gift transactional expiry. Previously this fn did one
+    // bulk UPDATE flipping ALL PENDING-past-expiresAt gifts to EXPIRED,
+    // then iterated row-by-row to release booking capacity in separate
+    // transactions. A crash mid-loop (DB blip, function timeout, network
+    // partition) left BOOKING gifts in EXPIRED while their seat stayed
+    // consumed; the next sweep skipped them (already EXPIRED) so capacity
+    // was permanently leaked.
+    //
+    // Now: pick the expired-candidate set first (no status flip yet),
+    // then per gift, run (flip + capacity release + booking_order unlink)
+    // inside one transaction. Crash mid-loop leaves not-yet-processed
+    // gifts as PENDING-past-expiresAt — the next sweep picks them up.
+    const candidates = await db
+      .select()
+      .from(gifts)
       .where(
         and(eq(gifts.status, 'PENDING'), lte(gifts.expiresAt, sql`now()`)),
       )
-      .returning()
 
+    let expiredCount = 0
     let bookingReleasedCount = 0
-    for (const g of expiredRows) {
-      if (g.itemType !== 'BOOKING') continue
+    for (const g of candidates) {
       try {
-        const booking = await getBookingById(g.itemId)
-        if (!booking) continue
+        const isBooking = g.itemType === 'BOOKING'
+        const booking = isBooking ? await getBookingById(g.itemId) : null
         const eventInFuture =
-          booking.nextCohortDate != null &&
+          booking?.nextCohortDate != null &&
           booking.nextCohortDate.getTime() > now.getTime()
-        if (!eventInFuture) continue
-        await db.transaction(async (tx) => {
-          await tx
-            .update(bookings)
-            .set({
-              bookedCount: sql`GREATEST(${bookings.bookedCount} - 1, 0)`,
-              updatedAt: now,
-            })
-            .where(eq(bookings.id, g.itemId))
+        const shouldReleaseSeat = isBooking && eventInFuture
+
+        const released = await db.transaction(async (tx) => {
+          // Status flip — gated on PENDING so a concurrent claim that
+          // raced past our SELECT and CLAIMED the gift is respected
+          // (the UPDATE matches no row, we move on).
+          const [flipped] = await tx
+            .update(gifts)
+            .set({ status: 'EXPIRED', updatedAt: now })
+            .where(and(eq(gifts.id, g.id), eq(gifts.status, 'PENDING')))
+            .returning({ id: gifts.id })
+          if (!flipped) return false
+
+          if (shouldReleaseSeat) {
+            // Release the seat capacity AND flip the linked booking_order
+            // so commerce history doesn't claim a seat that capacity now
+            // reports as open. Both run in the same transaction as the
+            // gift flip; partial failure is rolled back.
+            await tx
+              .update(bookings)
+              .set({
+                bookedCount: sql`GREATEST(${bookings.bookedCount} - 1, 0)`,
+                updatedAt: now,
+              })
+              .where(eq(bookings.id, g.itemId))
+            await tx
+              .update(bookingOrders)
+              .set({
+                // No 'EXPIRED' enum value; refund-class state isn't right
+                // either since no money flowed. FAILED is the closest fit
+                // — "we accepted a hold but never resolved it" — and
+                // matches what payment_intent.payment_failed writes.
+                status: 'FAILED',
+                updatedAt: now,
+              })
+              .where(eq(bookingOrders.giftId, g.id))
+            return true
+          }
+          return false
         })
-        bookingReleasedCount++
+        expiredCount++
+        if (released) bookingReleasedCount++
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'unknown'
         errors.push({ giftId: g.id, error: msg })
-        console.error('[queries.expirePendingGifts] booking release failed', {
+        console.error('[queries.expirePendingGifts] per-gift transaction failed', {
           giftId: g.id,
           err,
         })
       }
     }
+
     return {
-      expiredCount: expiredRows.length,
+      expiredCount,
       bookingReleasedCount,
       errors,
     }
@@ -7924,8 +8030,10 @@ export async function enqueueEmail(
 
 /**
  * Atomic batched dequeue. Inside a single transaction:
- *   1. SELECT up to `limit` rows WHERE status='PENDING' AND
- *      nextAttemptAt <= now() FOR UPDATE SKIP LOCKED
+ *   1. SELECT up to `limit` rows WHERE
+ *        status='PENDING' AND nextAttemptAt <= now()
+ *        OR  (status='SENDING' AND lastAttemptAt < now() - interval '10 min')
+ *      FOR UPDATE SKIP LOCKED
  *   2. UPDATE picked rows to status='SENDING' + lastAttemptAt=now()
  *   3. Return the updated rows
  *
@@ -7933,6 +8041,16 @@ export async function enqueueEmail(
  * for the same rows simply skips them and picks others, instead of
  * blocking on the lock. Lock is released when the transaction commits
  * (immediately, since we don't keep it open past the UPDATE).
+ *
+ * QA P2 — stale-SENDING recovery. A worker that crashes mid-batch (Vercel
+ * function timeout, container OOM, network partition) leaves rows pinned
+ * in SENDING forever; the partial index `email_queue_pending_idx`
+ * deliberately INCLUDES SENDING (so the cron can re-pick them), but the
+ * old query filtered them out. After 10 minutes of inactivity we treat
+ * a SENDING row as orphaned and re-pick it. Worst case: a long-running
+ * Resend call that's actually still in-flight gets a duplicate retry;
+ * Resend itself deduplicates by `Idempotency-Key` (we set one in
+ * lib/email/queue-send.ts) so the recipient won't see two copies.
  *
  * Returns [] when nothing is pending.
  */
@@ -7947,10 +8065,11 @@ export async function pickPendingEmails(
         .select({ id: emailQueue.id })
         .from(emailQueue)
         .where(
-          and(
-            eq(emailQueue.status, 'PENDING'),
-            lte(emailQueue.nextAttemptAt, sql`now()`),
-          ),
+          sql`(
+            (${emailQueue.status} = 'PENDING' AND ${emailQueue.nextAttemptAt} <= now())
+            OR
+            (${emailQueue.status} = 'SENDING' AND ${emailQueue.lastAttemptAt} < now() - interval '10 minutes')
+          )`,
         )
         .orderBy(asc(emailQueue.nextAttemptAt))
         .limit(batchSize)
@@ -8207,6 +8326,42 @@ export async function countQueueByStatus(): Promise<Record<EmailStatus, number>>
   } catch (err) {
     console.error('[queries.countQueueByStatus]', err)
     return empty
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Stripe webhook idempotency (QA P2)
+ *
+ * recordStripeEvent inserts the event id with ON CONFLICT DO NOTHING and
+ * returns whether the row was newly inserted (true = first delivery; false
+ * = duplicate, caller should short-circuit). Caller is the route handler
+ * at app/api/stripe/webhook/route.ts.
+ *
+ * In mock-auth dev / non-DB mode, ALWAYS returns true (first-delivery
+ * semantics) — local Stripe-CLI testing should always process events.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function recordStripeEvent(input: {
+  eventId: string
+  eventType: string
+}): Promise<boolean> {
+  if (!HAS_DB) return true
+  if (!input.eventId || input.eventId.length > 200) return true
+  try {
+    const rows = await db
+      .insert(stripeWebhookEvents)
+      .values({ eventId: input.eventId, eventType: input.eventType })
+      .onConflictDoNothing({ target: stripeWebhookEvents.eventId })
+      .returning({ id: stripeWebhookEvents.eventId })
+    // .returning returns the inserted row IF the INSERT actually happened.
+    // ON CONFLICT DO NOTHING returns an empty array on conflict.
+    return rows.length > 0
+  } catch (err) {
+    console.error('[queries.recordStripeEvent]', err)
+    // On any DB error, treat as first-delivery so the webhook still
+    // processes — duplicate handling is per-branch (status-gated SQL
+    // guards). Idempotency-by-event-id is belt-and-suspenders.
+    return true
   }
 }
 

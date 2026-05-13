@@ -33,9 +33,12 @@ export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
+  // requireServerRole('CLIENT') admits CLIENT OR ADMIN per server.ts:78 —
+  // both roles are trusted operators (CLIENT = site owner Dr. Khaled,
+  // ADMIN = developer Kamal). See lib/auth/admin-guard.ts for the policy.
   let user
   try {
-    user = await requireServerRole('ADMIN')
+    user = await requireServerRole('CLIENT')
   } catch {
     redirect(`/${locale === 'ar' ? '' : `${locale}/`}login`)
   }
@@ -82,7 +85,7 @@ export default async function AdminLayout({ children, params }: Props) {
           draftTestCount={draftTestCount}
           emailQueueAttentionCount={emailQueueAttentionCount}
         />
-        <main id="main-content" className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden p-4 md:p-8 focus:outline-none">{children}</main>
       </div>
     </div>
   )

@@ -37,7 +37,7 @@ export default async function DashboardSectionLayout({ children, params }: Props
         authSlot={<AuthMenu variant="compact" enabled={authEnabled} />}
         mobileAuthSlot={<AuthMenu variant="stacked" enabled={authEnabled} />}
       />
-      <main id="main-content" className="bg-[var(--color-bg)]">
+      <main id="main-content" tabIndex={-1} className="bg-[var(--color-bg)] focus:outline-none">
         {children}
       </main>
       <SiteFooter footer={settings.footer} nav={settings.navigation} />

@@ -5,8 +5,9 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { getServerSession } from '@/lib/auth/server'
 import { isDbConnected, isValidUuid } from '@/lib/db/queries'
-import { errInternal, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
+import { apiError, errInternal, errUnauthorized, parseJsonBody } from '@/lib/api/errors'
 import { assertSameOrigin } from '@/lib/api/origin'
+import { tryRateLimit } from '@/lib/redis/ratelimit'
 
 const prefSchema = z.object({
   newsletter: z.boolean().optional(),
@@ -21,6 +22,14 @@ export async function PATCH(req: Request) {
 
   const session = await getServerSession()
   if (!session) return errUnauthorized()
+
+  // QA P2 — per-user rate limit. Prevents rapid-fire writes from an over-
+  // eager UI and constrains scripted abuse. 10/min is generous for any
+  // legitimate UI flow (theme toggle, opt-in/out clicks).
+  const rl = await tryRateLimit(`user-preferences:${session.user.id}`)
+  if (!rl.ok) {
+    return apiError('RATE_LIMITED', 'Too many preference updates.', { status: 429 })
+  }
 
   const body = await parseJsonBody(req, prefSchema)
   if (!body.ok) return body.response

@@ -37,6 +37,7 @@ import {
   getGiftByToken,
   getUserByEmail,
   markGiftEmailSent,
+  markGiftRefunded,
   recipientEmailHasBooking,
   recipientEmailOwnsBookOrSession,
   resolveGiftItemPrice,
@@ -289,13 +290,38 @@ export type ClaimGiftActionResult =
       | 'db_failed'
     >
 
+/**
+ * QA P2 — IP resolution prefers Vercel's signed header.
+ *
+ * Header preference order:
+ *   1. `x-vercel-forwarded-for` — set by Vercel's edge proxy directly from
+ *      the TCP connection and NOT echoable by the client. This is the
+ *      ground-truth IP on Vercel deployments.
+ *   2. `x-forwarded-for` — last hop. We take the RIGHTMOST IP, not the
+ *      first, because the first hop is whatever the client wrote
+ *      (spoofable). The rightmost is what our trusted edge added.
+ *   3. `x-real-ip` — last-resort fallback for reverse proxies that
+ *      provide it (some self-hosted setups).
+ *
+ * Returns 'unknown' if nothing resolves. The downstream rate-limit key
+ * is `gift-claim:<ip>` so collisions on 'unknown' all hit the same bucket
+ * — strictest case for the spoofing-defeated path.
+ */
 async function getRequestIp(): Promise<string> {
   try {
     const reqHeaders = await headers()
+    const vercelIp = reqHeaders.get('x-vercel-forwarded-for')?.trim()
+    if (vercelIp) return vercelIp
     const forwarded = reqHeaders.get('x-forwarded-for') ?? ''
-    const first = forwarded.split(',')[0]?.trim()
-    if (first) return first
-    const real = reqHeaders.get('x-real-ip')
+    if (forwarded) {
+      const parts = forwarded
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const rightmost = parts[parts.length - 1]
+      if (rightmost) return rightmost
+    }
+    const real = reqHeaders.get('x-real-ip')?.trim()
     if (real) return real
   } catch {
     /* ignore — fall through */
@@ -322,7 +348,16 @@ export async function claimGiftAction(
     if (!userRl.ok) return { ok: false, error: 'rate_limited' }
   }
 
-  const gift = await getGiftByToken(parsed.data.token)
+  // getGiftByToken throws on DB-level errors (Neon timeout etc.) — convert
+  // to 'db_failed' so the client surfaces a retryable toast rather than the
+  // generic 'invalid_or_expired' a swallowed catch would produce.
+  let gift: Awaited<ReturnType<typeof getGiftByToken>>
+  try {
+    gift = await getGiftByToken(parsed.data.token)
+  } catch (err) {
+    console.error('[gifts.claimGiftAction] getGiftByToken failed', err)
+    return { ok: false, error: 'db_failed' }
+  }
   if (!gift || gift.status !== 'PENDING') {
     return { ok: false, error: 'invalid_or_expired' }
   }
@@ -345,8 +380,10 @@ export async function claimGiftAction(
   }
 
   // Atomic claim — race-safe in DB; mock-mode replicates the same
-  // "all-or-nothing" semantics in-memory.
-  const claimed = await claimGiftDb(parsed.data.token, session.user.id)
+  // "all-or-nothing" semantics in-memory. The third arg adds a DB-level
+  // recipient_email match gate (defense-in-depth) so a future caller that
+  // skips the userEmailLc check above still cannot succeed cross-account.
+  const claimed = await claimGiftDb(parsed.data.token, session.user.id, userEmailLc)
   if (!claimed) return { ok: false, error: 'invalid_or_expired' }
 
   const itemSummary = await resolveGiftItemPrice(
@@ -354,15 +391,24 @@ export async function claimGiftAction(
     claimed.itemId,
   )
   if (!itemSummary) {
-    // Item disappeared between gift creation and claim. Mark the gift as
-    // claimed (already done) and surface a generic error; the recipient
-    // can still see the gift in their history.
+    // Item disappeared between gift creation and claim. The gift is already
+    // CLAIMED (the UPDATE in claimGiftDb committed); surface a generic error
+    // so the recipient sees the gift in their history but is steered to
+    // contact support. (Manual revoke is the recovery path on the admin side.)
     return { ok: false, error: 'item_unavailable' }
   }
 
+  // QA P1 — grant the entitlement BEFORE sending emails, and bail out
+  // cleanly if the grant fails. Previously the order/booking-transfer was
+  // best-effort: a transient failure left the gift in CLAIMED state with
+  // no entitlement in /dashboard/library or /dashboard/bookings, and both
+  // claim emails still fired ("you got X" / "they received your X") even
+  // though the recipient saw nothing. Now the action returns 'db_failed'
+  // on grant failure and skips the email block; admin recovery is the
+  // documented path for stuck claims (manual revoke + re-grant).
   let redirectPath = '/dashboard/library'
   if (claimed.itemType === 'BOOK' || claimed.itemType === 'SESSION') {
-    await createGiftClaimOrder({
+    const orderId = await createGiftClaimOrder({
       recipientUserId: session.user.id,
       recipientEmail: userEmailLc,
       giftId: claimed.id,
@@ -370,12 +416,27 @@ export async function claimGiftAction(
       priceCents: itemSummary.priceCents,
       currency: itemSummary.currency,
     })
+    if (orderId == null) {
+      console.error('[gifts.claim] entitlement grant failed (BOOK/SESSION)', {
+        giftId: claimed.id,
+        itemType: claimed.itemType,
+        itemId: claimed.itemId,
+      })
+      return { ok: false, error: 'db_failed' }
+    }
     redirectPath = '/dashboard/library'
   } else if (claimed.itemType === 'BOOKING') {
-    await transferBookingOrderToRecipient({
+    const transferred = await transferBookingOrderToRecipient({
       giftId: claimed.id,
       recipientUserId: session.user.id,
     })
+    if (transferred == null) {
+      console.error('[gifts.claim] entitlement grant failed (BOOKING)', {
+        giftId: claimed.id,
+        itemId: claimed.itemId,
+      })
+      return { ok: false, error: 'db_failed' }
+    }
     redirectPath = '/dashboard/bookings'
   }
 
@@ -635,7 +696,7 @@ export async function createUserPurchaseGiftFromWebhook(input: {
   // For BOOKING: link the gift to a booking_order PENDING row that the
   // webhook will then mark PAID via markGiftBookingOrderPaid.
   if (input.itemType === 'BOOKING') {
-    await createGiftBookingOrder({
+    const bookingOrder = await createGiftBookingOrder({
       senderUserId: input.senderUserId,
       bookingId: input.itemId,
       giftId: created.gift.id,
@@ -643,6 +704,34 @@ export async function createUserPurchaseGiftFromWebhook(input: {
       currency: input.currency,
       stripeSessionId: input.stripeSessionId,
     })
+    // QA P1 — compensating revoke. Previously the gift + the booking_order
+    // were two separate INSERTs and a failure on the second left an orphan
+    // gift with no booking_order: markGiftBookingOrderPaid would silently
+    // no-op, the recipient would click claim and find nothing, and admin
+    // had no clean recovery path because the gift was already PENDING.
+    //
+    // Drizzle/Neon doesn't support multi-statement transactions across
+    // helpers cleanly here (createGift + createGiftBookingOrder each open
+    // their own connection). The safe alternative is to mark the gift as
+    // REFUNDED immediately when the booking_order insert fails — the
+    // Stripe webhook then sees a REFUNDED gift, skips entitlement work,
+    // and the sender's `gift_send_failed` email surfaces a "contact us"
+    // CTA (markGiftRefunded is idempotent + already cascades emails).
+    if (!bookingOrder) {
+      console.error(
+        '[gifts.createUserPurchaseGiftFromWebhook] booking_order insert failed; refunding gift',
+        { giftId: created.gift.id, bookingId: input.itemId },
+      )
+      try {
+        await markGiftRefunded(created.gift.id)
+      } catch (refundErr) {
+        console.error(
+          '[gifts.createUserPurchaseGiftFromWebhook] compensating refund failed',
+          { giftId: created.gift.id, refundErr },
+        )
+      }
+      return null
+    }
   }
   return created.gift
 }

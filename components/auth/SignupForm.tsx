@@ -28,9 +28,13 @@ export function SignupForm() {
   const searchParams = useSearchParams()
   const isRtl = locale === 'ar'
   const redirectTarget = safeRedirect(searchParams.get('redirect'))
+  // Pre-fill the email field when the user arrived from a flow that knows it
+  // (e.g. /gifts/claim?token=… → /register?redirect=…&email=…). The field
+  // stays editable — a user is free to register with a different address.
+  const initialEmail = searchParams.get('email') ?? ''
 
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
