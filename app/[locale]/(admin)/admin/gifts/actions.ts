@@ -25,6 +25,7 @@ import {
   createGift,
   createGiftClaimOrder,
   deleteHoldById,
+  getAdminGiftsForCsv,
   getGiftById,
   getUserByEmail,
   markGiftEmailSent,
@@ -34,6 +35,7 @@ import {
   revokeGift,
   type GiftItemSummary,
 } from '@/lib/db/queries'
+import type { GiftItemType, GiftSource, GiftStatus } from '@/lib/db/schema'
 import {
   createAdminGiftSchema,
   resendGiftEmailSchema,
@@ -478,3 +480,113 @@ async function resendAdminGrantEmail(
   return { ok: false, reason: send.reason }
 }
 
+/* ── CSV export — gifts ────────────────────────────────────────────────── */
+
+const GIFT_STATUS_VALUES: GiftStatus[] = [
+  'PENDING',
+  'CLAIMED',
+  'EXPIRED',
+  'REVOKED',
+  'REFUNDED',
+]
+const GIFT_SOURCE_VALUES: GiftSource[] = ['ADMIN_GRANT', 'USER_PURCHASE']
+const GIFT_ITEM_TYPE_VALUES: GiftItemType[] = ['BOOK', 'SESSION', 'BOOKING', 'TEST']
+
+function readGiftStatus(raw: string | undefined): GiftStatus | 'all' {
+  if (raw && (GIFT_STATUS_VALUES as string[]).includes(raw)) {
+    return raw as GiftStatus
+  }
+  return 'all'
+}
+function readGiftSource(raw: string | undefined): GiftSource | 'all' {
+  if (raw && (GIFT_SOURCE_VALUES as string[]).includes(raw)) {
+    return raw as GiftSource
+  }
+  return 'all'
+}
+function readGiftItemType(raw: string | undefined): GiftItemType | 'all' {
+  if (raw && (GIFT_ITEM_TYPE_VALUES as string[]).includes(raw)) {
+    return raw as GiftItemType
+  }
+  return 'all'
+}
+
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const s = String(value)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+export async function exportAdminGiftsCsvAction(input: {
+  status?: string
+  source?: string
+  itemType?: string
+  search?: string
+}): Promise<
+  | { ok: true; csv: string; filename: string }
+  | ActionErr<'unauthorized' | 'forbidden' | 'failed'>
+> {
+  const guard = await requireAdminSession()
+  if (!guard.ok) return { ok: false, error: guard.error }
+
+  try {
+    const rows = await getAdminGiftsForCsv({
+      status: readGiftStatus(input.status),
+      source: readGiftSource(input.source),
+      itemType: readGiftItemType(input.itemType),
+      search: input.search?.trim() || undefined,
+    })
+
+    const header = [
+      'gift_id',
+      'created_at',
+      'source',
+      'status',
+      'item_type',
+      'item_id',
+      'recipient_email',
+      'sender_user_id',
+      'amount_cents',
+      'currency',
+      'expires_at',
+      'claimed_at',
+      'revoked_at',
+      'refunded_at',
+      'stripe_session_id',
+    ].join(',')
+
+    const body = rows
+      .map((g) =>
+        [
+          g.id,
+          g.createdAt.toISOString(),
+          g.source,
+          g.status,
+          g.itemType,
+          g.itemId,
+          g.recipientEmail,
+          g.senderUserId ?? '',
+          g.amountCents ?? '',
+          g.currency,
+          g.expiresAt.toISOString(),
+          g.claimedAt?.toISOString() ?? '',
+          g.revokedAt?.toISOString() ?? '',
+          g.refundedAt?.toISOString() ?? '',
+          g.stripeSessionId ?? '',
+        ]
+          .map(csvEscape)
+          .join(','),
+      )
+      .join('\n')
+
+    return {
+      ok: true,
+      csv: `${header}\n${body}\n`,
+      filename: `gifts-${new Date().toISOString().slice(0, 10)}.csv`,
+    }
+  } catch (err) {
+    console.error('[exportAdminGiftsCsvAction]', err)
+    return { ok: false, error: 'failed' }
+  }
+}

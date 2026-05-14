@@ -78,7 +78,7 @@ export function BookingsList({
         >
           {t('empty.body')}
         </p>
-        <Link href="/booking" className={`btn-pill btn-pill-primary ${fontBody}`}>
+        <Link href="/booking/tours" className={`btn-pill btn-pill-primary ${fontBody}`}>
           {t('empty.cta')}
           <ArrowRight
             className="ms-1.5 h-3.5 w-3.5 rtl:rotate-180"

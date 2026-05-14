@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/lib/i18n/navigation'
 
 type Props = {
-  active: 'tours' | 'reconsider' | 'sessions'
-  onJump: (id: string) => void
   toursOpen: number
   reconsiderHasOpen: boolean
   sessionsOpen: number
@@ -13,6 +12,7 @@ type Props = {
 
 type Chip = {
   id: 'tours' | 'reconsider' | 'sessions'
+  href: '/booking/tours' | '/booking/reconsider' | '/booking/sessions'
   label: string
   count: number | null
   hasOpen: boolean
@@ -26,20 +26,22 @@ type Chip = {
 const STICKY_OFFSET = 68
 
 /**
- * Sticky sub-nav with three chips. Active chip flips to fg1/bg. Each
- * chip can show a count badge and a small accent dot when its section
- * has open items.
+ * Sticky sub-nav with three chips, one per booking sub-route. Active chip
+ * flips to fg1/bg. Each chip can show a count badge and a small accent dot
+ * when its section has open items.
+ *
+ * Routing model: each chip is a <Link> to its dedicated route. Active state
+ * is derived from `usePathname()` rather than a scroll-spy effect — the
+ * page itself is the source of truth.
  *
  * Both the SiteHeader and this sub-bar stay visible at all times.
  * Visual treatment changes between rest and stuck:
  *   - At rest: bordered/blurred bar in natural flow under the page hero.
- *   - When stuck: same treatment + a small top gap and a drop shadow so
- *     the sub-bar reads as a distinct surface floating below the
- *     SiteHeader instead of fusing into a single double-tall block.
+ *   - When stuck: same treatment + drop shadow so the sub-bar reads as a
+ *     distinct surface floating below the SiteHeader instead of fusing
+ *     into a single double-tall block.
  */
 export function BookingSubNav({
-  active,
-  onJump,
   toursOpen,
   reconsiderHasOpen,
   sessionsOpen,
@@ -47,6 +49,7 @@ export function BookingSubNav({
   const t = useTranslations('booking.subnav')
   const locale = useLocale()
   const isRtl = locale === 'ar'
+  const pathname = usePathname()
 
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [isStuck, setIsStuck] = useState(false)
@@ -65,18 +68,21 @@ export function BookingSubNav({
   const chips: Chip[] = [
     {
       id: 'tours',
+      href: '/booking/tours',
       label: t('tours'),
       count: toursOpen > 0 ? toursOpen : null,
       hasOpen: toursOpen > 0,
     },
     {
       id: 'reconsider',
+      href: '/booking/reconsider',
       label: t('reconsider'),
       count: null,
       hasOpen: reconsiderHasOpen,
     },
     {
       id: 'sessions',
+      href: '/booking/sessions',
       label: t('sessions'),
       count: sessionsOpen > 0 ? sessionsOpen : null,
       hasOpen: sessionsOpen > 0,
@@ -99,13 +105,12 @@ export function BookingSubNav({
           className="mx-auto flex max-w-[var(--container-max)] items-center gap-2 overflow-x-auto overscroll-x-none [padding:14px_clamp(20px,5vw,56px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {chips.map((chip) => {
-            const isActive = active === chip.id
+            const isActive = pathname === chip.href
             return (
-              <button
+              <Link
                 key={chip.id}
-                type="button"
-                aria-current={isActive ? 'true' : undefined}
-                onClick={() => onJump(chip.id)}
+                href={chip.href}
+                aria-current={isActive ? 'page' : undefined}
                 // py-3 ensures ≥44px touch target on mobile (WCAG AA / Apple
                 // HIG). At md+ we shrink slightly since mouse precision is better
                 // and the bar otherwise feels too chunky next to the page header.
@@ -133,7 +138,7 @@ export function BookingSubNav({
                     {chip.count}
                   </span>
                 )}
-              </button>
+              </Link>
             )
           })}
         </div>

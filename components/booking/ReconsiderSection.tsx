@@ -21,13 +21,6 @@ type Props = {
   onReserve: () => void
   onInterest: (mode: 'sold_out' | 'closed') => void
   /**
-   * Whether the Reconsider section is the currently-active scroll-spy
-   * section. Drives the mobile-only sticky bottom CTA visibility — we only
-   * surface it when the user is actually within Reconsider, so the bar
-   * doesn't advertise this product while they're browsing Tours or Sessions.
-   */
-  isInView: boolean
-  /**
    * When true, the user already paid for this booking. The Reserve panel +
    * mobile sticky CTA swap to "Already booked → view in dashboard."
    * Capacity / state metadata stays visible (other shoppers may still be
@@ -67,7 +60,6 @@ export function ReconsiderSection({
   reconsider,
   onReserve,
   onInterest,
-  isInView,
   isAlreadyBooked,
   allowGifting,
 }: Props) {
@@ -572,16 +564,10 @@ export function ReconsiderSection({
            * closed → outline Notify. Matches the panel's CTA logic exactly.
            */}
           <div
-            aria-hidden={!isInView}
-            // Slide off-screen when user leaves the Reconsider section, so
-            // the bar doesn't pollute Tours / Sessions context. `pointer-
-            // events-none` while hidden so phantom taps don't intercept the
-            // page.
-            className={`fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-bg-elevated)]/95 [padding:12px_clamp(20px,5vw,56px)] [padding-bottom:max(12px,env(safe-area-inset-bottom))] backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
-              isInView
-                ? 'translate-y-0 pointer-events-auto'
-                : 'translate-y-full pointer-events-none'
-            }`}
+            // On the dedicated /booking/reconsider route the bar is always
+            // visible — the surrounding chrome (header + sub-nav) already
+            // makes it clear which product the user is viewing.
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-bg-elevated)]/95 [padding:12px_clamp(20px,5vw,56px)] [padding-bottom:max(12px,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
             data-hide-in-focus="true"
           >
             <div className="mx-auto flex max-w-[var(--container-max)] items-center justify-between gap-3">

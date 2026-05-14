@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Eye, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Link, useRouter } from '@/lib/i18n/navigation'
+import { Link, useRouter as useI18nRouter } from '@/lib/i18n/navigation'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,23 +25,44 @@ import type {
 } from '@/lib/db/queries'
 import { CORPORATE_REQUEST_STATUSES } from '@/lib/validators/corporate'
 
+type Filter = {
+  status: CorporateRequestStatus | 'all'
+  search: string
+}
+
 type Props = {
   requests: CorporateRequest[]
   programs: CorporateProgram[]
   locale: string
+  total: number
+  page: number
+  pageSize: number
+  initialFilter: Filter
 }
 
-export function CorporateRequestsTable({ requests, programs, locale }: Props) {
+export function CorporateRequestsTable({
+  requests,
+  programs,
+  locale,
+  total,
+  page,
+  pageSize,
+  initialFilter,
+}: Props) {
   const t = useTranslations('admin.corporate_requests')
   const tForms = useTranslations('admin.forms')
   const tActions = useTranslations('admin.actions')
   const tConfirm = useTranslations('admin.confirm')
   const tAria = useTranslations('admin.aria')
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const i18nRouter = useI18nRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; name: string } | null>(null)
-  const [filter, setFilter] = useState<CorporateRequestStatus | 'all'>('all')
   const isAr = locale === 'ar'
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   const programLookup = useMemo(() => {
     const map = new Map<string, CorporateProgram>()
@@ -48,9 +70,28 @@ export function CorporateRequestsTable({ requests, programs, locale }: Props) {
     return map
   }, [programs])
 
-  const filtered = useMemo(
-    () => (filter === 'all' ? requests : requests.filter((r) => r.status === filter)),
-    [filter, requests],
+  const setQuery = useCallback(
+    (next: { status?: Filter['status']; search?: string; page?: number }) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (next.status !== undefined) {
+        if (next.status === 'all') params.delete('status')
+        else params.set('status', next.status)
+        params.delete('page')
+      }
+      if (next.search !== undefined) {
+        const trimmed = next.search.trim()
+        if (trimmed) params.set('search', trimmed)
+        else params.delete('search')
+        params.delete('page')
+      }
+      if (next.page !== undefined) {
+        if (next.page === 1) params.delete('page')
+        else params.set('page', String(next.page))
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams],
   )
 
   async function handleDelete(id: string) {
@@ -64,7 +105,7 @@ export function CorporateRequestsTable({ requests, programs, locale }: Props) {
         return
       }
       toast.success(tActions('success_deleted'))
-      router.refresh()
+      i18nRouter.refresh()
     } catch (err) {
       console.error('[CorporateRequestsTable/delete]', err)
       toast.error(tActions('error_generic'))
@@ -157,9 +198,10 @@ export function CorporateRequestsTable({ requests, programs, locale }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setFilter('all')}
+          aria-pressed={initialFilter.status === 'all'}
+          onClick={() => setQuery({ status: 'all' })}
           className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-display font-semibold uppercase tracking-[0.06em] transition-colors ${
-            filter === 'all'
+            initialFilter.status === 'all'
               ? 'border-fg1 bg-fg1 text-bg'
               : 'border-border text-fg3 hover:bg-bg-deep'
           }`}
@@ -170,9 +212,10 @@ export function CorporateRequestsTable({ requests, programs, locale }: Props) {
           <button
             key={s}
             type="button"
-            onClick={() => setFilter(s)}
+            aria-pressed={initialFilter.status === s}
+            onClick={() => setQuery({ status: s })}
             className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-display font-semibold uppercase tracking-[0.06em] transition-colors ${
-              filter === s
+              initialFilter.status === s
                 ? 'border-fg1 bg-fg1 text-bg'
                 : 'border-border text-fg3 hover:bg-bg-deep'
             }`}
@@ -180,9 +223,51 @@ export function CorporateRequestsTable({ requests, programs, locale }: Props) {
             {t(`filter.${s}`)}
           </button>
         ))}
+        <input
+          type="search"
+          defaultValue={initialFilter.search}
+          placeholder={t('search_placeholder')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setQuery({ search: (e.target as HTMLInputElement).value })
+            }
+          }}
+          className="ms-2 h-9 min-w-[220px] rounded-full border border-border bg-bg-elevated px-4 text-[13px] text-fg1 placeholder:text-fg3 focus:border-accent focus:outline-none"
+        />
       </div>
 
-      <DataTable columns={columns} data={filtered} />
+      <DataTable
+        columns={columns}
+        data={requests}
+        searchable={false}
+        pagination={false}
+      />
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <p className="text-[12px] text-fg3 font-display">
+            {t('pagination_page_of', { current: page, total: totalPages })}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setQuery({ page: Math.max(1, page - 1) })}
+              disabled={page <= 1}
+              className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-[12px] font-display font-semibold uppercase tracking-[0.06em] text-fg2 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t('pagination_previous')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuery({ page: Math.min(totalPages, page + 1) })}
+              disabled={page >= totalPages}
+              className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-[12px] font-display font-semibold uppercase tracking-[0.06em] text-fg2 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t('pagination_next')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
         <AlertDialogContent size="sm">

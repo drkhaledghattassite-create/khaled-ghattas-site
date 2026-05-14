@@ -1,5 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
-import { getAdminQuestions } from '@/lib/db/queries'
+import {
+  getAdminQuestions,
+  getDistinctQuestionCategories,
+} from '@/lib/db/queries'
 import { adminQuestionListSchema } from '@/lib/validators/user-question'
 import {
   AdminQuestionsPage,
@@ -13,7 +16,7 @@ export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ status?: string; page?: string }>
+  searchParams: Promise<{ status?: string; category?: string; page?: string }>
 }
 
 export default async function AdminQuestionsRoute({
@@ -37,8 +40,20 @@ export default async function AdminQuestionsRoute({
     ? parsed.data
     : { status: 'all' as const, page: 1, pageSize: 50 }
 
+  const categoryOptions = await getDistinctQuestionCategories(10)
+  // Read category from search params; ignore unknown values to keep the
+  // dropdown self-consistent with the surfaced options. The query helper
+  // accepts an unknown string fine, but the dropdown would show empty if
+  // the active value isn't in the option list.
+  const categoryParam = (sp.category ?? '').trim()
+  const categoryFilter =
+    categoryParam && categoryOptions.includes(categoryParam)
+      ? categoryParam
+      : ('all' as const)
+
   const queue = await getAdminQuestions({
     status: input.status,
+    category: categoryFilter,
     page: input.page,
     pageSize: 50,
   })
@@ -69,6 +84,8 @@ export default async function AdminQuestionsRoute({
         page={queue.page}
         pageSize={queue.pageSize}
         statusFilter={input.status}
+        categoryFilter={categoryFilter}
+        categoryOptions={categoryOptions}
         locale={locale === 'ar' ? 'ar' : 'en'}
       />
     </div>

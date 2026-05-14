@@ -58,7 +58,7 @@ What's stubbed:
 
 ### Data
 - Drizzle ORM (`drizzle-orm@^0.45`) + Neon Postgres (serverless).
-- Schema: `lib/db/schema.ts` — **35 tables**, **16 enums**.
+- Schema: `lib/db/schema.ts` — **37 tables**, **16 enums**.
   - Tables: `users`, `sessions`, `accounts`, `verifications`, `articles`,
     `books`, `interviews`, `gallery`, `events`, `orders`, `orderItems`,
     `subscribers`, `contactMessages`, `siteSettings`, `contentBlocks`,
@@ -66,7 +66,8 @@ What's stubbed:
     `corporatePrograms`, `corporateClients`, `corporateRequests`, `tours`,
     `tourSuggestions`, `bookings`, `bookingInterest`, `bookingsPendingHolds`,
     `bookingOrders`, `userQuestions`, `tests`, `testQuestions`,
-    `testOptions`, `testAttempts`, `testAttemptAnswers`, `gifts`.
+    `testOptions`, `testAttempts`, `testAttemptAnswers`, `gifts`,
+    `emailQueue`, `stripeWebhookEvents`.
   - Enums: `userRole`, `contentStatus`, `orderStatus`, `messageStatus`,
     `subscriberStatus`, `eventStatus`, `articleCategory`, `productType`,
     `sessionItemType`, `corporateRequestStatus`, `bookingProductType`,
@@ -86,7 +87,18 @@ What's stubbed:
     — the submit action returns `validation` if the seed data violates it.
     `testAttempts` cascade-delete on user/test removal; `testAttemptAnswers`
     cascade-delete on attempt/question/option removal.
-- Migrations: `lib/db/migrations/0000…0011`. Apply with `npm run db:migrate`.
+    `orders.stripe_session_id` has a **partial unique index** (NOT NULL only)
+    so duplicate Stripe webhook deliveries can't double-write — gift-claim
+    orders without a Stripe session id are excluded by the `WHERE` clause.
+    `stripe_webhook_events` is the idempotency log keyed by Stripe event id;
+    `recordStripeEvent` ON CONFLICT short-circuits at the top of the webhook
+    handler.
+- Migrations: `lib/db/migrations/0000…0014`. Apply with `npm run db:migrate`.
+  Drizzle-kit only applies entries listed in `meta/_journal.json` — adding a
+  raw `.sql` file without journal'ing it is silent: `db:migrate` prints
+  "migrations applied successfully!" while skipping the file. When hand-
+  writing a migration, append a matching entry to `_journal.json` (idx +
+  tag matching the filename, monotonic `when` timestamp).
 - **Unified data layer**: `lib/db/queries.ts` is the single import point.
   Drizzle when `DATABASE_URL` is a real Neon URL; falls back to
   `lib/placeholder-data.ts` when the URL is empty or contains `dummy`.
@@ -99,7 +111,8 @@ What's stubbed:
 - Session timing: `expiresIn` 30 days; `updateAge` 24 hours (sliding refresh).
 - `lib/auth/server.ts` — `getServerSession()` (mock-aware in dev only).
 - `lib/auth/client.ts` — `authClient`, `signIn`, `signUp`, `signOut`, `useSession`.
-- `lib/auth/admin-guard.ts` — `requireAdmin(req)` runs origin check + role check.
+- `lib/auth/admin-guard.ts` — `requireAdmin(req)` runs origin check + role
+  check. **Admits both `ADMIN` and `CLIENT`** — see the role policy below.
 - `lib/auth/redirect.ts` — `safeRedirect(raw)`, `withRedirect(href, target)`.
   Rejects `//host`, `/\evil`, embedded schemes (`/javascript:…`).
 - `components/auth/AuthRequiredDialog.tsx` — purchase-gated login prompt.
@@ -112,9 +125,21 @@ What's stubbed:
   `trustedOrigins` locked to `NEXT_PUBLIC_APP_URL` + `BETTER_AUTH_URL` in
   production; dev also includes `localhost:3000`/`:3001`.
 
-Three roles: `USER` (buyer / reader, has `/dashboard`), `ADMIN` (full
-content + settings access at `/admin`), `CLIENT` (Dr. Khaled's read-only
-financial / analytics view, planned).
+Three roles:
+- `USER` — buyer / reader, has `/dashboard`.
+- `ADMIN` — developer (Kamal). Technical maintainer.
+- `CLIENT` — site owner (Dr. Khaled). Business operator.
+
+`ADMIN` and `CLIENT` are **both trusted operators**. Every `/admin/*`
+gate accepts either role — `requireAdmin(req)`, `requireServerRole(...)`,
+and each per-surface admin server action all check
+`role === 'ADMIN' || role === 'CLIENT'`. The two roles exist for
+audit-trail clarity (server logs and admin activity can distinguish "the
+developer did this" from "the owner did this"), **not** for privilege
+separation. The user-menu dropdown still only shows the admin link for
+`ADMIN` — `CLIENT` users currently navigate to `/admin` directly. If
+that becomes a friction point, expand the menu check; do NOT split
+permissions to compensate.
 
 ### i18n
 - `next-intl@^4.9`.
@@ -281,8 +306,9 @@ route groups.
 ### Public (`app/[locale]/(public)/`)
 `/` · `/about` · `/articles` · `/articles/[slug]` · `/books` ·
 `/books/[slug]` · `/interviews` · `/interviews/[slug]` · `/events` ·
-`/corporate` · `/booking` · `/booking/success` · `/contact` ·
-`/checkout/success` · `/tests` · `/tests/[slug]` ·
+`/corporate` · `/booking` (308 → `/booking/tours`) · `/booking/tours` ·
+`/booking/reconsider` · `/booking/sessions` · `/booking/success` ·
+`/contact` · `/checkout/success` · `/tests` · `/tests/[slug]` ·
 `/tests/[slug]/result/[attemptId]` · `/gifts/send` · `/gifts/claim`
 
 Notes:
@@ -292,7 +318,10 @@ Notes:
 - `/events` is listing only — no detail page.
 - `/corporate` has an in-page anchor `#request` wired to per-card
   CTAs via the `kg:corporate:select-program` CustomEvent.
-- `/booking` — see `docs/architecture/booking-domain.md`.
+- `/booking/*` — three SEO-distinct sub-routes (`/tours`, `/reconsider`,
+  `/sessions`), shared chrome (header + sub-nav) in `booking/layout.tsx`,
+  coming-soon gate inherited by all children. See
+  `docs/architecture/booking-domain.md`.
 - `/tests` (Phase C1) — public catalog of free reflection tests. Detail
   page renders three CTA states (logged out / logged in / has attempt).
   Result page is auth-gated and 404s on cross-user attempt access.
@@ -447,6 +476,21 @@ is broken.
 configs use `rl:<limit>:<window>` Redis prefixes so existing default-prefix
 limit-counters aren't reset.
 
+**Authenticated routes use per-user rate limits**, not per-IP. Keys are
+`<route>:<userId>` — `checkout:<id>`, `user-profile:<id>`,
+`user-preferences:<id>`. `/api/user/profile` DELETE has a tighter ceiling
+(3/min) than the default. Per-user keys defeat the "rotate IPs to escape
+the limit" path that per-IP would still leave open for a signed-in attacker.
+
+**IP resolution: never trust `x-forwarded-for[0]`.** The leftmost hop is
+attacker-controlled. Use `getClientIp(req)` from `lib/api/client-ip.ts` in
+route handlers, or the sister `getRequestIp()` in
+`app/[locale]/(public)/gifts/actions.ts` for server actions (the action
+reads from `next/headers`, the route handler takes `Request`). Precedence
+for both: `x-vercel-forwarded-for` (Vercel signed, not echoable) →
+rightmost `x-forwarded-for` (last trusted edge hop) → `x-real-ip` → `anon`.
+Anything else is a bypass bug.
+
 Helpers in `lib/api/errors.ts`: `apiError(code, message, extras?)`,
 `errInvalidJson()`, `errValidation(fieldErrors)`, `errUnauthorized()`,
 `errForbidden()`, `errNotFound()`, `errConflict()`, `errRateLimited()`,
@@ -455,6 +499,21 @@ Helpers in `lib/api/errors.ts`: `apiError(code, message, extras?)`,
 Origin / CSRF helper: `assertSameOrigin(req)` from `lib/api/origin.ts` —
 wired inside `requireAdmin(req)`. If you write a non-admin
 state-changing handler, call it explicitly.
+
+**Stripe webhook idempotency.** `recordStripeEvent({ eventId, eventType })`
+runs at the top of `app/api/stripe/webhook/route.ts` and short-circuits
+on duplicate event delivery (200 with `{ deduplicated: true }`). This
+sits on top of the per-branch SQL guards (PAID-gated UPDATEs, partial
+unique indexes on `orders.stripe_session_id`, `booking_orders.stripe_session_id`,
+`gifts.stripe_session_id`) so different events for the same payment
+(refund → reversal, etc.) can't crash terminal state. The webhook now
+ACKs 200 on commerce-handler failures too, rather than 500ing into a
+Stripe retry storm — failed orders are reconciled out-of-band via admin.
+
+**Cron auth uses `timingSafeEqual`.** Both `app/api/cron/expire-gifts`
+and `app/api/cron/process-email-queue` length-check then `timingSafeEqual`
+the bearer against `process.env.CRON_SECRET`. Plain `===` leaks
+character-position timing.
 
 ## Translations
 
@@ -559,7 +618,11 @@ of a human, say so explicitly rather than implying success.
   for non-status enums (e.g. session-item types).
 - `components/auth/` — login/signup/forgot/reset forms,
   `AuthRequiredDialog`, `AuthAside`.
-- `components/booking/` — public `/booking` page (Phase A1).
+- `components/booking/` — public `/booking/*` surface (Phase A1). Three
+  per-route client wrappers (`ToursPageClient`, `ReconsiderPageClient`,
+  `SessionsPageClient`) own their own modal stacks + auth-prompt redirect
+  targets. The route-aware `BookingSubNav` derives active chip from
+  `usePathname()`.
 - `components/corporate/` — public `/corporate` sections.
 - `components/dashboard/` — dashboard-only components, including the
   Phase-1 `ContentPlaceholder` (legacy empty-state primitive — Phase 2
@@ -599,6 +662,15 @@ of a human, say so explicitly rather than implying success.
   Blob / R2 / Cloudflare Stream — pending Dr. Khaled's storage
   decision) drops in by editing the single import in
   `lib/storage/index.ts`. Nothing else moves.
+  **Production guard**: the module throws at load when
+  `NODE_ENV === 'production' && VERCEL_ENV === 'production'` unless
+  `ALLOW_MOCK_STORAGE_IN_PRODUCTION=true` is set in the Vercel env. The
+  guard exists to fail loudly the day a real adapter swap is forgotten;
+  the env var is currently set on production so the mock keeps serving
+  `/placeholder-content/<key>` URLs until a real adapter lands. Remove
+  the env var the moment the real adapter is wired.
+- `lib/api/client-ip.ts` — spoof-resistant IP helper for route handlers.
+  See the IP-resolution paragraph in the API conventions section.
 - `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
   `youtube-adapter.ts` is today's default; production swaps by adding
   a sibling adapter + sibling player component (see
@@ -703,7 +775,8 @@ Optional / feature-gated:
 | `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
 | `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
-| `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. |
+| `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`). |
+| `ALLOW_MOCK_STORAGE_IN_PRODUCTION` | Set to `'true'` to permit the mock storage adapter on a true production Vercel deploy (`VERCEL_ENV=production`). Without it, `lib/storage/index.ts` throws at module load — preview deploys are unaffected (`VERCEL_ENV='preview'` doesn't trip the guard). Currently set on production until a real storage adapter (Blob/R2/Stream) lands. Remove this env var the moment the real adapter is wired. |
 
 Runtime flags (string-equality `'true'` / `'false'`):
 

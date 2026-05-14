@@ -2,32 +2,23 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Archive, Mail, MailOpen, Reply, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { StatusBadge } from './StatusBadge'
 import type { ContactMessage, MessageStatus } from '@/lib/db/queries'
 import { cn } from '@/lib/utils'
 
 const FILTERS: ('ALL' | MessageStatus)[] = ['ALL', 'UNREAD', 'READ', 'ARCHIVED']
 
+// Read-only inbox. The previous version exposed reply / toggle-read / archive
+// / delete buttons that fired toasts but performed no DB mutation — they led
+// the operator to believe a message had been archived when it hadn't. Until
+// the actions are implemented (would require schema fields like
+// `contact_messages.readAt` and an admin API route that doesn't exist yet),
+// the inbox surfaces messages only. Replies happen in the operator's email
+// client, not on-site.
 export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
   const t = useTranslations('admin.messages')
-  const tForms = useTranslations('admin.forms')
-  const tActions = useTranslations('admin.actions')
   const [filter, setFilter] = useState<'ALL' | MessageStatus>('ALL')
   const [activeId, setActiveId] = useState<string | null>(messages[0]?.id ?? null)
-  const [replyOpen, setReplyOpen] = useState(false)
-  const [replyBody, setReplyBody] = useState('')
 
   const filtered = filter === 'ALL' ? messages : messages.filter((m) => m.status === filter)
   const active = filtered.find((m) => m.id === activeId) ?? filtered[0] ?? null
@@ -102,57 +93,19 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
             <>
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
                 <div>
-                  <h2
-                    className="text-fg1 font-display font-semibold text-[18px] tracking-[-0.02em]"
-                  >
+                  <h2 className="text-fg1 font-display font-semibold text-[18px] tracking-[-0.02em]">
                     {active.subject}
                   </h2>
                   <p className="font-label text-[11px] text-fg3">
                     {active.name} · {active.email}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label={t('reply')}
-                    onClick={() => {
-                      setReplyBody('')
-                      setReplyOpen(true)
-                    }}
-                    className="font-label inline-flex items-center gap-1.5 rounded-full border border-dashed border-fg1 bg-fg1 px-3 py-1.5 text-[11px] text-bg hover:bg-transparent hover:text-fg1"
-                  >
-                    <Reply className="h-3.5 w-3.5" aria-hidden />
-                    {t('reply')}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t('toggle_read')}
-                    onClick={() => toast.success(tActions('success_saved'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
-                  >
-                    {active.status === 'UNREAD' ? (
-                      <MailOpen className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Mail className="h-4 w-4" aria-hidden />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t('archive')}
-                    onClick={() => toast.success(tActions('success_saved'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
-                  >
-                    <Archive className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={tForms('delete')}
-                    onClick={() => toast.success(tActions('success_deleted'))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-accent/80 hover:bg-accent-soft hover:text-accent"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden />
-                  </button>
-                </div>
+                <a
+                  href={`mailto:${active.email}?subject=${encodeURIComponent(`Re: ${active.subject}`)}`}
+                  className="font-label inline-flex items-center gap-1.5 rounded-full border border-dashed border-fg1 bg-fg1 px-3 py-1.5 text-[11px] text-bg hover:bg-transparent hover:text-fg1"
+                >
+                  {t('reply_via_email')}
+                </a>
               </header>
               <div className="flex-1 overflow-y-auto p-5">
                 <p className="whitespace-pre-line text-[14px] leading-[1.7] text-fg1">
@@ -163,46 +116,6 @@ export function MessagesInbox({ messages }: { messages: ContactMessage[] }) {
           )}
         </section>
       </div>
-
-      <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('reply')}</DialogTitle>
-            <DialogDescription>
-              {active && `${t('to')} ${active.email}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input value={active ? `Re: ${active.subject}` : ''} readOnly />
-            <Textarea
-              rows={8}
-              value={replyBody}
-              onChange={(e) => setReplyBody(e.target.value)}
-              placeholder={t('reply_placeholder')}
-            />
-          </div>
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setReplyOpen(false)}
-              className="font-label rounded-full border border-dashed border-border px-4 py-2 text-[12px] text-fg1 hover:bg-bg-deep"
-            >
-              {tForms('cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                // TODO(phase-5): wire to /api/admin/messages reply endpoint.
-                toast.success(t('reply_sent'))
-                setReplyOpen(false)
-              }}
-              className="font-label rounded-full border border-dashed border-fg1 bg-fg1 px-4 py-2 text-[12px] text-bg hover:bg-transparent hover:text-fg1"
-            >
-              {t('send_reply')}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

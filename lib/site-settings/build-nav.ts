@@ -28,7 +28,10 @@ export function buildNavItems(settings: SiteSettings): NavItem[] {
   if (navigation.show_nav_corporate)
     items.push({ key: 'corporate', href: '/corporate' })
   if (navigation.show_nav_booking)
-    items.push({ key: 'booking', href: '/booking' })
+    // Link directly to the first sub-route so the user skips the
+    // /booking → /booking/tours 308 redirect roundtrip. Same destination,
+    // one fewer hop, no analytics-marker query in the address bar.
+    items.push({ key: 'booking', href: '/booking/tours' })
   if (navigation.show_nav_tests)
     items.push({ key: 'tests', href: '/tests' })
   if (navigation.show_nav_send_gift)

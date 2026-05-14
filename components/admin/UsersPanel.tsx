@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Pencil } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
+import { Link } from '@/lib/i18n/navigation'
 import { DataTable, type ColumnDef } from './DataTable'
 import { StatusBadge } from './StatusBadge'
 import {
@@ -20,12 +21,23 @@ import type { User, UserRole } from '@/lib/db/queries'
 
 const ROLES: UserRole[] = ['USER', 'ADMIN', 'CLIENT']
 
-export function UsersPanel({ users }: { users: User[] }) {
+type Props = {
+  users: User[]
+  // Role of the viewer. CLIENT sees the list but cannot edit roles — the
+  // role-edit affordance is hidden and the API enforces ADMIN-only at the
+  // server (requireAdminStrict). USER never reaches this surface; included in
+  // the union only because getServerSession() returns it as the default.
+  viewerRole: UserRole
+}
+
+export function UsersPanel({ users, viewerRole }: Props) {
   const t = useTranslations('admin.users')
   const tForms = useTranslations('admin.forms')
   const tActions = useTranslations('admin.actions')
   const [editing, setEditing] = useState<User | null>(null)
   const [draftRole, setDraftRole] = useState<UserRole>('USER')
+
+  const canEditRoles = viewerRole === 'ADMIN'
 
   function openEdit(u: User) {
     setEditing(u)
@@ -81,14 +93,27 @@ export function UsersPanel({ users }: { users: User[] }) {
       header: tForms('actions'),
       enableSorting: false,
       cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() => openEdit(row.original)}
-          aria-label={t('edit_role')}
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-        </button>
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/admin/users/${row.original.id}`}
+            aria-label={t('view_user')}
+            className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
+          >
+            <Eye className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+          {/* Role-edit pencil is ADMIN-only. CLIENT sees the view link but
+              not the edit button (and the API rejects CLIENT regardless). */}
+          {canEditRoles && (
+            <button
+              type="button"
+              onClick={() => openEdit(row.original)}
+              aria-label={t('edit_role')}
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-fg3 hover:bg-bg-deep hover:text-fg1"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          )}
+        </div>
       ),
     },
   ]
@@ -97,40 +122,50 @@ export function UsersPanel({ users }: { users: User[] }) {
     <>
       <div className="space-y-5">
         <p className="text-[13px] text-fg3">{t('description')}</p>
+        {!canEditRoles && (
+          <p
+            className="rounded-md border border-dashed border-border bg-bg-deep px-3 py-2 text-[12px] text-fg3"
+            role="status"
+          >
+            {t('readonly_notice')}
+          </p>
+        )}
         <DataTable columns={columns} data={users} />
       </div>
 
-      <AlertDialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('edit_role')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {editing?.email} — {t('confirm_role')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <fieldset className="space-y-2">
-            {ROLES.map((r) => (
-              <label
-                key={r}
-                className="flex cursor-pointer items-center gap-2 rounded border border-border px-3 py-2 text-[13px] hover:border-fg1"
-              >
-                <input
-                  type="radio"
-                  name="role"
-                  value={r}
-                  checked={draftRole === r}
-                  onChange={() => setDraftRole(r)}
-                />
-                <span>{r}</span>
-              </label>
-            ))}
-          </fieldset>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tForms('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={save}>{tForms('save')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canEditRoles && (
+        <AlertDialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('edit_role')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {editing?.email} — {t('confirm_role')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <fieldset className="space-y-2">
+              {ROLES.map((r) => (
+                <label
+                  key={r}
+                  className="flex cursor-pointer items-center gap-2 rounded border border-border px-3 py-2 text-[13px] hover:border-fg1"
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={draftRole === r}
+                    onChange={() => setDraftRole(r)}
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </fieldset>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{tForms('cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={save}>{tForms('save')}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   )
 }

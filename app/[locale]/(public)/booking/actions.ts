@@ -270,7 +270,13 @@ export async function createBookingCheckoutAction(
         },
       ],
       success_url: `${origin}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/booking`,
+      // Route cancel back to the sub-route the user came from. Reconsider
+      // and online sessions are the only Stripe-checkout-able booking
+      // types — tours are externally booked. Skips the /booking → /tours
+      // redirect roundtrip on cancel.
+      cancel_url: `${origin}/booking/${
+        booking.productType === 'RECONSIDER_COURSE' ? 'reconsider' : 'sessions'
+      }`,
       metadata: {
         productType: 'BOOKING',
         bookingId: booking.id,
@@ -306,10 +312,15 @@ export async function createBookingCheckoutAction(
       return { ok: false, error: 'db_failed' }
     }
 
-    // Revalidate the booking page so the next visitor sees the updated
-    // active-holds count immediately.
-    revalidatePath('/booking')
-    revalidatePath('/en/booking')
+    // Revalidate the three booking sub-routes so the next visitor sees the
+    // updated active-holds count immediately. `/booking` itself is now a
+    // 308 redirect with no fetched data — revalidating it would be a no-op.
+    revalidatePath('/booking/tours')
+    revalidatePath('/booking/reconsider')
+    revalidatePath('/booking/sessions')
+    revalidatePath('/en/booking/tours')
+    revalidatePath('/en/booking/reconsider')
+    revalidatePath('/en/booking/sessions')
 
     return {
       ok: true,

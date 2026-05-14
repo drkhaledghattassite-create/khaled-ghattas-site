@@ -444,6 +444,10 @@
       "aria_label": "الانتقال إلى قسم"
     },
     "tours": {
+      "meta": {
+        "title": "الجولات الحضورية — احجز مقعدك في مدينتك",
+        "description": "جدول الجولات الحضورية في مدن مختارة. يتولّى الناشر المحلي أو الجهة المضيفة إدارة التسجيل والحجز. اقترح مدينتك إن لم نصل إليها بعد."
+      },
       "label": "٠١ — جولات",
       "title": "جولات في مدن مختارة",
       "lead": "لقاءات حضورية محدودة العدد، يقوم الناشر المحلي أو الجهة المضيفة بإدارة التسجيل والحجز.",
@@ -478,6 +482,10 @@
       "login_required_body": "اقتراحك يُحفظ مع حسابك حتى نتمكّن من التواصل معك حين نخطّط لجولة قريبة."
     },
     "reconsider": {
+      "meta": {
+        "title": "دورة Reconsider — ثمانية أسابيع في التفكير والكتابة",
+        "description": "دورة مكثّفة عبر الإنترنت مع الدكتور خالد غطّاس على مدى ثمانية أسابيع. تكتب، تتأمّل، وتلتقي بمجموعة صغيرة من القرّاء أسبوعياً."
+      },
       "label": "٠٢ — دورة",
       "title": "Reconsider",
       "name": "Reconsider",
@@ -510,6 +518,10 @@
       "week_n": "الأسبوع {n}"
     },
     "sessions": {
+      "meta": {
+        "title": "الجلسات الأونلاين — موضوعات مستقلة مع الدكتور خالد",
+        "description": "ثماني جلسات أونلاين، كلّ جلسة قائمة بذاتها بموضوعها وتاريخها وسعرها. اختر ما يلائمك، وانضم بمقعد محدود."
+      },
       "label": "٠٣ — جلسات أونلاين",
       "title": "ثماني جلسات أونلاين",
       "lead": "كلّ جلسة قائمة بذاتها — موضوعها، تاريخها، سعرها. اختر ما يهمّك، وانضم.",
@@ -677,7 +689,6 @@
       "gallery": "الصور",
       "events": "الفعاليات",
       "orders": "الطلبات",
-      "products": "المنتجات",
       "subscribers": "المشتركون",
       "messages": "الرسائل",
       "users": "المستخدمون",
@@ -695,11 +706,13 @@
       "gifts": "الهدايا",
       "email_queue": "صفوف البريد",
       "email_queue_attention_aria": "{count, plural, zero {لا رسائل تحتاج إلى مراجعة} one {رسالة واحدة تحتاج إلى مراجعة} two {رسالتان تحتاجان إلى مراجعة} few {# رسائل تحتاج إلى مراجعة} many {# رسالة تحتاج إلى مراجعة} other {# رسالة تحتاج إلى مراجعة}}",
+      "booking_overview": "نظرة عامة",
       "booking_tours": "الجولات",
       "booking_bookings": "الحجوزات",
       "booking_tour_suggestions": "اقتراحات الجولات",
       "booking_interest": "قائمة الاهتمام",
       "booking_orders": "طلبات الحجز",
+      "corporate_overview": "نظرة عامة",
       "new": "جديد",
       "edit": "تعديل"
     },
@@ -790,7 +803,6 @@
       },
       "charts": {
         "revenue": "الإيرادات (30 يومًا)",
-        "views": "مشاهدات المقالات (30 يومًا)",
         "subscribers": "المشتركون (30 يومًا)"
       },
       "recent_orders": "الطلبات الأخيرة",
@@ -806,6 +818,54 @@
         "orders": "لا توجد طلبات حديثة.",
         "messages": "كل شيء على ما يرام — لا رسائل غير مقروءة."
       }
+    },
+    "kpi": {
+      "aria_label": "أعداد قيد الانتظار عبر الموقع",
+      "label_questions": "أسئلة قيد المراجعة",
+      "label_interest": "اهتمام قيد المتابعة",
+      "label_gifts": "هدايا تنتهي خلال 7 أيام",
+      "label_corporate": "طلبات مؤسسية جديدة",
+      "label_email_queue": "رسائل تحتاج إلى مراجعة"
+    },
+    "user_detail": {
+      "back_to_list": "العودة إلى المستخدمين",
+      "joined_label": "انضم في",
+      "last_activity_label": "آخر نشاط",
+      "edit_role": "تعديل الدور",
+      "view_cta": "عرض",
+      "section_orders": "الطلبات",
+      "section_bookings": "الحجوزات",
+      "section_gifts_sent": "هدايا أُرسلت",
+      "section_gifts_received": "هدايا استُلمت",
+      "section_questions": "الأسئلة",
+      "section_tests": "محاولات الاختبار",
+      "section_library": "المكتبة",
+      "empty_orders": "لا توجد طلبات بعد.",
+      "empty_bookings": "لا توجد حجوزات بعد.",
+      "empty_gifts_sent": "لم تُرسل أي هدية بعد.",
+      "empty_gifts_received": "لم يُستلم أي هدية بعد.",
+      "empty_questions": "لا توجد أسئلة بعد.",
+      "empty_tests": "لا توجد محاولات اختبار بعد.",
+      "empty_library": "المكتبة فارغة.",
+      "col_id": "المعرّف",
+      "col_date": "التاريخ",
+      "col_amount": "المبلغ",
+      "col_status": "الحالة",
+      "col_booking": "الحجز",
+      "col_cohort": "الدفعة",
+      "col_item": "العنصر",
+      "col_recipient": "المستلم",
+      "col_subject": "الموضوع",
+      "col_category": "التصنيف",
+      "col_test": "الاختبار",
+      "col_score": "النتيجة",
+      "col_book": "الكتاب",
+      "col_type": "النوع",
+      "col_purchased_at": "تاريخ الشراء",
+      "itemtype_book": "كتاب",
+      "itemtype_session": "جلسة",
+      "itemtype_booking": "حجز",
+      "itemtype_test": "اختبار"
     },
     "articles": {
       "description": "إدارة جميع المقالات المنشورة والمسودات.",
@@ -941,6 +1001,20 @@
     },
     "corporate_requests": {
       "description": "طلبات البرامج المؤسسية الواردة من النموذج العام.",
+      "search_placeholder": "ابحث بالمؤسسة أو الاسم أو البريد",
+      "pagination_page_of": "الصفحة {current} من {total}",
+      "pagination_previous": "السابق",
+      "pagination_next": "التالي",
+      "funnel": {
+        "aria_label": "قمع تحويل الطلبات المؤسسية",
+        "heading": "قمع التحويل",
+        "step_new": "جديد",
+        "step_contacted": "تم التواصل",
+        "step_scheduled": "محدّد موعد",
+        "step_completed": "مكتمل",
+        "rate_from": "{rate} من {from}",
+        "cancelled_note": "بالإضافة إلى {count} ملغى."
+      },
       "filter": {
         "all": "الكل",
         "NEW": "جديد",
@@ -1038,6 +1112,25 @@
       "open_stripe": "فتح في Stripe",
       "back_to_orders": "كل الطلبات",
       "gift_claim_badge": "طلب من هدية — عرض الهدية",
+      "empty": "لا توجد طلبات تطابق هذه المرشحات.",
+      "filter_aria": "تصفية الطلبات حسب الحالة",
+      "filter_all": "الكل",
+      "filter_pending": "قيد الانتظار",
+      "filter_paid": "مدفوع",
+      "filter_fulfilled": "مكتمل",
+      "filter_refunded": "مستردّ",
+      "filter_failed": "فشل",
+      "filter_start": "من",
+      "filter_end": "إلى",
+      "filter_search": "بحث",
+      "preset_last_30": "آخر 30 يومًا",
+      "preset_all_time": "كل الوقت",
+      "search_placeholder": "البريد أو معرّف جلسة Stripe",
+      "pagination_page_of": "الصفحة {current} من {total}",
+      "pagination_previous": "السابق",
+      "pagination_next": "التالي",
+      "csv_export": "تصدير CSV",
+      "csv_exporting": "جارٍ التصدير…",
       "confirm": {
         "back": "رجوع",
         "fulfill_title": "تأكيد تنفيذ هذا الطلب؟",
@@ -1060,7 +1153,9 @@
         "status_all": "الكل",
         "status_pending": "قيد المراجعة",
         "status_answered": "تمّت الإجابة",
-        "status_archived": "الأرشيف"
+        "status_archived": "الأرشيف",
+        "category_label": "التصنيف",
+        "category_all": "كل التصنيفات"
       },
       "table": {
         "col_created": "تاريخ الإرسال",
@@ -1142,9 +1237,16 @@
       "source": "المصدر",
       "status": "الحالة",
       "subscribed_at": "تاريخ الاشتراك",
-      "send_newsletter": "إرسال نشرة",
       "export_csv": "تصدير CSV",
-      "newsletter_coming": "إرسال النشرة سيُربط في المرحلة 6."
+      "filter_aria": "تصفية المشتركين حسب الحالة",
+      "filter_all": "الكل",
+      "filter_active": "نشط",
+      "filter_unsubscribed": "أُلغي الاشتراك",
+      "filter_bounced": "مرتدّ",
+      "search_placeholder": "ابحث بالبريد أو الاسم",
+      "pagination_page_of": "الصفحة {current} من {total}",
+      "pagination_previous": "السابق",
+      "pagination_next": "التالي"
     },
     "users": {
       "description": "إدارة الحسابات والأدوار.",
@@ -1153,7 +1255,9 @@
       "role": "الدور",
       "created_at": "تاريخ الانضمام",
       "edit_role": "تعديل الدور",
-      "confirm_role": "اختر الدور الجديد لهذا المستخدم."
+      "view_user": "عرض المستخدم",
+      "confirm_role": "اختر الدور الجديد لهذا المستخدم.",
+      "readonly_notice": "تعديل الأدوار مقصور على المسؤول التقني. يمكنك تصفح القائمة دون تعديل الأدوار."
     },
     "messages": {
       "filter": {
@@ -1164,13 +1268,7 @@
       },
       "empty": "لا توجد رسائل.",
       "select_message": "اختر رسالة لعرضها.",
-      "reply": "رد",
-      "toggle_read": "تبديل القراءة",
-      "archive": "أرشفة",
-      "to": "إلى",
-      "reply_placeholder": "اكتب ردك…",
-      "reply_sent": "تم وضع الرد في قائمة الانتظار (تجريبي).",
-      "send_reply": "إرسال الرد"
+      "reply_via_email": "الرد عبر البريد"
     },
     "booking_overview": {
       "page_title": "الحجوزات",
@@ -1404,11 +1502,26 @@
     "booking_orders": {
       "page_title": "طلبات الحجز",
       "page_description": "سجلات الدفع عبر Stripe لعمليات الحجز.",
+      "filter_aria": "تصفية طلبات الحجز حسب الحالة",
       "filter_all": "الكل",
       "filter_pending": "قيد الدفع",
       "filter_paid": "مدفوع",
+      "filter_fulfilled": "مكتمل",
       "filter_refunded": "مُستردّ",
       "filter_failed": "فشل",
+      "filter_start": "من",
+      "filter_end": "إلى",
+      "filter_search": "بحث",
+      "preset_last_30": "آخر 30 يومًا",
+      "preset_all_time": "كل الوقت",
+      "search_placeholder": "البريد أو عنوان الحجز",
+      "pagination_page_of": "الصفحة {current} من {total}",
+      "pagination_previous": "السابق",
+      "pagination_next": "التالي",
+      "csv_export": "تصدير CSV",
+      "csv_exporting": "جارٍ التصدير…",
+      "csv_done": "تم تصدير CSV",
+      "csv_error": "تعذّر تصدير CSV",
       "col_id": "الطلب",
       "col_customer": "العميل",
       "col_booking": "الحجز",
@@ -1640,9 +1753,7 @@
         "image": "صور",
         "pdf": "ملفات PDF",
         "video": "فيديو"
-      },
-      "upload": "رفع",
-      "upload_coming": "خط الرفع الفعلي يأتي في المرحلة 6."
+      }
     },
     "tests": {
       "list": {
@@ -1821,10 +1932,6 @@
         }
       }
     },
-    "products": {
-      "coming_soon_title": "المنتجات",
-      "coming_soon_text": "اضبط المنتجات غير الكتب هنا عندما يكون الفهرس جاهزًا."
-    },
     "gifts": {
       "meta": {
         "title": "الهدايا",
@@ -1853,7 +1960,11 @@
         "empty": "لا توجد هدايا تطابق هذه التصفيات.",
         "view_cta": "عرض",
         "revoke_cta": "إلغاء",
-        "resend_cta": "إعادة إرسال"
+        "resend_cta": "إعادة إرسال",
+        "csv_export": "تصدير CSV",
+        "csv_exporting": "جارٍ التصدير…",
+        "csv_done": "تم تصدير CSV",
+        "csv_error": "تعذّر تصدير CSV"
       },
       "create": {
         "heading": "منح هدية مجّانية",

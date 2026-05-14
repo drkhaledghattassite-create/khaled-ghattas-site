@@ -444,6 +444,10 @@
       "aria_label": "Jump to section"
     },
     "tours": {
+      "meta": {
+        "title": "In-Person Tours — Reserve a Seat in Your City",
+        "description": "Schedule of in-person tour dates across selected cities. Booking is handled by each local host. Suggest your city if we haven't reached it yet."
+      },
       "label": "01 — Tours",
       "title": "In-person tours",
       "lead": "Limited-capacity gatherings hosted by local publishers. Booking is handled by each host city.",
@@ -478,6 +482,10 @@
       "login_required_body": "Your suggestion is linked to your account so we can reach back to you when we plan a tour nearby."
     },
     "reconsider": {
+      "meta": {
+        "title": "Reconsider Course — An Eight-Week Cohort in Thinking and Writing",
+        "description": "An intensive online cohort with Dr. Khaled Ghattass. Eight weeks of writing, reflection, and weekly meetings with a small group of readers."
+      },
       "label": "02 — Course",
       "title": "Reconsider",
       "name": "Reconsider",
@@ -510,6 +518,10 @@
       "week_n": "Week {n}"
     },
     "sessions": {
+      "meta": {
+        "title": "Online Sessions — Standalone Topics with Dr. Khaled",
+        "description": "Eight standalone online sessions. Each session has its own theme, date, and price. Pick what speaks to you and join with limited seating."
+      },
       "label": "03 — Online sessions",
       "title": "Eight online sessions",
       "lead": "Each session stands on its own — its theme, its date, its price. Pick what speaks to you.",
@@ -677,7 +689,6 @@
       "gallery": "Gallery",
       "events": "Events",
       "orders": "Orders",
-      "products": "Products",
       "subscribers": "Subscribers",
       "messages": "Messages",
       "users": "Users",
@@ -695,11 +706,13 @@
       "gifts": "Gifts",
       "email_queue": "Email queue",
       "email_queue_attention_aria": "{count, plural, one {# email needs attention} other {# emails need attention}}",
+      "booking_overview": "Overview",
       "booking_tours": "Tours",
       "booking_bookings": "Bookings",
       "booking_tour_suggestions": "Tour suggestions",
       "booking_interest": "Interest waitlist",
       "booking_orders": "Booking orders",
+      "corporate_overview": "Overview",
       "new": "New",
       "edit": "Edit"
     },
@@ -790,7 +803,6 @@
       },
       "charts": {
         "revenue": "Revenue (30d)",
-        "views": "Article views (30d)",
         "subscribers": "Subscribers (30d)"
       },
       "recent_orders": "Recent orders",
@@ -806,6 +818,54 @@
         "orders": "No recent orders.",
         "messages": "All caught up — no unread messages."
       }
+    },
+    "kpi": {
+      "aria_label": "Pending counts across the site",
+      "label_questions": "Pending questions",
+      "label_interest": "Pending interest",
+      "label_gifts": "Gifts expiring within 7 days",
+      "label_corporate": "New corporate requests",
+      "label_email_queue": "Emails needing attention"
+    },
+    "user_detail": {
+      "back_to_list": "Back to users",
+      "joined_label": "Joined",
+      "last_activity_label": "Last activity",
+      "edit_role": "Edit role",
+      "view_cta": "View",
+      "section_orders": "Orders",
+      "section_bookings": "Bookings",
+      "section_gifts_sent": "Gifts sent",
+      "section_gifts_received": "Gifts received",
+      "section_questions": "Questions",
+      "section_tests": "Test attempts",
+      "section_library": "Library",
+      "empty_orders": "No orders yet.",
+      "empty_bookings": "No bookings yet.",
+      "empty_gifts_sent": "No gifts sent yet.",
+      "empty_gifts_received": "No gifts received yet.",
+      "empty_questions": "No questions yet.",
+      "empty_tests": "No test attempts yet.",
+      "empty_library": "Library is empty.",
+      "col_id": "ID",
+      "col_date": "Date",
+      "col_amount": "Amount",
+      "col_status": "Status",
+      "col_booking": "Booking",
+      "col_cohort": "Cohort",
+      "col_item": "Item",
+      "col_recipient": "Recipient",
+      "col_subject": "Subject",
+      "col_category": "Category",
+      "col_test": "Test",
+      "col_score": "Score",
+      "col_book": "Book",
+      "col_type": "Type",
+      "col_purchased_at": "Purchased",
+      "itemtype_book": "Book",
+      "itemtype_session": "Session",
+      "itemtype_booking": "Booking",
+      "itemtype_test": "Test"
     },
     "articles": {
       "description": "Manage all published and draft articles.",
@@ -941,6 +1001,20 @@
     },
     "corporate_requests": {
       "description": "Corporate program inquiries from the public form.",
+      "search_placeholder": "Search by organization, name, or email",
+      "pagination_page_of": "Page {current} of {total}",
+      "pagination_previous": "Previous",
+      "pagination_next": "Next",
+      "funnel": {
+        "aria_label": "Corporate request funnel",
+        "heading": "Conversion funnel",
+        "step_new": "New",
+        "step_contacted": "Contacted",
+        "step_scheduled": "Scheduled",
+        "step_completed": "Completed",
+        "rate_from": "{rate} of {from}",
+        "cancelled_note": "Plus {count} cancelled."
+      },
       "filter": {
         "all": "All",
         "NEW": "New",
@@ -1038,6 +1112,25 @@
       "open_stripe": "Open in Stripe",
       "back_to_orders": "All orders",
       "gift_claim_badge": "Gift-claimed order — view gift",
+      "empty": "No orders match these filters.",
+      "filter_aria": "Filter orders by status",
+      "filter_all": "All",
+      "filter_pending": "Pending",
+      "filter_paid": "Paid",
+      "filter_fulfilled": "Fulfilled",
+      "filter_refunded": "Refunded",
+      "filter_failed": "Failed",
+      "filter_start": "From",
+      "filter_end": "To",
+      "filter_search": "Search",
+      "preset_last_30": "Last 30 days",
+      "preset_all_time": "All time",
+      "search_placeholder": "Email or Stripe session ID",
+      "pagination_page_of": "Page {current} of {total}",
+      "pagination_previous": "Previous",
+      "pagination_next": "Next",
+      "csv_export": "Export CSV",
+      "csv_exporting": "Preparing export…",
       "confirm": {
         "back": "Back",
         "fulfill_title": "Mark this order as fulfilled?",
@@ -1060,7 +1153,9 @@
         "status_all": "All",
         "status_pending": "Pending",
         "status_answered": "Answered",
-        "status_archived": "Archived"
+        "status_archived": "Archived",
+        "category_label": "Category",
+        "category_all": "All categories"
       },
       "table": {
         "col_created": "Submitted",
@@ -1142,9 +1237,16 @@
       "source": "Source",
       "status": "Status",
       "subscribed_at": "Subscribed",
-      "send_newsletter": "Send newsletter",
       "export_csv": "Export CSV",
-      "newsletter_coming": "Newsletter sender wires in Phase 6."
+      "filter_aria": "Filter subscribers by status",
+      "filter_all": "All",
+      "filter_active": "Active",
+      "filter_unsubscribed": "Unsubscribed",
+      "filter_bounced": "Bounced",
+      "search_placeholder": "Search by email or name",
+      "pagination_page_of": "Page {current} of {total}",
+      "pagination_previous": "Previous",
+      "pagination_next": "Next"
     },
     "users": {
       "description": "Manage user accounts and roles.",
@@ -1153,7 +1255,9 @@
       "role": "Role",
       "created_at": "Joined",
       "edit_role": "Edit role",
-      "confirm_role": "Choose the new role for this user."
+      "view_user": "View user",
+      "confirm_role": "Choose the new role for this user.",
+      "readonly_notice": "Role management is restricted to the developer admin. You can browse the list but cannot change roles."
     },
     "messages": {
       "filter": {
@@ -1164,13 +1268,7 @@
       },
       "empty": "No messages.",
       "select_message": "Select a message to view it.",
-      "reply": "Reply",
-      "toggle_read": "Toggle read",
-      "archive": "Archive",
-      "to": "To",
-      "reply_placeholder": "Write your reply…",
-      "reply_sent": "Reply queued (mock).",
-      "send_reply": "Send reply"
+      "reply_via_email": "Reply via email"
     },
     "booking_overview": {
       "page_title": "Booking",
@@ -1404,11 +1502,26 @@
     "booking_orders": {
       "page_title": "Booking orders",
       "page_description": "Stripe-backed payment records for booking purchases.",
+      "filter_aria": "Filter booking orders by status",
       "filter_all": "All",
       "filter_pending": "Pending",
       "filter_paid": "Paid",
+      "filter_fulfilled": "Fulfilled",
       "filter_refunded": "Refunded",
       "filter_failed": "Failed",
+      "filter_start": "From",
+      "filter_end": "To",
+      "filter_search": "Search",
+      "preset_last_30": "Last 30 days",
+      "preset_all_time": "All time",
+      "search_placeholder": "Email or booking title",
+      "pagination_page_of": "Page {current} of {total}",
+      "pagination_previous": "Previous",
+      "pagination_next": "Next",
+      "csv_export": "Export CSV",
+      "csv_exporting": "Preparing export…",
+      "csv_done": "CSV exported",
+      "csv_error": "Could not export CSV",
       "col_id": "Order",
       "col_customer": "Customer",
       "col_booking": "Booking",
@@ -1640,9 +1753,7 @@
         "image": "Images",
         "pdf": "PDFs",
         "video": "Videos"
-      },
-      "upload": "Upload",
-      "upload_coming": "Real upload pipeline lands in Phase 6."
+      }
     },
     "tests": {
       "list": {
@@ -1821,10 +1932,6 @@
         }
       }
     },
-    "products": {
-      "coming_soon_title": "Products",
-      "coming_soon_text": "Configure non-book products here once the catalog is ready."
-    },
     "gifts": {
       "meta": {
         "title": "Gifts",
@@ -1853,7 +1960,11 @@
         "empty": "No gifts match these filters.",
         "view_cta": "View",
         "revoke_cta": "Revoke",
-        "resend_cta": "Resend"
+        "resend_cta": "Resend",
+        "csv_export": "Export CSV",
+        "csv_exporting": "Preparing export…",
+        "csv_done": "CSV exported",
+        "csv_error": "Could not export CSV"
       },
       "create": {
         "heading": "Grant a free gift",

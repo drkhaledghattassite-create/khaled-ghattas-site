@@ -24,7 +24,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { key: 'interviews', href: '/interviews' },
   { key: 'events', href: '/events' },
   { key: 'corporate', href: '/corporate' },
-  { key: 'booking', href: '/booking' },
+  { key: 'booking', href: '/booking/tours' },
   { key: 'tests', href: '/tests' },
   { key: 'contact', href: '/contact' },
 ]

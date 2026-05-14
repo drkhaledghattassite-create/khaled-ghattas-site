@@ -18,6 +18,11 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 //                                              'unsafe-inline' is needed for
 //                                              Next.js's `__next_f` inline
 //                                              chunks until we adopt nonces.
+//                                              In DEV ONLY we also allow
+//                                              'unsafe-eval' because Next.js
+//                                              React Refresh applies hot updates
+//                                              via eval. Production keeps it
+//                                              locked.
 //   style-src                                — Tailwind compiles to a single
 //                                              stylesheet (self), but next/font
 //                                              + motion/react use inline styles.
@@ -29,6 +34,10 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 //                                              embeds (interview videos).
 //   connect-src                              — Better Auth, Stripe API, Resend
 //                                              audit pings, Vercel analytics.
+//                                              In DEV ONLY we add ws://localhost
+//                                              and http://localhost so HMR
+//                                              websockets + dev-server fetches
+//                                              aren't blocked.
 //   frame-ancestors 'none'                   — paired with the X-Frame-Options
 //                                              DENY above; CSP supersedes XFO.
 //   form-action 'self' https://checkout.stripe.com — Stripe Checkout posts
@@ -36,18 +45,30 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 //                                              redirects; explicit allow.
 //   base-uri 'self'                          — prevents <base> tag tampering.
 //   upgrade-insecure-requests                — http:// hardlinks auto-upgrade.
+//                                              Omitted in DEV so localhost http://
+//                                              isn't rewritten to https://.
+const isDev = process.env.NODE_ENV !== 'production'
+
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://va.vercel-scripts.com"
+  : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com"
+
+const connectSrc = isDev
+  ? "connect-src 'self' ws://localhost:* http://localhost:* https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com"
+  : "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com"
+
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io",
   "font-src 'self' data: https://fonts.gstatic.com",
   "frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
-  "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com",
+  connectSrc,
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com",
   "base-uri 'self'",
-  'upgrade-insecure-requests',
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
 ].join('; ')
 
 const securityHeaders = [

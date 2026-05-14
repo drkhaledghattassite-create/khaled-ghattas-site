@@ -1,19 +1,26 @@
 import { BookOpen, FileText, Plus, ShoppingCart, Wallet } from 'lucide-react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
+import { AdminHomeKpiCards } from '@/components/admin/AdminHomeKpiCards'
 import { StatCard } from '@/components/admin/StatCard'
 import { StatusBadge } from '@/components/admin/StatusBadge'
 import {
   RevenueChart,
   SubscribersChart,
-  ViewsChart,
 } from '@/components/admin/AdminCharts'
 import {
+  countQueueByStatus,
   getArticles,
   getBooks,
-  getOrderStats,
-  getRecentOrders,
   getContactMessages,
+  getNewCorporateRequestCount,
+  getNewSubscribersByDay,
+  getOrderStats,
+  getPendingBookingInterestCount,
+  getPendingGiftCountExpiringWithin,
+  getPendingQuestionCount,
+  getRecentOrders,
+  getRevenueByDay,
 } from '@/lib/db/queries'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
@@ -29,13 +36,47 @@ export default async function AdminHomePage({ params }: Props) {
   setRequestLocale(locale)
   const t = await getTranslations('admin.dashboard')
 
-  const [articles, books, stats, orders, messages] = await Promise.all([
+  // Two real time-series fetched in parallel with the rest of the dashboard
+  // data. Views chart was removed — articles.viewCount is a running total
+  // with no per-day record, so a daily-buckets chart there would be fake.
+  // KPI counts are read here (instead of the sidebar's already-aggregated
+  // ones from the layout) so they stay in lockstep with the cards even
+  // after a router.refresh — and so adding new metrics doesn't require
+  // threading more props through the layout.
+  const [
+    articles,
+    books,
+    stats,
+    orders,
+    messages,
+    revenueSeries,
+    subscriberSeries,
+    pendingQuestions,
+    pendingInterest,
+    expiringGifts,
+    newCorporateRequests,
+    queueCounts,
+  ] = await Promise.all([
     getArticles(),
     getBooks(),
     getOrderStats(),
     getRecentOrders(10),
     getContactMessages('UNREAD', 5),
+    getRevenueByDay(30),
+    getNewSubscribersByDay(30),
+    getPendingQuestionCount().catch(() => 0),
+    getPendingBookingInterestCount().catch(() => 0),
+    getPendingGiftCountExpiringWithin(7).catch(() => 0),
+    getNewCorporateRequestCount().catch(() => 0),
+    countQueueByStatus().catch(() => ({
+      PENDING: 0,
+      SENDING: 0,
+      SENT: 0,
+      FAILED: 0,
+      EXHAUSTED: 0,
+    })),
   ])
+  const emailQueueAttention = queueCounts.EXHAUSTED + queueCounts.FAILED
 
   return (
     <div className="space-y-6">
@@ -52,15 +93,20 @@ export default async function AdminHomePage({ params }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <AdminHomeKpiCards
+        pendingQuestions={pendingQuestions}
+        pendingInterest={pendingInterest}
+        expiringGifts={expiringGifts}
+        newCorporateRequests={newCorporateRequests}
+        emailQueueAttention={emailQueueAttention}
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartPanel heading={t('charts.revenue')}>
-          <RevenueChart />
-        </ChartPanel>
-        <ChartPanel heading={t('charts.views')}>
-          <ViewsChart />
+          <RevenueChart data={revenueSeries} />
         </ChartPanel>
         <ChartPanel heading={t('charts.subscribers')}>
-          <SubscribersChart />
+          <SubscribersChart data={subscriberSeries} />
         </ChartPanel>
       </div>
 

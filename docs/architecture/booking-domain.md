@@ -1,20 +1,50 @@
 # Booking domain (Phase A)
 
-"Services for individuals" / «خدمات للأفراد» — three sections sharing
-one route at `/booking`:
+"Services for individuals" / «خدمات للأفراد» — three sections, each on
+its own SEO-distinct route under `/booking/*`:
 
-| Section | Behaviour |
-|---|---|
-| **Tours** | Externally-booked in-person events; "suggest a city" form when no tour matches |
-| **Reconsider** | Flagship paid 8-week course with internal Stripe checkout when OPEN, waitlist signup when CLOSED/SOLD_OUT |
-| **8 Online Sessions** | Standalone paid recordings with the same OPEN/CLOSED/SOLD_OUT pattern |
+| Route | Section | Behaviour |
+|---|---|---|
+| `/booking/tours` | **Tours** | Externally-booked in-person events; "suggest a city" form when no tour matches |
+| `/booking/reconsider` | **Reconsider** | Flagship paid 8-week course with internal Stripe checkout when OPEN, waitlist signup when CLOSED/SOLD_OUT |
+| `/booking/sessions` | **8 Online Sessions** | Standalone paid recordings with the same OPEN/CLOSED/SOLD_OUT pattern |
+
+`/booking` itself 308-redirects to `/booking/tours` (the default
+landing). The sitemap lists the three sub-routes; the redirect target
+is excluded so crawlers don't chase it.
+
+Shared chrome lives in `app/[locale]/(public)/booking/(chrome)/layout.tsx`
+— fetches the lightweight metrics (counts + reconsider state) and
+renders the `BookingPageHeader` status strip + `BookingSubNav` chips.
+The coming-soon gate (`coming_soon_pages.includes('booking')`) is in
+the layout so every chrome-segment sub-route inherits it; the sitemap
+maps all three paths to the same `'booking'` key.
+
+The `(chrome)` parens denote a route group — invisible in URLs but a
+layout boundary. `/booking/success` lives OUTSIDE the group so the
+post-checkout confirmation page doesn't re-render the marketing
+hero + sub-nav above the order confirmation. `/booking/page.tsx` (the
+308 redirect) is also outside, so the redirect doesn't waste a render
+on the chrome.
+
+Each sub-route has its own client wrapper that owns its modal stack —
+`ToursPageClient` (suggest-city), `ReconsiderPageClient` (reserve +
+interest), `SessionsPageClient` (reserve + interest). The auth-required
+dialog redirect path matches the page route, so a logged-out user
+clicking Reserve on `/booking/sessions` lands back there after sign-in.
 
 Public surface notes:
-- Sub-nav scroll-spy
-- Mobile sticky-bottom Reserve CTA
+- Sub-nav chips are route-based (`<Link>` + `usePathname`), not
+  scroll-spy
+- Mobile sticky-bottom Reserve CTA on the Reconsider route is always
+  visible — no scroll-spy hide/show because the surrounding chrome
+  already pins the user to Reconsider
 - Already-booked guard (Phase A3.1) swaps Reserve for "view in dashboard"
-- Page refreshes on window-focus return (throttled 30s) so a user
+- Pages refresh on window-focus return (throttled 30s) so a user
   coming back from Stripe sees fresh hold/capacity numbers
+- `/booking/reconsider` 404s when no active reconsider cohort exists —
+  the sub-nav chip still surfaces (without the open-dot) so users
+  return when a cohort is added
 
 `/booking/success` — Stripe success landing. Resolves
 `?session_id=cs_xxx` to a `booking_orders` row; renders confirmation

@@ -19,7 +19,12 @@ const STATIC_PATHS = [
   '/events',
   '/corporate',
   '/contact',
-  '/booking',
+  // Booking surface is split into three SEO-distinct sub-routes. The
+  // /booking root 308-redirects to /booking/tours and is omitted here —
+  // keeping it would have crawlers chase the redirect needlessly.
+  '/booking/tours',
+  '/booking/reconsider',
+  '/booking/sessions',
   '/gifts/send',
 ] as const
 
@@ -55,7 +60,11 @@ const PATH_TO_COMING_SOON_KEY: Record<string, ComingSoonPage> = {
   '/events': 'events',
   '/contact': 'contact',
   '/corporate': 'corporate',
-  '/booking': 'booking',
+  // All three booking sub-routes are gated by the same 'booking' coming-
+  // soon key — the layout short-circuits to <ComingSoon> for every child.
+  '/booking/tours': 'booking',
+  '/booking/reconsider': 'booking',
+  '/booking/sessions': 'booking',
   // '/gifts/send' has no coming-soon key in v1; it stays in the sitemap
   // even when gifts.allow_user_to_user=false (the page itself renders the
   // disabled-state copy). No SEO downside to keeping the URL discoverable.

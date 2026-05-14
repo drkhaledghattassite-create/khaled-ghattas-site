@@ -111,8 +111,16 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  wrap = false,
   ...props
-}: SelectPrimitive.Item.Props) {
+}: SelectPrimitive.Item.Props & {
+  /**
+   * Allow the item label to wrap onto multiple lines instead of clipping
+   * with whitespace-nowrap. Useful when the item is a long Arabic title
+   * inside a trigger-width popup (e.g. /corporate program select).
+   */
+  wrap?: boolean
+}) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -122,7 +130,12 @@ function SelectItem({
       )}
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      <SelectPrimitive.ItemText
+        className={cn(
+          'flex flex-1 shrink-0 gap-2',
+          wrap ? 'whitespace-normal' : 'whitespace-nowrap',
+        )}
+      >
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

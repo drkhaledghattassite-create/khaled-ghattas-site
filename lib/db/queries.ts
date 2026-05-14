@@ -83,10 +83,12 @@ import {
   type NewInterview,
   type Order,
   type OrderItem,
+  type OrderStatus,
   type PdfBookmark,
   type SessionItem,
   type SiteSetting,
   type Subscriber,
+  type SubscriberStatus,
   type Test,
   type TestAttempt,
   type TestAttemptAnswer,
@@ -638,6 +640,129 @@ export async function getOrderStats(): Promise<OrderStats> {
     )
   }
   return { totalRevenue: 0, orderCount: 0, paidCount: 0, pendingCount: 0 }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Time-series helpers — admin home charts.
+ *
+ * Returns one row per day in a rolling window ending today (UTC). Days with
+ * zero activity emit an explicit zero row so the chart renders a flat segment
+ * rather than a gap. Stay UTC throughout — local-time bucketing would shift
+ * the boundary between two requests served from different regions.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type DailyRevenuePoint = {
+  date: string // ISO date (YYYY-MM-DD)
+  revenue: number
+  orderCount: number
+}
+
+export type DailyCountPoint = {
+  date: string // ISO date (YYYY-MM-DD)
+  count: number
+}
+
+function startOfUtcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function buildDailyWindow(days: number): { start: Date; isoKeys: string[] } {
+  const safe = Math.max(1, Math.min(days, 365))
+  const today = startOfUtcDay(new Date())
+  const start = new Date(today)
+  start.setUTCDate(start.getUTCDate() - (safe - 1))
+  const isoKeys: string[] = []
+  for (let i = 0; i < safe; i++) {
+    const d = new Date(start)
+    d.setUTCDate(d.getUTCDate() + i)
+    isoKeys.push(isoDate(d))
+  }
+  return { start, isoKeys }
+}
+
+export async function getRevenueByDay(
+  days: number = 30,
+): Promise<DailyRevenuePoint[]> {
+  const { start, isoKeys } = buildDailyWindow(days)
+  const empty = isoKeys.map((date) => ({ date, revenue: 0, orderCount: 0 }))
+  if (!HAS_DB) return empty
+
+  try {
+    // Aggregate in SQL — avoids the full-table SELECT * pattern of
+    // `getOrderStats`. PAID + FULFILLED both count as realised revenue;
+    // REFUNDED orders are excluded (a Stripe refund flips status away from
+    // PAID, so the order drops out of the sum on the next render).
+    const rows = await db
+      .select({
+        day: sql<string>`to_char(${orders.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        revenue: sql<string>`coalesce(sum(${orders.totalAmount})::text, '0')`,
+        orderCount: sql<number>`count(*)::int`,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.status, ['PAID', 'FULFILLED']),
+          sql`${orders.createdAt} >= ${start.toISOString()}`,
+        ),
+      )
+      .groupBy(sql`to_char(${orders.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`)
+
+    const map = new Map<string, { revenue: number; orderCount: number }>()
+    for (const r of rows) {
+      map.set(r.day, {
+        revenue: Number(r.revenue),
+        orderCount: Number(r.orderCount),
+      })
+    }
+    return isoKeys.map((date) => {
+      const hit = map.get(date)
+      return {
+        date,
+        revenue: hit?.revenue ?? 0,
+        orderCount: hit?.orderCount ?? 0,
+      }
+    })
+  } catch (err) {
+    console.error('[getRevenueByDay]', err)
+    return empty
+  }
+}
+
+export async function getNewSubscribersByDay(
+  days: number = 30,
+): Promise<DailyCountPoint[]> {
+  const { start, isoKeys } = buildDailyWindow(days)
+  const empty = isoKeys.map((date) => ({ date, count: 0 }))
+  if (!HAS_DB) return empty
+
+  try {
+    const rows = await db
+      .select({
+        day: sql<string>`to_char(${subscribers.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(subscribers)
+      .where(
+        and(
+          eq(subscribers.status, 'ACTIVE'),
+          sql`${subscribers.createdAt} >= ${start.toISOString()}`,
+        ),
+      )
+      .groupBy(
+        sql`to_char(${subscribers.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+      )
+
+    const map = new Map<string, number>()
+    for (const r of rows) map.set(r.day, Number(r.count))
+    return isoKeys.map((date) => ({ date, count: map.get(date) ?? 0 }))
+  } catch (err) {
+    console.error('[getNewSubscribersByDay]', err)
+    return empty
+  }
 }
 
 export type CreateOrderFromStripeInput = {
@@ -4623,6 +4748,7 @@ export type AdminQuestion = UserQuestion & {
  */
 export async function getAdminQuestions(input: {
   status?: QuestionStatus | 'all'
+  category?: string | 'all'
   page?: number
   pageSize?: number
 }): Promise<{
@@ -4632,6 +4758,7 @@ export async function getAdminQuestions(input: {
   pageSize: number
 }> {
   const status = input.status ?? 'all'
+  const category = (input.category ?? 'all').trim()
   const page = Math.max(1, input.page ?? 1)
   const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 50))
   const offset = (page - 1) * pageSize
@@ -4640,6 +4767,7 @@ export async function getAdminQuestions(input: {
     const store = readStore()
     const all = store.userQuestions
       .filter((q) => status === 'all' || q.status === status)
+      .filter((q) => category === 'all' || (q.category ?? '') === category)
       .slice()
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     const sliced = all.slice(offset, offset + pageSize)
@@ -4660,10 +4788,12 @@ export async function getAdminQuestions(input: {
   }
   if (!HAS_DB) return { rows: [], total: 0, page, pageSize }
   try {
-    const where =
-      status === 'all'
-        ? undefined
-        : eq(userQuestions.status, status)
+    const conditions = []
+    if (status !== 'all') conditions.push(eq(userQuestions.status, status))
+    if (category && category !== 'all') {
+      conditions.push(eq(userQuestions.category, category))
+    }
+    const where = conditions.length ? and(...conditions) : undefined
     const [{ count }] = await db
       .select({ count: sql<number>`COUNT(*)::int` })
       .from(userQuestions)
@@ -8340,6 +8470,610 @@ export async function countQueueByStatus(): Promise<Record<EmailStatus, number>>
  * In mock-auth dev / non-DB mode, ALWAYS returns true (first-delivery
  * semantics) — local Stripe-CLI testing should always process events.
  * ──────────────────────────────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase E1b — admin list helpers (paginated, filtered, server-side).
+ *
+ * Mirrors the getAdminGifts / getAdminEmailQueue contract: every helper
+ * returns `{ rows, total, page, pageSize }` and accepts a filter input with
+ * `status`, `search`, optional `startDate` / `endDate`, plus paging. Used by
+ * the rebuilt admin list pages and by the CSV-export server actions
+ * (which call them with a large pageSize to bypass page-by-page traversal).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const ADMIN_LIST_MAX_PAGE_SIZE = 200
+const ADMIN_CSV_MAX_ROWS = 5000
+
+function clampPageSize(raw: number | undefined, fallback = 50): number {
+  return Math.min(ADMIN_LIST_MAX_PAGE_SIZE, Math.max(10, raw ?? fallback))
+}
+
+function clampCsvPageSize(raw: number | undefined): number {
+  return Math.min(ADMIN_CSV_MAX_ROWS, Math.max(10, raw ?? ADMIN_CSV_MAX_ROWS))
+}
+
+/* ── Admin orders (BOOK + SESSION purchases) ──────────────────────────── */
+
+export type AdminOrderFilter = {
+  status?: OrderStatus | 'all'
+  search?: string
+  startDate?: Date | null
+  endDate?: Date | null
+  page?: number
+  pageSize?: number
+}
+
+export type AdminOrdersPage = {
+  rows: Order[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAdminOrders(
+  filter: AdminOrderFilter,
+): Promise<AdminOrdersPage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = clampPageSize(filter.pageSize)
+
+  if (!HAS_DB) {
+    let rows = placeholderOrders.slice()
+    if (filter.status && filter.status !== 'all') {
+      rows = rows.filter((o) => o.status === filter.status)
+    }
+    if (filter.search?.trim()) {
+      const needle = filter.search.trim().toLowerCase()
+      rows = rows.filter(
+        (o) =>
+          o.customerEmail.toLowerCase().includes(needle) ||
+          (o.stripeSessionId ?? '').toLowerCase().includes(needle),
+      )
+    }
+    if (filter.startDate) {
+      rows = rows.filter((o) => o.createdAt >= filter.startDate!)
+    }
+    if (filter.endDate) {
+      rows = rows.filter((o) => o.createdAt <= filter.endDate!)
+    }
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    const total = rows.length
+    return {
+      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      total,
+      page,
+      pageSize,
+    }
+  }
+
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(orders.status, filter.status))
+    }
+    if (filter.search?.trim()) {
+      const needle = `%${filter.search.trim()}%`
+      conditions.push(
+        or(
+          ilike(orders.customerEmail, needle),
+          ilike(orders.stripeSessionId, needle),
+        )!,
+      )
+    }
+    if (filter.startDate) {
+      conditions.push(sql`${orders.createdAt} >= ${filter.startDate.toISOString()}`)
+    }
+    if (filter.endDate) {
+      conditions.push(sql`${orders.createdAt} <= ${filter.endDate.toISOString()}`)
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(orders)
+      .where(whereClause)
+    const rows = await db
+      .select()
+      .from(orders)
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return { rows, total: Number(count) || 0, page, pageSize }
+  } catch (err) {
+    console.error('[queries.getAdminOrders]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+/** Streaming variant for CSV export — same filters, no pagination, capped at
+ *  5000 rows so a runaway click can't OOM the function. */
+export async function getAdminOrdersForCsv(
+  filter: Omit<AdminOrderFilter, 'page' | 'pageSize'>,
+): Promise<Order[]> {
+  const result = await getAdminOrders({
+    ...filter,
+    page: 1,
+    pageSize: clampCsvPageSize(undefined),
+  })
+  return result.rows
+}
+
+/* ── Admin booking orders ─────────────────────────────────────────────── */
+
+export type AdminBookingOrderFilter = {
+  status?: OrderStatus | 'all'
+  search?: string
+  bookingId?: string
+  startDate?: Date | null
+  endDate?: Date | null
+  page?: number
+  pageSize?: number
+}
+
+export type AdminBookingOrdersPage = {
+  rows: BookingOrderWithMeta[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAdminBookingOrders(
+  filter: AdminBookingOrderFilter,
+): Promise<AdminBookingOrdersPage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = clampPageSize(filter.pageSize)
+
+  if (!HAS_DB) {
+    const base = placeholderBookingOrders.map((o) => {
+      const booking = placeholderBookings.find((b) => b.id === o.bookingId)
+      return {
+        ...o,
+        userName: null,
+        userEmail: '',
+        bookingTitleAr: booking?.titleAr ?? '',
+        bookingTitleEn: booking?.titleEn ?? '',
+        bookingProductType: booking?.productType ?? null,
+      } as BookingOrderWithMeta
+    })
+    let rows = base
+    if (filter.status && filter.status !== 'all') {
+      rows = rows.filter((o) => o.status === filter.status)
+    }
+    if (filter.bookingId && isUuid(filter.bookingId)) {
+      rows = rows.filter((o) => o.bookingId === filter.bookingId)
+    }
+    if (filter.search?.trim()) {
+      const needle = filter.search.trim().toLowerCase()
+      rows = rows.filter(
+        (o) =>
+          o.userEmail.toLowerCase().includes(needle) ||
+          o.bookingTitleEn.toLowerCase().includes(needle) ||
+          o.bookingTitleAr.toLowerCase().includes(needle) ||
+          o.stripeSessionId.toLowerCase().includes(needle),
+      )
+    }
+    if (filter.startDate) {
+      rows = rows.filter((o) => o.createdAt >= filter.startDate!)
+    }
+    if (filter.endDate) {
+      rows = rows.filter((o) => o.createdAt <= filter.endDate!)
+    }
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    return {
+      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      total: rows.length,
+      page,
+      pageSize,
+    }
+  }
+
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(bookingOrders.status, filter.status))
+    }
+    if (filter.bookingId && isUuid(filter.bookingId)) {
+      conditions.push(eq(bookingOrders.bookingId, filter.bookingId))
+    }
+    if (filter.search?.trim()) {
+      const needle = `%${filter.search.trim()}%`
+      conditions.push(
+        or(
+          ilike(users.email, needle),
+          ilike(bookings.titleEn, needle),
+          ilike(bookings.titleAr, needle),
+          ilike(bookingOrders.stripeSessionId, needle),
+        )!,
+      )
+    }
+    if (filter.startDate) {
+      conditions.push(
+        sql`${bookingOrders.createdAt} >= ${filter.startDate.toISOString()}`,
+      )
+    }
+    if (filter.endDate) {
+      conditions.push(
+        sql`${bookingOrders.createdAt} <= ${filter.endDate.toISOString()}`,
+      )
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(bookingOrders)
+      .leftJoin(users, eq(users.id, bookingOrders.userId))
+      .leftJoin(bookings, eq(bookings.id, bookingOrders.bookingId))
+      .where(whereClause)
+    const rows = await db
+      .select({
+        order: bookingOrders,
+        userName: users.name,
+        userEmail: users.email,
+        bookingTitleAr: bookings.titleAr,
+        bookingTitleEn: bookings.titleEn,
+        bookingProductType: bookings.productType,
+      })
+      .from(bookingOrders)
+      .leftJoin(users, eq(users.id, bookingOrders.userId))
+      .leftJoin(bookings, eq(bookings.id, bookingOrders.bookingId))
+      .where(whereClause)
+      .orderBy(desc(bookingOrders.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+
+    return {
+      rows: rows.map((r) => ({
+        ...r.order,
+        userName: r.userName ?? null,
+        userEmail: r.userEmail ?? '',
+        bookingTitleAr: r.bookingTitleAr ?? '',
+        bookingTitleEn: r.bookingTitleEn ?? '',
+        bookingProductType: r.bookingProductType ?? null,
+      })),
+      total: Number(count) || 0,
+      page,
+      pageSize,
+    }
+  } catch (err) {
+    console.error('[queries.getAdminBookingOrders]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+export async function getAdminBookingOrdersForCsv(
+  filter: Omit<AdminBookingOrderFilter, 'page' | 'pageSize'>,
+): Promise<BookingOrderWithMeta[]> {
+  const result = await getAdminBookingOrders({
+    ...filter,
+    page: 1,
+    pageSize: clampCsvPageSize(undefined),
+  })
+  return result.rows
+}
+
+export async function getAdminGiftsForCsv(
+  filter: Omit<AdminGiftFilter, 'page' | 'pageSize'>,
+): Promise<Gift[]> {
+  const result = await getAdminGifts({
+    ...filter,
+    page: 1,
+    pageSize: clampCsvPageSize(undefined),
+  })
+  return result.rows
+}
+
+/* ── Admin corporate requests ─────────────────────────────────────────── */
+
+export type AdminCorporateRequestsFilter = {
+  status?: CorporateRequestStatus | 'all'
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export type AdminCorporateRequestsPage = {
+  rows: CorporateRequest[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getAdminCorporateRequests(
+  filter: AdminCorporateRequestsFilter,
+): Promise<AdminCorporateRequestsPage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = clampPageSize(filter.pageSize)
+
+  if (!HAS_DB) {
+    let rows = placeholderCorporateRequests.slice()
+    if (filter.status && filter.status !== 'all') {
+      rows = rows.filter((r) => r.status === filter.status)
+    }
+    if (filter.search?.trim()) {
+      const needle = filter.search.trim().toLowerCase()
+      rows = rows.filter(
+        (r) =>
+          r.organization.toLowerCase().includes(needle) ||
+          r.email.toLowerCase().includes(needle) ||
+          r.name.toLowerCase().includes(needle),
+      )
+    }
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    return {
+      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      total: rows.length,
+      page,
+      pageSize,
+    }
+  }
+
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(corporateRequests.status, filter.status))
+    }
+    if (filter.search?.trim()) {
+      const needle = `%${filter.search.trim()}%`
+      conditions.push(
+        or(
+          ilike(corporateRequests.organization, needle),
+          ilike(corporateRequests.email, needle),
+          ilike(corporateRequests.name, needle),
+        )!,
+      )
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(corporateRequests)
+      .where(whereClause)
+    const rows = await db
+      .select()
+      .from(corporateRequests)
+      .where(whereClause)
+      .orderBy(desc(corporateRequests.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return { rows, total: Number(count) || 0, page, pageSize }
+  } catch (err) {
+    console.error('[queries.getAdminCorporateRequests]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+export type CorporateRequestFunnel = {
+  NEW: number
+  CONTACTED: number
+  SCHEDULED: number
+  COMPLETED: number
+  CANCELLED: number
+}
+
+export async function getCorporateRequestFunnel(): Promise<CorporateRequestFunnel> {
+  const empty: CorporateRequestFunnel = {
+    NEW: 0,
+    CONTACTED: 0,
+    SCHEDULED: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+  }
+  if (!HAS_DB) {
+    for (const r of placeholderCorporateRequests) {
+      empty[r.status] = (empty[r.status] ?? 0) + 1
+    }
+    return empty
+  }
+  try {
+    const rows = await db
+      .select({
+        status: corporateRequests.status,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(corporateRequests)
+      .groupBy(corporateRequests.status)
+    for (const r of rows) {
+      empty[r.status] = Number(r.count) || 0
+    }
+    return empty
+  } catch (err) {
+    console.error('[queries.getCorporateRequestFunnel]', err)
+    return empty
+  }
+}
+
+/* ── Distinct question categories (dynamic filter dropdown) ───────────── */
+
+export async function getDistinctQuestionCategories(
+  limit: number = 10,
+): Promise<string[]> {
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const seen = new Map<string, number>()
+    for (const q of store.userQuestions) {
+      const c = (q.category ?? '').trim()
+      if (!c) continue
+      seen.set(c, (seen.get(c) ?? 0) + 1)
+    }
+    return [...seen.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([c]) => c)
+  }
+  if (!HAS_DB) return []
+  try {
+    const rows = await db
+      .select({
+        category: userQuestions.category,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(userQuestions)
+      .where(sql`${userQuestions.category} IS NOT NULL AND ${userQuestions.category} <> ''`)
+      .groupBy(userQuestions.category)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(limit)
+    return rows
+      .map((r) => (r.category ?? '').trim())
+      .filter((c) => c.length > 0)
+  } catch (err) {
+    console.error('[queries.getDistinctQuestionCategories]', err)
+    return []
+  }
+}
+
+/* ── Paginated subscribers (Phase E1b breaking change) ────────────────── */
+
+export type AdminSubscribersFilter = {
+  status?: SubscriberStatus | 'all'
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export type AdminSubscribersPage = {
+  rows: Subscriber[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+/**
+ * Paginated + filtered subscribers list. Replaces the previous
+ * `getSubscribers(limit)` simple helper.
+ *
+ * BREAKING CHANGE (E1b): the old signature `getSubscribers(limit?: number)`
+ * returned `Subscriber[]`. The new signature accepts an input object and
+ * returns `{ rows, total, page, pageSize }`. Callers that previously did
+ * `Array.isArray(await getSubscribers())` need to read `.rows`. See
+ * `scripts/verify/smoke.ts` for the smoke test that exercises this.
+ */
+export async function getAdminSubscribers(
+  filter: AdminSubscribersFilter = {},
+): Promise<AdminSubscribersPage> {
+  const page = Math.max(1, filter.page ?? 1)
+  const pageSize = clampPageSize(filter.pageSize)
+
+  if (!HAS_DB) {
+    let rows = placeholderSubscribers.slice()
+    if (filter.status && filter.status !== 'all') {
+      rows = rows.filter((s) => s.status === filter.status)
+    }
+    if (filter.search?.trim()) {
+      const needle = filter.search.trim().toLowerCase()
+      rows = rows.filter(
+        (s) =>
+          s.email.toLowerCase().includes(needle) ||
+          (s.nameEn ?? '').toLowerCase().includes(needle) ||
+          (s.nameAr ?? '').toLowerCase().includes(needle),
+      )
+    }
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    return {
+      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      total: rows.length,
+      page,
+      pageSize,
+    }
+  }
+
+  try {
+    const conditions = []
+    if (filter.status && filter.status !== 'all') {
+      conditions.push(eq(subscribers.status, filter.status))
+    }
+    if (filter.search?.trim()) {
+      const needle = `%${filter.search.trim()}%`
+      conditions.push(
+        or(
+          ilike(subscribers.email, needle),
+          ilike(subscribers.nameEn, needle),
+          ilike(subscribers.nameAr, needle),
+        )!,
+      )
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscribers)
+      .where(whereClause)
+    const rows = await db
+      .select()
+      .from(subscribers)
+      .where(whereClause)
+      .orderBy(desc(subscribers.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+    return { rows, total: Number(count) || 0, page, pageSize }
+  } catch (err) {
+    console.error('[queries.getAdminSubscribers]', err)
+    return { rows: [], total: 0, page, pageSize }
+  }
+}
+
+/* ── Pending-counts for admin home KPI cards ──────────────────────────── */
+
+export async function getPendingBookingInterestCount(): Promise<number> {
+  if (!HAS_DB) {
+    return placeholderBookingInterest.filter((i) => i.contactedAt === null)
+      .length
+  }
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(bookingInterest)
+      .where(sql`${bookingInterest.contactedAt} IS NULL`)
+    return Number(count) || 0
+  } catch (err) {
+    console.error('[queries.getPendingBookingInterestCount]', err)
+    return 0
+  }
+}
+
+export async function getPendingGiftCountExpiringWithin(
+  days: number = 7,
+): Promise<number> {
+  const cutoff = new Date()
+  cutoff.setUTCDate(cutoff.getUTCDate() + Math.max(1, Math.min(days, 365)))
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    return store.gifts.filter(
+      (g) => g.status === 'PENDING' && g.expiresAt <= cutoff,
+    ).length
+  }
+  if (!HAS_DB) return 0
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(gifts)
+      .where(
+        and(
+          eq(gifts.status, 'PENDING'),
+          lte(gifts.expiresAt, cutoff),
+        ),
+      )
+    return Number(count) || 0
+  } catch (err) {
+    console.error('[queries.getPendingGiftCountExpiringWithin]', err)
+    return 0
+  }
+}
+
+export async function getNewCorporateRequestCount(): Promise<number> {
+  if (!HAS_DB) {
+    return placeholderCorporateRequests.filter((r) => r.status === 'NEW').length
+  }
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(corporateRequests)
+      .where(eq(corporateRequests.status, 'NEW'))
+    return Number(count) || 0
+  } catch (err) {
+    console.error('[queries.getNewCorporateRequestCount]', err)
+    return 0
+  }
+}
 
 export async function recordStripeEvent(input: {
   eventId: string

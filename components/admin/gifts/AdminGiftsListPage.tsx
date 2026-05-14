@@ -1,8 +1,11 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
+import { Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { Link, useRouter } from '@/lib/i18n/navigation'
+import { exportAdminGiftsCsvAction } from '@/app/[locale]/(admin)/admin/gifts/actions'
 import type { GiftItemType, GiftSource, GiftStatus } from '@/lib/db/schema'
 
 export type AdminGiftRow = {
@@ -79,6 +82,36 @@ export function AdminGiftsListPage({
   const isRtl = localeCtx === 'ar'
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const res = await exportAdminGiftsCsvAction({
+        status: initialFilter.status,
+        source: initialFilter.source,
+        itemType: initialFilter.itemType,
+        search: initialFilter.search,
+      })
+      if (!res.ok) {
+        toast.error(t('csv_error'))
+        return
+      }
+      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = res.filename
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success(t('csv_done'))
+    } catch (err) {
+      console.error('[AdminGiftsListPage/export]', err)
+      toast.error(t('csv_error'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function applyFilter(patch: Partial<AdminGiftsFilter>) {
     const merged = { ...initialFilter, ...patch }
@@ -94,6 +127,17 @@ export function AdminGiftsListPage({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          className="font-label inline-flex items-center gap-1.5 rounded-full border border-dashed border-fg1 bg-fg1 px-4 py-2 text-[12px] text-bg hover:bg-transparent hover:text-fg1 disabled:cursor-wait disabled:opacity-60"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {exporting ? t('csv_exporting') : t('csv_export')}
+        </button>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"

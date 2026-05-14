@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { Link, usePathname } from '@/lib/i18n/navigation'
@@ -104,6 +104,56 @@ export function DashboardLayout({
     return () => observer.disconnect()
   }, [])
 
+  // Tab strip scroll affordances: scrollable container plus left/right
+  // gradient fades that auto-hide when the scroll is at the corresponding
+  // end. On mount and on scroll, we recompute "can scroll start / end"
+  // and toggle data attributes that drive opacity transitions on the
+  // gradient overlays. This replaces the unconditional mask-image fade
+  // (which previously suggested infinite content even when no scroll
+  // was possible in that direction).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollStart, setCanScrollStart] = useState(false)
+  const [canScrollEnd, setCanScrollEnd] = useState(false)
+
+  const recomputeOverflow = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    // scrollLeft can be negative in RTL mode in some browsers; use Math.abs
+    // and compare against epsilon for the "can scroll start" side.
+    const left = Math.abs(el.scrollLeft)
+    const max = el.scrollWidth - el.clientWidth
+    setCanScrollStart(left > 1)
+    setCanScrollEnd(left < max - 1)
+  }, [])
+
+  useEffect(() => {
+    recomputeOverflow()
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener('scroll', recomputeOverflow, { passive: true })
+    const ro = new ResizeObserver(recomputeOverflow)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', recomputeOverflow)
+      ro.disconnect()
+    }
+  }, [recomputeOverflow])
+
+  // Auto-scroll the active tab into view on first render and when the
+  // route changes — so the user lands on a strip that shows the current
+  // tab centered (or as close as possible), not on whatever scroll
+  // position the previous page left behind.
+  // Uses a DOM query rather than a forwarded ref — next-intl's <Link>
+  // wraps next/link and ref forwarding has varied across versions; querying
+  // the data attribute is wrapper-version-agnostic.
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+    const tab = container.querySelector<HTMLAnchorElement>('[data-active-tab="true"]')
+    if (!tab) return
+    tab.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' })
+  }, [pathname])
+
   const since = isRtl ? 'عضو منذ يناير ٢٠٢٦' : 'Member since January 2026'
 
   return (
@@ -147,19 +197,24 @@ export function DashboardLayout({
         </header>
       </div>
 
-      {/* Tabs nav — sticky below site header. Bar styling is constant
-          (always bordered + blurred); a drop shadow toggles on the
-          stuck state so the bar reads as a distinct floating surface
-          below the SiteHeader instead of fusing with it.
-          Sticky offset is bumped from 52/60 to 60/68 so the bar leaves
-          a small breathing gap below the SiteHeader's bottom border.
-          Width strategy: the ul uses `w-max mx-auto` so it sizes exactly
-          to its tab content and centers when it fits in the viewport. The
-          parent's `overflow-x-auto` only kicks in when the ul actually
-          overflows (many tabs on a small phone). `overscroll-x-none`
-          prevents iOS Safari's rubber-band drag from exposing empty scroll
-          area beyond the tabs — without it, users can drag the strip into
-          phantom empty space even when no horizontal scroll is needed. */}
+      {/* Tabs nav — sticky below site header. The bar is always bordered
+          and blurred; a drop shadow toggles on the stuck state so the bar
+          reads as a distinct floating surface below the SiteHeader.
+
+          Horizontal-overflow strategy:
+          - The scroll container `overflow-x-auto` + `overscroll-x-none`
+            handles overflow without bleeding into vertical scroll or iOS
+            rubber-band.
+          - Scroll-snap (`snap-x snap-mandatory` + per-tab `snap-center`)
+            keeps tabs aligned on flick, so a user never lands halfway
+            between two chips.
+          - Left/right gradient overlays auto-hide via `data-can-scroll-*`
+            when there's nothing more to scroll in that direction —
+            previously a static mask-image faded both edges unconditionally,
+            which made the strip feel like it scrolled forever even when it
+            didn't.
+          - The active tab auto-scrolls into view on route change, so users
+            don't have to manually drag the strip back. */}
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
       <div
         data-stuck={isStuck}
@@ -169,44 +224,64 @@ export function DashboardLayout({
             : 'shadow-none'
         }`}
       >
-        {/* Edge fades — gradient masks indicate horizontal scroll on mobile
-            once 7 tabs (Phase D) overflow the viewport. The [mask-image]
-            applies a transparent → opaque → transparent sweep so the first
-            and last tabs visually fade into the surface, hinting that more
-            content scrolls past. When the strip fits (desktop, narrow tab
-            sets), the fade falls outside the visible content and is a no-op. */}
-        <div className="mx-auto max-w-[var(--container-max)] [padding:0_clamp(20px,5vw,56px)] overflow-x-auto overscroll-x-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,black_20px,black_calc(100%-20px),transparent)]">
-          <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none w-max mx-auto">
-            {TABS.filter((tab) => dashboardSettings[TAB_VISIBILITY_KEY[tab.key]]).map((tab) => {
-              const isActive =
-                tab.key === activeTab ||
-                tab.href === pathname ||
-                (tab.key === 'account' && pathname === '/dashboard')
-              return (
-                <li key={tab.key} className="relative">
-                  <Link
-                    href={tab.href}
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`relative inline-flex items-center px-4 py-4 text-[14px] font-semibold transition-colors ${
-                      isActive
-                        ? 'text-[var(--color-fg1)]'
-                        : 'text-[var(--color-fg3)] hover:text-[var(--color-fg2)]'
-                    } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
-                  >
-                    {t(tab.key)}
-                    {isActive && (
-                      <motion.span
-                        layoutId="dashboard-tab-rule"
-                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-x-3 -bottom-px h-[2px] bg-[var(--color-accent)]"
-                      />
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+        <div className="relative mx-auto max-w-[var(--container-max)]">
+          {/* Start/end edge fades — visible only while there's content to
+              scroll in that direction. Gradient direction is bound to RTL
+              so the fade always points away from the screen edge: in LTR
+              start-fade goes left→right (to-r), in RTL it goes right→left
+              (to-l). Width matches the strip's horizontal padding so the
+              fade reads as a veil over the chrome, not a hard cutoff. */}
+          <div
+            aria-hidden
+            data-visible={canScrollStart}
+            className={`pointer-events-none absolute inset-y-0 start-0 z-10 w-8 from-[var(--color-bg)] to-transparent opacity-0 transition-opacity duration-200 data-[visible=true]:opacity-100 ${
+              isRtl ? 'bg-gradient-to-l' : 'bg-gradient-to-r'
+            }`}
+          />
+          <div
+            aria-hidden
+            data-visible={canScrollEnd}
+            className={`pointer-events-none absolute inset-y-0 end-0 z-10 w-8 from-[var(--color-bg)] to-transparent opacity-0 transition-opacity duration-200 data-[visible=true]:opacity-100 ${
+              isRtl ? 'bg-gradient-to-r' : 'bg-gradient-to-l'
+            }`}
+          />
+          <div
+            ref={scrollRef}
+            className="overflow-x-auto overscroll-x-none snap-x snap-mandatory [padding:0_clamp(20px,5vw,56px)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <ul role="tablist" className="flex items-center gap-1 m-0 p-0 list-none w-max mx-auto">
+              {TABS.filter((tab) => dashboardSettings[TAB_VISIBILITY_KEY[tab.key]]).map((tab) => {
+                const isActive =
+                  tab.key === activeTab ||
+                  tab.href === pathname ||
+                  (tab.key === 'account' && pathname === '/dashboard')
+                return (
+                  <li key={tab.key} className="relative snap-center">
+                    <Link
+                      href={tab.href}
+                      role="tab"
+                      aria-selected={isActive}
+                      data-active-tab={isActive ? 'true' : undefined}
+                      className={`relative inline-flex items-center px-4 py-4 text-[14px] font-semibold transition-colors whitespace-nowrap ${
+                        isActive
+                          ? 'text-[var(--color-fg1)]'
+                          : 'text-[var(--color-fg3)] hover:text-[var(--color-fg2)]'
+                      } ${isRtl ? 'font-arabic-body' : 'font-display'}`}
+                    >
+                      {t(tab.key)}
+                      {isActive && (
+                        <motion.span
+                          layoutId="dashboard-tab-rule"
+                          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                          className="absolute inset-x-3 -bottom-px h-[2px] bg-[var(--color-accent)]"
+                        />
+                      )}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </div>
       </div>
 

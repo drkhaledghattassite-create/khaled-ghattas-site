@@ -60,6 +60,11 @@ type Props = {
   page: number
   pageSize: number
   statusFilter: FilterValue
+  categoryFilter: string | 'all'
+  // Distinct categories surfaced from the data (top-N by COUNT). Vocabulary
+  // is free-text on user_questions.category, so the filter is dynamic — empty
+  // arrays hide the dropdown entirely.
+  categoryOptions: string[]
   locale: 'ar' | 'en'
 }
 
@@ -69,6 +74,8 @@ export function AdminQuestionsPage({
   page,
   pageSize,
   statusFilter,
+  categoryFilter,
+  categoryOptions,
   locale,
 }: Props) {
   const t = useTranslations('admin.questions')
@@ -81,13 +88,18 @@ export function AdminQuestionsPage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   const setQuery = useCallback(
-    (next: { status?: FilterValue; page?: number }) => {
+    (next: { status?: FilterValue; category?: string | 'all'; page?: number }) => {
       const params = new URLSearchParams(searchParams.toString())
       if (next.status !== undefined) {
         if (next.status === 'all') params.delete('status')
         else params.set('status', next.status)
         // Reset to page 1 on filter change — paging through a filter that
         // changed leaves admin on a possibly-empty page otherwise.
+        params.delete('page')
+      }
+      if (next.category !== undefined) {
+        if (next.category === 'all') params.delete('category')
+        else params.set('category', next.category)
         params.delete('page')
       }
       if (next.page !== undefined) {
@@ -102,6 +114,10 @@ export function AdminQuestionsPage({
 
   const handleFilter = useCallback(
     (status: FilterValue) => setQuery({ status }),
+    [setQuery],
+  )
+  const handleCategory = useCallback(
+    (category: string | 'all') => setQuery({ category }),
     [setQuery],
   )
   const handlePage = useCallback(
@@ -214,37 +230,64 @@ export function AdminQuestionsPage({
 
   return (
     <div className="space-y-5">
-      <div
-        role="group"
-        aria-label={t('filter.aria')}
-        className="flex flex-wrap items-center gap-2"
-      >
-        {filters.map((f) => {
-          const isActive = statusFilter === f
-          const labelKey =
-            f === 'all'
-              ? 'filter.status_all'
-              : f === 'PENDING'
-                ? 'filter.status_pending'
-                : f === 'ANSWERED'
-                  ? 'filter.status_answered'
-                  : 'filter.status_archived'
-          return (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => handleFilter(f)}
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-display font-semibold uppercase tracking-[0.06em] transition-colors ${
-                isActive
-                  ? 'border-fg1 bg-fg1 text-bg'
-                  : 'border-border text-fg3 hover:bg-bg-deep'
-              }`}
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          role="group"
+          aria-label={t('filter.aria')}
+          className="flex flex-wrap items-center gap-2"
+        >
+          {filters.map((f) => {
+            const isActive = statusFilter === f
+            const labelKey =
+              f === 'all'
+                ? 'filter.status_all'
+                : f === 'PENDING'
+                  ? 'filter.status_pending'
+                  : f === 'ANSWERED'
+                    ? 'filter.status_answered'
+                    : 'filter.status_archived'
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => handleFilter(f)}
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-display font-semibold uppercase tracking-[0.06em] transition-colors ${
+                  isActive
+                    ? 'border-fg1 bg-fg1 text-bg'
+                    : 'border-border text-fg3 hover:bg-bg-deep'
+                }`}
+              >
+                {t(labelKey)}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Category dropdown — hidden when no categories have been used yet.
+            Vocabulary is free-text on user_questions.category, so the option
+            set comes from the data itself (top-N by COUNT) rather than an
+            enum. Falls back to "all" silently if the active value drifts
+            off the list. */}
+        {categoryOptions.length > 0 && (
+          <label className="inline-flex items-center gap-2">
+            <span className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-fg3 font-display">
+              {t('filter.category_label')}
+            </span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => handleCategory(e.target.value)}
+              className="rounded-md border border-border bg-bg-elevated px-2 py-1.5 text-[13px] text-fg1"
             >
-              {t(labelKey)}
-            </button>
-          )
-        })}
+              <option value="all">{t('filter.category_all')}</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <QuestionsTable

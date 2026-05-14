@@ -113,7 +113,7 @@ export function SiteFooter({
           ? [{ label: tNav('corporate'), href: '/corporate' }]
           : []),
         ...(showBooking
-          ? [{ label: tNav('booking'), href: '/booking' }]
+          ? [{ label: tNav('booking'), href: '/booking/tours' }]
           : []),
         ...(showTests ? [{ label: tNav('tests'), href: '/tests' }] : []),
         ...(showSendGift

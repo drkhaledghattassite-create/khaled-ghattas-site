@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocale, useTranslations } from 'next-intl'
@@ -64,6 +64,21 @@ export function CorporateRequestForm({ programs }: Props) {
     resolver: zodResolver(corporateRequestSchema),
     defaultValues: DEFAULTS,
   })
+
+  // Base UI's <Select.Value> reads from `items` on the Root to resolve a
+  // value -> label. Without this, the trigger would show the raw UUID (or
+  // the literal "__any__" sentinel) once the side-channel event prefills
+  // a programId. Locale-dependent so order matches the rendered items.
+  const selectItems = useMemo(
+    () => [
+      { value: ANY_PROGRAM, label: t('program_any') },
+      ...programs.map((p) => ({
+        value: p.id,
+        label: isRtl ? p.titleAr : p.titleEn,
+      })),
+    ],
+    [programs, isRtl, t],
+  )
 
   // Listen for the side-channel event from CorporateProgramsGrid so a card
   // CTA prefills the program select. Lower coupling than threading a ref.
@@ -253,22 +268,27 @@ export function CorporateRequestForm({ programs }: Props) {
               <FormItem>
                 <FormLabel>{t('program')}</FormLabel>
                 <Select
+                  items={selectItems}
                   value={field.value && field.value.length > 0 ? field.value : ANY_PROGRAM}
                   onValueChange={(v) =>
                     field.onChange(v === ANY_PROGRAM ? '' : v)
                   }
                 >
                   <FormControl>
-                    <SelectTrigger className="h-12 bg-bg-elevated">
-                      <SelectValue />
+                    <SelectTrigger className="h-12 w-full bg-bg-elevated text-start">
+                      <SelectValue className="truncate" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value={ANY_PROGRAM}>
+                  {/* Trigger is full-width so the popup (which inherits
+                      --anchor-width) is wide enough for program names. Items
+                      pass wrap so a long Arabic title breaks onto a second
+                      line instead of being clipped horizontally. */}
+                  <SelectContent className="max-w-[calc(100vw-32px)] [&_[data-slot=select-item]]:py-2">
+                    <SelectItem wrap value={ANY_PROGRAM}>
                       {t('program_any')}
                     </SelectItem>
                     {programs.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
+                      <SelectItem wrap key={p.id} value={p.id}>
                         {isRtl ? p.titleAr : p.titleEn}
                       </SelectItem>
                     ))}

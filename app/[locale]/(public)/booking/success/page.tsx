@@ -144,7 +144,7 @@ export default async function BookingSuccessPage({
                   {t('go_to_dashboard')}
                 </Link>
                 <Link
-                  href="/booking"
+                  href="/booking/tours"
                   className={`btn-pill btn-pill-secondary ${
                     isRtl ? 'font-arabic-body' : 'font-display'
                   }`}
@@ -154,7 +154,7 @@ export default async function BookingSuccessPage({
               </>
             ) : (
               <Link
-                href="/booking"
+                href="/booking/tours"
                 className={`btn-pill btn-pill-secondary ${
                   isRtl ? 'font-arabic-body' : 'font-display'
                 }`}

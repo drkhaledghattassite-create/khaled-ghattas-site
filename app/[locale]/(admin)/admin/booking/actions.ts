@@ -30,6 +30,7 @@ import {
   createTour,
   deleteBookingAdmin,
   deleteTour,
+  getAdminBookingOrdersForCsv,
   getBookingOrderById,
   markInterestContacted,
   markSuggestionReviewed,
@@ -41,6 +42,7 @@ import {
   type CreateBookingAdminInput,
   type CreateTourAdminInput,
 } from '@/lib/db/queries'
+import type { OrderStatus } from '@/lib/db/schema'
 import {
   bookingAdminSchema,
   bookingCapacityAdminSchema,
@@ -81,9 +83,14 @@ function revalidateBookingAdmin() {
   revalidatePath('/admin/booking/interest')
   revalidatePath('/admin/booking/orders')
   // Public booking surface — capacity / state changes affect what the
-  // public page renders.
-  revalidatePath('/booking')
-  revalidatePath('/en/booking')
+  // three sub-routes render. `/booking` itself is now a 308 redirect with
+  // no fetched data so revalidating it would be a no-op.
+  revalidatePath('/booking/tours')
+  revalidatePath('/booking/reconsider')
+  revalidatePath('/booking/sessions')
+  revalidatePath('/en/booking/tours')
+  revalidatePath('/en/booking/reconsider')
+  revalidatePath('/en/booking/sessions')
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -501,8 +508,12 @@ export async function triggerBookingRefundAction(
   }
 
   revalidatePath('/admin/booking/orders')
-  revalidatePath('/booking')
-  revalidatePath('/en/booking')
+  revalidatePath('/booking/tours')
+  revalidatePath('/booking/reconsider')
+  revalidatePath('/booking/sessions')
+  revalidatePath('/en/booking/tours')
+  revalidatePath('/en/booking/reconsider')
+  revalidatePath('/en/booking/sessions')
   return { ok: true, orderId: order.id }
 }
 
@@ -515,4 +526,116 @@ export async function purgeStaleBookingOrdersAction(): Promise<
   const count = await purgeStaleBookingOrders()
   revalidatePath('/admin/booking/orders')
   return { ok: true, count }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * CSV export — booking orders
+ *
+ * Streams the currently-filtered booking_orders set (respecting status,
+ * search, and date range) up to ADMIN_CSV_MAX_ROWS. Same auth as the
+ * other admin actions; the client triggers the download from the action
+ * return shape.
+ * ──────────────────────────────────────────────────────────────────── */
+
+const STATUS_VALUES: OrderStatus[] = [
+  'PENDING',
+  'PAID',
+  'FULFILLED',
+  'REFUNDED',
+  'FAILED',
+]
+
+function readStatus(raw: string | undefined): OrderStatus | 'all' {
+  if (raw && (STATUS_VALUES as string[]).includes(raw)) {
+    return raw as OrderStatus
+  }
+  return 'all'
+}
+
+function readDate(raw: string | undefined): Date | null {
+  if (!raw) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null
+  const d = new Date(`${raw}T00:00:00.000Z`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const s = String(value)
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+export async function exportAdminBookingOrdersCsvAction(input: {
+  status?: string
+  search?: string
+  start?: string
+  end?: string
+}): Promise<
+  | { ok: true; csv: string; filename: string }
+  | Err<'unauthorized' | 'forbidden' | 'failed'>
+> {
+  const guard = await requireAdminSession()
+  if (!guard.ok) return { ok: false, error: guard.error as 'unauthorized' | 'forbidden' }
+
+  try {
+    const startDate = readDate(input.start)
+    const endDateRaw = readDate(input.end)
+    const endDate = endDateRaw
+      ? new Date(endDateRaw.getTime() + 24 * 60 * 60 * 1000 - 1)
+      : null
+    const rows = await getAdminBookingOrdersForCsv({
+      status: readStatus(input.status),
+      search: input.search?.trim() || undefined,
+      startDate,
+      endDate,
+    })
+
+    const header = [
+      'booking_order_id',
+      'created_at',
+      'confirmed_at',
+      'booking_title_en',
+      'booking_title_ar',
+      'product_type',
+      'customer_email',
+      'customer_name',
+      'amount_paid',
+      'currency',
+      'status',
+      'stripe_session_id',
+      'stripe_payment_intent_id',
+    ].join(',')
+
+    const body = rows
+      .map((o) =>
+        [
+          o.id,
+          o.createdAt.toISOString(),
+          o.confirmedAt?.toISOString() ?? '',
+          o.bookingTitleEn,
+          o.bookingTitleAr,
+          o.bookingProductType ?? '',
+          o.userEmail,
+          o.userName ?? '',
+          (o.amountPaid / 100).toFixed(2),
+          o.currency,
+          o.status,
+          o.stripeSessionId,
+          o.stripePaymentIntentId ?? '',
+        ]
+          .map(csvEscape)
+          .join(','),
+      )
+      .join('\n')
+
+    return {
+      ok: true,
+      csv: `${header}\n${body}\n`,
+      filename: `booking-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+    }
+  } catch (err) {
+    console.error('[exportAdminBookingOrdersCsvAction]', err)
+    return { ok: false, error: 'failed' }
+  }
 }

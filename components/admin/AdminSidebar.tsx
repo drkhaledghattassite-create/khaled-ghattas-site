@@ -25,7 +25,6 @@ import {
   MapPin,
   Mail,
   MessageSquare,
-  Package,
   Send,
   Settings,
   ShoppingCart,
@@ -111,7 +110,6 @@ function buildGroups(
       key: 'commerce',
       items: [
         { href: '/admin/orders', key: 'orders', icon: ShoppingCart },
-        { href: '/admin/products', key: 'products', icon: Package },
         { href: '/admin/gifts', key: 'gifts', icon: Gift },
       ],
     },
@@ -119,6 +117,12 @@ function buildGroups(
     {
       key: 'corporate',
       items: [
+        {
+          href: '/admin/corporate',
+          key: 'corporate_overview',
+          icon: LayoutDashboard,
+          exact: true,
+        },
         { href: '/admin/corporate/programs', key: 'corporate_programs', icon: Briefcase },
         { href: '/admin/corporate/clients', key: 'corporate_clients', icon: Building2 },
         { href: '/admin/corporate/requests', key: 'corporate_requests', icon: Send },
@@ -127,6 +131,12 @@ function buildGroups(
     {
       key: 'booking',
       items: [
+        {
+          href: '/admin/booking',
+          key: 'booking_overview',
+          icon: LayoutDashboard,
+          exact: true,
+        },
         { href: '/admin/booking/tours', key: 'booking_tours', icon: MapPin },
         { href: '/admin/booking/bookings', key: 'booking_bookings', icon: CalendarDays },
         {
