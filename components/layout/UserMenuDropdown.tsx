@@ -165,7 +165,7 @@ export function UserMenuDropdown({ user }: { user: ServerSessionUser }) {
             >
               {t('account')}
             </MenuItem>
-            {user.role === 'ADMIN' && (
+            {(user.role === 'ADMIN' || user.role === 'CLIENT') && (
               <MenuItem
                 href="/admin"
                 onSelect={() => setOpen(false)}

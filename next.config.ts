@@ -125,6 +125,38 @@ if (process.env.NEXT_PUBLIC_APP_URL) {
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  // PERF — shrink the dev module graph for big libraries by deep-importing
+  // only what each component touches. Works in both Webpack and Turbopack
+  // and shaves significant time off first-route compile.
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      'motion',
+      'motion/react',
+      'date-fns',
+      '@radix-ui/react-label',
+      '@radix-ui/react-slot',
+      '@base-ui/react',
+    ],
+  },
+  // Turbopack mirror of the `webpack` block below. Turbopack ignores the
+  // `webpack: (config) => …` callback entirely, so any alias we rely on at
+  // build time must be declared here too. Keep this in lockstep with the
+  // webpack block — see the PDF.js section in CLAUDE.md.
+  turbopack: {
+    resolveAlias: {
+      // `canvas` is an optional pdfjs-dist Node-only dep we never use. The
+      // webpack pipeline aliases it to `false`; Turbopack requires a real
+      // module path. `lib/stubs/empty-module.js` is intentionally empty.
+      canvas: './lib/stubs/empty-module.js',
+      // pdfjs-dist@5's modern build crashes under bundling; the legacy
+      // build at `legacy/build/pdf.mjs` is the same library transpiled
+      // to a shape both bundlers can handle. See `docs/architecture/
+      // pdf-reader.md` and the webpack block below for the full rationale.
+      'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
+    },
+  },
   // Keep webpack's persistent cache (.next/cache/webpack — ~460 MB on this
   // project) OUT of serverless function bundles. Without this exclude, every
   // function ships ~467 MB of dependencies, the deploy phase hits the function-

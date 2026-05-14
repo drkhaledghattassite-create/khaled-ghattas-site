@@ -108,7 +108,7 @@ export function MobileUserMenu({ user }: { user: ServerSessionUser }) {
             <span>{t('account')}</span>
           </Link>
         </li>
-        {user.role === 'ADMIN' && (
+        {(user.role === 'ADMIN' || user.role === 'CLIENT') && (
           <li>
             <Link
               href="/admin"
