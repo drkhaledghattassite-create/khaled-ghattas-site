@@ -996,6 +996,11 @@ export const userQuestions = pgTable(
     // Admin field. URL pointing at the public reply (Instagram reel, story,
     // …) OR a free-text note. The card UI auto-detects URL vs note.
     answerReference: text('answer_reference'),
+    // Phase-B-late addition: the rich answer prose Dr. Khaled writes in the
+    // admin queue. Shown to the asker on /dashboard/ask and embedded in the
+    // notification email. `answer_reference` stays as the optional outbound
+    // link (Instagram reel, YouTube clip, etc.); both can coexist.
+    answerBody: text('answer_body'),
     answeredAt: timestamp('answered_at', { withTimezone: true }),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })

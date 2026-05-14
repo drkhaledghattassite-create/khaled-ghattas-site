@@ -78,6 +78,16 @@ export function QuestionCard({ locale, question }: Props) {
   const isArchived = question.status === 'ARCHIVED'
   const ref = question.answerReference?.trim() ?? ''
   const refIsUrl = isHttpUrl(ref)
+  const body = question.answerBody?.trim() ?? ''
+  const hasBody = body.length > 0
+  // Split prose into paragraphs on blank lines — mirrors the email template.
+  const bodyParagraphs = hasBody
+    ? body
+        .replace(/\r\n/g, '\n')
+        .split(/\n\s*\n/)
+        .map((p) => p.replace(/\s+/g, ' ').trim())
+        .filter((p) => p.length > 0)
+    : []
 
   return (
     <article
@@ -128,8 +138,8 @@ export function QuestionCard({ locale, question }: Props) {
         {question.body}
       </p>
 
-      {question.status === 'ANSWERED' && ref !== '' && (
-        <div className="flex flex-col gap-2.5 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5">
+      {question.status === 'ANSWERED' && (hasBody || ref !== '') && (
+        <div className="flex flex-col gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3.5">
           <span
             className={`inline-flex items-center gap-2 text-[var(--color-accent)] ${
               isRtl
@@ -153,13 +163,29 @@ export function QuestionCard({ locale, question }: Props) {
               </>
             )}
           </span>
-          {refIsUrl ? (
-            <div className="flex flex-wrap items-center gap-3">
+          {hasBody && (
+            <div className="flex flex-col gap-2.5">
+              {bodyParagraphs.map((p, i) => (
+                <p
+                  key={i}
+                  className={`m-0 text-[var(--color-fg1)] ${
+                    isRtl
+                      ? 'font-arabic-body text-[15px] leading-[1.85]'
+                      : 'font-display text-[14.5px] leading-[1.7]'
+                  }`}
+                >
+                  {p}
+                </p>
+              ))}
+            </div>
+          )}
+          {refIsUrl && (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <a
                 href={ref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`btn-pill btn-pill-primary inline-flex items-center gap-1.5 !py-2 !px-4 !text-[13px] ${fontBody}`}
+                className={`btn-pill btn-pill-secondary inline-flex items-center gap-1.5 !py-2 !px-4 !text-[13px] ${fontBody}`}
               >
                 <Play
                   aria-hidden
@@ -170,7 +196,10 @@ export function QuestionCard({ locale, question }: Props) {
                 <ExternalLink aria-hidden className="h-3 w-3" />
               </a>
             </div>
-          ) : (
+          )}
+          {/* No body, free-text reference: render inline as quote (legacy
+              data from before the answer-body field existed). */}
+          {!hasBody && !refIsUrl && ref !== '' && (
             <p
               className={`m-0 text-[var(--color-fg1)] ${
                 isRtl

@@ -1,16 +1,18 @@
 /**
  * Phase B2 — "Your question has been answered" notification.
  *
- * Sent when admin transitions a PENDING question to ANSWERED with a URL as
- * the answer reference. If the reference is a free-text note (not a URL),
- * the action layer skips the email entirely — there's no link to deliver.
+ * Sent when admin transitions a PENDING question to ANSWERED. The notification
+ * always includes the prose `answerBody` Dr. Khaled wrote in the admin queue;
+ * the optional `answerUrl` (Instagram reel, YouTube clip, …) is rendered as
+ * a supplementary CTA when present.
  *
  * Locale-switched (Arabic OR English, not bilingual). Mirrors the structure
  * of post-purchase.ts:
- *   1. Header  — Sienna accent bar + brand + eyebrow
+ *   1. Header   — Sienna accent bar + brand + eyebrow
  *   2. Greeting + context line
- *   3. Question subject + answer CTA + plain-text fallback URL
- *   4. Footer — accent rule, signoff, copyright, sent-to
+ *   3. Answer body (the prose reply)
+ *   4. Optional CTA + plain-text fallback URL (only when answerUrl supplied)
+ *   5. Footer   — accent rule, signoff, copyright, sent-to
  *
  * Why hex literals here when Qalem v2 normally forbids them: email clients
  * (Outlook desktop, Gmail mobile, Apple Mail) don't support CSS custom
@@ -30,10 +32,13 @@ export type QuestionAnsweredEmailInput = {
   /** The original subject line — shown in the body so the asker remembers
    *  which question was answered (they may have submitted several). */
   questionSubject: string
-  /** Public URL to Dr. Khaled's answer (Instagram reel, story, YouTube,
-   *  article). The action layer guarantees this is an http(s) URL — the
-   *  template doesn't re-validate. */
-  answerUrl: string
+  /** The prose answer Dr. Khaled wrote in the admin modal. Plain text;
+   *  paragraphs are separated by blank lines. */
+  answerBody: string
+  /** Optional public URL — supplementary link (Instagram reel, YouTube clip,
+   *  article). When omitted, the CTA block is not rendered. The action layer
+   *  passes this only when it's a valid http(s) URL. */
+  answerUrl: string | null
   /** Public support inbox shown in the footer. */
   supportEmail: string
 }
@@ -75,7 +80,9 @@ type Strings = {
   greetingNamed: (name: string) => string
   greetingFallback: string
   bodyIntro: (subject: string) => string
+  answerHeading: string
   cta: string
+  ctaIntro: string
   fallbackLabel: string
   signoff: string
   copyright: (year: number) => string
@@ -91,8 +98,10 @@ const L: Record<QuestionAnsweredLocale, Strings> = {
     greetingNamed: (n) => `أهلاً ${n}،`,
     greetingFallback: 'أهلاً،',
     bodyIntro: (subject) =>
-      `أجاب الدكتور خالد على سؤالك: «${subject}». الرابط أدناه يأخذك مباشرةً إلى الإجابة.`,
-    cta: 'مشاهدة الإجابة',
+      `أجاب الدكتور خالد على سؤالك: «${subject}». تجد جوابه أدناه.`,
+    answerHeading: 'الجواب',
+    cta: 'مشاهدة الإجابة الكاملة',
+    ctaIntro: 'يمكنك متابعة الموضوع أيضاً عبر:',
     fallbackLabel: 'أو افتح هذا الرابط:',
     signoff: '— فريق د. خالد',
     copyright: (year) => `© ${toArabicNumerals(year)} د. خالد غطاس`,
@@ -107,8 +116,10 @@ const L: Record<QuestionAnsweredLocale, Strings> = {
     greetingNamed: (n) => `Hi ${n},`,
     greetingFallback: 'Hi,',
     bodyIntro: (subject) =>
-      `Dr. Khaled has answered your question titled "${subject}". The link below takes you straight to the reply.`,
-    cta: 'View the answer',
+      `Dr. Khaled has answered your question titled "${subject}". His reply is below.`,
+    answerHeading: 'The reply',
+    cta: 'View the full answer',
+    ctaIntro: 'You can also follow the conversation here:',
     fallbackLabel: 'Or open this link:',
     signoff: "— Dr. Khaled's team",
     copyright: (year) => `© ${year} Dr. Khaled Ghattass`,
@@ -153,12 +164,11 @@ function buildHtml(input: QuestionAnsweredEmailInput): string {
     : t.greetingFallback
 
   const subjectShown = escapeHtml(truncate(input.questionSubject, MAX_SUBJECT_LEN))
-  const intro = t.bodyIntro(subjectShown) // already escaped above
-  const safeUrl = encodeAttr(input.answerUrl)
-  // The fallback URL is rendered as plain text below the CTA so admins of
-  // the asker's email client (Outlook 2010, etc.) that strip the button
-  // styling still see something clickable. Long URLs wrap with overflow-wrap.
-  const fallbackUrlHtml = `<a href="${safeUrl}" style="color:${ACCENT};text-decoration:underline;word-break:break-all;">${escapeHtml(input.answerUrl)}</a>`
+  const intro = t.bodyIntro(subjectShown) // subject pre-escaped above
+  const answerBodyHtml = renderAnswerBodyHtml(input.answerBody, font)
+  const ctaBlock = input.answerUrl
+    ? renderCtaBlockHtml({ url: input.answerUrl, font, t })
+    : ''
 
   return `<!doctype html>
 <html lang="${locale}" dir="${dir}">
@@ -189,25 +199,17 @@ function buildHtml(input: QuestionAnsweredEmailInput): string {
 
             <tr>
               <td dir="${dir}" style="padding:8px 32px 24px;">
-                <div style="background:${BG_TINT};border:1px solid ${BORDER};border-radius:10px;padding:18px;">
+                <div style="background:${BG_TINT};border:1px solid ${BORDER};border-radius:10px;padding:20px 22px;">
                   <div style="font-family:${font};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${ACCENT};">
-                    ${escapeHtml(t.eyebrow)}
+                    ${escapeHtml(t.answerHeading)}
                   </div>
                   <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
-                  <a href="${safeUrl}" style="display:inline-block;background:${ACCENT};color:${BG};font-family:${font};font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:9999px;">
-                    ${escapeHtml(t.cta)}
-                  </a>
-                  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
-                  <div style="font-family:${font};font-size:12.5px;color:${FG3};line-height:1.6;">
-                    ${escapeHtml(t.fallbackLabel)}
-                  </div>
-                  <div style="height:4px;line-height:4px;font-size:0;">&nbsp;</div>
-                  <div style="font-family:${FONT_LATIN};font-size:12px;line-height:1.5;">
-                    ${fallbackUrlHtml}
-                  </div>
+                  ${answerBodyHtml}
                 </div>
               </td>
             </tr>
+
+            ${ctaBlock}
 
             <tr>
               <td dir="${dir}" style="padding:0 32px 24px;">
@@ -225,6 +227,59 @@ function buildHtml(input: QuestionAnsweredEmailInput): string {
     </table>
   </body>
 </html>`
+}
+
+/**
+ * Renders the answer prose as one or more <p> blocks. Splits on blank lines
+ * (CR/LF tolerant), trims, and escapes each paragraph individually. Single
+ * line breaks within a paragraph collapse to spaces — email clients render
+ * <br>-heavy text inconsistently, so paragraph-level structure is more
+ * reliable.
+ */
+function renderAnswerBodyHtml(body: string, font: string): string {
+  const paragraphs = body
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter((p) => p.length > 0)
+  if (paragraphs.length === 0) return ''
+  return paragraphs
+    .map(
+      (p, i) =>
+        `<div style="font-family:${font};font-size:15px;color:${FG1};line-height:1.75;${
+          i > 0 ? 'margin-top:10px;' : ''
+        }">${escapeHtml(p)}</div>`,
+    )
+    .join('\n                  ')
+}
+
+/**
+ * Optional CTA block — only rendered when admin attached a supplementary
+ * URL alongside the prose answer.
+ */
+function renderCtaBlockHtml(args: { url: string; font: string; t: Strings }): string {
+  const safeUrl = encodeAttr(args.url)
+  const fallbackUrlHtml = `<a href="${safeUrl}" style="color:${ACCENT};text-decoration:underline;word-break:break-all;">${escapeHtml(args.url)}</a>`
+  return `
+            <tr>
+              <td style="padding:0 32px 24px;">
+                <div style="font-family:${args.font};font-size:13px;color:${FG3};line-height:1.6;">
+                  ${escapeHtml(args.t.ctaIntro)}
+                </div>
+                <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
+                <a href="${safeUrl}" style="display:inline-block;background:${ACCENT};color:${BG};font-family:${args.font};font-size:14px;font-weight:600;text-decoration:none;padding:11px 22px;border-radius:9999px;">
+                  ${escapeHtml(args.t.cta)}
+                </a>
+                <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+                <div style="font-family:${args.font};font-size:12.5px;color:${FG3};line-height:1.6;">
+                  ${escapeHtml(args.t.fallbackLabel)}
+                </div>
+                <div style="height:4px;line-height:4px;font-size:0;">&nbsp;</div>
+                <div style="font-family:${FONT_LATIN};font-size:12px;line-height:1.5;">
+                  ${fallbackUrlHtml}
+                </div>
+              </td>
+            </tr>`
 }
 
 function headerHtml(args: { font: string; t: Strings }): string {
@@ -296,7 +351,12 @@ function buildText(input: QuestionAnsweredEmailInput): string {
   lines.push(trimmedName ? t.greetingNamed(trimmedName) : t.greetingFallback)
   lines.push(t.bodyIntro(input.questionSubject))
   lines.push('')
-  lines.push(`${t.cta}: ${input.answerUrl}`)
+  lines.push(t.answerHeading)
+  lines.push(input.answerBody.trim())
+  if (input.answerUrl) {
+    lines.push('')
+    lines.push(`${t.cta}: ${input.answerUrl}`)
+  }
   lines.push('')
   lines.push(t.signoff)
   lines.push('')

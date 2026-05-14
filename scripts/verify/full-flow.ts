@@ -630,6 +630,8 @@ async function main() {
     locale: 'ar',
     recipientName: 'Layla Khoury',
     questionSubject: qRow.subject,
+    answerBody:
+      'الانتباه يُبنى عبر ممارسات يومية صغيرة، لا عبر مجهود بطولي مفاجئ.',
     answerUrl: qRow.answerReference!,
     supportEmail: 'Team@drkhaledghattass.com',
   })
@@ -1078,6 +1080,7 @@ async function main() {
     locale: 'en',
     recipientName: 'Layla',
     questionSubject: 'How do I improve?',
+    answerBody: 'Focus is built through small daily practices, not heroic effort.',
     answerUrl: 'https://example.com/answer',
     supportEmail: 'support@example.com',
   })
@@ -1090,6 +1093,8 @@ async function main() {
     locale: 'ar',
     recipientName: 'ليلى',
     questionSubject: 'كيف أتحسن؟',
+    answerBody:
+      'الانتباه يُبنى عبر ممارسات يومية صغيرة، لا عبر مجهود بطولي مفاجئ.',
     answerUrl: 'https://example.com/answer-ar',
     supportEmail: 'support@example.com',
   })

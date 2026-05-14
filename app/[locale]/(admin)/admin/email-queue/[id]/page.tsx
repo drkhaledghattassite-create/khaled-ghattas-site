@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { AdminEmailQueueDetailPage } from '@/components/admin/email-queue/AdminEmailQueueDetailPage'
+import { requireDeveloperPage } from '@/lib/auth/server'
 import { getEmailQueueEntry } from '@/lib/db/queries'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,8 @@ type Props = { params: Promise<{ locale: string; id: string }> }
 export default async function AdminEmailQueueDetailRoute({ params }: Props) {
   const { locale, id } = await params
   setRequestLocale(locale)
+  // Developer-only — CLIENT viewers see the 404 page.
+  await requireDeveloperPage()
 
   const entry = await getEmailQueueEntry(id)
   if (!entry) notFound()

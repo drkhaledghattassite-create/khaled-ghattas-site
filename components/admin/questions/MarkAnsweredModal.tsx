@@ -5,12 +5,15 @@
  *
  * Used for both PENDING → ANSWERED and "Edit answer" on already-ANSWERED
  * rows. Shows the question's subject + body excerpt read-only so admin
- * confirms they're answering the right one. The single editable field is
- * the answer reference (URL or free-text note).
+ * confirms they're answering the right one. Two editable fields:
  *
- * The reference is OPTIONAL at the input level — the form's submit button
- * is disabled when the trimmed value is empty, mirroring the
- * `superRefine` rule on `updateQuestionStatusSchema`.
+ *   - Answer body (REQUIRED): the prose reply that ships to the asker via
+ *     email and renders on /dashboard/ask. Validator floor is 10 chars.
+ *   - Reference URL (OPTIONAL): supplementary link (Instagram reel, YouTube
+ *     clip, …) — becomes a CTA inside the email when present.
+ *
+ * Submit is disabled until the body meets the minimum length, mirroring
+ * the `superRefine` rule on `updateQuestionStatusSchema`.
  */
 
 import { useState } from 'react'
@@ -24,14 +27,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ANSWER_REFERENCE_MAX } from '@/lib/validators/user-question'
+import {
+  ANSWER_BODY_MAX,
+  ANSWER_BODY_MIN,
+  ANSWER_REFERENCE_MAX,
+} from '@/lib/validators/user-question'
 import type { AdminQuestionsRow } from './AdminQuestionsPage'
 
 type Props = {
   row: AdminQuestionsRow
   locale: 'ar' | 'en'
   pending: boolean
-  onConfirm: (answerReference: string) => void
+  onConfirm: (input: { answerBody: string; answerReference: string }) => void
   onClose: () => void
 }
 
@@ -47,12 +54,15 @@ export function MarkAnsweredModal({
   const t = useTranslations('admin.questions.modal.mark_answered')
   const tShared = useTranslations('admin.questions.modal.shared')
   const tForms = useTranslations('admin.forms')
-  // `locale` is destructured for the body-excerpt direction signaling
-  // (textarea / paragraph fonts vary by locale below).
   const isRtl = locale === 'ar'
-  const [value, setValue] = useState(row.answerReference ?? '')
-  const trimmed = value.trim()
-  const canSubmit = trimmed.length > 0 && trimmed.length <= ANSWER_REFERENCE_MAX
+  const [body, setBody] = useState(row.answerBody ?? '')
+  const [reference, setReference] = useState(row.answerReference ?? '')
+  const trimmedBody = body.trim()
+  const trimmedReference = reference.trim()
+  const canSubmit =
+    trimmedBody.length >= ANSWER_BODY_MIN &&
+    trimmedBody.length <= ANSWER_BODY_MAX &&
+    trimmedReference.length <= ANSWER_REFERENCE_MAX
 
   const bodyExcerpt =
     row.body.length > BODY_EXCERPT_LEN
@@ -61,7 +71,7 @@ export function MarkAnsweredModal({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>
@@ -84,7 +94,36 @@ export function MarkAnsweredModal({
           </p>
         </div>
 
-        {/* Reference input */}
+        {/* Answer body — the prose reply (required) */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="answer-body"
+            className="text-[12px] font-display font-semibold tracking-[0.04em] text-fg2"
+          >
+            {t('body_label')}
+          </label>
+          <textarea
+            id="answer-body"
+            rows={8}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            disabled={pending}
+            aria-required="true"
+            maxLength={ANSWER_BODY_MAX}
+            placeholder={t('body_placeholder')}
+            className={`w-full resize-y rounded-md border border-border-strong bg-bg-elevated px-3.5 py-2.5 text-[14px] leading-[1.7] text-fg1 outline-none transition-[border-color,box-shadow] focus:border-accent focus:shadow-[var(--shadow-focus)] ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
+          />
+          <span className="text-[12px] text-fg3 leading-[1.5]">
+            {t('body_help')}
+          </span>
+          <span className="text-[11px] text-fg3 [font-feature-settings:'tnum']">
+            {trimmedBody.length} / {ANSWER_BODY_MAX}
+          </span>
+        </div>
+
+        {/* Optional reference URL */}
         <div className="flex flex-col gap-2">
           <label
             htmlFor="answer-reference"
@@ -92,25 +131,19 @@ export function MarkAnsweredModal({
           >
             {t('reference_label')}
           </label>
-          <textarea
+          <input
             id="answer-reference"
-            rows={3}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            type="url"
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
             disabled={pending}
-            // The modal exists to mark a question as answered, which
-            // requires a non-empty reference (URL or note). Mirrors
-            // the `superRefine` rule on `updateQuestionStatusSchema`.
-            aria-required="true"
             maxLength={ANSWER_REFERENCE_MAX}
             placeholder={t('reference_placeholder')}
-            className="w-full resize-y rounded-md border border-border-strong bg-bg-elevated px-3.5 py-2.5 text-[14px] text-fg1 outline-none transition-[border-color,box-shadow] focus:border-accent focus:shadow-[var(--shadow-focus)]"
+            className="w-full rounded-md border border-border-strong bg-bg-elevated px-3.5 py-2.5 text-[14px] text-fg1 outline-none transition-[border-color,box-shadow] focus:border-accent focus:shadow-[var(--shadow-focus)]"
+            dir="ltr"
           />
           <span className="text-[12px] text-fg3 leading-[1.5]">
             {t('reference_help')}
-          </span>
-          <span className="text-[11px] text-fg3 [font-feature-settings:'tnum']">
-            {trimmed.length} / {ANSWER_REFERENCE_MAX}
           </span>
         </div>
 
@@ -125,7 +158,12 @@ export function MarkAnsweredModal({
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(trimmed)}
+            onClick={() =>
+              onConfirm({
+                answerBody: trimmedBody,
+                answerReference: trimmedReference,
+              })
+            }
             disabled={!canSubmit || pending}
             className="btn-pill btn-pill-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >

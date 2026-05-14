@@ -10,20 +10,25 @@ export type GuardResult =
 /**
  * Role policy:
  *   - USER   — buyers/readers, restricted to /dashboard.
- *   - ADMIN  — developer (Kamal). Technical maintainer.
- *   - CLIENT — site owner (Dr. Khaled). Business operator.
+ *   - ADMIN  — developer (Kamal). Technical maintainer + system config.
+ *   - CLIENT — site owner (Dr. Khaled). Business operator (content + commerce).
  *
- * ADMIN and CLIENT are BOTH trusted operators on most surfaces. The two roles
- * exist primarily for audit-trail clarity (so server logs and admin activity
- * history can distinguish "the developer pushed this" from "the owner pushed
- * this"), not for blanket privilege separation. Most /admin/* surfaces call
- * `requireAdmin` and accept either role.
+ * ADMIN and CLIENT are BOTH trusted operators on the business surfaces
+ * (articles, books, orders, gifts, bookings, corporate, subscribers,
+ * messages, questions, tests, events, gallery, interviews). Most /admin/*
+ * surfaces call `requireAdmin` and accept either role.
  *
- * SECURITY EXCEPTION — privilege management itself:
- * Endpoints that can MODIFY USER ROLES must use `requireAdminStrict` instead,
- * which admits ADMIN only. Without this, CLIENT could downgrade ADMIN to USER
- * (or promote any user to ADMIN), breaking the audit-trail rationale entirely
- * and leaking authorization between the two operators.
+ * DEVELOPER-ONLY surfaces — use `requireAdminStrict` (ADMIN only):
+ *   - User role management (privilege escalation surface)
+ *   - Site-wide settings + feature toggles (`/admin/settings`, `/admin/settings/site`)
+ *   - Content blocks + media library (`/admin/content`, `/admin/media`)
+ *   - Email queue diagnostics (`/admin/email-queue`)
+ *   - User CRUD (`/admin/users`)
+ *
+ * Rationale: these are system-config / ops surfaces where one operator's
+ * mistake can break the site for everyone. The owner (CLIENT) operates the
+ * business; the developer (ADMIN) operates the system. The split is
+ * defense-in-depth, not a trust statement — both roles remain trusted.
  *
  * Pass the incoming Request to enable origin (CSRF) checks on state-changing
  * methods. The argument is optional for backwards compatibility with handlers
@@ -46,9 +51,10 @@ export async function requireAdmin(req?: Request): Promise<GuardResult> {
 
 /**
  * Stricter variant that admits ADMIN only. Use on endpoints where ADMIN-vs-
- * CLIENT separation is load-bearing — currently: user role management. A
- * CLIENT reaching one of these endpoints gets a 403, even though they pass
- * the looser `requireAdmin` everywhere else.
+ * CLIENT separation is load-bearing — see the "DEVELOPER-ONLY surfaces" list
+ * in the header docstring above. A CLIENT reaching one of these endpoints
+ * gets a 403, even though they pass the looser `requireAdmin` everywhere
+ * else.
  */
 export async function requireAdminStrict(req?: Request): Promise<GuardResult> {
   if (req) {

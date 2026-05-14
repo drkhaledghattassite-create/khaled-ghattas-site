@@ -795,37 +795,96 @@
       "delete_cancel": "إلغاء"
     },
     "dashboard": {
-      "stats": {
-        "articles": "المقالات",
-        "books": "الكتب",
-        "orders": "الطلبات",
-        "revenue": "الإيرادات"
+      "greeting": {
+        "eyebrow": "اليوم",
+        "fallback_name": "خالد",
+        "honorific": "د. ",
+        "greet_morning": "صباح الخير، {name}",
+        "greet_afternoon": "مساء الخير، {name}",
+        "greet_evening": "مساء الخير، {name}",
+        "greet_morning_alt": "Good morning, {name}",
+        "greet_afternoon_alt": "Good afternoon, {name}",
+        "greet_evening_alt": "Good evening, {name}",
+        "signal_questions_strong": "{count, plural, one {سؤال جديد} two {سؤالان جديدان} few {# أسئلة جديدة} many {# سؤالًا جديدًا} other {# سؤال جديد}}",
+        "signal_questions_rest": "بانتظار ردك.",
+        "signal_corporate_strong": "{count, plural, one {استفسار جديد من الشركات} two {استفساران جديدان من الشركات} few {# استفسارات جديدة من الشركات} many {# استفسارًا جديدًا من الشركات} other {# استفسار جديد من الشركات}}",
+        "signal_corporate_rest": "هذا الأسبوع.",
+        "signal_gifts_strong": "{count, plural, one {هدية} two {هديتان} few {# هدايا} many {# هدية} other {# هدية}}",
+        "signal_gifts_rest": "تنتهي خلال ٧ أيام.",
+        "signal_revenue_up_strong": "الإيرادات ارتفعت {percent}٪",
+        "signal_revenue_up_rest": "مقارنةً بالـ ٣٠ يومًا السابقة.",
+        "signal_revenue_down_strong": "الإيرادات انخفضت {percent}٪",
+        "signal_revenue_down_rest": "مقارنةً بالـ ٣٠ يومًا السابقة.",
+        "signal_booking_strong": "{count, plural, one {اهتمام حجز قيد المراجعة} two {اهتمامان قيد المراجعة} few {# اهتمامات قيد المراجعة} many {# اهتمامًا قيد المراجعة} other {# اهتمام قيد المراجعة}}",
+        "signal_booking_rest": "في انتظار المتابعة.",
+        "signal_all_clear_strong": "لا شيء عاجل اليوم.",
+        "signal_all_clear_rest": "الموقع يعمل بهدوء، ويمكنك العودة إلى الكتابة."
       },
-      "charts": {
-        "revenue": "الإيرادات (30 يومًا)",
-        "subscribers": "المشتركون (30 يومًا)"
+      "attention": {
+        "eyebrow": "لأجل اليوم",
+        "heading": "ما يحتاج إلى انتباهك",
+        "see_all": "كل المهام",
+        "eyebrow_questions": "أسئلة",
+        "eyebrow_corporate": "شركات",
+        "eyebrow_gifts": "هدايا",
+        "eyebrow_booking": "حجوزات",
+        "eyebrow_email_queue": "بريد",
+        "label_questions": "أسئلة بانتظار الرد",
+        "label_corporate": "استفسارات جديدة من الشركات",
+        "label_gifts": "هدايا تنتهي خلال ٧ أيام",
+        "label_booking": "اهتمامات حجز بانتظار المراجعة",
+        "label_email_queue": "البريد بانتظار المراجعة",
+        "more_questions": "فتح القائمة",
+        "more_corporate": "فتح القائمة",
+        "more_gifts": "فتح القائمة",
+        "more_booking": "فتح القائمة",
+        "more_email_queue": "فتح القائمة"
       },
-      "recent_orders": "الطلبات الأخيرة",
-      "recent_messages": "رسائل غير مقروءة",
-      "quick_actions": "إجراءات سريعة",
-      "quick": {
-        "new_article": "إضافة مقال",
-        "new_book": "إضافة كتاب",
-        "new_event": "إضافة فعالية",
-        "review_messages": "مراجعة الصندوق"
+      "performance": {
+        "eyebrow": "هذا الشهر",
+        "heading": "أداء الموقع",
+        "revenue_heading": "الإيرادات",
+        "subscribers_heading": "المشتركون الجدد",
+        "period_label": "آخر ٣٠ يومًا · مقارنة بالـ ٣٠ السابقة",
+        "legend_current": "هذه الفترة",
+        "legend_prior": "الفترة السابقة",
+        "this_period": "هذه الفترة",
+        "compared_with_revenue": "مقابل {prior} في الـ ٣٠ يومًا السابقة",
+        "compared_with_subscribers": "مقابل {prior} في الـ ٣٠ يومًا السابقة"
       },
-      "empty": {
-        "orders": "لا توجد طلبات حديثة.",
-        "messages": "كل شيء على ما يرام — لا رسائل غير مقروءة."
+      "audience": {
+        "eyebrow": "أين نحن",
+        "heading": "لمحة عن الجمهور",
+        "subscribers_label": "المشتركون",
+        "users_label": "المستخدمون المسجّلون",
+        "books_label": "الكتب المنشورة",
+        "tests_label": "الاختبارات المنشورة",
+        "this_week_delta": "+{count} هذا الأسبوع"
+      },
+      "activity": {
+        "eyebrow": "هذا الأسبوع",
+        "heading": "النشاط الأخير",
+        "orders_heading": "آخر الطلبات",
+        "bookings_heading": "آخر الحجوزات",
+        "questions_heading": "آخر الأسئلة",
+        "see_all_orders": "كل الطلبات",
+        "see_all_bookings": "كل الحجوزات",
+        "see_all_questions": "صندوق الاستفسارات",
+        "empty": "لا نشاط حديث.",
+        "untitled_booking": "حجز بدون عنوان",
+        "anonymous": "مجهول"
+      },
+      "research": {
+        "eyebrow": "بياناتك البحثية",
+        "heading": "إجابات الاختبارات",
+        "intro": "نظرة شهرية إلى كيف يجيب الجمهور على السؤال الأكثر دلالةً في اختباراتك الثلاثة الأكثر تفاعلًا. الأشرطة تعرض التوزيع، والسطر تحتها هو القراءة التحريرية.",
+        "see_all": "كل الاختبارات",
+        "attempts_in_30d": "{count} محاولة",
+        "window_30d": "آخر ٣٠ يومًا",
+        "selected_summary": "٪{percent} اختاروا: {label}",
+        "view_analytics": "كل التحليلات",
+        "empty": "ستظهر هنا اختباراتك بمجرد أن تبدأ بجمع الإجابات."
       }
-    },
-    "kpi": {
-      "aria_label": "أعداد قيد الانتظار عبر الموقع",
-      "label_questions": "أسئلة قيد المراجعة",
-      "label_interest": "اهتمام قيد المتابعة",
-      "label_gifts": "هدايا تنتهي خلال 7 أيام",
-      "label_corporate": "طلبات مؤسسية جديدة",
-      "label_email_queue": "رسائل تحتاج إلى مراجعة"
     },
     "user_detail": {
       "back_to_list": "العودة إلى المستخدمين",
@@ -1109,6 +1168,16 @@
       "mark_fulfilled": "تم التنفيذ",
       "refund": "استرداد",
       "cancel_order": "إلغاء",
+      "resend_receipt": "إعادة إرسال الإيصال",
+      "resending": "جارٍ الإرسال…",
+      "resend_success": "تم إعادة إرسال الإيصال.",
+      "resend_send_failed": "فشل الإرسال. الطلب لم يتغيّر، حاول من جديد بعد قليل.",
+      "resend_preview_only": "تم عرض البريد (للتطوير فقط — لا يوجد إرسال فعلي).",
+      "resend_rate_limited": "تمهّل — عدد المحاولات كثير خلال فترة قصيرة.",
+      "resend_no_email": "هذا الطلب بلا بريد عميل محفوظ.",
+      "resend_wrong_status": "يمكن إعادة إرسال الإيصال للطلبات المدفوعة أو المنفّذة فقط.",
+      "resend_not_found": "هذا الطلب لم يعد موجوداً.",
+      "resend_failed": "فشل إعادة الإرسال. حاول مرة أخرى.",
       "open_stripe": "فتح في Stripe",
       "back_to_orders": "كل الطلبات",
       "gift_claim_badge": "طلب من هدية — عرض الهدية",
@@ -1180,12 +1249,15 @@
           "question_eyebrow": "السؤال"
         },
         "mark_answered": {
-          "title": "وضع علامة كمُجاب",
-          "description": "أضف رابط الإجابة. الرابط يُرسل إشعارًا بالبريد إلى السائل؛ النص الحرّ يُحفظ بصمت دون إرسال بريد.",
-          "reference_label": "مرجع الإجابة",
-          "reference_help": "ألصق رابطًا (إنستغرام، يوتيوب، مقال) لإرسال إشعار بالبريد إلى السائل، أو اكتب ملاحظة نصية حرة (لن يُرسل بريد).",
-          "reference_placeholder": "https://instagram.com/reel/… أو ملاحظة قصيرة",
-          "submit": "وضع علامة كمُجاب"
+          "title": "أرسل جوابك",
+          "description": "اكتب ردّك للسائل. سيصله الجواب عبر البريد، ويظهر له أيضاً في لوحته.",
+          "body_label": "ردّك",
+          "body_help": "اكتب جوابك الكامل هنا — هذا ما سيقرأه السائل في البريد وفي لوحته. نص حر؛ افصل الفقرات بسطر فارغ.",
+          "body_placeholder": "اكتب ردّك…",
+          "reference_label": "رابط عام (اختياري)",
+          "reference_help": "رابط اختياري — ريل إنستغرام، مقطع يوتيوب، أو مقال. إن وُجد، يظهر كزر في البريد المُرسل للسائل.",
+          "reference_placeholder": "https://instagram.com/reel/…",
+          "submit": "إرسال الجواب"
         },
         "archive": {
           "title": "أرشفة السؤال",
@@ -1213,7 +1285,6 @@
       },
       "toast": {
         "answered_with_email": "تمّ التحديد كمُجاب وأُرسل الإشعار بالبريد.",
-        "answered_text_note": "تمّ التحديد كمُجاب. لم يُرسل بريد (ملاحظة نصية).",
         "answered_no_recipient": "تمّ التحديد كمُجاب. لم يعد حساب السائل موجودًا، لذا لم يُرسل بريد.",
         "answered_email_failed": "تمّ التحديد كمُجاب لكن تعذّر إرسال البريد — أبلغ السائل يدويًا من فضلك.",
         "archived": "تمّت أرشفة السؤال.",

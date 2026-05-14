@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/admin-guard'
+import { requireAdminStrict } from '@/lib/auth/admin-guard'
 import { errInternal, errRateLimited, parseJsonBody } from '@/lib/api/errors'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import {
@@ -9,7 +9,8 @@ import {
 import { siteSettingsPatchSchema } from '@/lib/site-settings/zod'
 
 export async function GET() {
-  const guard = await requireAdmin()
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict()
   if (!guard.ok) return guard.response
 
   try {
@@ -22,7 +23,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const guard = await requireAdmin(req)
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict(req)
   if (!guard.ok) return guard.response
 
   // Per-admin rate limit. Falls open when Upstash isn't configured.

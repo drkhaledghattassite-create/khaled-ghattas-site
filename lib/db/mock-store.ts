@@ -362,6 +362,7 @@ export function readStore(): MockStore {
         category: entry.category ?? null,
         isAnonymous: Boolean(entry.isAnonymous),
         status: entry.status,
+        answerBody: entry.answerBody ?? null,
         answerReference: entry.answerReference ?? null,
         answeredAt:
           answeredAt && !Number.isNaN(answeredAt.getTime()) ? answeredAt : null,
@@ -610,6 +611,7 @@ export function writeStore(store: MockStore): void {
       category: q.category ?? null,
       isAnonymous: q.isAnonymous,
       status: q.status,
+      answerBody: q.answerBody ?? null,
       answerReference: q.answerReference ?? null,
       answeredAt: q.answeredAt ? q.answeredAt.toISOString() : null,
       archivedAt: q.archivedAt ? q.archivedAt.toISOString() : null,

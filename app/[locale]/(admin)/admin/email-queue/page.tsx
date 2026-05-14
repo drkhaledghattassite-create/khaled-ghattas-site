@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server'
 import { AdminEmailQueueListPage } from '@/components/admin/email-queue/AdminEmailQueueListPage'
+import { requireDeveloperPage } from '@/lib/auth/server'
 import { getAdminEmailQueue } from '@/lib/db/queries'
 import type { EmailStatus } from '@/lib/db/schema'
 
@@ -34,6 +35,8 @@ export default async function AdminEmailQueueRoute({
 }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+  // Developer-only — CLIENT viewers see the 404 page.
+  await requireDeveloperPage()
   const sp = await searchParams
 
   const filter = {

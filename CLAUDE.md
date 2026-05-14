@@ -127,19 +127,35 @@ What's stubbed:
 
 Three roles:
 - `USER` — buyer / reader, has `/dashboard`.
-- `ADMIN` — developer (Kamal). Technical maintainer.
-- `CLIENT` — site owner (Dr. Khaled). Business operator.
+- `ADMIN` — developer (Kamal). System + business surfaces.
+- `CLIENT` — site owner (Dr. Khaled). Business surfaces only.
 
-`ADMIN` and `CLIENT` are **both trusted operators**. Every `/admin/*`
-gate accepts either role — `requireAdmin(req)`, `requireServerRole(...)`,
-and each per-surface admin server action all check
-`role === 'ADMIN' || role === 'CLIENT'`. The two roles exist for
-audit-trail clarity (server logs and admin activity can distinguish "the
-developer did this" from "the owner did this"), **not** for privilege
-separation. The user-menu dropdown still only shows the admin link for
-`ADMIN` — `CLIENT` users currently navigate to `/admin` directly. If
-that becomes a friction point, expand the menu check; do NOT split
-permissions to compensate.
+`ADMIN` and `CLIENT` share the **business** half of `/admin/*` —
+articles, books, interviews, gallery, events, tests, orders, gifts,
+subscribers, messages, questions, corporate, booking. Both pass
+`requireAdmin(req)` and `requireServerRole('CLIENT')` on those routes.
+
+**Developer-only** (ADMIN, not CLIENT) — `requireAdminStrict(req)` on the
+API, `requireDeveloperPage()` on the page, and inline role checks on the
+matching server actions:
+
+- `/admin/settings`, `/admin/settings/site` — site config + feature toggles
+- `/admin/content` — content blocks
+- `/admin/media` — media library
+- `/admin/email-queue`, `/admin/email-queue/[id]` — transactional-email diagnostics
+- `/admin/users`, `/admin/users/[id]` — user CRUD + role management
+
+The `AdminSidebar` and `AdminTopbar` hide these entries for CLIENT
+viewers (`AdminSidebar.tsx:78-167`, `AdminTopbar.tsx:193-200`). A CLIENT
+who hand-types one of these URLs hits `notFound()` via
+`requireDeveloperPage()` in `lib/auth/server.ts`. The matching API + the
+server actions in `app/[locale]/(admin)/admin/email-queue/actions.ts`
+reject the CLIENT explicitly. Belt + suspenders — UI is hidden, route
+404s, action returns forbidden.
+
+`requireAdminStrict` lives in `lib/auth/admin-guard.ts`;
+`requireDeveloperPage` lives in `lib/auth/server.ts`. Use both together
+on new developer-only surfaces.
 
 ### i18n
 - `next-intl@^4.9`.
@@ -219,6 +235,14 @@ To upgrade: test `pdfjs-dist@latest` modern build with the current Next
 version. If still broken, leave the pinning. If fixed, update three
 places in lockstep — Webpack alias, `react-pdf` version, worker source
 path. Full procedure in `docs/architecture/pdf-reader.md`.
+
+**Turbopack mirror.** `npm run dev` runs `next dev --turbopack` by default
+(Webpack via `npm run dev:webpack`). Turbopack ignores the `webpack:`
+callback in `next.config.ts`, so the legacy-pdf alias is also declared
+under `turbopack.resolveAlias` and the Node-only `canvas` dep is shimmed
+via `lib/stubs/empty-module.js`. Keep the two alias blocks in lockstep:
+any future change to the webpack alias must be mirrored in the turbopack
+alias or the dev server (or build, if `build:tp` is used) will break.
 
 ## Design system: Qalem v2
 
@@ -616,6 +640,17 @@ of a human, say so explicitly rather than implying success.
   the corporate suite, `SessionContentEditor`, the booking suite). The
   shared `StatusBadge` accepts optional `tone` and `label` overrides
   for non-status enums (e.g. session-item types).
+- `components/admin/dashboard/` — Phase E2 editorial dashboard sections:
+  `GreetingBand`, `SectionHeader`, `AttentionRow`, `PerformanceBand`
+  (+ `RevenueChart`, `SubscribersChart`), `AudienceSnapshot`,
+  `RecentActivityStrip`, `ResearchHighlights`. Composed by
+  `components/admin/AdminDashboardHome.tsx`, rendered at `/admin`. All
+  data is real — no random-sine-wave fallbacks. Charts use recharts
+  (`ComposedChart` with single sienna stroke + dashed prior-period line
+  + minimal corner-only axes). Attention threshold: flat `> 10` per E1b
+  (the design's per-card thresholds were rejected in favour of the
+  existing rule). Greeting time-of-day uses `Asia/Beirut` (not UTC) so
+  the cutoff matches Dr. Khaled's local clock.
 - `components/auth/` — login/signup/forgot/reset forms,
   `AuthRequiredDialog`, `AuthAside`.
 - `components/booking/` — public `/booking/*` surface (Phase A1). Three

@@ -52,6 +52,7 @@ export default async function DashboardAskPage({ params }: Props) {
     body: q.body,
     category: q.category,
     status: q.status,
+    answerBody: q.answerBody ?? null,
     answerReference: q.answerReference,
     answeredAt: q.answeredAt?.toISOString() ?? null,
     createdAt: q.createdAt.toISOString(),

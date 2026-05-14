@@ -65,20 +65,27 @@ type NavGroup = {
   items: NavItem[]
 }
 
-// Builds the admin sidebar nav. Every section is always rendered — the
-// admin viewing this panel IS the operator, so hiding their own sections
-// from themselves never made sense. The earlier `show_admin_*` site
-// settings were removed; only the live count badges (pending questions,
-// draft tests, email-queue attention) remain.
+// Builds the admin sidebar nav. The `site` group plus the `users` entry are
+// hidden when role === 'CLIENT' — those surfaces (system settings, content
+// blocks, media library, email queue, user role/CRUD) belong to the developer
+// (ADMIN) only. The matching server routes ALSO gate on role; this just keeps
+// the sidebar honest. See `requireAdminStrict` in lib/auth/admin-guard.ts for
+// the full policy.
 function buildGroups(
   pendingQuestionCount: number,
   draftTestCount: number,
   emailQueueAttentionCount: number,
+  role: 'USER' | 'ADMIN' | 'CLIENT',
 ): NavGroup[] {
+  const isDeveloper = role === 'ADMIN'
+
   const audienceItems: NavItem[] = [
     { href: '/admin/subscribers', key: 'subscribers', icon: Mail },
     { href: '/admin/messages', key: 'messages', icon: MessageSquare },
-    { href: '/admin/users', key: 'users', icon: Users },
+    // Users CRUD = role management — developer surface only.
+    ...(isDeveloper
+      ? [{ href: '/admin/users', key: 'users', icon: Users } as NavItem]
+      : []),
     {
       href: '/admin/questions',
       key: 'questions',
@@ -104,7 +111,7 @@ function buildGroups(
     },
   ]
 
-  return [
+  const groups: NavGroup[] = [
     { key: 'content', items: contentItems },
     {
       key: 'commerce',
@@ -148,7 +155,11 @@ function buildGroups(
         { href: '/admin/booking/orders', key: 'booking_orders', icon: CreditCard },
       ],
     },
-    {
+  ]
+
+  // Site/system group — developer surfaces only.
+  if (isDeveloper) {
+    groups.push({
       key: 'site',
       items: [
         { href: '/admin/settings', key: 'settings', icon: Settings, exact: true },
@@ -163,8 +174,10 @@ function buildGroups(
           badgeAriaLabelKey: 'email_queue_attention_aria',
         },
       ],
-    },
-  ]
+    })
+  }
+
+  return groups
 }
 
 export function AdminSidebarContent({
@@ -201,6 +214,7 @@ export function AdminSidebarContent({
     pendingQuestionCount,
     draftTestCount,
     emailQueueAttentionCount,
+    user.role,
   )
 
   return (

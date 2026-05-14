@@ -36,6 +36,9 @@ export type AdminQuestionsRow = {
   category: string | null
   isAnonymous: boolean
   status: QuestionStatus
+  /** The prose answer Dr. Khaled wrote in the modal. Null when not answered
+   *  yet, or when answered before the answer-body feature existed. */
+  answerBody: string | null
   answerReference: string | null
   answeredAt: string | null
   archivedAt: string | null
@@ -135,7 +138,7 @@ export function AdminQuestionsPage({
     (
       row: AdminQuestionsRow,
       target: QuestionStatus,
-      answerReference: string | undefined,
+      input: { answerBody?: string; answerReference?: string } | undefined,
     ) => {
       startTransition(async () => {
         try {
@@ -143,18 +146,23 @@ export function AdminQuestionsPage({
             await updateQuestionStatusAction({
               id: row.id,
               status: target,
-              answerReference,
+              answerBody: input?.answerBody,
+              answerReference: input?.answerReference,
             })
           if (res.ok) {
-            // Five-way toast for the ANSWERED transition driven by the
+            // Four-way toast for the ANSWERED transition driven by the
             // server's emailOutcome discriminator; one-liner otherwise.
             if (target === 'ANSWERED') {
               switch (res.emailOutcome) {
                 case 'sent':
                   toast.success(t('toast.answered_with_email'))
                   break
-                case 'no_url':
-                  toast.success(t('toast.answered_text_note'))
+                case 'no_body':
+                  // Defensive — shouldn't fire under the new contract since
+                  // answerBody is required to reach ANSWERED. The status
+                  // update still succeeded; surface a warning so admin
+                  // notices the missing email.
+                  toast.warning(t('toast.answered_email_failed'))
                   break
                 case 'no_recipient':
                   // Asker account no longer exists — status updated, no
@@ -166,8 +174,8 @@ export function AdminQuestionsPage({
                   break
                 case 'not_applicable':
                   // Reached when admin edits an already-ANSWERED row's
-                  // reference (transition wasn't FROM PENDING). Status
-                  // saved; no email re-send by design.
+                  // answer (transition wasn't FROM PENDING). Status saved;
+                  // no email re-send by design.
                   toast.success(t('toast.answered_with_email'))
                   break
               }
@@ -333,8 +341,8 @@ export function AdminQuestionsPage({
           row={active.row}
           locale={locale}
           pending={pending}
-          onConfirm={(answerReference) =>
-            runStatusUpdate(active.row, 'ANSWERED', answerReference)
+          onConfirm={(input) =>
+            runStatusUpdate(active.row, 'ANSWERED', input)
           }
           onClose={closeModal}
         />

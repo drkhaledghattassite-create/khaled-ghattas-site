@@ -6,9 +6,10 @@
  *   - retryEmailQueueAction   → POST a row back to PENDING for re-pickup
  *   - markEmailQueueFailedAction → admin dead-letters a row
  *
- * Both gated to ADMIN/CLIENT roles. The action layer also defends —
- * server actions don't have requireAdmin(req)'s origin check; we inline
- * the session role check.
+ * Developer-only (ADMIN role): the email queue is a system/ops surface.
+ * CLIENT (the site owner) is intentionally rejected — the matching list +
+ * detail pages 404 for CLIENT, and these actions return 'forbidden' if
+ * somehow invoked.
  */
 
 import { revalidatePath } from 'next/cache'
@@ -23,13 +24,12 @@ import {
 type ActionOk = { ok: true }
 type ActionErr<E extends string> = { ok: false; error: E }
 
-async function requireAdminSession() {
+async function requireDeveloperSession() {
   const session = await getServerSession()
   if (!session) return { ok: false as const, error: 'unauthorized' as const }
-  // ADMIN (developer) AND CLIENT (site owner — Dr. Khaled) are both trusted
-  // operators; both can retry / dead-letter outbound mail. The two roles
-  // exist for audit clarity, not for privilege separation.
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'CLIENT') {
+  // Developer-only: email-queue ops are reserved for ADMIN (Kamal). CLIENT
+  // (Dr. Khaled) shouldn't be retrying or dead-lettering transactional mail.
+  if (session.user.role !== 'ADMIN') {
     return { ok: false as const, error: 'forbidden' as const }
   }
   return { ok: true as const, session }
@@ -46,7 +46,7 @@ export type RetryEmailQueueActionResult =
 export async function retryEmailQueueAction(
   raw: z.infer<typeof retrySchema>,
 ): Promise<RetryEmailQueueActionResult> {
-  const guard = await requireAdminSession()
+  const guard = await requireDeveloperSession()
   if (!guard.ok) return { ok: false, error: guard.error }
   const parsed = retrySchema.safeParse(raw)
   if (!parsed.success) return { ok: false, error: 'validation' }
@@ -73,7 +73,7 @@ export type MarkEmailQueueFailedActionResult =
 export async function markEmailQueueFailedAction(
   raw: z.infer<typeof markFailedSchema>,
 ): Promise<MarkEmailQueueFailedActionResult> {
-  const guard = await requireAdminSession()
+  const guard = await requireDeveloperSession()
   if (!guard.ok) return { ok: false, error: guard.error }
   const parsed = markFailedSchema.safeParse(raw)
   if (!parsed.success) return { ok: false, error: 'validation' }

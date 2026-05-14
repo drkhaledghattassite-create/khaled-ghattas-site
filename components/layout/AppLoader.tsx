@@ -174,6 +174,25 @@ export function AppLoader() {
     return () => window.removeEventListener('kg:loader:show', onShow)
   }, [reduceMotion])
 
+  // While the loader is on-screen, freeze the page under it: lock body scroll
+  // (matches the Lightbox/MobileMenu pattern) and pause Lenis so its wheel
+  // interception doesn't keep scrolling through the overlay. The overlay
+  // itself catches clicks via pointer-events:auto on the motion root, so the
+  // user can't accidentally click links/buttons that are mid-transitioning.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (mode === null) return
+    const prevBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const lenis = (window as unknown as { __lenis?: { stop: () => void; start: () => void } })
+      .__lenis
+    lenis?.stop()
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      lenis?.start()
+    }
+  }, [mode])
+
   return (
     <AnimatePresence mode="wait">
       {mode === 'first' && (
@@ -206,7 +225,9 @@ function FirstLoadSplash({
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-      className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden bg-black"
+      // Catches clicks + (combined with the body-overflow lock in the parent
+      // effect) keeps content underneath inert while the splash is up.
+      className="fixed inset-0 z-[9999] overflow-hidden bg-black"
     >
       <span className="sr-only">{label}</span>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
@@ -270,7 +291,10 @@ function NavOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: enter, ease: EASE_OUT_EXPO }}
-      className="pointer-events-none fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--color-bg)]/[0.78] backdrop-blur-xl backdrop-saturate-[1.15] supports-[backdrop-filter]:bg-[var(--color-bg)]/[0.62]"
+      // Catches clicks so the user can't race the navigation by clicking a
+      // second link through the overlay. Body scroll is locked by the parent
+      // effect; this captures the click surface.
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--color-bg)]/[0.78] backdrop-blur-xl backdrop-saturate-[1.15] supports-[backdrop-filter]:bg-[var(--color-bg)]/[0.62]"
     >
       <span className="sr-only">{label}</span>
       <motion.div

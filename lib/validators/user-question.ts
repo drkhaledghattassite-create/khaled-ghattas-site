@@ -77,21 +77,32 @@ export type CreateUserQuestionInput = z.infer<typeof createUserQuestionSchema>
  * Phase B2 — admin schemas
  *
  * The admin queue at /admin/questions uses these for status transitions and
- * deletion. ANSWERED requires a non-empty answerReference (URL or free text);
- * PENDING and ARCHIVED MUST clear it (revert state) — enforced via refine.
+ * deletion. ANSWERED requires a non-empty `answerBody` (the in-product prose
+ * reply); `answerReference` is optional supplementary content (URL or note).
+ * PENDING and ARCHIVED MUST clear both — enforced at the action layer.
  * ──────────────────────────────────────────────────────────────────────── */
 
 export const QUESTION_STATUSES = ['PENDING', 'ANSWERED', 'ARCHIVED'] as const
 export type QuestionStatusLiteral = (typeof QUESTION_STATUSES)[number]
 
 export const ANSWER_REFERENCE_MAX = 500
+export const ANSWER_BODY_MIN = 10
+export const ANSWER_BODY_MAX = 4000
 
 export const updateQuestionStatusSchema = z
   .object({
     id: z.string().uuid(),
     status: z.enum(QUESTION_STATUSES),
-    // The form sends '' when the input is empty; we treat that as "no
-    // reference". Trimmed length is what `refine` checks.
+    // The prose answer Dr. Khaled writes in the admin modal. Required when
+    // status === 'ANSWERED'. Length capped so the email template renders
+    // cleanly across clients.
+    answerBody: z
+      .string()
+      .trim()
+      .max(ANSWER_BODY_MAX, { message: 'answer_body_too_long' })
+      .optional(),
+    // Optional supplementary link (Instagram reel, YouTube clip, …). The
+    // form sends '' when the input is empty; we treat that as "no reference".
     answerReference: z
       .string()
       .trim()
@@ -99,17 +110,17 @@ export const updateQuestionStatusSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    const ref = (data.answerReference ?? '').trim()
-    if (data.status === 'ANSWERED' && ref.length === 0) {
+    const body = (data.answerBody ?? '').trim()
+    if (data.status === 'ANSWERED' && body.length < ANSWER_BODY_MIN) {
       ctx.addIssue({
         code: 'custom',
-        path: ['answerReference'],
-        message: 'answer_reference_required',
+        path: ['answerBody'],
+        message: 'answer_body_required',
       })
     }
-    // PENDING / ARCHIVED → ref is silently cleared by the action layer; we
-    // don't reject submissions that include one (admin may have typed it
-    // before changing their mind on status), but we also don't persist it.
+    // PENDING / ARCHIVED → both answer fields cleared by the action layer.
+    // We don't reject submissions that include them (admin may have typed
+    // before changing their mind on status); we just don't persist them.
   })
 
 export type UpdateQuestionStatusInput = z.infer<

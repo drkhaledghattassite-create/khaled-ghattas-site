@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAllSettings, setSettingsBulk } from '@/lib/db/queries'
-import { requireAdmin } from '@/lib/auth/admin-guard'
+import { requireAdminStrict } from '@/lib/auth/admin-guard'
 import { errInternal, parseJsonBody } from '@/lib/api/errors'
 
 export async function GET() {
-  const guard = await requireAdmin()
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict()
   if (!guard.ok) return guard.response
 
   try {
@@ -60,7 +61,8 @@ const settingsPatchSchema = z.record(
 )
 
 export async function PATCH(req: Request) {
-  const guard = await requireAdmin(req)
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict(req)
   if (!guard.ok) return guard.response
 
   const body = await parseJsonBody(req, settingsPatchSchema)

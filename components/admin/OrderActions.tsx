@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
+import { Mail } from 'lucide-react'
 import { useRouter } from '@/lib/i18n/navigation'
 import {
   AlertDialog,
@@ -15,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { resendOrderReceiptAction } from '@/app/[locale]/(admin)/admin/orders/actions'
 import type { Order } from '@/lib/db/queries'
 
 const PILL =
@@ -29,6 +31,47 @@ export function OrderActions({ order }: { order: Order }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [openAction, setOpenAction] = useState<ActionStatus | null>(null)
+  const [resending, startResend] = useTransition()
+  // Only PAID / FULFILLED orders have a receipt worth re-sending. REFUNDED
+  // and FAILED orders have nothing to deliver. Matches the server-side
+  // wrong_status gate.
+  const canResend =
+    !resending &&
+    !busy &&
+    (order.status === 'PAID' || order.status === 'FULFILLED') &&
+    order.customerEmail.length > 0
+
+  function handleResendReceipt() {
+    startResend(async () => {
+      try {
+        const res = await resendOrderReceiptAction({ orderId: order.id })
+        if (!res.ok) {
+          const key =
+            res.error === 'rate_limited'
+              ? 'resend_rate_limited'
+              : res.error === 'no_email'
+                ? 'resend_no_email'
+                : res.error === 'wrong_status'
+                  ? 'resend_wrong_status'
+                  : res.error === 'not_found'
+                    ? 'resend_not_found'
+                    : 'resend_failed'
+          toast.error(t(key))
+          return
+        }
+        if (res.emailOutcome === 'send_failed') {
+          toast.warning(t('resend_send_failed'))
+        } else if (res.emailOutcome === 'preview_only') {
+          toast.info(t('resend_preview_only'))
+        } else {
+          toast.success(t('resend_success'))
+        }
+      } catch (err) {
+        console.error('[OrderActions handleResendReceipt]', err)
+        toast.error(tActions('error_generic'))
+      }
+    })
+  }
 
   const isTerminal = order.status === 'REFUNDED' || order.status === 'FAILED'
   const canFulfill = !busy && !isTerminal && order.status !== 'FULFILLED'
@@ -189,6 +232,21 @@ export function OrderActions({ order }: { order: Order }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <button
+        type="button"
+        onClick={handleResendReceipt}
+        disabled={!canResend}
+        title={
+          !canResend && order.status !== 'PAID' && order.status !== 'FULFILLED'
+            ? t('resend_wrong_status')
+            : undefined
+        }
+        className={`${PILL} border-border-strong text-fg2 hover:bg-bg-deep`}
+      >
+        <Mail aria-hidden className="h-3 w-3" />
+        {resending ? t('resending') : t('resend_receipt')}
+      </button>
 
       {order.stripePaymentIntentId && (
         <a

@@ -68,6 +68,7 @@ export default async function AdminQuestionsRoute({
     category: q.category,
     isAnonymous: q.isAnonymous,
     status: q.status,
+    answerBody: q.answerBody ?? null,
     answerReference: q.answerReference,
     answeredAt: q.answeredAt?.toISOString() ?? null,
     archivedAt: q.archivedAt?.toISOString() ?? null,

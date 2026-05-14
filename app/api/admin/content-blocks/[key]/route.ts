@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { deleteContentBlock, getContentBlock, setContentBlock } from '@/lib/db/queries'
-import { requireAdmin } from '@/lib/auth/admin-guard'
+import { requireAdminStrict } from '@/lib/auth/admin-guard'
 import { errInternal, errNotFound, parseJsonBody } from '@/lib/api/errors'
 
 type Ctx = { params: Promise<{ key: string }> }
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const guard = await requireAdmin()
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict()
   if (!guard.ok) return guard.response
 
   const { key } = await params
@@ -28,7 +29,8 @@ const blockPatchSchema = z.object({
 })
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const guard = await requireAdmin(req)
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict(req)
   if (!guard.ok) return guard.response
 
   const { key } = await params
@@ -51,7 +53,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
-  const guard = await requireAdmin(req)
+  // Developer-only — see role policy in lib/auth/admin-guard.ts.
+  const guard = await requireAdminStrict(req)
   if (!guard.ok) return guard.response
 
   const { key } = await params

@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { notFound } from 'next/navigation'
 import { auth } from './index'
 import {
   MOCK_AUTH_ENABLED,
@@ -77,6 +78,28 @@ export async function requireServerRole(
   if (!session) throw new Error('UNAUTHORIZED')
   if (session.user.role !== role && session.user.role !== 'ADMIN') {
     throw new Error('UNAUTHORIZED')
+  }
+  return session.user
+}
+
+/**
+ * Page-level guard for developer-only admin surfaces. Reaches into Next.js's
+ * `notFound()` so CLIENT viewers see the 404 chrome rather than an
+ * UNAUTHORIZED throw they'd interpret as a bug. The `(admin)` layout already
+ * verifies the role is ADMIN or CLIENT before any page in this group renders,
+ * so by the time we get here the only rejection case is `role === 'CLIENT'`.
+ *
+ * Used by /admin/settings, /admin/settings/site, /admin/content, /admin/media,
+ * /admin/email-queue, /admin/email-queue/[id], /admin/users, /admin/users/[id].
+ *
+ * Pair with `requireAdminStrict` on the matching API routes so the page-level
+ * gate isn't the only barrier — a determined CLIENT can't reach the data via
+ * the API even if they bypass the UI.
+ */
+export async function requireDeveloperPage(): Promise<ServerSessionUser> {
+  const session = await getServerSession()
+  if (!session || session.user.role !== 'ADMIN') {
+    notFound()
   }
   return session.user
 }

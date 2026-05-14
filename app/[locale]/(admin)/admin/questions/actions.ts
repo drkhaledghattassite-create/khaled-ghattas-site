@@ -68,7 +68,9 @@ function revalidateQuestionPaths() {
  *   - `not_applicable`: transition wasn't PENDING→ANSWERED, no email was
  *      ever in scope (ARCHIVED, revert-to-PENDING, edit-on-already-
  *      ANSWERED).
- *   - `no_url`:       admin saved a free-text note. No link to deliver.
+ *   - `no_body`:      defensive — answerBody was empty despite the
+ *                     validator's required-when-ANSWERED rule. Status
+ *                     update succeeded but no email was sent.
  *   - `no_recipient`: defensive — asker row missing despite cascade FK.
  *                     Status update succeeded; admin must notify
  *                     manually if relevant.
@@ -79,7 +81,7 @@ function revalidateQuestionPaths() {
  */
 export type EmailOutcome =
   | 'not_applicable'
-  | 'no_url'
+  | 'no_body'
   | 'no_recipient'
   | 'sent'
   | 'send_failed'
@@ -109,38 +111,39 @@ export async function updateQuestionStatusAction(
   const existing = await getQuestionById(parsed.data.id)
   if (!existing) return { ok: false, error: 'not_found' }
 
-  // Trim and normalise the answer reference. ANSWERED keeps it; PENDING /
-  // ARCHIVED clear it (the query helper enforces this anyway, but doing it
-  // here too makes the behaviour explicit and avoids a stale value sitting
-  // in the patch payload).
+  // Normalise the answer fields. ANSWERED keeps them; PENDING / ARCHIVED
+  // clear them (the query helper enforces this anyway, but doing it here
+  // too makes the behaviour explicit and avoids stale values lingering in
+  // the patch payload).
+  const trimmedBody = (parsed.data.answerBody ?? '').trim()
   const trimmedRef = (parsed.data.answerReference ?? '').trim()
+  const isAnswered = parsed.data.status === 'ANSWERED'
+  const answerBodyForWrite = isAnswered && trimmedBody.length > 0 ? trimmedBody : null
   const answerReferenceForWrite =
-    parsed.data.status === 'ANSWERED' && trimmedRef.length > 0
-      ? trimmedRef
-      : null
+    isAnswered && trimmedRef.length > 0 ? trimmedRef : null
 
   const updated = await updateQuestionStatus({
     id: parsed.data.id,
     status: parsed.data.status,
+    answerBody: answerBodyForWrite,
     answerReference: answerReferenceForWrite,
   })
   if (!updated) return { ok: false, error: 'database_error' }
 
   revalidateQuestionPaths()
 
-  // Email path — only when the transition is "PENDING → ANSWERED with URL".
-  // Reverting an ANSWERED back to PENDING and re-answering with a different
-  // URL also fires an email; admins should be aware of that. Documented
-  // in self-critique.
+  // Email path — fire when the transition is "PENDING → ANSWERED with a
+  // prose body". The supplementary URL (when present) becomes a CTA inside
+  // the email; when absent, the email is prose-only. Reverting ANSWERED to
+  // PENDING and re-answering also fires an email — documented behaviour.
   const transitionedFromPending = existing.status === 'PENDING'
-  const isAnsweredTransition = parsed.data.status === 'ANSWERED'
   let emailOutcome: EmailOutcome = 'not_applicable'
 
-  if (isAnsweredTransition && transitionedFromPending) {
-    if (!answerReferenceForWrite || !isHttpUrl(answerReferenceForWrite)) {
-      // Free-text note (or empty, but the schema forbids that). No link
-      // to deliver.
-      emailOutcome = 'no_url'
+  if (isAnswered && transitionedFromPending) {
+    if (!answerBodyForWrite) {
+      // Schema requires answerBody when ANSWERED; this branch is defensive
+      // for malformed inputs that somehow slip past the validator.
+      emailOutcome = 'no_body'
     } else if (!existing.user) {
       // Defensive: asker row missing despite ON DELETE CASCADE. Status
       // update has already succeeded; we can't email an absent user.
@@ -157,6 +160,13 @@ export async function updateQuestionStatusAction(
       })
       emailOutcome = 'no_recipient'
     } else {
+      // Only attach the URL if it's a valid http(s) link — defends against
+      // a free-text note being passed by an older client that didn't split
+      // the fields.
+      const urlForEmail =
+        answerReferenceForWrite && isHttpUrl(answerReferenceForWrite)
+          ? answerReferenceForWrite
+          : null
       try {
         const result = await sendAnsweredNotificationEmail({
           user: {
@@ -164,7 +174,8 @@ export async function updateQuestionStatusAction(
             name: existing.user.name,
           },
           question: { subject: existing.subject },
-          answerUrl: answerReferenceForWrite,
+          answerBody: answerBodyForWrite,
+          answerUrl: urlForEmail,
           questionId: existing.id,
         })
         if (result.ok) {

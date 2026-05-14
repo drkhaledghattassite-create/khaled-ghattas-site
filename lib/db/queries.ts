@@ -4685,6 +4685,7 @@ export async function createUserQuestion(input: {
       category: input.category,
       isAnonymous,
       status: 'PENDING',
+      answerBody: null,
       answerReference: null,
       answeredAt: null,
       archivedAt: null,
@@ -4890,11 +4891,13 @@ export async function getQuestionById(
 /**
  * Atomic status update with timestamp side-effects per the Phase B2 spec:
  *   - status='ANSWERED'  → answeredAt=now, archivedAt=null,
+ *                          answerBody=input.answerBody,
  *                          answerReference=input.answerReference
  *   - status='ARCHIVED'  → archivedAt=now, answeredAt=null,
- *                          answerReference=null
+ *                          answerBody=null, answerReference=null
  *   - status='PENDING'   → answeredAt=null, archivedAt=null,
- *                          answerReference=null  (revert state)
+ *                          answerBody=null, answerReference=null
+ *                          (revert state — both answer fields cleared)
  * `updatedAt` is always set to now.
  *
  * Returns the updated row, or null if the row was missing or the write
@@ -4904,6 +4907,7 @@ export async function getQuestionById(
 export async function updateQuestionStatus(input: {
   id: string
   status: QuestionStatus
+  answerBody: string | null
   answerReference: string | null
 }): Promise<UserQuestion | null> {
   const now = new Date()
@@ -4913,6 +4917,7 @@ export async function updateQuestionStatus(input: {
         status: 'ANSWERED',
         answeredAt: now,
         archivedAt: null,
+        answerBody: input.answerBody,
         answerReference: input.answerReference,
         updatedAt: now,
       }
@@ -4922,6 +4927,7 @@ export async function updateQuestionStatus(input: {
         status: 'ARCHIVED',
         archivedAt: now,
         answeredAt: null,
+        answerBody: null,
         answerReference: null,
         updatedAt: now,
       }
@@ -4930,6 +4936,7 @@ export async function updateQuestionStatus(input: {
       status: 'PENDING',
       answeredAt: null,
       archivedAt: null,
+      answerBody: null,
       answerReference: null,
       updatedAt: now,
     }
@@ -9072,6 +9079,445 @@ export async function getNewCorporateRequestCount(): Promise<number> {
   } catch (err) {
     console.error('[queries.getNewCorporateRequestCount]', err)
     return 0
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Phase E2 — dashboard composition helpers.
+ *
+ * Prior-period comparison helpers (revenue + subscribers), top tests by
+ * attempts, and the per-test "most-revealing question" highlight used by
+ * the redesigned /admin home (`AdminDashboardHome`). Counts are kept
+ * separate (one helper per metric) rather than batched — the round-trip
+ * cost is invisible at admin-page scale and parallel `Promise.all` reads
+ * are simpler than a single batched RPC.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type DailyComparison = {
+  current: Array<{ date: string; revenue: number }>
+  prior: Array<{ date: string; revenue: number }>
+  currentTotal: number
+  priorTotal: number
+  /** null when priorTotal is 0 (avoids divide-by-zero). */
+  deltaPercent: number | null
+}
+
+export type DailyCountComparison = {
+  current: Array<{ date: string; count: number }>
+  prior: Array<{ date: string; count: number }>
+  currentTotal: number
+  priorTotal: number
+  deltaPercent: number | null
+}
+
+function buildPriorWindow(days: number): { start: Date; end: Date; isoKeys: string[] } {
+  const safe = Math.max(1, Math.min(days, 365))
+  const today = startOfUtcDay(new Date())
+  // current window starts at today - (safe-1); prior window ends the day
+  // BEFORE current starts and spans `safe` days back from there.
+  const currentStart = new Date(today)
+  currentStart.setUTCDate(currentStart.getUTCDate() - (safe - 1))
+  const priorEnd = new Date(currentStart)
+  priorEnd.setUTCDate(priorEnd.getUTCDate() - 1)
+  const priorStart = new Date(priorEnd)
+  priorStart.setUTCDate(priorStart.getUTCDate() - (safe - 1))
+  const isoKeys: string[] = []
+  for (let i = 0; i < safe; i++) {
+    const d = new Date(priorStart)
+    d.setUTCDate(d.getUTCDate() + i)
+    isoKeys.push(isoDate(d))
+  }
+  return { start: priorStart, end: priorEnd, isoKeys }
+}
+
+function computeDelta(current: number, prior: number): number | null {
+  if (prior <= 0) return null
+  return Math.round(((current - prior) / prior) * 100)
+}
+
+/**
+ * 30d revenue + the equivalent prior 30d, for the dashboard performance band.
+ * Both windows are aligned to UTC day boundaries via `buildDailyWindow` /
+ * `buildPriorWindow`; the prior window ends the day before the current
+ * window starts. Mock/no-DB mode returns zero-filled windows.
+ */
+export async function getRevenueByDayWithComparison(
+  days: number = 30,
+): Promise<DailyComparison> {
+  const current = await getRevenueByDay(days)
+  const currentTotal = current.reduce((sum, p) => sum + p.revenue, 0)
+  const prior = await getPriorRevenueByDay(days)
+  const priorTotal = prior.reduce((sum, p) => sum + p.revenue, 0)
+  return {
+    current: current.map((p) => ({ date: p.date, revenue: p.revenue })),
+    prior,
+    currentTotal,
+    priorTotal,
+    deltaPercent: computeDelta(currentTotal, priorTotal),
+  }
+}
+
+async function getPriorRevenueByDay(
+  days: number,
+): Promise<Array<{ date: string; revenue: number }>> {
+  const { start, end, isoKeys } = buildPriorWindow(days)
+  const empty = isoKeys.map((date) => ({ date, revenue: 0 }))
+  if (!HAS_DB) return empty
+  try {
+    const rows = await db
+      .select({
+        day: sql<string>`to_char(${orders.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        revenue: sql<string>`coalesce(sum(${orders.totalAmount})::text, '0')`,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.status, ['PAID', 'FULFILLED']),
+          sql`${orders.createdAt} >= ${start.toISOString()}`,
+          sql`${orders.createdAt} < ${new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString()}`,
+        ),
+      )
+      .groupBy(sql`to_char(${orders.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`)
+    const map = new Map<string, number>()
+    for (const r of rows) map.set(r.day, Number(r.revenue))
+    return isoKeys.map((date) => ({ date, revenue: map.get(date) ?? 0 }))
+  } catch (err) {
+    console.error('[getPriorRevenueByDay]', err)
+    return empty
+  }
+}
+
+/**
+ * 30d new-subscriber counts + the equivalent prior 30d. Counts only ACTIVE
+ * subscribers (UNSUBSCRIBED rows aren't part of the growth story).
+ */
+export async function getSubscribersByDayWithComparison(
+  days: number = 30,
+): Promise<DailyCountComparison> {
+  const current = await getNewSubscribersByDay(days)
+  const currentTotal = current.reduce((sum, p) => sum + p.count, 0)
+  const prior = await getPriorSubscribersByDay(days)
+  const priorTotal = prior.reduce((sum, p) => sum + p.count, 0)
+  return {
+    current,
+    prior,
+    currentTotal,
+    priorTotal,
+    deltaPercent: computeDelta(currentTotal, priorTotal),
+  }
+}
+
+async function getPriorSubscribersByDay(
+  days: number,
+): Promise<Array<{ date: string; count: number }>> {
+  const { start, end, isoKeys } = buildPriorWindow(days)
+  const empty = isoKeys.map((date) => ({ date, count: 0 }))
+  if (!HAS_DB) return empty
+  try {
+    const rows = await db
+      .select({
+        day: sql<string>`to_char(${subscribers.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(subscribers)
+      .where(
+        and(
+          eq(subscribers.status, 'ACTIVE'),
+          sql`${subscribers.createdAt} >= ${start.toISOString()}`,
+          sql`${subscribers.createdAt} < ${new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString()}`,
+        ),
+      )
+      .groupBy(
+        sql`to_char(${subscribers.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+      )
+    const map = new Map<string, number>()
+    for (const r of rows) map.set(r.day, Number(r.count))
+    return isoKeys.map((date) => ({ date, count: map.get(date) ?? 0 }))
+  } catch (err) {
+    console.error('[getPriorSubscribersByDay]', err)
+    return empty
+  }
+}
+
+export type AudienceSnapshotCounts = {
+  activeSubscribers: number
+  subscribersThisWeek: number
+  registeredUsers: number
+  usersThisWeek: number
+  booksPublished: number
+  testsPublished: number
+}
+
+/**
+ * Single read for the audience-snapshot tile row. Uses COUNT(*) over
+ * narrow filtered predicates — never loads full rows. "This week" means
+ * the prior 7 UTC days inclusive of today (consistent with the rest of
+ * the dashboard's window math).
+ */
+export async function getAudienceSnapshotCounts(): Promise<AudienceSnapshotCounts> {
+  if (!HAS_DB) {
+    const placeholderTestsPublished = placeholderTests.filter((t) => t.isPublished).length
+    const placeholderBooksPublished = placeholderBooks.filter(
+      (b) => b.productType === 'BOOK' && b.status === 'PUBLISHED',
+    ).length
+    return {
+      activeSubscribers: placeholderSubscribers.filter((s) => s.status === 'ACTIVE').length,
+      subscribersThisWeek: 0,
+      registeredUsers: placeholderUsers.length,
+      usersThisWeek: 0,
+      booksPublished: placeholderBooksPublished,
+      testsPublished: placeholderTestsPublished,
+    }
+  }
+  const weekAgo = new Date()
+  weekAgo.setUTCDate(weekAgo.getUTCDate() - 7)
+  try {
+    const [
+      [subsActive],
+      [subsWeek],
+      [usersTotal],
+      [usersWeek],
+      [booksPub],
+      [testsPub],
+    ] = await Promise.all([
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(subscribers)
+        .where(eq(subscribers.status, 'ACTIVE')),
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(subscribers)
+        .where(
+          and(
+            eq(subscribers.status, 'ACTIVE'),
+            sql`${subscribers.createdAt} >= ${weekAgo.toISOString()}`,
+          ),
+        ),
+      db.select({ count: sql<number>`COUNT(*)::int` }).from(users),
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(users)
+        .where(sql`${users.createdAt} >= ${weekAgo.toISOString()}`),
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(books)
+        .where(and(eq(books.productType, 'BOOK'), eq(books.status, 'PUBLISHED'))),
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(tests)
+        .where(eq(tests.isPublished, true)),
+    ])
+    return {
+      activeSubscribers: Number(subsActive?.count) || 0,
+      subscribersThisWeek: Number(subsWeek?.count) || 0,
+      registeredUsers: Number(usersTotal?.count) || 0,
+      usersThisWeek: Number(usersWeek?.count) || 0,
+      booksPublished: Number(booksPub?.count) || 0,
+      testsPublished: Number(testsPub?.count) || 0,
+    }
+  } catch (err) {
+    console.error('[queries.getAudienceSnapshotCounts]', err)
+    return {
+      activeSubscribers: 0,
+      subscribersThisWeek: 0,
+      registeredUsers: 0,
+      usersThisWeek: 0,
+      booksPublished: 0,
+      testsPublished: 0,
+    }
+  }
+}
+
+export type TopTestByAttempts = {
+  testId: string
+  slug: string
+  titleEn: string
+  titleAr: string
+  attemptCount: number
+}
+
+/**
+ * Top N tests ranked by attempt count within the trailing window. Counts
+ * COMPLETED attempts only (`completedAt IS NOT NULL`) — abandoned attempts
+ * shouldn't move the dashboard. Aggregated in SQL via GROUP BY + ORDER BY
+ * count DESC.
+ *
+ * Mock mode reads attempts from the JSON-backed dev store and aggregates
+ * in-memory. Returns an empty array (not an error) when no tests have
+ * attempts in the window — the consumer renders an editorial empty state.
+ */
+export async function getTopTestsByAttemptsWithin(
+  days: number = 30,
+  limit: number = 3,
+): Promise<TopTestByAttempts[]> {
+  const cutoff = new Date()
+  cutoff.setUTCDate(cutoff.getUTCDate() - Math.max(1, Math.min(days, 365)))
+
+  if (MOCK_AUTH_ENABLED) {
+    const store = readStore()
+    const catalog = readMockTestCatalog()
+    const byId = new Map(catalog.tests.map((t) => [t.id, t]))
+    const counts = new Map<string, number>()
+    for (const att of store.testAttempts) {
+      if (!att.completedAt || att.completedAt < cutoff) continue
+      counts.set(att.testId, (counts.get(att.testId) ?? 0) + 1)
+    }
+    // Tie-break by createdAt DESC so equal-count tests come back in a
+    // deterministic order — newer test wins. Mirrors the DB-mode
+    // `ORDER BY ..., tests.createdAt DESC` clause below. We look up
+    // createdAt off the captured `byId` map inside the comparator rather
+    // than threading it through the return shape.
+    return Array.from(counts.entries())
+      .map(([testId, attemptCount]) => {
+        const test = byId.get(testId)
+        if (!test) return null
+        return {
+          testId,
+          slug: test.slug,
+          titleEn: test.titleEn,
+          titleAr: test.titleAr,
+          attemptCount,
+        }
+      })
+      .filter((x): x is TopTestByAttempts => x !== null)
+      .sort((a, b) => {
+        if (b.attemptCount !== a.attemptCount) {
+          return b.attemptCount - a.attemptCount
+        }
+        const aTime = byId.get(a.testId)?.createdAt.getTime() ?? 0
+        const bTime = byId.get(b.testId)?.createdAt.getTime() ?? 0
+        return bTime - aTime
+      })
+      .slice(0, Math.max(1, Math.min(limit, 50)))
+  }
+
+  if (!HAS_DB) return []
+
+  try {
+    const rows = await db
+      .select({
+        testId: testAttempts.testId,
+        slug: tests.slug,
+        titleEn: tests.titleEn,
+        titleAr: tests.titleAr,
+        attemptCount: sql<number>`COUNT(*)::int`,
+      })
+      .from(testAttempts)
+      .innerJoin(tests, eq(tests.id, testAttempts.testId))
+      .where(
+        and(
+          sql`${testAttempts.completedAt} IS NOT NULL`,
+          sql`${testAttempts.completedAt} >= ${cutoff.toISOString()}`,
+        ),
+      )
+      .groupBy(testAttempts.testId, tests.slug, tests.titleEn, tests.titleAr, tests.createdAt)
+      // Tie-break by tests.createdAt DESC so equal-count tests come back in
+      // a deterministic order across requests — newer test wins. Without
+      // this Postgres returns ties in physical/MVCC order, which can drift
+      // between requests.
+      .orderBy(sql`COUNT(*) DESC, ${tests.createdAt} DESC`)
+      .limit(Math.max(1, Math.min(limit, 50)))
+    return rows.map((r) => ({
+      testId: r.testId,
+      slug: r.slug,
+      titleEn: r.titleEn,
+      titleAr: r.titleAr,
+      attemptCount: Number(r.attemptCount) || 0,
+    }))
+  } catch (err) {
+    console.error('[queries.getTopTestsByAttemptsWithin]', err)
+    return []
+  }
+}
+
+export type TestResearchHighlight = {
+  testId: string
+  testSlug: string
+  testTitleEn: string
+  testTitleAr: string
+  totalAttempts: number
+  questionPromptEn: string
+  questionPromptAr: string
+  topOptionLabelEn: string
+  topOptionLabelAr: string
+  topOptionPercentage: number
+  options: Array<{
+    labelEn: string
+    labelAr: string
+    selectionPercentage: number
+    isTop: boolean
+  }>
+}
+
+/**
+ * For a given test, returns the data needed for the dashboard's research
+ * highlight: the single most-revealing question (the one with the highest
+ * maximum-option-percentage — i.e. the question where the audience
+ * converged most strongly on one answer) and that question's full option
+ * distribution.
+ *
+ * Returns null when the test doesn't exist OR has zero completed attempts.
+ * Ties are broken by the question with more attempts; if still tied, the
+ * earlier displayOrder wins. Composes on `getTestAnalytics` rather than
+ * re-querying — three calls per page load is acceptable at admin scale.
+ */
+export async function getTestHighlightForResearch(
+  testId: string,
+): Promise<TestResearchHighlight | null> {
+  const analytics = await getTestAnalytics(testId)
+  if (!analytics) return null
+  if (analytics.totalAttempts === 0) return null
+  if (analytics.questions.length === 0) return null
+
+  let bestIndex = -1
+  let bestMaxPct = -1
+  let bestSelectionTotal = -1
+  for (let i = 0; i < analytics.questions.length; i++) {
+    const q = analytics.questions[i]
+    if (!q || q.options.length === 0) continue
+    const maxPct = Math.max(...q.options.map((o) => o.selectionPercentage))
+    const selectionTotal = q.options.reduce(
+      (sum, o) => sum + o.selectionCount,
+      0,
+    )
+    if (
+      maxPct > bestMaxPct ||
+      (maxPct === bestMaxPct && selectionTotal > bestSelectionTotal)
+    ) {
+      bestMaxPct = maxPct
+      bestSelectionTotal = selectionTotal
+      bestIndex = i
+    }
+  }
+  if (bestIndex === -1) return null
+  const best = analytics.questions[bestIndex]
+  if (!best) return null
+
+  let topOption = best.options[0]
+  for (const o of best.options) {
+    if (!topOption || o.selectionPercentage > topOption.selectionPercentage) {
+      topOption = o
+    }
+  }
+  if (!topOption) return null
+
+  return {
+    testId: analytics.test.id,
+    testSlug: analytics.test.slug,
+    testTitleEn: analytics.test.titleEn,
+    testTitleAr: analytics.test.titleAr,
+    totalAttempts: analytics.totalAttempts,
+    questionPromptEn: best.question.promptEn,
+    questionPromptAr: best.question.promptAr,
+    topOptionLabelEn: topOption.option.labelEn,
+    topOptionLabelAr: topOption.option.labelAr,
+    topOptionPercentage: topOption.selectionPercentage,
+    options: best.options.map((o) => ({
+      labelEn: o.option.labelEn,
+      labelAr: o.option.labelAr,
+      selectionPercentage: o.selectionPercentage,
+      isTop: topOption !== null && o.option.id === topOption.option.id,
+    })),
   }
 }
 

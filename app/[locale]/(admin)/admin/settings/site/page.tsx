@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server'
 import { SiteSettingsForm } from '@/components/admin/SiteSettingsForm'
+import { requireDeveloperPage } from '@/lib/auth/server'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 import { getArticles, getBooks, getInterviews } from '@/lib/db/queries'
 
@@ -13,6 +14,8 @@ type Props = { params: Promise<{ locale: string }> }
 export default async function AdminSiteSettingsPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
+  // Developer-only — CLIENT viewers see the 404 page.
+  await requireDeveloperPage()
 
   const [settings, books, articles, interviews] = await Promise.all([
     getCachedSiteSettings(),

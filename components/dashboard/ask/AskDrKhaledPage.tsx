@@ -28,6 +28,9 @@ export type ClientUserQuestion = {
   body: string
   category: string | null
   status: QuestionStatus
+  /** The prose answer Dr. Khaled wrote in the admin queue. Null when not
+   *  answered yet, or when answered before this field existed. */
+  answerBody: string | null
   answerReference: string | null
   answeredAt: string | null
   createdAt: string

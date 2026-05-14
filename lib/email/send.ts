@@ -272,7 +272,11 @@ export type AnsweredEmailResult =
 export async function sendAnsweredNotificationEmail(args: {
   user: AnsweredEmailUser
   question: { subject: string }
-  answerUrl: string
+  /** The prose answer Dr. Khaled wrote in the admin modal. Required. */
+  answerBody: string
+  /** Optional supplementary link (Instagram reel, YouTube clip, …). When
+   *  omitted, the email renders the prose only — no CTA block. */
+  answerUrl: string | null
   /** Question id — passed through to the queue row's relatedEntityId so
    * admin can trace this notification back to the question in /admin/questions. */
   questionId?: string
@@ -293,6 +297,7 @@ export async function sendAnsweredNotificationEmail(args: {
     locale,
     recipientName: args.user.name,
     questionSubject: args.question.subject,
+    answerBody: args.answerBody,
     answerUrl: args.answerUrl,
     supportEmail: process.env.SUPPORT_EMAIL ?? DEFAULT_SUPPORT_EMAIL,
   })

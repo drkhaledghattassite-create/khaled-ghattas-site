@@ -190,9 +190,13 @@ export function AdminTopbar({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/admin/settings" />}>
-              {tNav('settings')}
-            </DropdownMenuItem>
+            {/* Settings is developer-only; CLIENT viewers get a 404 if they
+                follow this link, so just hide it. */}
+            {user.role === 'ADMIN' && (
+              <DropdownMenuItem render={<Link href="/admin/settings" />}>
+                {tNav('settings')}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={handleSignOut}>{tCommon('logout')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

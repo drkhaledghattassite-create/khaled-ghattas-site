@@ -1,9 +1,12 @@
 # Ask Dr. Khaled — Q&A intake (Phase B1) + admin queue (Phase B2)
 
 User-facing Q&A submission + history at `/dashboard/ask`. Dr. Khaled's
-team triages from the admin queue at `/admin/questions`. Answers are
-delivered offline (Instagram videos / stories) — the site is
-**intake-only**, never a consultation channel.
+team answers from the admin queue at `/admin/questions`. The doctor
+writes a prose reply (`answer_body`) inside the admin modal — the asker
+receives that reply by email and sees it on their dashboard. A public
+URL (Instagram reel, YouTube clip, article) can be attached as an
+optional supplementary link, but the prose answer is the primary
+deliverable. The site is now a full Q&A surface, not intake-only.
 
 ## Phase B1 — user-facing intake
 
@@ -54,22 +57,32 @@ of truth for allowed values.
 
 `/admin/questions` — paginated list with status filter, joined with
 the `users` table for user name + email. Admin actions:
-- Mark answered (with answer reference URL or free-text note)
+- Mark answered (with **required** prose body + optional URL)
 - Archive
-- Revert (back to PENDING)
+- Revert (back to PENDING — clears both body and URL)
 - Delete (idempotent hard delete)
+
+### Answer model
+
+Two fields on `user_questions`:
+- `answer_body` (TEXT, nullable) — the prose reply Dr. Khaled writes in
+  the admin modal. Required to reach `ANSWERED`. Validator floor 10
+  chars, cap 4000. Plain text; paragraphs separated by blank lines.
+- `answer_reference` (TEXT, nullable) — optional supplementary URL
+  (Instagram reel, YouTube clip, article). Becomes a CTA button in the
+  notification email when set; rendered as a "View the full answer"
+  link on the asker's dashboard.
 
 ### Email notification semantics
 
 The answered-notification email (`question-answered.ts` template,
 sent via `sendAnsweredNotificationEmail` in `lib/email/send.ts`) fires
-ONLY on:
-1. PENDING → ANSWERED transition, AND
-2. answerReference is an http(s) URL
+on PENDING → ANSWERED transition, always carrying the prose answer body.
+The optional URL becomes an extra CTA block inside the email; without
+it, the email renders prose-only.
 
-Free-text notes save quietly with no email. Non-PENDING source states
-(e.g., editing an already-ANSWERED row's reference) also skip the
-email so admins aren't surprised by re-sends.
+Non-PENDING source states (e.g., editing an already-ANSWERED row's
+answer) skip the email so admins aren't surprised by re-sends.
 
 Email send NEVER blocks the status update — Resend missing/down maps
 to a warning toast; the DB write still succeeds.

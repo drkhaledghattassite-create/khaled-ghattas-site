@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
 import { UserDetailPage } from '@/components/admin/users/UserDetailPage'
-import { getServerSession } from '@/lib/auth/server'
+import { requireDeveloperPage } from '@/lib/auth/server'
 import {
   getBookingOrdersByUserId,
   getLibraryEntriesByUserId,
@@ -14,8 +14,8 @@ import {
 } from '@/lib/db/queries'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
-// The (admin) layout already gates on ADMIN ∪ CLIENT. CLIENT viewers see the
-// page in read-only mode (role-edit affordance hidden, identical to the list).
+// Developer-only: CLIENT viewers see the 404 page rather than a read-only
+// view, since users-CRUD is a privilege-management surface.
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ locale: string; id: string }> }
@@ -24,8 +24,8 @@ export default async function AdminUserDetailRoute({ params }: Props) {
   const { locale, id } = await params
   setRequestLocale(locale)
 
-  const session = await getServerSession()
-  const viewerRole = session?.user.role ?? 'USER'
+  const viewer = await requireDeveloperPage()
+  const viewerRole = viewer.role
 
   const user = await getUserById(id)
   if (!user) notFound()

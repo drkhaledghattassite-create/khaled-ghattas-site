@@ -38,6 +38,10 @@ async function main() {
   // Lazy-import after env is set.
   const q = await import('../../lib/db/queries')
   const placeholder = await import('../../lib/placeholder-data')
+  // Pure module — no next-intl runtime dependency, safe in a tsx script.
+  const greetingSignal = await import(
+    '../../components/admin/dashboard/greeting-signal'
+  )
 
   /* ─── (1) GIFTS ─────────────────────────────────────────────────────── */
   // Use the ADMIN_GRANT path which is exercisable in mock mode without
@@ -358,20 +362,23 @@ async function main() {
   assert('ASK', 'getQuestionById returns the inserted row', fetchedQ?.id === submitted!.id)
   assert('ASK', 'admin row has user identity attached', !!fetchedQ?.user && fetchedQ.user.email.length > 0)
 
-  // Admin transition to ANSWERED with a URL.
+  // Admin transition to ANSWERED with prose + supplementary URL.
   const answered = await q.updateQuestionStatus({
     id: submitted!.id,
     status: 'ANSWERED',
+    answerBody: 'Focus is built through small daily practices, not heroic effort.',
     answerReference: 'https://drkhaledghattass.com/articles/focus',
   })
   assert('ASK', 'updateQuestionStatus transitions PENDING → ANSWERED', answered?.status === 'ANSWERED')
   assert('ASK', 'answeredAt timestamp set', !!answered?.answeredAt)
+  assert('ASK', 'answerBody persists', answered?.answerBody?.startsWith('Focus is built') === true)
   assert('ASK', 'answerReference persists', answered?.answerReference === 'https://drkhaledghattass.com/articles/focus')
 
   // Revert (PENDING) idempotency
   const reverted = await q.updateQuestionStatus({
     id: submitted!.id,
     status: 'PENDING',
+    answerBody: null,
     answerReference: null,
   })
   assert('ASK', 'updateQuestionStatus can revert ANSWERED → PENDING', reverted?.status === 'PENDING')
@@ -831,17 +838,35 @@ async function main() {
     answerReference: '',
   })
   assert('ASK', 'updateQuestionStatus ARCHIVED with empty ref accepted', askUpdateArchOk.success)
-  // ANSWERED with valid URL accepted.
+  // ANSWERED with prose body + URL accepted.
   const askUpdateAnsweredOk = questionValidators.updateQuestionStatusSchema.safeParse({
+    id: validUuid(),
+    status: 'ANSWERED',
+    answerBody:
+      'Focus is built through small daily practices, not heroic effort.',
+    answerReference: 'https://drkhaledghattass.com/articles/x',
+  })
+  assert('ASK', 'updateQuestionStatus ANSWERED with body + URL accepted', askUpdateAnsweredOk.success)
+  // ANSWERED missing body rejected — body is required for ANSWERED.
+  const askUpdateAnsweredNoBody = questionValidators.updateQuestionStatusSchema.safeParse({
     id: validUuid(),
     status: 'ANSWERED',
     answerReference: 'https://drkhaledghattass.com/articles/x',
   })
-  assert('ASK', 'updateQuestionStatus ANSWERED with URL accepted', askUpdateAnsweredOk.success)
+  assert('ASK', 'updateQuestionStatus ANSWERED without body rejected', !askUpdateAnsweredNoBody.success)
+  // ANSWERED with prose body and no URL accepted (URL is optional).
+  const askUpdateAnsweredBodyOnly = questionValidators.updateQuestionStatusSchema.safeParse({
+    id: validUuid(),
+    status: 'ANSWERED',
+    answerBody:
+      'A real reply that the asker will read on their dashboard and in their inbox.',
+  })
+  assert('ASK', 'updateQuestionStatus ANSWERED with body only (no URL) accepted', askUpdateAnsweredBodyOnly.success)
   // ANSWERED with reference > 500 chars rejected.
   const askUpdateRefTooLong = questionValidators.updateQuestionStatusSchema.safeParse({
     id: validUuid(),
     status: 'ANSWERED',
+    answerBody: 'A valid prose answer of sufficient length.',
     answerReference: 'x'.repeat(501),
   })
   assert('ASK', 'updateQuestionStatus rejects answerReference > 500 chars', !askUpdateRefTooLong.success)
@@ -858,11 +883,11 @@ async function main() {
   assert('ASK', 'u3 has >= 2 questions in history', u3Questions.length >= 2)
 
   // (l) ARCHIVED transition.
-  const archived = await q.updateQuestionStatus({ id: q1!.id, status: 'ARCHIVED', answerReference: null })
+  const archived = await q.updateQuestionStatus({ id: q1!.id, status: 'ARCHIVED', answerBody: null, answerReference: null })
   assert('ASK', 'PENDING → ARCHIVED sets archivedAt', !!archived?.archivedAt)
   assert('ASK', 'ARCHIVED status set', archived?.status === 'ARCHIVED')
   // Revert ARCHIVED → PENDING clears archivedAt.
-  const archReverted = await q.updateQuestionStatus({ id: q1!.id, status: 'PENDING', answerReference: null })
+  const archReverted = await q.updateQuestionStatus({ id: q1!.id, status: 'PENDING', answerBody: null, answerReference: null })
   assert('ASK', 'ARCHIVED → PENDING clears archivedAt', archReverted?.archivedAt === null)
 
   // (m) Admin queue pending count.
@@ -1985,7 +2010,180 @@ async function main() {
   await q.markEmailFailed('00000000-0000-0000-0000-000000000001', 'dead-letter manual')
   assert('EMAIL', 'markEmailSent/Retry/Failed run without throwing', true)
 
-  /* ─── Summary ───────────────────────────────────────────────────────── */
+  /* ─── EXT.26  DASHBOARD (E2) — comparison + research helpers ─────────── */
+  // Revenue + subscribers comparison helpers return the expected shape with
+  // both windows populated (30-point arrays) and totals ≥ 0.
+  const dashRev = await q.getRevenueByDayWithComparison(30)
+  assert('DASHBOARD', 'getRevenueByDayWithComparison returns comparison shape',
+    Array.isArray(dashRev.current) && Array.isArray(dashRev.prior)
+      && typeof dashRev.currentTotal === 'number' && typeof dashRev.priorTotal === 'number',
+  )
+  assert('DASHBOARD', 'getRevenueByDayWithComparison.current spans 30 days', dashRev.current.length === 30)
+  assert('DASHBOARD', 'getRevenueByDayWithComparison.prior spans 30 days', dashRev.prior.length === 30)
+  assert(
+    'DASHBOARD',
+    'getRevenueByDayWithComparison deltaPercent is null when priorTotal is 0',
+    dashRev.priorTotal !== 0 || dashRev.deltaPercent === null,
+  )
+  assert(
+    'DASHBOARD',
+    'getRevenueByDayWithComparison points carry an ISO date',
+    dashRev.current.every((p) => typeof p.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.date)),
+  )
+
+  const dashSubs = await q.getSubscribersByDayWithComparison(30)
+  assert('DASHBOARD', 'getSubscribersByDayWithComparison returns comparison shape',
+    Array.isArray(dashSubs.current) && Array.isArray(dashSubs.prior)
+      && typeof dashSubs.currentTotal === 'number' && typeof dashSubs.priorTotal === 'number',
+  )
+  assert('DASHBOARD', 'getSubscribersByDayWithComparison.current spans 30 days', dashSubs.current.length === 30)
+  assert('DASHBOARD', 'getSubscribersByDayWithComparison.prior spans 30 days', dashSubs.prior.length === 30)
+
+  // Audience snapshot returns the six expected non-negative integers.
+  const aud = await q.getAudienceSnapshotCounts()
+  assert(
+    'DASHBOARD',
+    'getAudienceSnapshotCounts returns six non-negative integers',
+    [aud.activeSubscribers, aud.subscribersThisWeek, aud.registeredUsers, aud.usersThisWeek, aud.booksPublished, aud.testsPublished].every((n) => Number.isInteger(n) && n >= 0),
+  )
+
+  // Top-tests helper: returns an array ordered by attemptCount DESC.
+  const top = await q.getTopTestsByAttemptsWithin(30, 3)
+  assert('DASHBOARD', 'getTopTestsByAttemptsWithin returns an array', Array.isArray(top))
+  assert(
+    'DASHBOARD',
+    'getTopTestsByAttemptsWithin orders by attemptCount DESC',
+    top.length < 2 || top.every((row, i) => i === 0 || (top[i - 1]?.attemptCount ?? 0) >= row.attemptCount),
+  )
+  assert(
+    'DASHBOARD',
+    'getTopTestsByAttemptsWithin only includes tests with attempts (count > 0)',
+    top.every((row) => row.attemptCount > 0),
+  )
+
+  // Research highlight helper.
+  const highlightForTopTest = top.length > 0
+    ? await q.getTestHighlightForResearch(top[0]!.testId)
+    : null
+  assert(
+    'DASHBOARD',
+    'getTestHighlightForResearch returns highlight for a test with attempts (or null when top list is empty)',
+    top.length === 0 || (highlightForTopTest !== null && highlightForTopTest.totalAttempts > 0),
+  )
+  if (highlightForTopTest) {
+    assert(
+      'DASHBOARD',
+      'highlight options include at least one entry flagged isTop=true',
+      highlightForTopTest.options.some((o) => o.isTop),
+    )
+    assert(
+      'DASHBOARD',
+      'highlight topOptionPercentage matches max(options.selectionPercentage)',
+      highlightForTopTest.topOptionPercentage ===
+        Math.max(...highlightForTopTest.options.map((o) => o.selectionPercentage)),
+    )
+  } else {
+    // When the top list is empty (no completed attempts in 30d), surface that
+    // explicitly so a missing-attempts placeholder doesn't masquerade as a pass.
+    assert('DASHBOARD', 'no top tests in 30d window — highlight expected to be null', highlightForTopTest === null)
+  }
+
+  // A test id that exists but has zero attempts returns null.
+  const allTests = await q.getPublishedTests()
+  const zeroAttemptTest = allTests.find((t) => !top.some((row) => row.testId === t.id))
+  if (zeroAttemptTest) {
+    const zeroHighlight = await q.getTestHighlightForResearch(zeroAttemptTest.id)
+    assert(
+      'DASHBOARD',
+      'getTestHighlightForResearch returns null for tests with zero attempts',
+      zeroHighlight === null,
+    )
+  }
+
+  // Unknown test id returns null.
+  const unknownHighlight = await q.getTestHighlightForResearch('00000000-0000-0000-0000-000000000000')
+  assert(
+    'DASHBOARD',
+    'getTestHighlightForResearch returns null for an unknown test id',
+    unknownHighlight === null,
+  )
+
+  /* ─── EXT.26.b  Top-tests deterministic ordering ─────────────────────── */
+  // The DB-mode ORDER BY adds tests.createdAt DESC as a tiebreaker. In mock
+  // mode the same tiebreaker is implemented in JS. Sanity-check: repeated
+  // calls return the same testId order. (Producing a synthetic tie in
+  // mock-store seeding is awkward without contaminating other smoke
+  // assertions; this run-twice-equality check is the broadest portable
+  // check we can do without that. TODO: synthesize a true tie when the
+  // mock seeding harness gains a deterministic-time hook.)
+  const topA = await q.getTopTestsByAttemptsWithin(30, 5)
+  const topB = await q.getTopTestsByAttemptsWithin(30, 5)
+  assert(
+    'DASHBOARD',
+    'getTopTestsByAttemptsWithin returns same testId order across repeated calls',
+    topA.length === topB.length &&
+      topA.every((row, i) => row.testId === topB[i]?.testId),
+  )
+
+  /* ─── EXT.26.c  pickGreetingSignal priority logic ────────────────────── */
+  // Cover each branch of the priority ladder plus the priority-ordering
+  // invariant. Extracted to ./components/admin/dashboard/greeting-signal so
+  // it's importable here without dragging in next-intl.
+  const ps = greetingSignal.pickGreetingSignal
+  const base = {
+    pendingQuestions: 0,
+    newCorporateRequests: 0,
+    expiringGifts: 0,
+    revenueDeltaPercent: null as number | null,
+    pendingBookingInterest: 0,
+  }
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: pendingQuestions > 0 → 'questions'",
+    ps({ ...base, pendingQuestions: 5 }) === 'questions',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: pendingQuestions=0, newCorporateRequests>0 → 'corporate'",
+    ps({ ...base, newCorporateRequests: 3 }) === 'corporate',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: expiringGifts>0, all higher-priority zero → 'gifts'",
+    ps({ ...base, expiringGifts: 2 }) === 'gifts',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: revenueDeltaPercent=15, no other signals → 'revenue_up'",
+    ps({ ...base, revenueDeltaPercent: 15 }) === 'revenue_up',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: revenueDeltaPercent=-15, no other signals → 'revenue_down'",
+    ps({ ...base, revenueDeltaPercent: -15 }) === 'revenue_down',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: below-threshold revenue (5) + bookingInterest>0 → 'booking_interest'",
+    ps({ ...base, revenueDeltaPercent: 5, pendingBookingInterest: 4 }) ===
+      'booking_interest',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: all zero, revenue null → 'all_clear'",
+    ps({ ...base }) === 'all_clear',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: below-threshold revenue only (no other signals) → 'all_clear' (delta of 5% doesn't trigger)",
+    ps({ ...base, revenueDeltaPercent: 5 }) === 'all_clear',
+  )
+  assert(
+    'DASHBOARD',
+    "pickGreetingSignal: pendingQuestions=5 + pendingBookingInterest=10 → 'questions' (priority order honored)",
+    ps({ ...base, pendingQuestions: 5, pendingBookingInterest: 10 }) ===
+      'questions',
+  )
 
   /* ─── Summary ───────────────────────────────────────────────────────── */
   const totalFail = results.filter((r) => !r.ok).length

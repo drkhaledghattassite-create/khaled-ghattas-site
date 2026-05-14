@@ -84,6 +84,7 @@ export function QuestionForm({ locale, onSubmitted }: Props) {
             body: raw.body,
             category: raw.category === '' ? null : raw.category,
             status: 'PENDING',
+            answerBody: null,
             answerReference: null,
             answeredAt: null,
             createdAt: new Date().toISOString(),

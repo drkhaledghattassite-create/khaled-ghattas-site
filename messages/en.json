@@ -795,37 +795,96 @@
       "delete_cancel": "Cancel"
     },
     "dashboard": {
-      "stats": {
-        "articles": "Articles",
-        "books": "Books",
-        "orders": "Orders",
-        "revenue": "Revenue"
+      "greeting": {
+        "eyebrow": "Today",
+        "fallback_name": "Khaled",
+        "honorific": "Dr. ",
+        "greet_morning": "Good morning, {name}",
+        "greet_afternoon": "Good afternoon, {name}",
+        "greet_evening": "Good evening, {name}",
+        "greet_morning_alt": "صباح الخير، {name}",
+        "greet_afternoon_alt": "مساء الخير، {name}",
+        "greet_evening_alt": "مساء الخير، {name}",
+        "signal_questions_strong": "{count, plural, one {# new question} other {# new questions}}",
+        "signal_questions_rest": "await your reply.",
+        "signal_corporate_strong": "{count, plural, one {# new corporate inquiry} other {# new corporate inquiries}}",
+        "signal_corporate_rest": "this week.",
+        "signal_gifts_strong": "{count, plural, one {# gift} other {# gifts}}",
+        "signal_gifts_rest": "expiring within 7 days.",
+        "signal_revenue_up_strong": "Revenue is up {percent}%",
+        "signal_revenue_up_rest": "compared with the prior 30 days.",
+        "signal_revenue_down_strong": "Revenue is down {percent}%",
+        "signal_revenue_down_rest": "compared with the prior 30 days.",
+        "signal_booking_strong": "{count, plural, one {# pending booking interest} other {# pending booking interest signals}}",
+        "signal_booking_rest": "to review.",
+        "signal_all_clear_strong": "All caught up — nothing urgent today.",
+        "signal_all_clear_rest": "The site is quietly working. You can go back to writing."
       },
-      "charts": {
-        "revenue": "Revenue (30d)",
-        "subscribers": "Subscribers (30d)"
+      "attention": {
+        "eyebrow": "For today",
+        "heading": "What needs your attention",
+        "see_all": "All admin tasks",
+        "eyebrow_questions": "Questions",
+        "eyebrow_corporate": "Corporate",
+        "eyebrow_gifts": "Gifts",
+        "eyebrow_booking": "Bookings",
+        "eyebrow_email_queue": "Email",
+        "label_questions": "Pending questions",
+        "label_corporate": "New corporate inquiries",
+        "label_gifts": "Gifts expiring in 7 days",
+        "label_booking": "Pending booking interest",
+        "label_email_queue": "Email queue needs attention",
+        "more_questions": "View queue",
+        "more_corporate": "View inquiries",
+        "more_gifts": "View gifts",
+        "more_booking": "View interest",
+        "more_email_queue": "View queue"
       },
-      "recent_orders": "Recent orders",
-      "recent_messages": "Unread messages",
-      "quick_actions": "Quick actions",
-      "quick": {
-        "new_article": "Add article",
-        "new_book": "Add book",
-        "new_event": "Add event",
-        "review_messages": "Review inbox"
+      "performance": {
+        "eyebrow": "This month",
+        "heading": "How the site is performing",
+        "revenue_heading": "Revenue",
+        "subscribers_heading": "New subscribers",
+        "period_label": "Last 30 days · vs prior 30",
+        "legend_current": "this period",
+        "legend_prior": "prior period",
+        "this_period": "this period",
+        "compared_with_revenue": "compared with {prior} in the prior 30 days",
+        "compared_with_subscribers": "compared with {prior} in the prior 30 days"
       },
-      "empty": {
-        "orders": "No recent orders.",
-        "messages": "All caught up — no unread messages."
+      "audience": {
+        "eyebrow": "Where we are",
+        "heading": "Audience snapshot",
+        "subscribers_label": "Subscribers",
+        "users_label": "Registered users",
+        "books_label": "Books published",
+        "tests_label": "Tests published",
+        "this_week_delta": "+{count} this week"
+      },
+      "activity": {
+        "eyebrow": "This week",
+        "heading": "Recent activity",
+        "orders_heading": "Latest orders",
+        "bookings_heading": "Latest bookings",
+        "questions_heading": "Latest questions",
+        "see_all_orders": "All orders",
+        "see_all_bookings": "All bookings",
+        "see_all_questions": "Ask inbox",
+        "empty": "No recent activity.",
+        "untitled_booking": "Untitled booking",
+        "anonymous": "Anonymous"
+      },
+      "research": {
+        "eyebrow": "Your research data",
+        "heading": "Test responses",
+        "intro": "A monthly look at how the audience answers the most-revealing question on your three most-taken tests. The bars show distribution; the line beneath is the editorial reading.",
+        "see_all": "All tests",
+        "attempts_in_30d": "{count} attempts",
+        "window_30d": "last 30 days",
+        "selected_summary": "{percent}% selected: {label}",
+        "view_analytics": "Full analytics",
+        "empty": "Once your tests start collecting responses, they'll appear here."
       }
-    },
-    "kpi": {
-      "aria_label": "Pending counts across the site",
-      "label_questions": "Pending questions",
-      "label_interest": "Pending interest",
-      "label_gifts": "Gifts expiring within 7 days",
-      "label_corporate": "New corporate requests",
-      "label_email_queue": "Emails needing attention"
     },
     "user_detail": {
       "back_to_list": "Back to users",
@@ -1109,6 +1168,16 @@
       "mark_fulfilled": "Mark fulfilled",
       "refund": "Refund",
       "cancel_order": "Cancel",
+      "resend_receipt": "Resend receipt",
+      "resending": "Resending…",
+      "resend_success": "Receipt re-sent.",
+      "resend_send_failed": "Send failed. The order is unchanged; try again in a moment.",
+      "resend_preview_only": "Email previewed (dev only — no real send configured).",
+      "resend_rate_limited": "Slow down — too many resends in a short window.",
+      "resend_no_email": "This order has no customer email on file.",
+      "resend_wrong_status": "Only PAID or FULFILLED orders can have a receipt re-sent.",
+      "resend_not_found": "That order no longer exists.",
+      "resend_failed": "Resend failed. Please try again.",
       "open_stripe": "Open in Stripe",
       "back_to_orders": "All orders",
       "gift_claim_badge": "Gift-claimed order — view gift",
@@ -1181,11 +1250,14 @@
         },
         "mark_answered": {
           "title": "Mark as answered",
-          "description": "Add a reference to the answer. A URL triggers a notification email to the asker; a free-text note saves quietly.",
-          "reference_label": "Answer reference",
-          "reference_help": "Paste a URL (Instagram, YouTube, article) for the asker to receive an email with the link, or write a free-text note (no email sent).",
-          "reference_placeholder": "https://instagram.com/reel/… or a short note",
-          "submit": "Mark answered"
+          "description": "Write your reply to the asker. They'll receive an email with the answer and see it in their dashboard.",
+          "body_label": "Your reply",
+          "body_help": "Write your full answer here — this is what the asker will read in their email and on their dashboard. Plain text; separate paragraphs with a blank line.",
+          "body_placeholder": "Write your reply…",
+          "reference_label": "Public link (optional)",
+          "reference_help": "Optional URL — Instagram reel, YouTube clip, or article. When provided, it becomes a CTA button in the notification email.",
+          "reference_placeholder": "https://instagram.com/reel/…",
+          "submit": "Send answer"
         },
         "archive": {
           "title": "Archive question",
@@ -1213,7 +1285,6 @@
       },
       "toast": {
         "answered_with_email": "Marked answered. Notification email sent.",
-        "answered_text_note": "Marked answered. No email sent (free-text note).",
         "answered_no_recipient": "Marked answered. The asker's account no longer exists, so no email was sent.",
         "answered_email_failed": "Marked answered. Email could not be sent — please notify the asker manually.",
         "archived": "Question archived.",
