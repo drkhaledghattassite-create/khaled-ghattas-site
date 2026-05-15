@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { InterviewsTable } from '@/components/admin/InterviewsTable'
 import { getInterviews } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -17,6 +18,16 @@ export default async function AdminInterviewsPage({ params }: Props) {
   const t = await getTranslations('admin.interviews')
   const interviews = await getInterviews()
 
+  // Phase F2 — resolve thumbnail storage keys server-side. `thumbnailImage`
+  // is schema-NOT-NULL so we preserve the original on resolution failure.
+  const resolvedInterviews = await Promise.all(
+    interviews.map(async (interview) => ({
+      ...interview,
+      thumbnailImage:
+        (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage,
+    })),
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -27,7 +38,7 @@ export default async function AdminInterviewsPage({ params }: Props) {
           {t('add')}
         </Link>
       </div>
-      <InterviewsTable interviews={interviews} />
+      <InterviewsTable interviews={resolvedInterviews} />
     </div>
   )
 }

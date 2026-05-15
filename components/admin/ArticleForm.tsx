@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 
 const DEFAULTS: ArticleInput = {
   slug: '',
@@ -305,13 +306,13 @@ export function ArticleForm({ initialValues, mode, articleId }: Props) {
               <FormItem>
                 <FormLabel>{t('cover_image')}</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
+                  <StorageKeyUploadField
+                    context="article-cover"
                     value={field.value ?? ''}
+                    onChange={field.onChange}
                     placeholder="/placeholder/nav/nav-1.jpg"
                   />
                 </FormControl>
-                {/* TODO: drag-and-drop UploadButton in Phase 6 */}
                 <FormMessage />
               </FormItem>
             )}

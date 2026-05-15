@@ -49,6 +49,8 @@ export type VideoProviderName =
   | 'cloudflare-stream'
   | 'vimeo'
   | 'mux'
+  // Phase F2 — HTML5 <video> backed by an R2 storageKey + signed URL.
+  | 'r2-html5'
 
 export interface VideoAdapter {
   /** Translate a `session_items.storageKey` into everything the player

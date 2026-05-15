@@ -1157,6 +1157,21 @@
       "error_storage_key_required": "Storage key is required.",
       "error_duration_required": "Duration is required for video and audio items."
     },
+    "upload": {
+      "upload_button": "Upload file",
+      "uploading_label": "Uploading…",
+      "progress_label": "{percent}% uploaded",
+      "progress_aria": "Upload progress",
+      "size_limit": "Max {limit}",
+      "cancel": "Cancel",
+      "aborted": "Upload cancelled.",
+      "success": "File uploaded.",
+      "error_size": "File is too large — limit is {limit}.",
+      "error_type": "Unsupported file type. Allowed: {types}.",
+      "error_put": "Upload failed (status {status}). Please try again.",
+      "error_network": "Network error during upload. Please try again.",
+      "error_generic": "Couldn't prepare the upload. Please try again."
+    },
     "orders": {
       "description": "Customer orders and Stripe payments.",
       "id": "Order ID",
@@ -1253,6 +1268,7 @@
           "description": "Write your reply to the asker. They'll receive an email with the answer and see it in their dashboard.",
           "body_label": "Your reply",
           "body_help": "Write your full answer here — this is what the asker will read in their email and on their dashboard. Plain text; separate paragraphs with a blank line.",
+          "body_floor_hint": "Keep going — at least {min} characters before you can send.",
           "body_placeholder": "Write your reply…",
           "reference_label": "Public link (optional)",
           "reference_help": "Optional URL — Instagram reel, YouTube clip, or article. When provided, it becomes a CTA button in the notification email.",

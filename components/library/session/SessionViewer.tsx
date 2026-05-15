@@ -51,6 +51,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, X } fro
 import { Link } from '@/lib/i18n/navigation'
 import { useReducedMotion } from '@/lib/motion/hooks'
 import { fadeUp, EASE_EDITORIAL } from '@/lib/motion/variants'
+import { pickVideoProvider } from '@/lib/video'
 import type { SessionItem } from '@/lib/db/schema'
 import { saveSessionItemProgressAction } from '@/app/[locale]/(dashboard)/dashboard/library/session/[sessionId]/actions'
 import { SessionPlaylist, type PlaylistProgress } from './SessionPlaylist'
@@ -193,7 +194,7 @@ export function SessionViewer({
     [],
   )
 
-  // Signed URL cache + fetch state for AUDIO/PDF.
+  // Signed URL cache + fetch state for AUDIO/PDF, and (Phase F2) for R2 VIDEO.
   const signedUrlCache = useRef<Map<string, SignedUrlEntry>>(new Map())
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [audioPhase, setAudioPhase] = useState<'idle' | 'loading' | 'ready' | 'error'>(
@@ -203,6 +204,7 @@ export function SessionViewer({
   const [pdfPhase, setPdfPhase] = useState<'loading' | 'ready' | 'error'>(
     'loading',
   )
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   // Latest position ref for the active item — keepalive flush + item-
   // switch flush both read this without going through React state (which
@@ -364,6 +366,7 @@ export function SessionViewer({
       setAudioPhase('idle')
       setPdfUrl(null)
       setPdfPhase('loading')
+      setVideoUrl(null)
     },
     [activeItemId, fireSave, items, progress, stopCountdown],
   )
@@ -565,6 +568,29 @@ export function SessionViewer({
     }
   }, [activeItem, fetchSignedUrl])
 
+  // Phase F2 — VIDEO fetch effect for R2-hosted items. YouTube videos don't
+  // need a signed URL (the iframe embed handles delivery), so we only fetch
+  // when the discriminator says r2-html5. The fetched URL drops into
+  // VideoPlayer via the r2SignedUrl prop; YouTube items just see null and
+  // render through the YouTube branch.
+  useEffect(() => {
+    if (activeItem.itemType !== 'VIDEO') return
+    const provider = pickVideoProvider(activeItem.storageKey)
+    if (provider.providerName !== 'r2-html5') {
+      setVideoUrl(null)
+      return
+    }
+    let cancelled = false
+    setVideoUrl(null)
+    fetchSignedUrl(activeItem).then((url) => {
+      if (cancelled) return
+      if (url) setVideoUrl(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeItem, fetchSignedUrl])
+
   const tLibrary = useTranslations('library')
 
   return (
@@ -621,6 +647,8 @@ export function SessionViewer({
                 onProgress={handleProgress}
                 onComplete={handleComplete}
                 ariaLabel={activeItem.title}
+                r2SignedUrl={videoUrl}
+                poster={coverImage ?? undefined}
               />
             )}
             {activeItem.itemType === 'AUDIO' && (

@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 
 const STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const
 
@@ -319,9 +320,10 @@ export function CorporateProgramForm({ initialValues, mode, programId }: Props) 
               <FormItem>
                 <FormLabel>{t('cover_image')}</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
+                  <StorageKeyUploadField
+                    context="program-cover"
                     value={field.value ?? ''}
+                    onChange={field.onChange}
                     placeholder="/programs/leadership.jpg"
                   />
                 </FormControl>

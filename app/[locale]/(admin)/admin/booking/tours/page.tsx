@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { ToursAdminTable } from '@/components/admin/ToursAdminTable'
 import { getAllToursAdmin } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,18 @@ export default async function AdminBookingToursPage({ params }: Props) {
 
   const tours = await getAllToursAdmin()
 
+  // Phase F2 gap-fix — resolve cover storage keys server-side so
+  // ToursAdminTable can render straight to <Image>. coverImage is nullable
+  // on tours, so preserve null when resolution returns null.
+  const resolvedTours = await Promise.all(
+    tours.map(async (tour) => ({
+      ...tour,
+      coverImage: tour.coverImage
+        ? ((await resolvePublicUrl(tour.coverImage)) ?? tour.coverImage)
+        : tour.coverImage,
+    })),
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -24,7 +37,7 @@ export default async function AdminBookingToursPage({ params }: Props) {
           {t('add')}
         </Link>
       </div>
-      <ToursAdminTable tours={tours} />
+      <ToursAdminTable tours={resolvedTours} />
     </div>
   )
 }

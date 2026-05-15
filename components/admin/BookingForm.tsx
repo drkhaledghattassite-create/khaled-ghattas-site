@@ -24,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 import {
   Select,
   SelectContent,
@@ -261,9 +262,10 @@ export function BookingForm({ mode, bookingId, initialValues }: Props) {
                 <FormItem>
                   <FormLabel>{t('cover_image')}</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
+                    <StorageKeyUploadField
+                      context="booking-cover"
                       value={field.value ?? ''}
+                      onChange={field.onChange}
                       placeholder="/bookings/reconsider.jpg"
                     />
                   </FormControl>

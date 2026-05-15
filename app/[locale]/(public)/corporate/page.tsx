@@ -13,6 +13,7 @@ import {
 } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -45,6 +46,17 @@ export default async function CorporatePage({ params }: Props) {
     getCorporatePrograms({ publishedOnly: true }),
     getCorporateClients({ publishedOnly: true }),
   ])
+
+  // Phase F2 — resolve client logos (R2 storage keys → signed URLs;
+  // external URLs and local /public assets pass through). `logoUrl` is
+  // schema-NOT-NULL, so we keep the original on failed resolution rather
+  // than coercing to null (which would change the column's nullability).
+  const resolvedClients = await Promise.all(
+    clients.map(async (c) => ({
+      ...c,
+      logoUrl: (await resolvePublicUrl(c.logoUrl)) ?? c.logoUrl,
+    })),
+  )
 
   // Three "what happens next" steps drawn straight from i18n so an admin can
   // tweak copy without touching code. Icons are intentionally generic.
@@ -101,7 +113,7 @@ export default async function CorporatePage({ params }: Props) {
         </div>
       </section>
 
-      <CorporateClientStrip clients={clients} />
+      <CorporateClientStrip clients={resolvedClients} />
 
       <CorporateProgramsGrid
         programs={programs}

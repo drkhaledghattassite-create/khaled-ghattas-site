@@ -51,11 +51,62 @@ export async function POST(req: Request) {
 
   const userId = session.user.id
 
-  const rl = await tryRateLimit(`content-access:${userId}`)
-  if (!rl.ok) {
+  // Layered rate limits — keep both as defense-in-depth (Phase F1):
+  //   - content-access: 10/min — short-burst guard against link harvesting
+  //   - content-signed: 60/hr — long-window cap so a slow drip can't
+  //     enumerate the catalog under the short-burst ceiling
+  // We fail-closed on either denying.
+  const rlBurst = await tryRateLimit(`content-access:${userId}`)
+  if (!rlBurst.ok) {
     const res = apiError('RATE_LIMITED', 'Too many requests.')
-    for (const [k, v] of Object.entries(rl.headers)) res.headers.set(k, v)
+    for (const [k, v] of Object.entries(rlBurst.headers)) res.headers.set(k, v)
     return res
+  }
+  const rlHour = await tryRateLimit(`content-signed:${userId}`, {
+    limit: 60,
+    window: '60 m',
+  })
+  if (!rlHour.ok) {
+    const res = apiError('RATE_LIMITED', 'Hourly signed-URL limit reached.')
+    for (const [k, v] of Object.entries(rlHour.headers)) res.headers.set(k, v)
+    return res
+  }
+
+  /**
+   * Phase F1 storageKey discriminator.
+   *
+   * Convention: if a storageKey starts with `http://` or `https://` it's an
+   * external URL (legacy data, vendor link, etc.) and we return it verbatim
+   * with a synthetic 1h expiry. Otherwise it's an opaque R2 object key and
+   * we mint a signed URL.
+   *
+   * Phase F2 — VIDEO session items now reach this route when their
+   * storageKey points at an R2 object (anything that doesn't match the
+   * YouTube id/URL shapes; see `pickVideoProvider` in lib/video/index.ts).
+   * YouTube-shaped keys still bypass the route — the iframe embed handles
+   * delivery directly.
+   */
+  function buildResult(args: {
+    productType: 'BOOK' | 'SESSION_ITEM'
+    productId: string
+    storageKey: string
+    expiresInSeconds?: number
+  }) {
+    const isExternal =
+      args.storageKey.startsWith('http://') ||
+      args.storageKey.startsWith('https://')
+    if (isExternal) {
+      const ttl = args.expiresInSeconds ?? 60 * 60
+      const expiresAt = new Date(Date.now() + ttl * 1000)
+      return Promise.resolve({ url: args.storageKey, expiresAt })
+    }
+    return storage.getSignedUrl({
+      productType: args.productType,
+      productId: args.productId,
+      storageKey: args.storageKey,
+      userId,
+      expiresInSeconds: args.expiresInSeconds,
+    })
   }
 
   try {
@@ -73,11 +124,10 @@ export async function POST(req: Request) {
         return errNotFound('No downloadable file is attached to this book.')
       }
 
-      const signed = await storage.getSignedUrl({
+      const signed = await buildResult({
         productType: 'BOOK',
         productId: book.id,
         storageKey,
-        userId,
       })
       return NextResponse.json({
         url: signed.url,
@@ -108,11 +158,10 @@ export async function POST(req: Request) {
     const owns = await userOwnsProduct(userId, item.sessionId)
     if (!owns) return errForbidden('You do not own this content.')
 
-    const signed = await storage.getSignedUrl({
+    const signed = await buildResult({
       productType: 'SESSION_ITEM',
       productId: item.id,
       storageKey: item.storageKey,
-      userId,
     })
     return NextResponse.json({
       url: signed.url,

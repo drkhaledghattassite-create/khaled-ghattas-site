@@ -15,6 +15,7 @@ import {
   getReadingProgress,
   getSessionAggregateProgress,
 } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -50,6 +51,10 @@ async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
         : getReadingProgress(userId, book.id),
     ),
   )
+  // Resolve covers in parallel — Phase F2.
+  const covers = await Promise.all(
+    entries.map(({ book }) => resolvePublicUrl(book.coverImage)),
+  )
   return entries.map(({ order, item, book }, idx) => {
     const isSession = book.productType === 'SESSION'
     const row = progresses[idx]
@@ -66,7 +71,7 @@ async function buildLibraryItems(userId: string): Promise<LibraryItem[]> {
       bookId: book.id,
       titleAr: book.titleAr,
       titleEn: book.titleEn,
-      cover: book.coverImage,
+      cover: covers[idx] ?? book.coverImage,
       // Public marketing detail page — used by the "Details" link.
       href: `/books/${book.slug}`,
       // In-app reader / viewer route. The placeholder pages render a
@@ -97,24 +102,26 @@ async function buildHeroActivity(userId: string): Promise<HeroActivity | null> {
   const activity = await getMostRecentActivity(userId)
   if (!activity) return null
   if (activity.type === 'BOOK') {
+    const cover = (await resolvePublicUrl(activity.book.coverImage)) ?? activity.book.coverImage
     return {
       type: 'BOOK',
       bookId: activity.bookId,
       titleAr: activity.book.titleAr,
       titleEn: activity.book.titleEn,
-      cover: activity.book.coverImage,
+      cover,
       primaryHref: `/dashboard/library/read/${activity.bookId}`,
       lastPage: activity.lastPage,
       totalPages: activity.totalPages,
     }
   }
+  const cover = (await resolvePublicUrl(activity.session.coverImage)) ?? activity.session.coverImage
   return {
     type: 'SESSION',
     sessionId: activity.sessionId,
     sessionTitleAr: activity.session.titleAr,
     sessionTitleEn: activity.session.titleEn,
     itemTitle: activity.item.title,
-    cover: activity.session.coverImage,
+    cover,
     primaryHref: `/dashboard/library/session/${activity.sessionId}`,
     lastPositionSeconds: activity.lastPositionSeconds,
     durationSeconds: activity.durationSeconds,

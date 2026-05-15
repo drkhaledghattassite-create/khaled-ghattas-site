@@ -43,7 +43,7 @@ Primary locale: Arabic (RTL) at `/`. Secondary locale: English (LTR) at
 What's stubbed:
 - Stripe checkout creates real sessions when `STRIPE_SECRET_KEY` is set;
   otherwise returns 503 "coming soon". Webhook validates signatures.
-- Image upload pipeline (Uploadthing not wired; admin forms accept URLs).
+- Image upload pipeline for admin BOOK/article forms (URL-paste only; the R2 admin upload UI is wired for session items in Phase F1 — books/articles deferred to F2).
 - Markdown article body parser (paragraphs split by `\n` for now).
 - Site-wide search.
 - PDF per-page download + annotations (Phase 3 — bookmarks shipped in Phase 2).
@@ -462,7 +462,9 @@ yourself never made sense.
   `articles[/id]`, `books[/id]`, `interviews[/id]`, `events[/id]`,
   `gallery[/id]`, `orders/[id]`, `users/[id]`, `settings`,
   `site-settings`, `content-blocks[/key]`, `revalidate`,
-  `corporate/{programs,clients,requests}[/id]`
+  `corporate/{programs,clients,requests}[/id]`,
+  `storage/upload` (Phase F1 — mints presigned R2 PUT URLs for the
+  admin upload UI; per-admin rate-limited 60/min)
 
 ## API conventions
 
@@ -691,19 +693,52 @@ of a human, say so explicitly rather than implying success.
 - `components/{shared,forms,providers}/` — small utilities.
 - `lib/` — business logic (auth, db, motion, redis, email, validators,
   i18n, api, seo, stripe, site-settings, storage, video, hooks).
-- `lib/storage/` — Phase-1 storage abstraction. `index.ts` exports a
-  single `storage: StorageAdapter` that every signed-URL caller uses.
-  `mock-adapter.ts` is the dev placeholder; the real adapter (Vercel
-  Blob / R2 / Cloudflare Stream — pending Dr. Khaled's storage
-  decision) drops in by editing the single import in
-  `lib/storage/index.ts`. Nothing else moves.
-  **Production guard**: the module throws at load when
-  `NODE_ENV === 'production' && VERCEL_ENV === 'production'` unless
-  `ALLOW_MOCK_STORAGE_IN_PRODUCTION=true` is set in the Vercel env. The
-  guard exists to fail loudly the day a real adapter swap is forgotten;
-  the env var is currently set on production so the mock keeps serving
-  `/placeholder-content/<key>` URLs until a real adapter lands. Remove
-  the env var the moment the real adapter is wired.
+- `lib/storage/` — storage abstraction. `index.ts` exports a single
+  `storage: StorageAdapter` that every signed-URL caller uses, plus a
+  `diagnoseStorageAdapter()` helper for the smoke harness + a future
+  admin "what storage am I on" surface.
+  **Adapter selection (Phase F1)** happens once at module load:
+    1. If all four R2 env vars are set (`R2_ACCOUNT_ID`,
+       `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`)
+       → Cloudflare R2 adapter (`adapters/r2-adapter.ts`).
+    2. Else if `ALLOW_MOCK_STORAGE_IN_PRODUCTION=true` on a production
+       Vercel deploy → mock adapter (escape hatch — currently set on
+       prod until R2 credentials confirm-rolled).
+    3. Else if `NODE_ENV !== 'production'` → mock adapter (dev default).
+    4. Else → throw at module load with a list of missing env vars.
+  The R2 adapter file itself THROWS at import time when any of its env
+  vars are missing — so `index.ts` imports it via a lazy `require`
+  inside the if-branch, keeping dev (no R2 creds) bootable.
+  **Storage interface (Phase F1)** has five methods: the original
+  `getSignedUrl({ storageKey, expiresInSeconds })` read path (unchanged
+  signature), plus `upload`, `getPresignedPutUrl`, `delete`, `exists`,
+  `list` for admin-side primitives. The mock adapter implements
+  `getSignedUrl` and throws `StorageError('NOT_IMPLEMENTED', …)` on the
+  admin primitives — loud failure in dev rather than silent "looks like
+  it worked."
+  **Two-step upload pattern (Phase F1)**: admins POST to
+  `/api/admin/storage/upload` with `{ filename, contentType, sizeBytes,
+  contextType }`; the route validates, mints
+  `${contextType}/${uuid()}/${slug}`, and returns a 15-minute presigned
+  PUT URL. The browser PUTs the file body directly to R2, bypassing
+  Vercel's 4.5 MB function payload limit. Per-context allowlists +
+  size caps live in `lib/validators/storage.ts` — video/mp4 ≤ 2 GB,
+  audio/mpeg|mp4 ≤ 200 MB, application/pdf ≤ 50 MB. v1 wires the upload
+  UI on session items only (videos+audios+PDFs via
+  `components/admin/StorageKeyUploadField.tsx`); books and articles
+  stay URL-paste until F2. Bulk upload, transcoding, HLS, and DRM are
+  later concerns.
+  **storageKey convention**: a value in any `*storageKey` column may
+  be either an opaque R2 object key or a full `http(s)://` URL. The
+  read path (`/api/content/access`) discriminates: external URLs are
+  passed through verbatim with a synthetic 1h expiry; bare keys are
+  signed via the adapter with a 1h TTL, regenerated on each access.
+  Per-user rate limits on the read path are layered: `content-access`
+  10/min + `content-signed` 60/hr.
+  **CORS on the R2 bucket** must be configured manually in the
+  Cloudflare dashboard → R2 → `drkhaledghattassite` → Settings → CORS.
+  The parent agent has the JSON snippet (allow GET+PUT+HEAD from the
+  production + localhost origins; expose `ETag`).
 - `lib/api/client-ip.ts` — spoof-resistant IP helper for route handlers.
   See the IP-resolution paragraph in the API conventions section.
 - `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
@@ -808,7 +843,9 @@ Optional / feature-gated:
 | `EMAIL_FORCE_SEND` | Dev-only `'true'` flag that forces real Resend sends outside production (overrides the dev-preview short-circuit in `lib/email/send.ts`). Do NOT set in production. |
 | `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly. |
 | `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
-| `UPLOADTHING_TOKEN` | Image upload pipeline (Phase 5D) |
+| `UPLOADTHING_TOKEN` | Legacy — superseded by R2 (Phase F1). Left in the schema so old preview envs don't crash; nothing reads it. |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 storage (Phase F1). All four must be set together; missing one falls through to the mock adapter (dev) or throws at module load (true production). The bucket has public access OFF — all delivery is via signed URLs minted by `lib/storage/adapters/r2-adapter.ts`. CORS must be configured manually in the Cloudflare dashboard. |
+| `R2_PUBLIC_URL` | Optional — reserved for a future CDN/public-read pivot. Currently unread. |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
 | `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`). |
 | `ALLOW_MOCK_STORAGE_IN_PRODUCTION` | Set to `'true'` to permit the mock storage adapter on a true production Vercel deploy (`VERCEL_ENV=production`). Without it, `lib/storage/index.ts` throws at module load — preview deploys are unaffected (`VERCEL_ENV='preview'` doesn't trip the guard). Currently set on production until a real storage adapter (Blob/R2/Stream) lands. Remove this env var the moment the real adapter is wired. |

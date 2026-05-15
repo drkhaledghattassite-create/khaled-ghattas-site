@@ -10,6 +10,7 @@ import type { Book, BookingWithHolds } from '@/lib/db/queries'
 import { getServerSession } from '@/lib/auth/server'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -76,6 +77,31 @@ export default async function GiftsSendRoute({ params, searchParams }: Props) {
     ...onlineSessions.filter((b) => b.bookingState === 'OPEN'),
   ]
 
+  // Phase F2 — resolve cover storage keys server-side. SendGiftPage is a
+  // client component and reads `b.coverImage` straight into <Image src>;
+  // bare R2 keys must be turned into signed URLs before they cross the
+  // server-client boundary. `books.coverImage` and `sessions.coverImage`
+  // are schema-NOT-NULL (preserve original on null); `bookings.coverImage`
+  // is nullable (pass null through unchanged).
+  const resolvedBooks = await Promise.all(
+    books.map(async (b) => ({
+      ...b,
+      coverImage: (await resolvePublicUrl(b.coverImage)) ?? b.coverImage,
+    })),
+  )
+  const resolvedSessions = await Promise.all(
+    sessions.map(async (b) => ({
+      ...b,
+      coverImage: (await resolvePublicUrl(b.coverImage)) ?? b.coverImage,
+    })),
+  )
+  const resolvedBookings = await Promise.all(
+    bookings.map(async (b) => ({
+      ...b,
+      coverImage: await resolvePublicUrl(b.coverImage),
+    })),
+  )
+
   const preselectedType = normaliseType(sp.type)
   const preselectedId = normaliseId(sp.id)
   const cancelled = sp.cancelled === '1'
@@ -83,9 +109,9 @@ export default async function GiftsSendRoute({ params, searchParams }: Props) {
   return (
     <SendGiftPage
       locale={locale}
-      books={books}
-      sessions={sessions}
-      bookings={bookings}
+      books={resolvedBooks}
+      sessions={resolvedSessions}
+      bookings={resolvedBookings}
       isLoggedIn={!!session}
       featureEnabled={settings.gifts.allow_user_to_user}
       preselectedType={preselectedType}

@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -143,7 +144,18 @@ export function InterviewForm({ initialValues, mode, interviewId }: Props) {
             </FormItem>
           )} />
           <FormField control={form.control} name="thumbnailImage" render={({ field }) => (
-            <FormItem><FormLabel>{t('thumbnail_image')}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+            <FormItem>
+              <FormLabel>{t('thumbnail_image')}</FormLabel>
+              <FormControl>
+                <StorageKeyUploadField
+                  context="interview-thumbnail"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  placeholder="/placeholder/nav/nav-1.jpg"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )} />
           <FormField control={form.control} name="year" render={({ field }) => (
             <FormItem>

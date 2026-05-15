@@ -18,6 +18,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 
 const EVENT_STATUSES = ['UPCOMING', 'PAST', 'CANCELLED'] as const
 
@@ -184,7 +185,17 @@ export function EventForm({ initialValues, mode, eventId }: Props) {
             </FormItem>
           )} />
           <FormField control={form.control} name="coverImage" render={({ field }) => (
-            <FormItem><FormLabel>{t('cover_image')}</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            <FormItem>
+              <FormLabel>{t('cover_image')}</FormLabel>
+              <FormControl>
+                <StorageKeyUploadField
+                  context="event-cover"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )} />
           <FormField control={form.control} name="orderIndex" render={({ field }) => (
             <FormItem>

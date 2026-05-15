@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { BooksTable } from '@/components/admin/BooksTable'
 import { getBooks } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -17,6 +18,17 @@ export default async function AdminBooksPage({ params }: Props) {
   const t = await getTranslations('admin.books')
   const books = await getBooks()
 
+  // Phase F2 — resolve cover storage keys server-side so the client
+  // BooksTable can pass them straight to <Image>. `coverImage` is
+  // schema-NOT-NULL; preserve the original on resolution failure.
+  // resolvePublicUrl is React.cache'd so duplicate keys are free.
+  const resolvedBooks = await Promise.all(
+    books.map(async (book) => ({
+      ...book,
+      coverImage: (await resolvePublicUrl(book.coverImage)) ?? book.coverImage,
+    })),
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -27,7 +39,7 @@ export default async function AdminBooksPage({ params }: Props) {
           {t('add')}
         </Link>
       </div>
-      <BooksTable books={books} />
+      <BooksTable books={resolvedBooks} />
     </div>
   )
 }

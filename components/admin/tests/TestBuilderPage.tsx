@@ -54,6 +54,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Link } from '@/lib/i18n/navigation'
+import { StorageKeyUploadField } from '../StorageKeyUploadField'
 import { DeleteTestModal } from './DeleteTestModal'
 import { RemovalConfirmModal } from './RemovalConfirmModal'
 import type { AdminTestRow } from './AdminTestsListPage'
@@ -758,15 +759,11 @@ export function TestBuilderPage({ mode, locale, initial }: Props) {
               label={t('field.cover_image_url_label')}
               error={errors.coverImageUrl}
             >
-              <input
-                type="url"
-                dir="ltr"
+              <StorageKeyUploadField
+                context="test-cover"
                 value={state.coverImageUrl ?? ''}
-                onChange={(e) =>
-                  updateField('coverImageUrl', e.target.value || null)
-                }
+                onChange={(next) => updateField('coverImageUrl', next || null)}
                 placeholder="https://"
-                className="h-9 w-full rounded-md border border-border bg-bg-elevated px-3 py-1.5 text-[14px] text-fg1 outline-none transition-colors focus:border-accent"
               />
               <p className="text-[11px] text-fg3">
                 {t('field.cover_image_url_help')}

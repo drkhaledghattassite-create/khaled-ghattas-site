@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { ArticlesTable } from '@/components/admin/ArticlesTable'
 import { getArticles } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -17,6 +18,16 @@ export default async function AdminArticlesPage({ params }: Props) {
   const t = await getTranslations('admin.articles')
   const articles = await getArticles()
 
+  // Phase F2 — resolve cover storage keys server-side. `Article.coverImage`
+  // is nullable, so we hand null through unchanged when resolution returns
+  // null (the table already renders an empty placeholder cell for null).
+  const resolvedArticles = await Promise.all(
+    articles.map(async (article) => ({
+      ...article,
+      coverImage: await resolvePublicUrl(article.coverImage),
+    })),
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -30,7 +41,7 @@ export default async function AdminArticlesPage({ params }: Props) {
         </Link>
       </div>
 
-      <ArticlesTable articles={articles} />
+      <ArticlesTable articles={resolvedArticles} />
     </div>
   )
 }

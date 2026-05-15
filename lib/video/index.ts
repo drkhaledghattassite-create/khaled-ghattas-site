@@ -34,11 +34,56 @@
  */
 
 import { youtubeAdapter } from './youtube-adapter'
+import { r2Html5Adapter } from './r2-adapter'
 import type { VideoAdapter } from './types'
 
+// Default adapter — kept for the (legacy) one-line provider switch. Today's
+// SessionViewer never reads this directly; it calls `pickVideoProvider` per
+// item so a session can mix YouTube + R2-hosted videos at the item level.
 const adapter: VideoAdapter = youtubeAdapter
 
 export const videoProvider = adapter
+
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+/**
+ * Per-item adapter selection — Phase F2.
+ *
+ * A `session_items.storageKey` is one of:
+ *   - a YouTube URL (any youtu.be / youtube.com / youtube-nocookie.com shape)
+ *   - a raw 11-char YouTube video id (e.g. `dQw4w9WgXcQ`)
+ *   - an R2 object key (e.g. `session-item-video/<uuid>/<slug>.mp4`)
+ *
+ * The first two go to the YouTube adapter; the third goes to the R2 HTML5
+ * adapter. The discriminator is deliberately conservative: anything that
+ * looks like a YouTube id/URL falls into the YouTube bucket (preserving the
+ * legacy behavior), so the only way to land on R2 is to upload a real file
+ * (which produces a slash-containing key with a `session-item-video/` prefix).
+ *
+ * Returns the YouTube adapter when nothing about the key implies R2 — that
+ * preserves existing dev data and keeps "paste a YouTube id" working.
+ */
+export function pickVideoProvider(storageKey: string): VideoAdapter {
+  const trimmed = storageKey.trim()
+  if (!trimmed) return youtubeAdapter
+
+  // YouTube URLs — any host with a youtube domain
+  if (
+    trimmed.includes('youtube.com') ||
+    trimmed.includes('youtu.be') ||
+    trimmed.includes('youtube-nocookie.com')
+  ) {
+    return youtubeAdapter
+  }
+
+  // Raw 11-char YouTube id
+  if (YOUTUBE_ID_RE.test(trimmed)) {
+    return youtubeAdapter
+  }
+
+  // Default — treat as R2 storage key
+  return r2Html5Adapter
+}
 
 export type {
   GetEmbedConfigOptions,

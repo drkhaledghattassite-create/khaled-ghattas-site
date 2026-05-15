@@ -6,6 +6,7 @@ import { ComingSoon } from '@/components/shared/ComingSoon'
 import { getBooks } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -32,6 +33,17 @@ export default async function BooksPage({ params }: Props) {
   const t = await getTranslations('books.page')
   const books = await getBooks()
 
+  // Phase F2 — resolve cover storage keys to signed/passthrough URLs before
+  // shipping the array to the client component. External URLs and local
+  // /public assets pass through unchanged.
+  const resolvedBooks = await Promise.all(
+    books.map(async (book) => ({
+      ...book,
+      coverImage:
+        (await resolvePublicUrl(book.coverImage)) ?? '/dr khaled photo.jpeg',
+    })),
+  )
+
   return (
     <>
       <InnerHero
@@ -40,7 +52,7 @@ export default async function BooksPage({ params }: Props) {
         headingSans={t('hero.sans')}
         description={t('description')}
       />
-      <BooksGrid books={books} />
+      <BooksGrid books={resolvedBooks} />
     </>
   )
 }

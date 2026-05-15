@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 import type { GalleryItem } from '@/lib/db/queries'
 
 type EditDraft = {
@@ -25,6 +26,7 @@ type EditDraft = {
   titleAr: string
   titleEn: string
   category: string
+  image: string
 }
 
 export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
@@ -70,6 +72,7 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
       titleAr: item.titleAr ?? '',
       titleEn: item.titleEn ?? '',
       category: item.category ?? '',
+      image: item.image,
     })
   }
 
@@ -84,6 +87,8 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
           titleAr: editing.titleAr || null,
           titleEn: editing.titleEn || null,
           category: editing.category || null,
+          // Phase F2 — allow replacing the photo via the upload widget.
+          image: editing.image,
         }),
       })
       if (!res.ok) {
@@ -184,6 +189,14 @@ export function GalleryAdminGrid({ gallery }: { gallery: GalleryItem[] }) {
           </AlertDialogHeader>
           {editing && (
             <div className="grid gap-3">
+              <div>
+                <Label className="font-label text-[11px] text-fg3">image</Label>
+                <StorageKeyUploadField
+                  context="gallery-image"
+                  value={editing.image}
+                  onChange={(next) => setEditing({ ...editing, image: next })}
+                />
+              </div>
               <div>
                 <Label className="font-label text-[11px] text-fg3">title_ar</Label>
                 <Input

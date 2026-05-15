@@ -2185,6 +2185,357 @@ async function main() {
       'questions',
   )
 
+  /* ─── (F1) STORAGE ──────────────────────────────────────────────────── */
+  // Adapter selection + validators are pure (no R2 calls). We don't exercise
+  // the adapter itself here — that's an integration test for once R2 creds
+  // exist. These assertions cover the selection logic + validator surface.
+  const storageIdx = await import('../../lib/storage')
+  const storageVal = await import('../../lib/validators/storage')
+
+  // ── Diagnose: with no R2 env vars set (the smoke harness sets none) we
+  // should pick mock + report it as such.
+  const diag = storageIdx.diagnoseStorageAdapter()
+  assert(
+    'STORAGE',
+    "diagnoseStorageAdapter returns shape { adapter, reason }",
+    typeof diag.adapter === 'string' && typeof diag.reason === 'string',
+  )
+  assert(
+    'STORAGE',
+    "with no R2 env vars set, adapter is 'mock'",
+    diag.adapter === 'mock',
+    `got ${diag.adapter}`,
+  )
+  assert(
+    'STORAGE',
+    'missingEnvVars lists all four R2 vars',
+    Array.isArray(diag.missingEnvVars) &&
+      diag.missingEnvVars!.includes('R2_ACCOUNT_ID') &&
+      diag.missingEnvVars!.includes('R2_ACCESS_KEY_ID') &&
+      diag.missingEnvVars!.includes('R2_SECRET_ACCESS_KEY') &&
+      diag.missingEnvVars!.includes('R2_BUCKET_NAME'),
+  )
+
+  // ── decideStorageAdapter is pure — passing all 4 env vars selects r2
+  // without ever loading the r2-adapter module.
+  const allR2Env = {
+    R2_ACCOUNT_ID: 'fake-acc',
+    R2_ACCESS_KEY_ID: 'fake-id',
+    R2_SECRET_ACCESS_KEY: 'fake-secret',
+    R2_BUCKET_NAME: 'fake-bucket',
+  }
+  const decision = storageIdx.decideStorageAdapter(allR2Env)
+  assert(
+    'STORAGE',
+    'decideStorageAdapter picks r2 when all four env vars present',
+    decision.kind === 'r2',
+  )
+
+  // ── Production-without-creds → throw decision (no actual throw — the
+  // pure function returns the throw decision so callers can choose to act).
+  const prodNoCreds = {
+    NODE_ENV: 'production',
+    VERCEL_ENV: 'production',
+  }
+  const prodDecision = storageIdx.decideStorageAdapter(prodNoCreds)
+  assert(
+    'STORAGE',
+    'decideStorageAdapter returns kind=throw for production without R2 creds',
+    prodDecision.kind === 'throw',
+  )
+
+  // ── Preview with no creds → mock (preview is not VERCEL_ENV=production).
+  const previewNoCreds = {
+    NODE_ENV: 'production',
+    VERCEL_ENV: 'preview',
+  }
+  const previewDecision = storageIdx.decideStorageAdapter(previewNoCreds)
+  assert(
+    'STORAGE',
+    'decideStorageAdapter returns kind=mock for Vercel preview',
+    previewDecision.kind === 'mock',
+  )
+
+  // ── Validator: well-formed audio request passes.
+  const validAudio = storageVal.validateUploadRequest({
+    filename: 'lecture-1.mp3',
+    contentType: 'audio/mpeg',
+    sizeBytes: 5 * 1024 * 1024,
+    contextType: 'session-item-audio',
+  })
+  assert('STORAGE', 'validateUploadRequest accepts well-formed audio', validAudio.ok)
+
+  // ── Validator: video over 2GB is rejected.
+  const overVideo = storageVal.validateUploadRequest({
+    filename: 'huge.mp4',
+    contentType: 'video/mp4',
+    sizeBytes: 3 * 1024 * 1024 * 1024,
+    contextType: 'session-item-video',
+  })
+  assert(
+    'STORAGE',
+    'validateUploadRequest rejects video > 2GB with code SIZE_EXCEEDED',
+    !overVideo.ok && overVideo.code === 'SIZE_EXCEEDED',
+  )
+
+  // ── Validator: mp3 in pdf context is rejected.
+  const wrongType = storageVal.validateUploadRequest({
+    filename: 'oops.mp3',
+    contentType: 'audio/mpeg',
+    sizeBytes: 1024,
+    contextType: 'session-item-pdf',
+  })
+  assert(
+    'STORAGE',
+    'validateUploadRequest rejects mismatched content type with CONTENT_TYPE_NOT_ALLOWED',
+    !wrongType.ok && wrongType.code === 'CONTENT_TYPE_NOT_ALLOWED',
+  )
+
+  // ── Zod schema rejects negative sizes.
+  const zodNeg = storageVal.createUploadRequestSchema.safeParse({
+    filename: 'x.mp3',
+    contentType: 'audio/mpeg',
+    sizeBytes: -1,
+    contextType: 'session-item-audio',
+  })
+  assert(
+    'STORAGE',
+    'createUploadRequestSchema rejects negative sizeBytes',
+    !zodNeg.success,
+  )
+
+  // ── Zod schema rejects unknown context.
+  const zodCtx = storageVal.createUploadRequestSchema.safeParse({
+    filename: 'x.mp3',
+    contentType: 'audio/mpeg',
+    sizeBytes: 1024,
+    contextType: 'session-item-banana',
+  })
+  assert(
+    'STORAGE',
+    'createUploadRequestSchema rejects unknown contextType',
+    !zodCtx.success,
+  )
+
+  // ── slugifyFilename strips non-ASCII while preserving extension.
+  const slugged = storageVal.slugifyFilename('محاضرة الأولى.mp3')
+  assert(
+    'STORAGE',
+    'slugifyFilename strips Arabic and keeps .mp3 extension',
+    slugged.endsWith('.mp3'),
+    `got "${slugged}"`,
+  )
+
+  // ── slugifyFilename decomposes Latin diacritics via NFKD before stripping.
+  // café.pdf must produce cafe.pdf, NOT caf.pdf — proves the NFKD pass
+  // separated the combining mark so the [̀-ͯ] range could remove it.
+  const slugCafe = storageVal.slugifyFilename('café.pdf')
+  assert(
+    'STORAGE',
+    'slugifyFilename NFKD-decomposes Latin diacritics (café.pdf → cafe.pdf)',
+    slugCafe === 'cafe.pdf',
+    `got "${slugCafe}"`,
+  )
+
+  // ── Mock adapter throws on the admin-side primitives.
+  let threw = false
+  try {
+    await storageIdx.storage.upload({
+      key: 'x',
+      body: 'y',
+      contentType: 'text/plain',
+    })
+  } catch (err) {
+    threw = err instanceof storageIdx.StorageError && err.code === 'NOT_IMPLEMENTED'
+  }
+  assert(
+    'STORAGE',
+    "mock adapter throws StorageError('NOT_IMPLEMENTED') on upload",
+    threw,
+  )
+
+  /* ─── (F2) STORAGE — new upload contexts ────────────────────────────── */
+  // F2 broadened the contextType union from 3 session-item rows to 10. Each
+  // new context needs its own MIME allowlist + size cap; the validator must
+  // reject SVG (XSS surface) for every image context. The F2 gap-fix appends
+  // `interview-thumbnail`, `booking-cover`, `test-cover` — same MIME allowlist
+  // and 5 MB cap as the other image contexts.
+  const F2_IMAGE_CONTEXTS = [
+    'book-cover',
+    'tour-cover',
+    'event-cover',
+    'article-cover',
+    'gallery-image',
+    'client-logo',
+    'interview-thumbnail',
+    'booking-cover',
+    'test-cover',
+  ] as const
+
+  for (const ctx of F2_IMAGE_CONTEXTS) {
+    // Each image context accepts JPEG / PNG / WebP at a context-specific cap.
+    const ok = storageVal.validateUploadRequest({
+      filename: 'cover.jpg',
+      contentType: 'image/jpeg',
+      sizeBytes: 1024 * 1024, // 1 MB — fits all contexts
+      contextType: ctx,
+    })
+    assert(
+      'STORAGE',
+      `[F2] validateUploadRequest accepts JPEG for ${ctx}`,
+      ok.ok,
+    )
+
+    // SVG rejected everywhere — XSS surface (`<svg>` can embed `<script>`).
+    const svg = storageVal.validateUploadRequest({
+      filename: 'icon.svg',
+      contentType: 'image/svg+xml',
+      sizeBytes: 1024,
+      contextType: ctx,
+    })
+    assert(
+      'STORAGE',
+      `[F2] validateUploadRequest rejects SVG for ${ctx} (XSS guard)`,
+      !svg.ok && svg.code === 'CONTENT_TYPE_NOT_ALLOWED',
+    )
+
+    // Oversize at the per-context cap — pick a value above every cap.
+    const over = storageVal.validateUploadRequest({
+      filename: 'huge.jpg',
+      contentType: 'image/jpeg',
+      sizeBytes: 50 * 1024 * 1024, // 50 MB — over every image context's cap
+      contextType: ctx,
+    })
+    assert(
+      'STORAGE',
+      `[F2] validateUploadRequest rejects oversize image for ${ctx}`,
+      !over.ok && over.code === 'SIZE_EXCEEDED',
+    )
+  }
+
+  // book-digital-file accepts PDF up to 200 MB
+  const bookPdf = storageVal.validateUploadRequest({
+    filename: 'book.pdf',
+    contentType: 'application/pdf',
+    sizeBytes: 100 * 1024 * 1024,
+    contextType: 'book-digital-file',
+  })
+  assert(
+    'STORAGE',
+    '[F2] validateUploadRequest accepts 100MB PDF for book-digital-file',
+    bookPdf.ok,
+  )
+
+  // book-digital-file rejects image MIME
+  const bookWrong = storageVal.validateUploadRequest({
+    filename: 'cover.png',
+    contentType: 'image/png',
+    sizeBytes: 1024,
+    contextType: 'book-digital-file',
+  })
+  assert(
+    'STORAGE',
+    '[F2] validateUploadRequest rejects PNG for book-digital-file',
+    !bookWrong.ok && bookWrong.code === 'CONTENT_TYPE_NOT_ALLOWED',
+  )
+
+  // book-digital-file rejects > 200 MB
+  const bookHuge = storageVal.validateUploadRequest({
+    filename: 'huge.pdf',
+    contentType: 'application/pdf',
+    sizeBytes: 300 * 1024 * 1024,
+    contextType: 'book-digital-file',
+  })
+  assert(
+    'STORAGE',
+    '[F2] validateUploadRequest rejects 300MB PDF for book-digital-file',
+    !bookHuge.ok && bookHuge.code === 'SIZE_EXCEEDED',
+  )
+
+  // createUploadRequestSchema accepts each new contextType.
+  for (const ctx of [
+    ...F2_IMAGE_CONTEXTS,
+    'book-digital-file',
+  ] as const) {
+    const parsed = storageVal.createUploadRequestSchema.safeParse({
+      filename: 'asset.jpg',
+      contentType: 'image/jpeg',
+      sizeBytes: 1024,
+      contextType: ctx,
+    })
+    assert(
+      'STORAGE',
+      `[F2] createUploadRequestSchema accepts contextType=${ctx}`,
+      parsed.success,
+    )
+  }
+
+  /* ─── (F2) RESOLVER — public-URL resolver ───────────────────────────── */
+  const resolver = await import('../../lib/storage/public-url')
+
+  // isStorageKey discriminator — pure sync.
+  assert(
+    'STORAGE',
+    "[F2] isStorageKey('https://example.com/x.jpg') is false",
+    resolver.isStorageKey('https://example.com/x.jpg') === false,
+  )
+  assert(
+    'STORAGE',
+    "[F2] isStorageKey('http://example.com/x.jpg') is false",
+    resolver.isStorageKey('http://example.com/x.jpg') === false,
+  )
+  assert(
+    'STORAGE',
+    "[F2] isStorageKey('/static/path.jpg') is false (local public asset)",
+    resolver.isStorageKey('/static/path.jpg') === false,
+  )
+  assert(
+    'STORAGE',
+    "[F2] isStorageKey('book-cover/uuid/x.jpg') is true",
+    resolver.isStorageKey('book-cover/uuid/x.jpg') === true,
+  )
+  assert('STORAGE', "[F2] isStorageKey('') is false", resolver.isStorageKey('') === false)
+  assert(
+    'STORAGE',
+    '[F2] isStorageKey(null) is false',
+    resolver.isStorageKey(null) === false,
+  )
+
+  // resolvePublicUrl pass-throughs.
+  const httpsPass = await resolver.resolvePublicUrl('https://example.com/x.jpg')
+  assert(
+    'STORAGE',
+    "[F2] resolvePublicUrl passes https URLs through verbatim",
+    httpsPass === 'https://example.com/x.jpg',
+  )
+  const localPass = await resolver.resolvePublicUrl('/static/path.jpg')
+  assert(
+    'STORAGE',
+    '[F2] resolvePublicUrl passes /-prefixed local assets through verbatim',
+    localPass === '/static/path.jpg',
+  )
+
+  // resolvePublicUrl mints a signed URL for storage keys (mock mode = /placeholder-content/).
+  const signedMock = await resolver.resolvePublicUrl('book-cover/uuid/x.jpg')
+  assert(
+    'STORAGE',
+    "[F2] resolvePublicUrl mints a signed URL for R2 keys (mock = /placeholder-content/)",
+    signedMock !== null && signedMock.startsWith('/placeholder-content/'),
+    `got ${signedMock}`,
+  )
+
+  // resolvePublicUrl returns null for empty / nullish input.
+  const nullRes = await resolver.resolvePublicUrl(null)
+  assert('STORAGE', '[F2] resolvePublicUrl(null) returns null', nullRes === null)
+  const emptyRes = await resolver.resolvePublicUrl('')
+  assert('STORAGE', "[F2] resolvePublicUrl('') returns null", emptyRes === null)
+  const undefRes = await resolver.resolvePublicUrl(undefined)
+  assert(
+    'STORAGE',
+    '[F2] resolvePublicUrl(undefined) returns null',
+    undefRes === null,
+  )
+
   /* ─── Summary ───────────────────────────────────────────────────────── */
   const totalFail = results.filter((r) => !r.ok).length
   const totalOk = results.filter((r) => r.ok).length

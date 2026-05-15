@@ -12,6 +12,7 @@ import {
   type SessionItem,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { SessionViewer } from '@/components/library/session/SessionViewer'
 import { SessionEmptyState } from '@/components/library/session/SessionEmptyState'
@@ -149,6 +150,10 @@ export default async function LibrarySessionPage({ params }: Props) {
 
   const settings = await getCachedSiteSettings()
 
+  // Phase F2 — resolve R2 storage key to signed URL server-side. External
+  // URLs and local /public assets pass through unchanged.
+  const resolvedCover = await resolvePublicUrl(book.coverImage)
+
   return (
     <DashboardLayout
       activeTab="library"
@@ -159,7 +164,7 @@ export default async function LibrarySessionPage({ params }: Props) {
         sessionId={book.id}
         sessionTitle={sessionTitle}
         sessionDescription={sessionDescription}
-        coverImage={book.coverImage}
+        coverImage={resolvedCover}
         items={items}
         initialItemId={initialItemId}
         progress={serializedProgress}

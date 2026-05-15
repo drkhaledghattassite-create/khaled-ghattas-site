@@ -49,21 +49,44 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 //                                              isn't rewritten to https://.
 const isDev = process.env.NODE_ENV !== 'production'
 
+// Phase F2 — Cloudflare R2 hosts. AWS SDK v3 with forcePathStyle:false (our
+// adapter setting) issues VIRTUAL-HOST-style URLs:
+//   https://<bucket>.<account-id>.r2.cloudflarestorage.com/<key>?<signed>
+// CSP doesn't match subdomains unless explicitly wildcarded, so we need
+// BOTH entries:
+//   1. https://<account-id>.r2.cloudflarestorage.com  — path-style / List ops
+//   2. https://*.<account-id>.r2.cloudflarestorage.com — bucket-subdomain
+//      virtual-host where the signed PUT/GET URLs actually live.
+// When R2_ACCOUNT_ID is unset (dev without R2), fall through to the broad
+// `*.r2.cloudflarestorage.com` so dev doesn't break — signed URLs still
+// gate access. In production, R2_ACCOUNT_ID MUST be set.
+const r2Host = process.env.R2_ACCOUNT_ID
+  ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com https://*.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  : 'https://*.r2.cloudflarestorage.com'
+
 const scriptSrc = isDev
   ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://va.vercel-scripts.com"
   : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com"
 
 const connectSrc = isDev
-  ? "connect-src 'self' ws://localhost:* http://localhost:* https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com"
-  : "connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com"
+  ? `connect-src 'self' ws://localhost:* http://localhost:* https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}`
+  : `connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}`
 
 const cspDirectives = [
   "default-src 'self'",
   scriptSrc,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io",
+  // Phase F2 — R2 signed-URL host added to img-src so next/image accepts
+  // signed covers, and to media-src so the HTML5 <video> element can fetch
+  // R2-hosted lecture videos. Stripe/YouTube/Vimeo/ImageKit/Uploadthing
+  // entries remain unchanged.
+  `img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io ${r2Host}`,
+  `media-src 'self' blob: ${r2Host}`,
   "font-src 'self' data: https://fonts.gstatic.com",
-  "frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+  // Phase F2 — R2 added to frame-src so session-item PDFs (rendered via
+  // <iframe src={signedUrl}> in components/library/session/PdfInline.tsx)
+  // load instead of being CSP-blocked. Same dual-host shape as connect/img.
+  `frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com ${r2Host}`,
   connectSrc,
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com",
@@ -111,6 +134,28 @@ const remotePatterns: RemotePattern[] = [
   // Uploadthing (Phase 5D — image upload pipeline)
   { protocol: 'https', hostname: 'utfs.io' },
 ]
+
+// Phase F2 — Cloudflare R2 endpoint host. Derived from R2_ACCOUNT_ID so
+// rotation doesn't require a code edit. The R2 S3-compatible host shape is
+// `<account-id>.r2.cloudflarestorage.com`; signed URLs returned by the
+// presigner use this hostname. When the env var is missing (dev or build
+// without R2 credentials), we skip the entry — build proceeds, but signed
+// covers won't render until R2_ACCOUNT_ID is configured in production.
+if (process.env.R2_ACCOUNT_ID) {
+  // Path-style host (List/Head/Delete operations).
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: `${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  })
+  // Virtual-host bucket-subdomain — where signed GET/PUT URLs actually
+  // live when the adapter uses forcePathStyle:false. next/image's
+  // hostname matcher supports a leading `*.` wildcard for one subdomain
+  // level; that's enough to cover any bucket under this account.
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: `*.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  })
+}
 
 if (process.env.NEXT_PUBLIC_APP_URL) {
   try {

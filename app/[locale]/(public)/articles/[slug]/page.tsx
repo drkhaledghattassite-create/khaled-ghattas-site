@@ -18,6 +18,7 @@ import {
   getRelatedArticles,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
 
 const SITE_NAME_AR = 'د. خالد غطاس'
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = isAr ? article.titleAr : article.titleEn
   const description = isAr ? article.excerptAr : article.excerptEn
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/articles/${slug}`
-  const image = article.coverImage ?? '/opengraph-image'
+  // Phase F2 — resolve R2 storage keys to signed URLs for OG cards.
+  const image = (await resolvePublicUrl(article.coverImage)) ?? '/opengraph-image'
 
   return {
     title,
@@ -95,12 +97,19 @@ export default async function ArticlePage({ params }: Props) {
 
   const article = await getArticleBySlug(slug)
   if (!article) notFound()
+  // Phase F2 — resolve R2 storage keys to signed URLs server-side. External
+  // URLs and local /public assets pass through unchanged.
+  const articleCoverUrl = await resolvePublicUrl(article.coverImage)
 
   const t = await getTranslations('article')
   const tNav = await getTranslations('nav')
   const tCommon = await getTranslations('common')
   const tArticles = await getTranslations('articles')
   const related = await getRelatedArticles(slug, 3)
+  // Phase F2 — resolve related covers in parallel.
+  const relatedCoverUrls = await Promise.all(
+    related.map((r) => resolvePublicUrl(r.coverImage)),
+  )
   const isRtl = locale === 'ar'
   const Back = isRtl ? ChevronRight : ChevronLeft
 
@@ -196,10 +205,10 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </header>
 
-      {article.coverImage && (
+      {articleCoverUrl && (
         <div className="relative aspect-[16/9] w-full max-w-[1200px] mx-auto overflow-hidden bg-[var(--color-bg-deep)] [margin-block:clamp(40px,5vw,72px)]">
           <Image
-            src={article.coverImage}
+            src={articleCoverUrl}
             alt={title}
             fill
             sizes="(min-width: 1200px) 1200px, 100vw"
@@ -286,16 +295,16 @@ export default async function ArticlePage({ params }: Props) {
             </header>
 
             <ul className="m-0 p-0 list-none grid grid-cols-1 gap-[clamp(28px,4vw,40px)] md:grid-cols-3">
-              {related.map((r) => (
+              {related.map((r, idx) => (
                 <li key={r.id}>
                   <Link
                     href={`/articles/${r.slug}`}
                     className="group flex flex-col gap-3.5 transition-transform duration-[240ms] ease-[var(--ease-out)] hover:-translate-y-1"
                   >
-                    {r.coverImage && (
+                    {relatedCoverUrls[idx] && (
                       <div className="relative aspect-[4/3] overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)]">
                         <Image
-                          src={r.coverImage}
+                          src={relatedCoverUrls[idx]!}
                           alt={locale === 'ar' ? r.titleAr : r.titleEn}
                           fill
                           sizes="(min-width: 768px) 400px, 100vw"

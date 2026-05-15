@@ -58,6 +58,7 @@ import {
 } from '@/lib/email/templates/gift-revoked'
 import { sendGiftReceivedEmail } from '@/app/[locale]/(public)/gifts/actions'
 import { SITE_URL } from '@/lib/constants'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import type { GiftDisplayItem, GiftEmailLocale } from '@/lib/email/templates/gift-shared'
 import type { Gift } from '@/lib/db/schema'
 
@@ -85,12 +86,17 @@ function pickHttpUrl(raw: string | null | undefined): string | null {
   return parsed.toString()
 }
 
-function buildItemForEmail(summary: GiftItemSummary): GiftDisplayItem {
+// Phase F2 — resolve cover storage keys before the host-allowlist guard.
+// `pickHttpUrl` rejects bare keys (it calls `new URL(trimmed)` and bare keys
+// throw), so without this resolve step admin-grant + revoke emails would
+// render coverless once admin uploads start landing as R2 keys.
+async function buildItemForEmail(summary: GiftItemSummary): Promise<GiftDisplayItem> {
+  const resolvedCover = await resolvePublicUrl(summary.coverImage)
   return {
     itemType: summary.itemType,
     titleAr: summary.titleAr,
     titleEn: summary.titleEn,
-    coverImageUrl: pickHttpUrl(summary.coverImage),
+    coverImageUrl: pickHttpUrl(resolvedCover),
   }
 }
 
@@ -241,7 +247,7 @@ export async function createAdminGiftAction(
   // Send the admin-grant notification email.
   try {
     const locale = normaliseLocale(data.locale)
-    const itemForEmail = buildItemForEmail(itemSummary)
+    const itemForEmail = await buildItemForEmail(itemSummary)
     const claimUrl = result.autoClaimed
       ? `${SITE_URL}/${locale}/dashboard/library`
       : `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(result.gift.token)}`
@@ -321,7 +327,7 @@ export async function revokeGiftAction(
     )
     if (itemSummary) {
       const locale = normaliseLocale(revoked.locale)
-      const itemForEmail = buildItemForEmail(itemSummary)
+      const itemForEmail = await buildItemForEmail(itemSummary)
       // Recipient
       await sendEmail({
         to: revoked.recipientEmail,
@@ -445,10 +451,12 @@ async function resendAdminGrantEmail(
   if (!itemSummary) return { ok: false, reason: 'item_unavailable' }
   const locale = normaliseLocale(gift.locale)
   const claimUrl = `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(gift.token)}`
+  // Single resolve up-front; React.cache memoizes across siblings.
+  const itemForEmail = await buildItemForEmail(itemSummary)
   const html = buildAdminGiftGrantedHtml({
     locale,
     recipientEmail: gift.recipientEmail,
-    item: buildItemForEmail(itemSummary),
+    item: itemForEmail,
     claimUrl,
     alreadyClaimed: false,
     senderMessage: gift.senderMessage,
@@ -458,7 +466,7 @@ async function resendAdminGrantEmail(
   const text = buildAdminGiftGrantedText({
     locale,
     recipientEmail: gift.recipientEmail,
-    item: buildItemForEmail(itemSummary),
+    item: itemForEmail,
     claimUrl,
     alreadyClaimed: false,
     senderMessage: gift.senderMessage,

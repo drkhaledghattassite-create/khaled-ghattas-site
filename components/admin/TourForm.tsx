@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 import {
   createTourAction,
   deleteTourAction,
@@ -437,9 +438,10 @@ export function TourForm({ mode, tourId, initialValues }: Props) {
               <FormItem>
                 <FormLabel>{t('cover_image')}</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
+                  <StorageKeyUploadField
+                    context="tour-cover"
                     value={field.value ?? ''}
+                    onChange={field.onChange}
                     placeholder="/tours/riyadh.jpg"
                   />
                 </FormControl>

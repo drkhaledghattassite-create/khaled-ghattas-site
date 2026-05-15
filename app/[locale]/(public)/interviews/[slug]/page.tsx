@@ -13,6 +13,7 @@ import {
   getRelatedInterviews,
 } from '@/lib/db/queries'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
 
 const SITE_NAME_AR = 'د. خالد غطاس'
@@ -34,7 +35,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = isAr ? interview.titleAr : interview.titleEn
   const description = (isAr ? interview.descriptionAr : interview.descriptionEn) ?? undefined
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/interviews/${slug}`
-  const image = interview.thumbnailImage ?? '/opengraph-image'
+  // Phase F2 — resolve thumbnail (R2 storage key → signed URL; external URL
+  // and local /public paths pass through). Falls back to the dynamic OG
+  // route when resolution returns null (bad key / nullish).
+  const image = (await resolvePublicUrl(interview.thumbnailImage)) ?? '/opengraph-image'
 
   return {
     title,
@@ -83,6 +87,19 @@ export default async function InterviewPage({ params }: Props) {
   const related = await getRelatedInterviews(slug, 3)
   const isRtl = locale === 'ar'
 
+  // Phase F2 — resolve thumbnail storage keys server-side before any client
+  // <Image src=…> render. `thumbnailImage` is schema-NOT-NULL so we fall back
+  // to the original value on resolution failure (preserves the column's
+  // non-null contract). Same pattern as `c.logoUrl` in /corporate.
+  const resolvedInterviewThumb =
+    (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage
+  const resolvedRelated = await Promise.all(
+    related.map(async (r) => ({
+      ...r,
+      thumbnailImage: (await resolvePublicUrl(r.thumbnailImage)) ?? r.thumbnailImage,
+    })),
+  )
+
   const title = locale === 'ar' ? interview.titleAr : interview.titleEn
   const description = (locale === 'ar' ? interview.descriptionAr : interview.descriptionEn) ?? ''
   const source = (locale === 'ar' ? interview.sourceAr : interview.source) ?? ''
@@ -119,7 +136,7 @@ export default async function InterviewPage({ params }: Props) {
               aria-label={title}
             >
               <Image
-                src={interview.thumbnailImage}
+                src={resolvedInterviewThumb}
                 alt={title}
                 fill
                 priority
@@ -159,7 +176,7 @@ export default async function InterviewPage({ params }: Props) {
               aria-label={title}
             >
               <Image
-                src={interview.thumbnailImage}
+                src={resolvedInterviewThumb}
                 alt={title}
                 fill
                 priority
@@ -281,7 +298,7 @@ export default async function InterviewPage({ params }: Props) {
             </header>
 
             <ul className="m-0 p-0 list-none grid grid-cols-1 gap-[clamp(28px,4vw,40px)] md:grid-cols-3">
-              {related.map((r) => {
+              {resolvedRelated.map((r) => {
                 const rTitle = isRtl ? r.titleAr : r.titleEn
                 const rSource = (isRtl ? r.sourceAr : r.source) ?? ''
                 return (

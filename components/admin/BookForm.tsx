@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 import {
   Select,
   SelectContent,
@@ -187,7 +188,14 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
             <FormField control={form.control} name="digitalFile" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('digital_file')}</FormLabel>
-                <FormControl><Input {...field} value={field.value ?? ''} placeholder="https://…/book.pdf" /></FormControl>
+                <FormControl>
+                  <StorageKeyUploadField
+                    context="book-digital-file"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    placeholder="https://…/book.pdf"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -217,7 +225,14 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
           <FormField control={form.control} name="coverImage" render={({ field }) => (
             <FormItem>
               <FormLabel>{t('cover_image')}</FormLabel>
-              <FormControl><Input {...field} placeholder="/placeholder/nav/nav-1.jpg" /></FormControl>
+              <FormControl>
+                <StorageKeyUploadField
+                  context="book-cover"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  placeholder="/placeholder/nav/nav-1.jpg"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />

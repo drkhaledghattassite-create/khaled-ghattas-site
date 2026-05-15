@@ -41,6 +41,7 @@ import {
 import { createUserPurchaseGiftFromWebhook, sendGiftReceivedEmail } from '@/app/[locale]/(public)/gifts/actions'
 import { resolveGiftItemPrice, type GiftableItemType, getUserById } from '@/lib/db/queries'
 import { SITE_URL } from '@/lib/constants'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import type { GiftDisplayItem, GiftEmailLocale } from '@/lib/email/templates/gift-shared'
 
 export const runtime = 'nodejs'
@@ -746,11 +747,15 @@ async function handleGiftCheckoutCompleted(
     }
     const itemSummary = await resolveGiftItemPrice(itemType, itemId)
     if (!itemSummary) return
+    // Phase F2 — resolve the cover storage key first so the host-allowlist
+    // guard `pickEmailItemUrl` (which `new URL`s the input) sees an absolute
+    // URL. Bare R2 keys throw on `new URL` and would silently drop the cover.
+    const resolvedItemCover = await resolvePublicUrl(itemSummary.coverImage)
     const item: GiftDisplayItem = {
       itemType,
       titleAr: itemSummary.titleAr,
       titleEn: itemSummary.titleEn,
-      coverImageUrl: pickEmailItemUrl(itemSummary.coverImage),
+      coverImageUrl: pickEmailItemUrl(resolvedItemCover),
     }
     const claimUrl = `${SITE_URL}/${locale}/gifts/claim?token=${encodeURIComponent(created.token)}`
     const dashboardUrl = `${SITE_URL}/${locale}/dashboard/gifts`
@@ -821,11 +826,13 @@ async function refundGiftByPaymentIntent(
       )
       if (itemSummary) {
         const locale: GiftEmailLocale = refunded.locale === 'en' ? 'en' : 'ar'
+        // Phase F2 — see twin comment in handleGiftCheckoutCompleted.
+        const resolvedRefundCover = await resolvePublicUrl(itemSummary.coverImage)
         const item: GiftDisplayItem = {
           itemType: itemSummary.itemType,
           titleAr: itemSummary.titleAr,
           titleEn: itemSummary.titleEn,
-          coverImageUrl: pickEmailItemUrl(itemSummary.coverImage),
+          coverImageUrl: pickEmailItemUrl(resolvedRefundCover),
         }
         await sendEmail({
           to: refunded.recipientEmail,

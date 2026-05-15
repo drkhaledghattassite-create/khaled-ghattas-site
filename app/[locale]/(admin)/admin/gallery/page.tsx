@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/lib/i18n/navigation'
 import { GalleryAdminGrid } from '@/components/admin/GalleryAdminGrid'
 import { getGalleryItems } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 // Auth-gated route — render per-request so getServerSession sees real cookies.
 // Without this, the catch in lib/auth/server.ts swallows the dynamic-API error
@@ -17,6 +18,16 @@ export default async function AdminGalleryPage({ params }: Props) {
   const t = await getTranslations('admin.gallery')
   const gallery = await getGalleryItems()
 
+  // Phase F2 gap-fix — resolve gallery image storage keys server-side
+  // so GalleryAdminGrid can render straight to <Image>. `image` is
+  // schema-NOT-NULL; preserve the original on resolution failure.
+  const resolvedGallery = await Promise.all(
+    gallery.map(async (item) => ({
+      ...item,
+      image: (await resolvePublicUrl(item.image)) ?? item.image,
+    })),
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -27,7 +38,7 @@ export default async function AdminGalleryPage({ params }: Props) {
           {t('upload')}
         </Link>
       </div>
-      <GalleryAdminGrid gallery={gallery} />
+      <GalleryAdminGrid gallery={resolvedGallery} />
     </div>
   )
 }

@@ -15,6 +15,7 @@ import {
 } from '@/lib/db/queries'
 import { getServerSession } from '@/lib/auth/server'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
 
 const SITE_NAME_AR = 'د. خالد غطاس'
@@ -36,7 +37,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = isAr ? book.titleAr : book.titleEn
   const description = isAr ? book.descriptionAr : book.descriptionEn
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/books/${slug}`
-  const image = book.coverImage ?? '/opengraph-image'
+  // Resolve R2 storage keys to signed URLs for OG cards; pass-through for
+  // existing external URLs and local /public assets. Phase F2.
+  const image = (await resolvePublicUrl(book.coverImage)) ?? '/opengraph-image'
 
   return {
     title,
@@ -87,6 +90,18 @@ export default async function BookPage({ params }: Props) {
   const owned = session ? await userOwnsProduct(session.user.id, book.id) : false
   const isRtl = locale === 'ar'
 
+  // Phase F2 — resolve R2 storage keys to signed URLs server-side. External
+  // URLs and local /public assets pass through unchanged.
+  const bookCoverUrl =
+    (await resolvePublicUrl(book.coverImage)) ?? '/dr khaled photo.jpeg'
+  const relatedCovers = await Promise.all(
+    related.map(async (r) => ({
+      id: r.id,
+      url: (await resolvePublicUrl(r.coverImage)) ?? '/dr khaled photo.jpeg',
+    })),
+  )
+  const relatedCoverById = new Map(relatedCovers.map((c) => [c.id, c.url]))
+
   const title = locale === 'ar' ? book.titleAr : book.titleEn
   const subtitle = locale === 'ar' ? book.subtitleAr : book.subtitleEn
   const description = locale === 'ar' ? book.descriptionAr : book.descriptionEn
@@ -120,7 +135,7 @@ export default async function BookPage({ params }: Props) {
               className={`relative ${aspect} overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:var(--shadow-lift)]`}
             >
               <Image
-                src={book.coverImage}
+                src={bookCoverUrl}
                 alt={title}
                 fill
                 sizes="(min-width: 768px) 440px, 100vw"
@@ -303,7 +318,7 @@ export default async function BookPage({ params }: Props) {
                         className={`relative ${rIsSession ? 'aspect-[16/10]' : 'aspect-[2/3]'} overflow-hidden rounded-[4px] bg-[var(--color-bg-deep)] [box-shadow:0_4px_16px_-4px_rgba(0,0,0,0.10)] group-hover:[box-shadow:0_12px_32px_-8px_rgba(0,0,0,0.18)] transition-shadow duration-[240ms]`}
                       >
                         <Image
-                          src={r.coverImage}
+                          src={relatedCoverById.get(r.id) ?? '/dr khaled photo.jpeg'}
                           alt={rTitle}
                           fill
                           sizes="(min-width: 768px) 33vw, 50vw"

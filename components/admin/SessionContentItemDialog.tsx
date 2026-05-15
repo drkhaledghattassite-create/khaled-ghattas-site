@@ -42,6 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
+import type { UploadContext } from '@/lib/validators/storage'
 import type { SessionItem, SessionItemType } from '@/lib/db/schema'
 
 const ITEM_TYPES: SessionItemType[] = ['VIDEO', 'AUDIO', 'PDF']
@@ -236,32 +238,46 @@ export function SessionContentItemDialog({
             <FormField
               control={form.control}
               name="storageKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('field_storage_key')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      dir="ltr"
-                      placeholder={t(
-                        `field_storage_key_placeholder_${watchedType.toLowerCase()}` as
-                          | 'field_storage_key_placeholder_video'
-                          | 'field_storage_key_placeholder_audio'
-                          | 'field_storage_key_placeholder_pdf',
-                      )}
-                    />
-                  </FormControl>
-                  <p className="text-[11px] text-fg3">
-                    {t(
-                      `field_storage_key_hint_${watchedType.toLowerCase()}` as
-                        | 'field_storage_key_hint_video'
-                        | 'field_storage_key_hint_audio'
-                        | 'field_storage_key_hint_pdf',
-                    )}
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const lower = watchedType.toLowerCase() as
+                  | 'video'
+                  | 'audio'
+                  | 'pdf'
+                const placeholderKey = `field_storage_key_placeholder_${lower}` as
+                  | 'field_storage_key_placeholder_video'
+                  | 'field_storage_key_placeholder_audio'
+                  | 'field_storage_key_placeholder_pdf'
+                const hintKey = `field_storage_key_hint_${lower}` as
+                  | 'field_storage_key_hint_video'
+                  | 'field_storage_key_hint_audio'
+                  | 'field_storage_key_hint_pdf'
+                // Phase F2 — VIDEO now supports R2 upload alongside AUDIO
+                // and PDF. Admins can still paste a YouTube URL/ID into the
+                // text input; the runtime discriminator in
+                // SessionViewer/VideoPlayer picks the right player based on
+                // whether the storage key looks like an R2 path or a YouTube id.
+                const uploadContext: UploadContext =
+                  watchedType === 'AUDIO'
+                    ? 'session-item-audio'
+                    : watchedType === 'PDF'
+                      ? 'session-item-pdf'
+                      : 'session-item-video'
+                return (
+                  <FormItem>
+                    <FormLabel>{t('field_storage_key')}</FormLabel>
+                    <FormControl>
+                      <StorageKeyUploadField
+                        context={uploadContext}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={t(placeholderKey)}
+                        hint={t(hintKey)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
 
             {showDuration && (

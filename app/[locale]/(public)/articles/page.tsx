@@ -6,6 +6,7 @@ import { ComingSoon } from '@/components/shared/ComingSoon'
 import { getArticles } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -33,6 +34,14 @@ export default async function ArticlesPage({ params }: Props) {
   const tCommon = await getTranslations('common')
   const articles = await getArticles()
 
+  // Phase F2 — resolve cover storage keys to signed/passthrough URLs server-side.
+  const resolvedArticles = await Promise.all(
+    articles.map(async (article) => ({
+      ...article,
+      coverImage: (await resolvePublicUrl(article.coverImage)) ?? null,
+    })),
+  )
+
   return (
     <>
       <InnerHero
@@ -43,7 +52,7 @@ export default async function ArticlesPage({ params }: Props) {
         image={{ src: '/drphoto.JPG', alt: tCommon('alt.portrait_dr_khaled') }}
       />
 
-      <ArticlesList articles={articles} showHeader={false} />
+      <ArticlesList articles={resolvedArticles} showHeader={false} />
     </>
   )
 }

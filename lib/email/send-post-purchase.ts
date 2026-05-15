@@ -30,6 +30,7 @@ import {
 } from '@/lib/email/templates/post-purchase'
 import { getOrderItemsWithBooks } from '@/lib/db/queries'
 import { storage } from '@/lib/storage'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import { SITE_URL } from '@/lib/constants'
 
 export const POST_PURCHASE_LINK_EXPIRY_DAYS = 7
@@ -103,7 +104,13 @@ export async function sendPostPurchaseEmail(args: {
   const sessions: PostPurchaseSessionEntry[] = []
 
   for (const { item, book } of items) {
-    const coverImageUrl = pickPublicImageUrl(book.coverImage)
+    // Phase F2 — resolve cover storage key (R2) → signed URL first; the
+    // `pickPublicImageUrl` host-allowlist gate REJECTS bare keys via
+    // `new URL(trimmed)`, so without this resolve step the email would
+    // silently render coverless even after the F2 admin uploads start
+    // landing as R2 keys.
+    const resolvedCover = await resolvePublicUrl(book.coverImage)
+    const coverImageUrl = pickPublicImageUrl(resolvedCover)
     if (book.productType === 'SESSION') {
       sessions.push({
         titleAr: book.titleAr,

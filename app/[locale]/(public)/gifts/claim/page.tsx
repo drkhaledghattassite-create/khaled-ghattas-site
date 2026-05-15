@@ -6,6 +6,7 @@ import type { Gift } from '@/lib/db/schema'
 import type { GiftableItemType } from '@/lib/validators/gift'
 import { getServerSession, type ServerSession } from '@/lib/auth/server'
 import { pageMetadata } from '@/lib/seo/page-metadata'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -107,10 +108,12 @@ export default async function GiftsClaimRoute({ params, searchParams }: Props) {
       gift.itemId,
     ).catch(() => null)
     if (summary) {
+      // Phase F2 — resolve R2 storage key to signed URL server-side.
+      const resolvedCover = await resolvePublicUrl(summary.coverImage)
       itemDisplay = {
         titleAr: summary.titleAr,
         titleEn: summary.titleEn,
-        coverImage: summary.coverImage,
+        coverImage: resolvedCover ?? summary.coverImage,
         itemType: summary.itemType,
       }
     }

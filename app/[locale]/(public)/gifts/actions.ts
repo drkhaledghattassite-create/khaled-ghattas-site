@@ -74,6 +74,7 @@ import {
   buildGiftClaimedSenderText,
 } from '@/lib/email/templates/gift-claimed-sender'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 import type { GiftDisplayItem, GiftEmailLocale } from '@/lib/email/templates/gift-shared'
 import type { Gift } from '@/lib/db/schema'
 
@@ -99,12 +100,19 @@ async function resolveOrigin(): Promise<string> {
   return host && isDevHost ? `${proto}://${host}` : SITE_URL
 }
 
-function buildItemForEmail(summary: GiftItemSummary): GiftDisplayItem {
+// Phase F2 — gift item summaries carry whatever the DB stores in
+// `coverImage` (URL, /public path, or bare R2 storage key). The downstream
+// `pickHttpUrl` host-allowlist gate REJECTS bare keys via `new URL(trimmed)`,
+// so the gift emails would silently render coverless once admin starts
+// uploading R2-backed covers. Resolve the key to a signed URL first, then
+// run the host-allowlist guard.
+async function buildItemForEmail(summary: GiftItemSummary): Promise<GiftDisplayItem> {
+  const resolvedCover = await resolvePublicUrl(summary.coverImage)
   return {
     itemType: summary.itemType,
     titleAr: summary.titleAr,
     titleEn: summary.titleEn,
-    coverImageUrl: pickHttpUrl(summary.coverImage),
+    coverImageUrl: pickHttpUrl(resolvedCover),
   }
 }
 
@@ -442,7 +450,7 @@ export async function claimGiftAction(
 
   // Send claim emails — fail-open (the entitlement is already granted).
   const locale = normaliseLocale(claimed.locale)
-  const itemForEmail = buildItemForEmail(itemSummary)
+  const itemForEmail = await buildItemForEmail(itemSummary)
   const origin = await resolveOrigin()
   const itemUrl = `${origin}/${locale}${redirectPath}`
   try {
@@ -626,11 +634,13 @@ export async function sendGiftReceivedEmail(
     }
   }
 
+  // Single resolve up-front (cache hit if called again with same summary).
+  const itemForEmail = await buildItemForEmail(itemSummary)
   const html = buildGiftReceivedHtml({
     locale,
     recipientEmail: gift.recipientEmail,
     senderDisplayName,
-    item: buildItemForEmail(itemSummary),
+    item: itemForEmail,
     senderMessage: gift.senderMessage,
     claimUrl,
     expiresAt: gift.expiresAt,
@@ -640,7 +650,7 @@ export async function sendGiftReceivedEmail(
     locale,
     recipientEmail: gift.recipientEmail,
     senderDisplayName,
-    item: buildItemForEmail(itemSummary),
+    item: itemForEmail,
     senderMessage: gift.senderMessage,
     claimUrl,
     expiresAt: gift.expiresAt,

@@ -1,5 +1,6 @@
 import { SITE_NAME, SITE_URL } from '@/lib/constants'
 import type { Article, Book, Event, Interview } from '@/lib/db/queries'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 const SITE_NAME_AR = 'د. خالد غطاس'
 
@@ -81,7 +82,14 @@ export function PersonJsonLd({ locale }: LocaleProps) {
   })
 }
 
-export function ArticleJsonLd({
+// Phase F2 — JSON-LD image fields are absolute URLs surfaced to search
+// engines. Bare R2 storage keys would render as broken `image` values in
+// rich-result previews, so each helper that emits an image / thumbnail
+// resolves the underlying key (or URL passthrough) server-side via
+// `resolvePublicUrl` before serialisation. All callers are Server
+// Components, so awaiting here is safe; React renders the returned promise
+// natively.
+export async function ArticleJsonLd({
   article,
   locale,
 }: {
@@ -92,6 +100,7 @@ export function ArticleJsonLd({
   const title = isAr ? article.titleAr : article.titleEn
   const description = isAr ? article.excerptAr : article.excerptEn
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/articles/${article.slug}`
+  const resolvedCover = await resolvePublicUrl(article.coverImage)
 
   return jsonLdScript({
     '@context': 'https://schema.org',
@@ -100,7 +109,7 @@ export function ArticleJsonLd({
     description,
     datePublished: article.publishedAt?.toISOString(),
     dateModified: article.updatedAt?.toISOString(),
-    image: article.coverImage ? [article.coverImage] : undefined,
+    image: resolvedCover ? [resolvedCover] : undefined,
     author: {
       '@type': 'Person',
       name: isAr ? SITE_NAME_AR : SITE_NAME,
@@ -116,18 +125,25 @@ export function ArticleJsonLd({
   })
 }
 
-export function BookJsonLd({ book, locale }: { book: Book; locale: string }) {
+export async function BookJsonLd({
+  book,
+  locale,
+}: {
+  book: Book
+  locale: string
+}) {
   const isAr = locale === 'ar'
   const title = isAr ? book.titleAr : book.titleEn
   const description = isAr ? book.descriptionAr : book.descriptionEn
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/books/${book.slug}`
+  const resolvedCover = (await resolvePublicUrl(book.coverImage)) ?? book.coverImage
 
   return jsonLdScript({
     '@context': 'https://schema.org',
     '@type': book.productType === 'BOOK' ? 'Book' : 'Service',
     name: title,
     description,
-    image: book.coverImage,
+    image: resolvedCover,
     url,
     inLanguage: isAr ? 'ar' : 'en',
     author: {
@@ -144,7 +160,7 @@ export function BookJsonLd({ book, locale }: { book: Book; locale: string }) {
   })
 }
 
-export function InterviewJsonLd({
+export async function InterviewJsonLd({
   interview,
   locale,
 }: {
@@ -154,13 +170,15 @@ export function InterviewJsonLd({
   const isAr = locale === 'ar'
   const title = isAr ? interview.titleAr : interview.titleEn
   const description = isAr ? interview.descriptionAr : interview.descriptionEn
+  const resolvedThumb =
+    (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage
 
   return jsonLdScript({
     '@context': 'https://schema.org',
     '@type': 'VideoObject',
     name: title,
     description: description ?? title,
-    thumbnailUrl: [interview.thumbnailImage],
+    thumbnailUrl: [resolvedThumb],
     uploadDate: interview.createdAt?.toISOString(),
     contentUrl: interview.videoUrl || undefined,
     embedUrl: interview.videoUrl || undefined,
@@ -189,7 +207,13 @@ export function BreadcrumbJsonLd({
   })
 }
 
-export function EventJsonLd({ event, locale }: { event: Event; locale: string }) {
+export async function EventJsonLd({
+  event,
+  locale,
+}: {
+  event: Event
+  locale: string
+}) {
   const isAr = locale === 'ar'
   const title = isAr ? event.titleAr : event.titleEn
   const description = isAr ? event.descriptionAr : event.descriptionEn
@@ -198,6 +222,7 @@ export function EventJsonLd({ event, locale }: { event: Event; locale: string })
   // /events listing. Point search engines at the listing page (with a fragment
   // identifier per event slug) instead of an event-detail URL that would 404.
   const url = `${isAr ? SITE_URL : `${SITE_URL}/en`}/events#${event.slug}`
+  const resolvedCover = await resolvePublicUrl(event.coverImage)
 
   return jsonLdScript({
     '@context': 'https://schema.org',
@@ -214,7 +239,7 @@ export function EventJsonLd({ event, locale }: { event: Event; locale: string })
     location: location
       ? { '@type': 'Place', name: location, address: location }
       : undefined,
-    image: event.coverImage ? [event.coverImage] : undefined,
+    image: resolvedCover ? [resolvedCover] : undefined,
     url,
     organizer: {
       '@type': 'Organization',

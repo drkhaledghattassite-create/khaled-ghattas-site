@@ -6,6 +6,7 @@ import { ComingSoon } from '@/components/shared/ComingSoon'
 import { getInterviews } from '@/lib/db/queries'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
+import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -33,6 +34,17 @@ export default async function InterviewsPage({ params }: Props) {
   const tCommon = await getTranslations('common')
   const interviews = await getInterviews()
 
+  // Phase F2 — resolve thumbnail storage keys server-side before passing into
+  // the client InterviewsGallery. `thumbnailImage` is schema-NOT-NULL so we
+  // fall back to the original value on resolution failure.
+  const resolvedInterviews = await Promise.all(
+    interviews.map(async (interview) => ({
+      ...interview,
+      thumbnailImage:
+        (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage,
+    })),
+  )
+
   return (
     <>
       <InnerHero
@@ -42,7 +54,7 @@ export default async function InterviewsPage({ params }: Props) {
         description={t('description')}
         image={{ src: '/DSC06608.JPG', alt: tCommon('alt.portrait_dr_khaled') }}
       />
-      <InterviewsGallery interviews={interviews} />
+      <InterviewsGallery interviews={resolvedInterviews} />
     </>
   )
 }

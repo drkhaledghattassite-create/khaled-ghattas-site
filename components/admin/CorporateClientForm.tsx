@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { StorageKeyUploadField } from './StorageKeyUploadField'
 
 const STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const
 
@@ -156,7 +157,12 @@ export function CorporateClientForm({ initialValues, mode, clientId }: Props) {
               <FormItem>
                 <FormLabel>{t('logo_url')}</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="/clients/pepsico.png" />
+                  <StorageKeyUploadField
+                    context="client-logo"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="/clients/pepsico.png"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
