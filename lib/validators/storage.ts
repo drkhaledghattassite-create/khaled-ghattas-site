@@ -179,3 +179,117 @@ export function slugifyFilename(filename: string): string {
   const safeStem = slug || 'file'
   return `${safeStem}${ext}`
 }
+
+/* ─── Phase F3 ─ Public/Private bucket classification ──────────────────────
+ *
+ * R2 storage is split into two buckets:
+ *
+ *   PUBLIC bucket   — cosmetic images served unsigned. Covers, logos,
+ *                     gallery photos, program/event/article/tour/test/
+ *                     interview/booking thumbnails. Public-read enabled
+ *                     in Cloudflare; delivered via `R2_PUBLIC_URL`.
+ *   PRIVATE bucket  — paid content delivered through signed URLs only.
+ *                     Book PDFs, session videos, session audio, session
+ *                     PDFs. Public access OFF on the bucket.
+ *
+ * The classification is one-place-fixed: add a new UploadContext above and
+ * tsc will FAIL unless you also classify it in exactly one of the two
+ * arrays below. The `_exhaustive` and `_disjoint` compile-time assertions
+ * at the bottom enforce both directions — every context must be in some
+ * bucket, and no context may be in both.
+ *
+ * `bucketForKey` parses the R2 object key shape `<contextType>/<uuid>/<slug>`
+ * to route reads. It THROWS on an unknown prefix so a typo in a DB row can't
+ * silently leak paid content via the public delivery path. Callers must
+ * wrap in try/catch when the key origin is untrusted (see
+ * `lib/storage/public-url.ts` — the resolver catches and returns null so
+ * a bad row degrades to a placeholder rather than crashing the page).
+ */
+
+export const PUBLIC_CONTEXTS = [
+  'book-cover',
+  'tour-cover',
+  'event-cover',
+  'article-cover',
+  'gallery-image',
+  'client-logo',
+  'program-cover',
+  'interview-thumbnail',
+  'booking-cover',
+  'test-cover',
+] as const satisfies readonly UploadContext[]
+
+export const PRIVATE_CONTEXTS = [
+  'book-digital-file',
+  'session-item-video',
+  'session-item-audio',
+  'session-item-pdf',
+] as const satisfies readonly UploadContext[]
+
+export type PublicContext = (typeof PUBLIC_CONTEXTS)[number]
+export type PrivateContext = (typeof PRIVATE_CONTEXTS)[number]
+
+// Pre-computed Sets so isPublicContext / bucketForContext are O(1) at
+// runtime rather than O(n) over the readonly tuple. Both Sets are typed
+// as Set<string> deliberately — the input type is the narrower UploadContext
+// union but the Set storage is just strings.
+const PUBLIC_CONTEXT_SET: ReadonlySet<string> = new Set(PUBLIC_CONTEXTS)
+const PRIVATE_CONTEXT_SET: ReadonlySet<string> = new Set(PRIVATE_CONTEXTS)
+
+export function isPublicContext(context: UploadContext): context is PublicContext {
+  return PUBLIC_CONTEXT_SET.has(context)
+}
+
+export function bucketForContext(context: UploadContext): 'public' | 'private' {
+  return isPublicContext(context) ? 'public' : 'private'
+}
+
+/**
+ * Classify an R2 storage key by its leading context-type prefix.
+ *
+ * Keys are minted as `<contextType>/<uuid>/<slug>` by
+ * `app/api/admin/storage/upload/route.ts`. We slice up to the first `/` and
+ * look it up in the two classification sets.
+ *
+ * Throws when the prefix is not a known UploadContext — a defensive choice
+ * so a typo in a DB row (e.g. `book_cover/...` instead of `book-cover/...`)
+ * blows up loudly rather than silently routing through the public/CDN path
+ * and leaking paid content.
+ */
+export function bucketForKey(key: string): 'public' | 'private' {
+  const slash = key.indexOf('/')
+  // No slash → it's not a key in our `<context>/<uuid>/<slug>` shape. Refuse
+  // rather than guessing; callers should wrap in try/catch (the public-URL
+  // resolver does — see `lib/storage/public-url.ts`).
+  const prefix = slash > 0 ? key.slice(0, slash) : key
+  if (PUBLIC_CONTEXT_SET.has(prefix)) return 'public'
+  if (PRIVATE_CONTEXT_SET.has(prefix)) return 'private'
+  throw new Error(
+    `bucketForKey: unknown context prefix '${prefix}'. Expected one of: ` +
+      `${[...PUBLIC_CONTEXTS, ...PRIVATE_CONTEXTS].join(', ')}.`,
+  )
+}
+
+/* ─── Compile-time exhaustiveness + disjointness ──────────────────────────
+ *
+ * If you add a new entry to UPLOAD_CONTEXTS above and forget to put it in
+ * exactly one of PUBLIC_CONTEXTS / PRIVATE_CONTEXTS, tsc will fail to
+ * compile this file. The two checks cover both directions:
+ *
+ *   _MissingFromBuckets    — every UploadContext is in at least one list
+ *   _OverlapBetweenBuckets — no UploadContext is in BOTH lists
+ *
+ * A duplicate (same context listed as both public and private) is the more
+ * dangerous misclassification — paid content silently routed through the
+ * public path — so we guard both directions, not just the missing case.
+ */
+type _MissingFromBuckets = Exclude<
+  UploadContext,
+  (typeof PUBLIC_CONTEXTS)[number] | (typeof PRIVATE_CONTEXTS)[number]
+>
+type _OverlapBetweenBuckets = (typeof PUBLIC_CONTEXTS)[number] &
+  (typeof PRIVATE_CONTEXTS)[number]
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _exhaustive: [_MissingFromBuckets] extends [never] ? true : never = true
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _disjoint: [_OverlapBetweenBuckets] extends [never] ? true : never = true

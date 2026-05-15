@@ -2536,6 +2536,215 @@ async function main() {
     undefRes === null,
   )
 
+  /* ─── (F3) STORAGE — public/private bucket split ────────────────────── */
+  // The classification surface lives in `lib/validators/storage.ts`. Pure
+  // helpers, no R2 calls — these run identically against mock + R2 modes.
+  // Phase F3 adds `bucketForKey` (parses the `<context>/<uuid>/<slug>` key
+  // shape) and `bucketForContext` (maps UploadContext → 'public'|'private').
+  // The TS-level disjointness/exhaustiveness assertions are compile-time —
+  // they don't show up here; tsc enforces them.
+
+  // ── isPublicContext discriminator
+  assert(
+    'STORAGE',
+    "[F3] isPublicContext('book-cover') is true (cover image → public)",
+    storageVal.isPublicContext('book-cover') === true,
+  )
+  assert(
+    'STORAGE',
+    "[F3] isPublicContext('session-item-video') is false (paid video → private)",
+    storageVal.isPublicContext('session-item-video') === false,
+  )
+  assert(
+    'STORAGE',
+    "[F3] isPublicContext('book-digital-file') is false (paid PDF → private)",
+    storageVal.isPublicContext('book-digital-file') === false,
+  )
+  assert(
+    'STORAGE',
+    "[F3] isPublicContext('gallery-image') is true",
+    storageVal.isPublicContext('gallery-image') === true,
+  )
+
+  // ── bucketForContext returns the expected string
+  assert(
+    'STORAGE',
+    "[F3] bucketForContext('book-cover') === 'public'",
+    storageVal.bucketForContext('book-cover') === 'public',
+  )
+  assert(
+    'STORAGE',
+    "[F3] bucketForContext('session-item-audio') === 'private'",
+    storageVal.bucketForContext('session-item-audio') === 'private',
+  )
+
+  // ── PUBLIC_CONTEXTS + PRIVATE_CONTEXTS arrays cover every UploadContext
+  const allContexts = storageVal.UPLOAD_CONTEXTS
+  const publicSet = new Set<string>(storageVal.PUBLIC_CONTEXTS)
+  const privateSet = new Set<string>(storageVal.PRIVATE_CONTEXTS)
+  const uncategorized = allContexts.filter(
+    (c) => !publicSet.has(c) && !privateSet.has(c),
+  )
+  assert(
+    'STORAGE',
+    '[F3] every UploadContext is classified in PUBLIC_CONTEXTS or PRIVATE_CONTEXTS',
+    uncategorized.length === 0,
+    uncategorized.length > 0 ? `uncategorized: ${uncategorized.join(', ')}` : undefined,
+  )
+  const overlap = allContexts.filter(
+    (c) => publicSet.has(c) && privateSet.has(c),
+  )
+  assert(
+    'STORAGE',
+    '[F3] no UploadContext appears in both PUBLIC_CONTEXTS and PRIVATE_CONTEXTS',
+    overlap.length === 0,
+    overlap.length > 0 ? `overlap: ${overlap.join(', ')}` : undefined,
+  )
+
+  // ── bucketForKey routes by leading prefix
+  assert(
+    'STORAGE',
+    "[F3] bucketForKey('book-cover/uuid/file.jpg') === 'public'",
+    storageVal.bucketForKey('book-cover/uuid/file.jpg') === 'public',
+  )
+  assert(
+    'STORAGE',
+    "[F3] bucketForKey('session-item-audio/uuid/track.mp3') === 'private'",
+    storageVal.bucketForKey('session-item-audio/uuid/track.mp3') === 'private',
+  )
+  assert(
+    'STORAGE',
+    "[F3] bucketForKey('book-digital-file/uuid/book.pdf') === 'private'",
+    storageVal.bucketForKey('book-digital-file/uuid/book.pdf') === 'private',
+  )
+
+  // ── bucketForKey THROWS on unknown prefix (defensive — typo guard)
+  let bucketThrew = false
+  try {
+    storageVal.bucketForKey('unknown-prefix/uuid/file.jpg')
+  } catch (err) {
+    bucketThrew = err instanceof Error && err.message.includes('unknown context prefix')
+  }
+  assert(
+    'STORAGE',
+    '[F3] bucketForKey throws on unknown prefix (defends paid content from public-leak typos)',
+    bucketThrew,
+  )
+
+  // ── resolvePublicUrl + R2_PUBLIC_URL: public-context key returns the
+  //    unsigned CDN URL deterministically (no signing → same key, same
+  //    URL across calls). Set R2_PUBLIC_URL JUST for this block so the
+  //    rest of the smoke (which exercises the signed-fallback path)
+  //    stays unaffected — restore after.
+  const beforePublicUrl = process.env.R2_PUBLIC_URL
+  process.env.R2_PUBLIC_URL = 'https://pub-smoke.r2.dev'
+  // React.cache memoizes per-input — we must use a distinct key here so
+  // the cached value from the earlier (no-env) call doesn't shadow this
+  // test. The F2 block above resolved 'book-cover/uuid/x.jpg'; we use
+  // a different uuid below.
+  const publicCdn = await resolver.resolvePublicUrl(
+    'book-cover/f3-smoke-uuid/cover.jpg',
+  )
+  assert(
+    'STORAGE',
+    "[F3] resolvePublicUrl(public-key) with R2_PUBLIC_URL set → unsigned CDN URL",
+    publicCdn === 'https://pub-smoke.r2.dev/book-cover/f3-smoke-uuid/cover.jpg',
+    `got ${publicCdn}`,
+  )
+  // Determinism check — second resolve of same key returns the same URL.
+  const publicCdn2 = await resolver.resolvePublicUrl(
+    'book-cover/f3-smoke-uuid/cover.jpg',
+  )
+  assert(
+    'STORAGE',
+    '[F3] resolvePublicUrl is deterministic for public keys (same input → same output)',
+    publicCdn === publicCdn2,
+  )
+
+  // ── A trailing slash on R2_PUBLIC_URL must not double-slash the key.
+  process.env.R2_PUBLIC_URL = 'https://pub-smoke.r2.dev/'
+  const publicCdnTrailing = await resolver.resolvePublicUrl(
+    'gallery-image/f3-trailing-uuid/photo.jpg',
+  )
+  assert(
+    'STORAGE',
+    '[F3] resolvePublicUrl normalizes trailing slash on R2_PUBLIC_URL',
+    publicCdnTrailing ===
+      'https://pub-smoke.r2.dev/gallery-image/f3-trailing-uuid/photo.jpg',
+    `got ${publicCdnTrailing}`,
+  )
+
+  // ── Private-bucket key always signs, even with R2_PUBLIC_URL set.
+  //    In mock mode the signed URL points at /placeholder-content/.
+  const privateSigned = await resolver.resolvePublicUrl(
+    'session-item-audio/f3-private-uuid/track.mp3',
+  )
+  assert(
+    'STORAGE',
+    '[F3] resolvePublicUrl(private-key) always signs (private content never hits the public CDN)',
+    privateSigned !== null && privateSigned.startsWith('/placeholder-content/'),
+    `got ${privateSigned}`,
+  )
+
+  // Restore env so subsequent assertions see the original state.
+  if (beforePublicUrl === undefined) {
+    delete process.env.R2_PUBLIC_URL
+  } else {
+    process.env.R2_PUBLIC_URL = beforePublicUrl
+  }
+
+  // ── decideStorageAdapter / diagnoseStorageAdapter report public state
+  const diagDefault = storageIdx.diagnoseStorageAdapter()
+  assert(
+    'STORAGE',
+    "[F3] diagnoseStorageAdapter reports publicAdapter='unconfigured' when R2_PUBLIC_BUCKET_NAME unset",
+    diagDefault.publicAdapter === 'unconfigured',
+    `got ${diagDefault.publicAdapter}`,
+  )
+  assert(
+    'STORAGE',
+    '[F3] diagnoseStorageAdapter publicReason is a non-empty string',
+    typeof diagDefault.publicReason === 'string' &&
+      diagDefault.publicReason.length > 0,
+  )
+
+  // With all R2 vars + the public bucket name set, decide reports r2 +
+  // publicAdapter='r2'.
+  const allR2EnvWithPublic = {
+    R2_ACCOUNT_ID: 'fake-acc',
+    R2_ACCESS_KEY_ID: 'fake-id',
+    R2_SECRET_ACCESS_KEY: 'fake-secret',
+    R2_BUCKET_NAME: 'fake-bucket',
+    R2_PUBLIC_BUCKET_NAME: 'fake-public-bucket',
+  }
+  const decisionWithPublic = storageIdx.decideStorageAdapter(allR2EnvWithPublic)
+  assert(
+    'STORAGE',
+    '[F3] decideStorageAdapter publicAdapter=r2 when public bucket name + creds present',
+    decisionWithPublic.kind === 'r2' &&
+      decisionWithPublic.publicAdapter === 'r2',
+  )
+
+  // Public bucket name set but private creds missing → publicAdapter stays
+  // 'unconfigured' (we don't load the adapter without its account creds).
+  const halfPublic = {
+    R2_PUBLIC_BUCKET_NAME: 'fake-public-bucket',
+    // No account creds — adapter can't actually instantiate.
+  }
+  const halfDecision = storageIdx.decideStorageAdapter(halfPublic)
+  assert(
+    'STORAGE',
+    "[F3] decideStorageAdapter publicAdapter='unconfigured' when public bucket set but private creds missing",
+    halfDecision.publicAdapter === 'unconfigured',
+  )
+
+  // storagePublic export is null in mock mode (no R2 creds in smoke env).
+  assert(
+    'STORAGE',
+    '[F3] storagePublic export is null when public bucket env unset',
+    storageIdx.storagePublic === null,
+  )
+
   /* ─── Summary ───────────────────────────────────────────────────────── */
   const totalFail = results.filter((r) => !r.ok).length
   const totalOk = results.filter((r) => r.ok).length

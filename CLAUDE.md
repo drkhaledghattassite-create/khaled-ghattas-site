@@ -693,10 +693,39 @@ of a human, say so explicitly rather than implying success.
 - `components/{shared,forms,providers}/` — small utilities.
 - `lib/` — business logic (auth, db, motion, redis, email, validators,
   i18n, api, seo, stripe, site-settings, storage, video, hooks).
-- `lib/storage/` — storage abstraction. `index.ts` exports a single
-  `storage: StorageAdapter` that every signed-URL caller uses, plus a
+- `lib/storage/` — storage abstraction. `index.ts` exports two adapters
+  (`storage` + `storagePublic`) that every R2 caller uses, plus a
   `diagnoseStorageAdapter()` helper for the smoke harness + a future
   admin "what storage am I on" surface.
+  **Two-bucket model (Phase F3)**:
+    - **PRIVATE bucket** (`R2_BUCKET_NAME`) — paid content. Book PDFs,
+      session videos, session audio, session PDFs. Public access OFF;
+      every read is a signed URL minted server-side through
+      `/api/content/access` with ownership-gated auth.
+    - **PUBLIC bucket** (`R2_PUBLIC_BUCKET_NAME` + `R2_PUBLIC_URL`) —
+      cosmetic images. Book/tour/event/article covers, gallery photos,
+      client logos, program/test/interview/booking thumbnails. Public
+      read ON; delivered unsigned via the `R2_PUBLIC_URL` CDN host so
+      `next/image` can cache aggressively without signing on every
+      render.
+  **Why split**: signed URLs cost compute on every render, leak through
+  edge caches (each request mints a new URL), and don't play nicely with
+  `next/image` 's content hashing. Public covers deserve a CDN; paid
+  content deserves a signed gate. One R2 account, two buckets, same
+  credentials.
+  **Context classification (Phase F3)** lives in
+  `lib/validators/storage.ts`:
+    - `PUBLIC_CONTEXTS` (10) — book-cover, tour-cover, event-cover,
+      article-cover, gallery-image, client-logo, program-cover,
+      interview-thumbnail, booking-cover, test-cover.
+    - `PRIVATE_CONTEXTS` (4) — book-digital-file, session-item-video,
+      session-item-audio, session-item-pdf.
+  A pair of compile-time TS assertions (`_exhaustive` + `_disjoint`)
+  ensures every UploadContext is in exactly one of the two arrays —
+  forgetting to classify a new context, or duplicating one across both
+  lists, fails `tsc`. The duplicate guard is the dangerous case: a
+  paid-content context silently routed through the public path would
+  leak content.
   **Adapter selection (Phase F1)** happens once at module load:
     1. If all four R2 env vars are set (`R2_ACCOUNT_ID`,
        `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`)
@@ -708,7 +737,13 @@ of a human, say so explicitly rather than implying success.
     4. Else → throw at module load with a list of missing env vars.
   The R2 adapter file itself THROWS at import time when any of its env
   vars are missing — so `index.ts` imports it via a lazy `require`
-  inside the if-branch, keeping dev (no R2 creds) bootable.
+  inside the if-branch, keeping dev (no R2 creds) bootable. The Phase F3
+  factory `createR2Adapter({ bucket, accountId, accessKeyId, secretAccessKey })`
+  is shared by both default instances; `r2Adapter` reads
+  `R2_BUCKET_NAME`, `r2PublicAdapter` reads `R2_PUBLIC_BUCKET_NAME`. The
+  public adapter is `undefined` (and `storagePublic === null`) when its
+  bucket env var is unset — callers fall through to the private adapter
+  for backward compat.
   **Storage interface (Phase F1)** has five methods: the original
   `getSignedUrl({ storageKey, expiresInSeconds })` read path (unchanged
   signature), plus `upload`, `getPresignedPutUrl`, `delete`, `exists`,
@@ -719,26 +754,51 @@ of a human, say so explicitly rather than implying success.
   **Two-step upload pattern (Phase F1)**: admins POST to
   `/api/admin/storage/upload` with `{ filename, contentType, sizeBytes,
   contextType }`; the route validates, mints
-  `${contextType}/${uuid()}/${slug}`, and returns a 15-minute presigned
-  PUT URL. The browser PUTs the file body directly to R2, bypassing
-  Vercel's 4.5 MB function payload limit. Per-context allowlists +
-  size caps live in `lib/validators/storage.ts` — video/mp4 ≤ 2 GB,
-  audio/mpeg|mp4 ≤ 200 MB, application/pdf ≤ 50 MB. v1 wires the upload
-  UI on session items only (videos+audios+PDFs via
-  `components/admin/StorageKeyUploadField.tsx`); books and articles
-  stay URL-paste until F2. Bulk upload, transcoding, HLS, and DRM are
-  later concerns.
+  `${contextType}/${uuid()}/${slug}`, classifies via `bucketForContext`,
+  and presigns a 15-minute PUT URL against the chosen bucket. The
+  browser PUTs the file body directly to R2, bypassing Vercel's 4.5 MB
+  function payload limit. Per-context allowlists + size caps live in
+  `lib/validators/storage.ts` — video/mp4 ≤ 2 GB, audio/mpeg|mp4 ≤ 200
+  MB, application/pdf ≤ 50 MB (sessions) or ≤ 200 MB (books). Bulk
+  upload, transcoding, HLS, and DRM are later concerns.
   **storageKey convention**: a value in any `*storageKey` column may
-  be either an opaque R2 object key or a full `http(s)://` URL. The
-  read path (`/api/content/access`) discriminates: external URLs are
-  passed through verbatim with a synthetic 1h expiry; bare keys are
-  signed via the adapter with a 1h TTL, regenerated on each access.
-  Per-user rate limits on the read path are layered: `content-access`
+  be either an opaque R2 object key (shape `<context>/<uuid>/<slug>`)
+  or a full `http(s)://` URL. Two read paths exist:
+    - `/api/content/access` (paid content) — auth + ownership gated.
+      External URLs pass through with a synthetic 1h expiry; private-
+      bucket keys are signed via the adapter (1h TTL). When BOTH buckets
+      are configured AND a key resolves to a public bucket via
+      `bucketForKey`, the route returns 400 — public covers must come
+      through `resolvePublicUrl`, not the auth-gated route.
+    - `lib/storage/public-url.ts` (`resolvePublicUrl`) — cosmetic
+      content. External URLs and `/`-prefixed local assets pass through
+      verbatim. R2 keys are classified via `bucketForKey`: public-bucket
+      keys get the unsigned `${R2_PUBLIC_URL}/${key}` form when the env
+      var is set, otherwise fall back to the signed private-adapter
+      path (migration / single-bucket mode). Private-bucket keys
+      always sign via the private adapter. Unknown prefixes throw — the
+      resolver catches and returns null so a malformed row renders a
+      placeholder instead of crashing.
+  Per-user rate limits on the access route are layered: `content-access`
   10/min + `content-signed` 60/hr.
-  **CORS on the R2 bucket** must be configured manually in the
-  Cloudflare dashboard → R2 → `drkhaledghattassite` → Settings → CORS.
-  The parent agent has the JSON snippet (allow GET+PUT+HEAD from the
-  production + localhost origins; expose `ETag`).
+  **CORS on the R2 buckets** must be configured manually in the
+  Cloudflare dashboard → R2 → `<bucket>` → Settings → CORS for each
+  bucket separately. The parent agent has the JSON snippet (allow
+  GET+PUT+HEAD from the production + localhost origins; expose `ETag`).
+  The public bucket additionally needs GET from `*` for unsigned reads.
+  **Migration: single-bucket → two-bucket**. While `R2_PUBLIC_URL` and
+  `R2_PUBLIC_BUCKET_NAME` are unset, all uploads/reads route through the
+  private bucket — the system works the same as Phase F2 (signed URLs
+  for everything). When the public-bucket env vars flip on, NEW public-
+  context uploads route to the public bucket, and ALL public-context
+  reads start resolving to `${R2_PUBLIC_URL}/${key}` (unsigned). This
+  means a one-time data copy of every existing public-context prefix
+  (`book-cover/`, `tour-cover/`, `event-cover/`, `article-cover/`,
+  `gallery-image/`, `client-logo/`, `program-cover/`,
+  `interview-thumbnail/`, `booking-cover/`, `test-cover/`) from the
+  private bucket to the public bucket BEFORE flipping the env vars —
+  otherwise existing covers 404 until copied. Use `wrangler r2 object
+  cp` or the Cloudflare dashboard's bulk copy UI for the migration.
 - `lib/api/client-ip.ts` — spoof-resistant IP helper for route handlers.
   See the IP-resolution paragraph in the API conventions section.
 - `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
@@ -844,7 +904,9 @@ Optional / feature-gated:
 | `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly. |
 | `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
 | `UPLOADTHING_TOKEN` | Legacy — superseded by R2 (Phase F1). Left in the schema so old preview envs don't crash; nothing reads it. |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 storage (Phase F1). All four must be set together; missing one falls through to the mock adapter (dev) or throws at module load (true production). The bucket has public access OFF — all delivery is via signed URLs minted by `lib/storage/adapters/r2-adapter.ts`. CORS must be configured manually in the Cloudflare dashboard. |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 PRIVATE bucket (Phase F1). All four must be set together; missing one falls through to the mock adapter (dev) or throws at module load (true production). Public access OFF — paid content (book PDFs, session videos / audio / PDFs) delivered via signed URLs minted by `lib/storage/adapters/r2-adapter.ts`. CORS configured manually in the Cloudflare dashboard. |
+| `R2_PUBLIC_BUCKET_NAME` | Phase F3 — name of the PUBLIC R2 bucket (e.g. `drkhaledghattass-public`). Paired with `R2_PUBLIC_URL`. When set, public-context uploads (covers/logos/gallery — 10 contexts) route to this bucket via the same account credentials. When unset, public-context uploads fall back to the private bucket — the system continues working with signed URLs (Phase F2 behavior). Production MUST set this once the public bucket exists. |
+| `R2_PUBLIC_URL` | Phase F3 — Cloudflare-issued public-access URL for the public R2 bucket (e.g. `https://pub-abc123.r2.dev`, no trailing slash). Used by `lib/storage/public-url.ts` to mint unsigned cover URLs. When unset, `resolvePublicUrl` falls back to signing via the private adapter. Production MUST set this for cosmetic image delivery without per-render signing. The host is also added to `next.config.ts` `img-src` CSP and `remotePatterns` automatically; malformed values are skipped at build time. |
 | `R2_PUBLIC_URL` | Optional — reserved for a future CDN/public-read pivot. Currently unread. |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
 | `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`). |

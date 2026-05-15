@@ -16,7 +16,8 @@ import {
   getSessionItemById,
   userOwnsProduct,
 } from '@/lib/db/queries'
-import { storage } from '@/lib/storage'
+import { storage, storagePublic } from '@/lib/storage'
+import { bucketForKey } from '@/lib/validators/storage'
 
 // Force per-request rendering — this is an authenticated, ownership-gated
 // endpoint. Static caching would either leak content or 401 every request.
@@ -85,20 +86,50 @@ export async function POST(req: Request) {
    * YouTube id/URL shapes; see `pickVideoProvider` in lib/video/index.ts).
    * YouTube-shaped keys still bypass the route — the iframe embed handles
    * delivery directly.
+   *
+   * Phase F3 — bucket guard. Once the public bucket is configured
+   * (`storagePublic !== null`), public-context keys (book-cover, gallery-
+   * image, …) MUST NOT flow through this auth+ownership-gated route —
+   * they're served unsigned by `resolvePublicUrl` directly. We return
+   * `null` here to signal "not for this route"; the caller surfaces a 400.
+   *
+   * During the migration window (R2_PUBLIC_URL / R2_PUBLIC_BUCKET_NAME
+   * still unset → `storagePublic === null`), public-context keys are
+   * tolerated and signed via the private adapter — same behavior as F2.
    */
+  function classifyStorageKey(storageKey: string): 'external' | 'public' | 'private' {
+    if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
+      return 'external'
+    }
+    // bucketForKey throws on unknown prefix. Catch defensively so a
+    // malformed DB row produces a 4xx via the caller's null-check rather
+    // than crashing the route. We default to 'private' on unknown prefix —
+    // the signed-URL path will fail loudly if the object doesn't exist,
+    // which is the safer fallback than accidentally classifying as public.
+    try {
+      return bucketForKey(storageKey)
+    } catch {
+      return 'private'
+    }
+  }
+
   function buildResult(args: {
     productType: 'BOOK' | 'SESSION_ITEM'
     productId: string
     storageKey: string
     expiresInSeconds?: number
-  }) {
-    const isExternal =
-      args.storageKey.startsWith('http://') ||
-      args.storageKey.startsWith('https://')
-    if (isExternal) {
+  }): Promise<{ url: string; expiresAt: Date }> | null {
+    const kind = classifyStorageKey(args.storageKey)
+    if (kind === 'external') {
       const ttl = args.expiresInSeconds ?? 60 * 60
       const expiresAt = new Date(Date.now() + ttl * 1000)
       return Promise.resolve({ url: args.storageKey, expiresAt })
+    }
+    if (kind === 'public' && storagePublic !== null) {
+      // Phase F3 — both buckets configured AND this is a public-context key.
+      // The content-access route should never sign these; the resolver does
+      // it unsigned. Signal "wrong route" via null.
+      return null
     }
     return storage.getSignedUrl({
       productType: args.productType,
@@ -124,11 +155,27 @@ export async function POST(req: Request) {
         return errNotFound('No downloadable file is attached to this book.')
       }
 
-      const signed = await buildResult({
+      const signedPromise = buildResult({
         productType: 'BOOK',
         productId: book.id,
         storageKey,
       })
+      if (signedPromise === null) {
+        // Phase F3 — public-context key on a paid surface. This route is
+        // for owned/private content only; covers are served via
+        // resolvePublicUrl without auth. Surface as 400 so the bug is
+        // visible (no client should ever post a public key here).
+        console.warn('[api/content/access] public-bucket key rejected', {
+          productType: 'BOOK',
+          productId: book.id,
+          storageKey,
+        })
+        return apiError(
+          'VALIDATION',
+          'This content is served publicly and cannot be requested through the protected access route.',
+        )
+      }
+      const signed = await signedPromise
       return NextResponse.json({
         url: signed.url,
         expiresAt: signed.expiresAt.toISOString(),
@@ -158,11 +205,23 @@ export async function POST(req: Request) {
     const owns = await userOwnsProduct(userId, item.sessionId)
     if (!owns) return errForbidden('You do not own this content.')
 
-    const signed = await buildResult({
+    const signedPromise = buildResult({
       productType: 'SESSION_ITEM',
       productId: item.id,
       storageKey: item.storageKey,
     })
+    if (signedPromise === null) {
+      console.warn('[api/content/access] public-bucket key rejected', {
+        productType: 'SESSION_ITEM',
+        productId: item.id,
+        storageKey: item.storageKey,
+      })
+      return apiError(
+        'VALIDATION',
+        'This content is served publicly and cannot be requested through the protected access route.',
+      )
+    }
+    const signed = await signedPromise
     return NextResponse.json({
       url: signed.url,
       expiresAt: signed.expiresAt.toISOString(),

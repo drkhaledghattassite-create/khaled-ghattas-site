@@ -1,10 +1,12 @@
 /**
- * POST /api/admin/storage/upload — Phase F1.
+ * POST /api/admin/storage/upload — Phase F1 / F3.
  *
  * Step 1 of the admin two-step upload flow:
  *   1. Client POSTs { filename, contentType, sizeBytes, contextType } here.
- *   2. We validate (origin + admin + per-context MIME + size cap), mint a
- *      deterministic key, presign a 15-minute PUT URL, and return both.
+ *   2. We validate (origin + admin + per-context MIME + size cap), classify
+ *      the context (PUBLIC vs PRIVATE bucket — Phase F3), mint a deterministic
+ *      key, presign a 15-minute PUT URL against the chosen bucket, and return
+ *      both.
  *   3. Client PUTs the file body directly to the URL (browser native).
  *   4. Client saves the returned `key` to the relevant DB column via the
  *      surface's normal update flow.
@@ -13,6 +15,19 @@
  * serverless function payload limit is 4.5 MB. A 2 GB lecture video would
  * never make it through, and we don't want to run a long-lived edge runtime
  * for uploads. The browser PUTs straight to R2.
+ *
+ * Phase F3 routing:
+ *   - PUBLIC contexts (book-cover, gallery-image, ...) → `storagePublic`
+ *     when configured, else fall back to the private adapter (single-bucket
+ *     migration compat).
+ *   - PRIVATE contexts (book-digital-file, session-item-*) → `storage`
+ *     (the private adapter).
+ *
+ * The bucket choice is entirely server-side — the client never says which
+ * bucket; the context-to-bucket mapping in `lib/validators/storage.ts` is
+ * the single source of truth. An attacker who alters `contextType` on the
+ * wire is still bound by the per-context MIME + size rules; the worst-case
+ * outcome is uploading to the bucket that matches the chosen context.
  *
  * Orphan keys: if the client PUT succeeds but the row update fails (or
  * never runs because the admin closed the tab), the object exists in R2 with
@@ -30,8 +45,9 @@ import {
   parseJsonBody,
 } from '@/lib/api/errors'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
-import { storage } from '@/lib/storage'
+import { storage, storagePublic } from '@/lib/storage'
 import {
+  bucketForContext,
   createUploadRequestSchema,
   slugifyFilename,
   validateUploadRequest,
@@ -69,8 +85,16 @@ export async function POST(req: Request) {
   const { contextType, filename, contentType, sizeBytes } = validated.data
   const key = `${contextType}/${randomUUID()}/${slugifyFilename(filename)}`
 
+  // Phase F3 — pick the bucket adapter based on the context classification.
+  // PUBLIC contexts route to the public bucket when it's configured; if not
+  // (the single-bucket / pre-migration state), they fall back to the private
+  // adapter. PRIVATE contexts always use the private adapter.
+  const bucket = bucketForContext(contextType)
+  const adapter =
+    bucket === 'public' && storagePublic !== null ? storagePublic : storage
+
   try {
-    const presigned = await storage.getPresignedPutUrl({
+    const presigned = await adapter.getPresignedPutUrl({
       key,
       contentType,
       maxSizeBytes: sizeBytes,

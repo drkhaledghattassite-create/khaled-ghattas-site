@@ -64,13 +64,38 @@ const r2Host = process.env.R2_ACCOUNT_ID
   ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com https://*.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   : 'https://*.r2.cloudflarestorage.com'
 
+// Phase F3 — Public-bucket CDN host. When R2_PUBLIC_URL is set we serve
+// cosmetic images (covers, logos, gallery) unsigned from this origin. The
+// public bucket is a separate Cloudflare R2 bucket with public-read enabled;
+// the URL is the Cloudflare-issued `pub-<hash>.r2.dev` or a custom domain.
+//
+// Parsing is defensive: if R2_PUBLIC_URL is malformed (set to `?` or
+// missing protocol), `new URL(...)` throws and we skip the entry. Build
+// succeeds with the rest of the allowlist intact — the cover images won't
+// load at runtime, but neither will the deploy crash. In production,
+// R2_PUBLIC_URL MUST be a parseable absolute URL.
+let r2PublicHost: string | null = null
+if (process.env.R2_PUBLIC_URL) {
+  try {
+    r2PublicHost = new URL(process.env.R2_PUBLIC_URL).hostname
+  } catch {
+    // Malformed URL — log nothing here (config files have no logger) and
+    // skip the CSP/remotePatterns entries below. The runtime resolver will
+    // log a load failure when the first image tries to render.
+    r2PublicHost = null
+  }
+}
+const r2PublicHostDirective = r2PublicHost ? ` https://${r2PublicHost}` : ''
+
 const scriptSrc = isDev
   ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://va.vercel-scripts.com"
   : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com"
 
+// Phase F3 — `connect-src` also gets the public-bucket host so admin
+// browser PUTs (presigned uploads into the public bucket) aren't blocked.
 const connectSrc = isDev
-  ? `connect-src 'self' ws://localhost:* http://localhost:* https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}`
-  : `connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}`
+  ? `connect-src 'self' ws://localhost:* http://localhost:* https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}${r2PublicHostDirective}`
+  : `connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://*.ingest.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com ${r2Host}${r2PublicHostDirective}`
 
 const cspDirectives = [
   "default-src 'self'",
@@ -80,7 +105,10 @@ const cspDirectives = [
   // signed covers, and to media-src so the HTML5 <video> element can fetch
   // R2-hosted lecture videos. Stripe/YouTube/Vimeo/ImageKit/Uploadthing
   // entries remain unchanged.
-  `img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io ${r2Host}`,
+  // Phase F3 — public-bucket CDN host appended when R2_PUBLIC_URL is set.
+  // Covers / logos / gallery served unsigned from `pub-<hash>.r2.dev` (or
+  // the configured custom domain) must be img-allowed.
+  `img-src 'self' data: blob: https://files.stripe.com https://lh3.googleusercontent.com https://img.youtube.com https://i.ytimg.com https://*.vimeocdn.com https://ik.imagekit.io https://utfs.io ${r2Host}${r2PublicHostDirective}`,
   `media-src 'self' blob: ${r2Host}`,
   "font-src 'self' data: https://fonts.gstatic.com",
   // Phase F2 — R2 added to frame-src so session-item PDFs (rendered via
@@ -166,6 +194,15 @@ if (process.env.NEXT_PUBLIC_APP_URL) {
     // allowlist. This branch is hit at build time on Vercel when the env var
     // is set wrong; we'd rather build with a partial allowlist than crash.
   }
+}
+
+// Phase F3 — public-bucket CDN host. Same parse-or-skip pattern as
+// NEXT_PUBLIC_APP_URL above. The host shape from r2.dev is
+// `pub-<hash>.r2.dev`; a custom domain swap is also valid. We resolve
+// `R2_PUBLIC_URL` once at top-level (see `r2PublicHost`) so the CSP and
+// remotePatterns derivations stay consistent.
+if (r2PublicHost) {
+  remotePatterns.push({ protocol: 'https', hostname: r2PublicHost })
 }
 
 const nextConfig: NextConfig = {

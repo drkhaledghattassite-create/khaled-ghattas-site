@@ -20,11 +20,26 @@
  * a conditional dynamic import, but synchronous so the export below stays a
  * plain value rather than a Promise.
  *
+ * ─── Phase F3 — public + private buckets ─────────────────────────────────
+ * `storagePublic` is the optional public-bucket adapter, exported as
+ * `StorageAdapter | null`. It is non-null only when:
+ *   - The four standard R2 env vars are present (account creds + private
+ *     bucket name), AND
+ *   - R2_PUBLIC_BUCKET_NAME is set.
+ *
+ * When `storagePublic` is null, callers fall back to the existing `storage`
+ * adapter (the private bucket) — that's the pre-split / single-bucket
+ * migration state. Routing logic lives in:
+ *   - `lib/storage/public-url.ts` (read path: covers + cosmetic images)
+ *   - `app/api/admin/storage/upload/route.ts` (write path: presigned PUTs)
+ *   - `app/api/content/access/route.ts` (read path: paid content)
+ *
  * ─── Diagnostics ──────────────────────────────────────────────────────────
- * `diagnoseStorageAdapter()` returns `{ adapter, reason, missingEnvVars? }`
- * for the smoke harness and any future admin "what storage am I using"
- * surface. It runs the selection logic in pure form (no side effects, no
- * module-load throws) and reports the same decision.
+ * `diagnoseStorageAdapter()` returns `{ adapter, reason, missingEnvVars?,
+ * publicAdapter, publicReason }` for the smoke harness and any future admin
+ * "what storage am I using" surface. It runs the selection logic in pure
+ * form (no side effects, no module-load throws) and reports the same
+ * decision.
  */
 
 import { mockAdapter } from './mock-adapter'
@@ -41,6 +56,12 @@ export type AdapterDiagnosis = {
   adapter: 'r2' | 'mock'
   reason: string
   missingEnvVars?: string[]
+  /** Phase F3 — state of the public-bucket adapter:
+   *   'r2'           — R2_PUBLIC_BUCKET_NAME is set; public uploads route there
+   *   'unconfigured' — env var missing; callers fall back to the private adapter
+   */
+  publicAdapter: 'r2' | 'unconfigured'
+  publicReason: string
 }
 
 /**
@@ -52,12 +73,37 @@ export type AdapterDiagnosis = {
 export function decideStorageAdapter(
   env: Record<string, string | undefined> = process.env,
 ):
-  | { kind: 'r2'; reason: string }
-  | { kind: 'mock'; reason: string }
-  | { kind: 'throw'; reason: string; missingEnvVars: string[] } {
+  | { kind: 'r2'; reason: string; publicAdapter: 'r2' | 'unconfigured'; publicReason: string }
+  | { kind: 'mock'; reason: string; publicAdapter: 'r2' | 'unconfigured'; publicReason: string }
+  | {
+      kind: 'throw'
+      reason: string
+      missingEnvVars: string[]
+      publicAdapter: 'r2' | 'unconfigured'
+      publicReason: string
+    } {
   const missing = R2_ENV_VARS.filter((name) => !env[name])
+
+  // Phase F3 — public-bucket diagnosis. Reported independently of the
+  // private-adapter decision so callers can see e.g. "private=r2, public=
+  // unconfigured" during migration.
+  const hasPublicBucket = Boolean(env.R2_PUBLIC_BUCKET_NAME)
+  const publicAdapter: 'r2' | 'unconfigured' = hasPublicBucket && missing.length === 0
+    ? 'r2'
+    : 'unconfigured'
+  const publicReason = hasPublicBucket
+    ? missing.length === 0
+      ? 'R2_PUBLIC_BUCKET_NAME set + shared R2 creds present.'
+      : 'R2_PUBLIC_BUCKET_NAME set but private R2 creds incomplete — public adapter cannot load.'
+    : 'R2_PUBLIC_BUCKET_NAME unset — public-context uploads/reads fall back to the private adapter.'
+
   if (missing.length === 0) {
-    return { kind: 'r2', reason: 'R2 env vars present' }
+    return {
+      kind: 'r2',
+      reason: 'R2 env vars present',
+      publicAdapter,
+      publicReason,
+    }
   }
   if (
     env.NODE_ENV === 'production' &&
@@ -71,6 +117,8 @@ export function decideStorageAdapter(
         'ALLOW_MOCK_STORAGE_IN_PRODUCTION=true. Set the R2 env vars to use ' +
         'Cloudflare R2.',
       missingEnvVars: missing,
+      publicAdapter,
+      publicReason,
     }
   }
   if (env.NODE_ENV !== 'production') {
@@ -78,6 +126,8 @@ export function decideStorageAdapter(
       kind: 'mock',
       reason:
         'Dev / non-production environment with no R2 env vars — falling back to mock adapter.',
+      publicAdapter,
+      publicReason,
     }
   }
   // NODE_ENV === 'production' but VERCEL_ENV !== 'production' (preview) — or
@@ -88,6 +138,8 @@ export function decideStorageAdapter(
       env.ALLOW_MOCK_STORAGE_IN_PRODUCTION === 'true'
         ? 'ALLOW_MOCK_STORAGE_IN_PRODUCTION=true — mock explicitly opted in.'
         : 'Production node environment outside a true production Vercel deploy (preview) — mock allowed.',
+    publicAdapter,
+    publicReason,
   }
 }
 
@@ -95,7 +147,14 @@ export function diagnoseStorageAdapter(
   env: Record<string, string | undefined> = process.env,
 ): AdapterDiagnosis {
   const decision = decideStorageAdapter(env)
-  if (decision.kind === 'r2') return { adapter: 'r2', reason: decision.reason }
+  if (decision.kind === 'r2') {
+    return {
+      adapter: 'r2',
+      reason: decision.reason,
+      publicAdapter: decision.publicAdapter,
+      publicReason: decision.publicReason,
+    }
+  }
   // For mock (whether by dev-fallback or production escape-hatch) and the
   // would-throw branch, surface the missing R2 vars so a future admin
   // diagnostic surface can show "you're on mock because X is missing."
@@ -105,6 +164,8 @@ export function diagnoseStorageAdapter(
       adapter: 'mock',
       reason: decision.reason,
       ...(missingEnvVars.length > 0 ? { missingEnvVars } : {}),
+      publicAdapter: decision.publicAdapter,
+      publicReason: decision.publicReason,
     }
   }
   // For the "throw" decision, diagnose reports it as mock with the missing
@@ -114,10 +175,15 @@ export function diagnoseStorageAdapter(
     adapter: 'mock',
     reason: decision.reason,
     missingEnvVars: decision.missingEnvVars,
+    publicAdapter: decision.publicAdapter,
+    publicReason: decision.publicReason,
   }
 }
 
-function selectAdapter(): StorageAdapter {
+function selectAdapter(): {
+  primary: StorageAdapter
+  publicAdapter: StorageAdapter | null
+} {
   const decision = decideStorageAdapter(process.env)
   if (decision.kind === 'r2') {
     // Lazy require so the r2-adapter module's own load-time env check only
@@ -125,17 +191,37 @@ function selectAdapter(): StorageAdapter {
     // would crash dev (no R2 env vars) at boot.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('./adapters/r2-adapter') as typeof import('./adapters/r2-adapter')
-    return mod.r2Adapter
+    return {
+      primary: mod.r2Adapter,
+      publicAdapter: mod.r2PublicAdapter ?? null,
+    }
   }
   if (decision.kind === 'throw') {
     throw new Error(
       `[lib/storage] ${decision.reason} Missing env vars: ${decision.missingEnvVars.join(', ')}.`,
     )
   }
-  return mockAdapter
+  // Mock branch — no public adapter in dev. Public-context reads still
+  // resolve through the mock's getSignedUrl in the resolver fallback path.
+  return { primary: mockAdapter, publicAdapter: null }
 }
 
-export const storage: StorageAdapter = selectAdapter()
+const adapters = selectAdapter()
+
+/**
+ * Default storage adapter — the PRIVATE bucket in Phase F3 (or the mock
+ * adapter in dev). Every caller that needs to sign a URL for paid content
+ * goes through this export.
+ */
+export const storage: StorageAdapter = adapters.primary
+
+/**
+ * Phase F3 — optional public-bucket adapter. Non-null only when
+ * R2_PUBLIC_BUCKET_NAME is set in env. Callers MUST handle the null case
+ * (fall back to `storage` / signed delivery) so the system stays functional
+ * during the single-bucket → split migration.
+ */
+export const storagePublic: StorageAdapter | null = adapters.publicAdapter
 
 export type {
   StorageAdapter,
