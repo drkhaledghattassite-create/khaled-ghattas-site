@@ -8,6 +8,7 @@ import { apiError, errInternal, errNotFound, errUnauthorized, parseJsonBody } fr
 import { assertSameOrigin } from '@/lib/api/origin'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { SITE_URL } from '@/lib/constants'
+import { resolveStripeImageUrl } from '@/lib/stripe/images'
 
 const checkoutSchema = z.object({
   bookId: z.string().min(1).max(64),
@@ -99,9 +100,11 @@ export async function POST(req: Request) {
   }
 
   // Stripe fetches images server-side, so they must be publicly reachable
-  // absolute URLs. Skip local/relative paths (won't load from Stripe's edge)
-  // and localhost (Stripe can't reach it from the public internet).
-  const imageUrl = pickPublicImageUrl(book.coverImage)
+  // absolute URLs. `resolveStripeImageUrl` runs the value through
+  // `resolvePublicUrl` first (handles R2 keys + http URLs + /-prefixed
+  // local assets), then validates absolute http(s). Returns null on
+  // anything Stripe can't fetch.
+  const imageUrl = await resolveStripeImageUrl(book.coverImage)
   const productImages = imageUrl ? [imageUrl] : undefined
 
   try {
@@ -154,20 +157,3 @@ export async function POST(req: Request) {
   }
 }
 
-function pickPublicImageUrl(raw: string | null | undefined): string | null {
-  if (!raw) return null
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
-    return null
-  }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
-  const host = parsed.hostname.toLowerCase()
-  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
-    return null
-  }
-  return parsed.toString()
-}

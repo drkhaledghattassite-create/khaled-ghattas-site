@@ -25,6 +25,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getServerSession } from '@/lib/auth/server'
 import { getStripe } from '@/lib/stripe'
+import { resolveStripeImageUrl } from '@/lib/stripe/images'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { SITE_URL } from '@/lib/constants'
 import {
@@ -243,6 +244,11 @@ export async function createBookingCheckoutAction(
   const normalisedLocale = normaliseEmailLocale(locale)
   const customerEmail = session.user.email
 
+  // Resolve the booking cover into an absolute http(s) URL Stripe can fetch.
+  // Bookings store coverImage nullable, so this gracefully degrades to null.
+  const bookingImageUrl = await resolveStripeImageUrl(booking.coverImage)
+  const bookingImages = bookingImageUrl ? [bookingImageUrl] : undefined
+
   try {
     const stripeSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -263,6 +269,7 @@ export async function createBookingCheckoutAction(
               name: booking.titleEn || booking.titleAr,
               description:
                 booking.descriptionEn ?? booking.descriptionAr ?? undefined,
+              images: bookingImages,
             },
             unit_amount: booking.priceUsd,
           },

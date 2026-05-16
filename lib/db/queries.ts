@@ -811,6 +811,15 @@ export async function createOrderFromStripeSession(
   // both pass the SELECT and both attempt the INSERT (succeeding in the
   // race era where there was no unique constraint at all, then 500-ing
   // forever once the index was added — both bad).
+  //
+  // `where` MUST mirror the partial index predicate exactly — without it
+  // Postgres can't infer which unique constraint to use and throws at parse
+  // time: "there is no unique or exclusion constraint matching the ON
+  // CONFLICT specification". That throw was silently dropping every
+  // post-purchase email for months — the webhook catches the failure and
+  // ACKs 200, but the order INSERT, the items INSERT, and the email
+  // enqueue all skip. (Gift-claim orders don't hit this path; they have
+  // no stripeSessionId.)
   const inserted = await db
     .insert(orders)
     .values({
@@ -823,7 +832,10 @@ export async function createOrderFromStripeSession(
       customerEmail: input.customerEmail,
       customerName: input.customerName ?? null,
     })
-    .onConflictDoNothing({ target: orders.stripeSessionId })
+    .onConflictDoNothing({
+      target: orders.stripeSessionId,
+      where: sql`${orders.stripeSessionId} IS NOT NULL`,
+    })
     .returning()
 
   let row = inserted[0] ?? null

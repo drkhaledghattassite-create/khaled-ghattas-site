@@ -24,6 +24,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getServerSession } from '@/lib/auth/server'
 import { getStripe } from '@/lib/stripe'
+import { resolveStripeImageUrl } from '@/lib/stripe/images'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 import { SITE_URL } from '@/lib/constants'
 import {
@@ -231,6 +232,12 @@ export async function createUserGiftAction(
   const origin = await resolveOrigin()
   const locale = normaliseLocale(data.locale)
 
+  // Resolve the gift item's cover into an absolute http(s) URL Stripe can
+  // fetch. itemSummary.coverImage is the same field used for the gift
+  // email cover; we run it through the shared helper for consistency.
+  const giftImageUrl = await resolveStripeImageUrl(itemSummary.coverImage)
+  const giftImages = giftImageUrl ? [giftImageUrl] : undefined
+
   try {
     const stripeSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -243,6 +250,7 @@ export async function createUserGiftAction(
             currency: itemSummary.currency,
             product_data: {
               name: itemSummary.titleEn || itemSummary.titleAr,
+              images: giftImages,
             },
             unit_amount: itemSummary.priceCents,
           },
@@ -468,7 +476,7 @@ export async function claimGiftAction(
       itemUrl,
       supportEmail: SUPPORT_EMAIL,
     })
-    await sendEmail({
+    const sendResult = await sendEmail({
       to: userEmailLc,
       subject: buildGiftClaimedRecipientSubject(locale),
       html,
@@ -478,6 +486,19 @@ export async function claimGiftAction(
       relatedEntityType: 'gift',
       relatedEntityId: claimed.id,
     })
+    // sendEmail returns a structured non-ok result on enqueue-failed /
+    // preview-only / send-failed — it does NOT throw. The outer catch only
+    // sees thrown exceptions; an enqueue-failed return value was previously
+    // silently dropped. Log loudly so admin sees the gift was claimed but
+    // the email never queued.
+    if (!sendResult.ok) {
+      const level = sendResult.reason === 'preview-only' ? 'info' : 'error'
+      console[level]('[gifts.claim] recipient email not sent', {
+        giftId: claimed.id,
+        recipientEmail: userEmailLc,
+        reason: sendResult.reason,
+      })
+    }
   } catch (err) {
     console.error('[gifts.claim] recipient email failed', err)
   }
@@ -508,7 +529,7 @@ export async function claimGiftAction(
           dashboardUrl,
           supportEmail: SUPPORT_EMAIL,
         })
-        await sendEmail({
+        const sendResult = await sendEmail({
           to: sender.email,
           subject: buildGiftClaimedSenderSubject(locale, claimed.recipientEmail),
           html,
@@ -518,6 +539,14 @@ export async function claimGiftAction(
           relatedEntityType: 'gift',
           relatedEntityId: claimed.id,
         })
+        if (!sendResult.ok) {
+          const level = sendResult.reason === 'preview-only' ? 'info' : 'error'
+          console[level]('[gifts.claim] sender email not sent', {
+            giftId: claimed.id,
+            senderEmail: sender.email,
+            reason: sendResult.reason,
+          })
+        }
       }
     } catch (err) {
       console.error('[gifts.claim] sender email failed', err)

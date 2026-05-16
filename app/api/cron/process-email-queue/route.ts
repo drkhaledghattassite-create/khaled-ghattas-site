@@ -118,7 +118,17 @@ async function handle(req: NextRequest) {
           id: row.id,
           err,
         })
-        await markEmailRetry(row.id, message).catch(() => undefined)
+        // The bare `.catch(() => undefined)` previously silenced this — if
+        // markEmailRetry itself fails (e.g., the row was deleted, DB went
+        // away mid-batch) the row stays in `SENDING` forever. Log so the
+        // stranded row is at least discoverable in Vercel logs until the
+        // v2 sweeper noted at the top of this file lands.
+        await markEmailRetry(row.id, message).catch((retryErr) => {
+          console.error(
+            '[cron/process-email-queue] markEmailRetry FAILED — row stuck in SENDING',
+            { id: row.id, retryErr },
+          )
+        })
         if (row.attemptCount + 1 >= MAX_EMAIL_ATTEMPTS) {
           exhausted++
         } else {

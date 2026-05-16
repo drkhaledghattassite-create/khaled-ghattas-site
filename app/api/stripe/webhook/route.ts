@@ -173,8 +173,28 @@ export async function POST(req: Request) {
       // Post-purchase email is best-effort: an order is already recorded, and
       // Stripe expects a 200 from the webhook. If sending fails, log and move
       // on. The user can always download from /dashboard/library.
-      // TODO Phase 2: queue failed emails for retry.
-      if (createdOrder && customerEmail) {
+      //
+      // Diagnostic logging: every skip / failure path is now loud so we can
+      // correlate a "no email" report to a specific failure in Vercel logs.
+      // Previously, a null createdOrder (duplicate webhook race) or an empty
+      // customerEmail silently no-op'd, and sendPostPurchaseEmail returning
+      // `{ ok: false }` for a queue-write failure was discarded.
+      if (!createdOrder) {
+        console.warn(
+          '[stripe/webhook] post-purchase email skipped — no createdOrder',
+          { sessionId: session.id, bookId },
+        )
+      } else if (!customerEmail) {
+        console.warn(
+          '[stripe/webhook] post-purchase email skipped — empty customerEmail',
+          {
+            sessionId: session.id,
+            orderId: createdOrder.id,
+            hasCustomerDetailsEmail: !!session.customer_details?.email,
+            hasCustomerEmail: !!session.customer_email,
+          },
+        )
+      } else {
         try {
           // Locale: not currently passed through Stripe metadata (the
           // checkout route doesn't forward it yet). Default to AR — the
@@ -184,7 +204,7 @@ export async function POST(req: Request) {
           const rawLocale = session.metadata?.locale
           const locale: PostPurchaseLocale =
             rawLocale === 'en' ? 'en' : 'ar'
-          await sendPostPurchaseEmail({
+          const sendResult = await sendPostPurchaseEmail({
             orderId: createdOrder.id,
             customerEmail,
             customerName,
@@ -193,8 +213,26 @@ export async function POST(req: Request) {
             currency: createdOrder.currency,
             locale,
           })
+          if (sendResult.ok) {
+            console.info('[stripe/webhook] post-purchase email queued', {
+              orderId: createdOrder.id,
+              emailId: sendResult.id,
+            })
+          } else {
+            // Loud: every non-ok reason is a real diagnostic signal.
+            // 'preview-only' is expected in dev (NODE_ENV !== 'production').
+            // 'enqueue-failed' / 'no-api-key' / 'send-failed' all mean the
+            // user's inbox got nothing — admin needs to know.
+            const level =
+              sendResult.reason === 'preview-only' ? 'info' : 'error'
+            console[level]('[stripe/webhook] post-purchase email not sent', {
+              orderId: createdOrder.id,
+              email: customerEmail,
+              reason: sendResult.reason,
+            })
+          }
         } catch (err) {
-          console.error('[stripe/webhook] post-purchase email failed', {
+          console.error('[stripe/webhook] post-purchase email threw', {
             orderId: createdOrder.id,
             email: customerEmail,
             err,
@@ -464,11 +502,28 @@ async function handleBookingCheckoutCompleted(
     return
   }
 
-  const result = await markBookingOrderPaid({
-    stripeSessionId: sessionId,
-    stripePaymentIntentId: paymentIntentId,
-    amountPaid: totalCents,
-  })
+  // Wrap the PAID flip in try/catch. `recordStripeEvent` has already stamped
+  // this event as processed, so a thrown exception here would 500 to Stripe
+  // and the retry would hit the dedup short-circuit and never re-fire.
+  // Result: the booking_orders row would be stuck PENDING forever, the seat
+  // would not be counted, and the customer would not get a confirmation
+  // email. Loud `[stripe/webhook] BOOKING PAID flip FAILED` surfaces in
+  // Vercel logs for admin reconciliation.
+  let result: Awaited<ReturnType<typeof markBookingOrderPaid>> = null
+  try {
+    result = await markBookingOrderPaid({
+      stripeSessionId: sessionId,
+      stripePaymentIntentId: paymentIntentId,
+      amountPaid: totalCents,
+    })
+  } catch (err) {
+    console.error('[stripe/webhook] BOOKING PAID flip FAILED — order stuck PENDING', {
+      sessionId,
+      bookingOrderId: existing.id,
+      err,
+    })
+    return
+  }
   if (!result) {
     // The UPDATE is gated on `status='PENDING'`, so a null result here means
     // a sibling webhook delivery already processed this session (concurrent
@@ -671,19 +726,39 @@ async function handleGiftCheckoutCompleted(
   }
 
   // Create the gift row + (BOOKING) booking_order shell.
-  const created = await createUserPurchaseGiftFromWebhook({
-    itemType,
-    itemId,
-    senderUserId,
-    recipientEmail,
-    senderMessage,
-    locale,
-    amountCents: totalCents,
-    currency,
-    stripeSessionId: sessionId,
-    stripePaymentIntentId: paymentIntentId,
-    holdId: typeof md.holdId === 'string' ? md.holdId : null,
-  })
+  // Wrapped in try/catch because the gifts table's full unique index on
+  // stripe_session_id means a concurrent webhook re-delivery (Stripe's
+  // documented at-least-once semantics) races on the INSERT — the loser
+  // throws unique-violation. Without this catch, the throw would escape
+  // `handleGiftCheckoutCompleted` and `recordStripeEvent` would still have
+  // stamped the event as processed, so Stripe never retries → the loser's
+  // post-insert work (booking PAID flip, email sends) silently never runs.
+  // The pre-check at `getGiftByStripeSessionId` narrows the race window but
+  // doesn't eliminate it.
+  let created: Awaited<ReturnType<typeof createUserPurchaseGiftFromWebhook>> = null
+  try {
+    created = await createUserPurchaseGiftFromWebhook({
+      itemType,
+      itemId,
+      senderUserId,
+      recipientEmail,
+      senderMessage,
+      locale,
+      amountCents: totalCents,
+      currency,
+      stripeSessionId: sessionId,
+      stripePaymentIntentId: paymentIntentId,
+      holdId: typeof md.holdId === 'string' ? md.holdId : null,
+    })
+  } catch (err) {
+    // Race: another concurrent delivery already created this gift. Look up
+    // the existing row so the winner's post-insert work still runs idempotently.
+    console.warn('[stripe/webhook] GIFT insert raced — re-reading existing row', {
+      sessionId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    created = await getGiftByStripeSessionId(sessionId)
+  }
   if (!created) {
     console.error('[stripe/webhook] GIFT createUserPurchaseGiftFromWebhook failed', {
       sessionId,
@@ -697,23 +772,35 @@ async function handleGiftCheckoutCompleted(
   })
 
   // For BOOKING gifts, mark the linked booking_order as PAID + bump bookedCount.
+  // Wrapped in try/catch: same dedup-already-stamped problem as the regular
+  // booking branch — a thrown DB error here would leave the recipient's seat
+  // reserved but not counted, and Stripe never retries because the event is
+  // marked processed.
   if (itemType === 'BOOKING') {
-    const paid = await markGiftBookingOrderPaid({
-      giftId: created.id,
-      stripeSessionId: sessionId,
-      stripePaymentIntentId: paymentIntentId,
-      amountPaid: totalCents,
-    })
-    if (!paid) {
-      console.warn('[stripe/webhook] GIFT booking_order not promoted to PAID', {
+    try {
+      const paid = await markGiftBookingOrderPaid({
+        giftId: created.id,
+        stripeSessionId: sessionId,
+        stripePaymentIntentId: paymentIntentId,
+        amountPaid: totalCents,
+      })
+      if (!paid) {
+        console.warn('[stripe/webhook] GIFT booking_order not promoted to PAID', {
+          sessionId,
+          giftId: created.id,
+        })
+      } else {
+        console.info('[stripe/webhook] GIFT booking_order PAID', {
+          sessionId,
+          bookingOrderId: paid.bookingOrderId,
+          flippedToSoldOut: paid.flippedToSoldOut,
+        })
+      }
+    } catch (err) {
+      console.error('[stripe/webhook] GIFT booking PAID flip FAILED — needs admin reconcile', {
         sessionId,
         giftId: created.id,
-      })
-    } else {
-      console.info('[stripe/webhook] GIFT booking_order PAID', {
-        sessionId,
-        bookingOrderId: paid.bookingOrderId,
-        flippedToSoldOut: paid.flippedToSoldOut,
+        err,
       })
     }
   }
@@ -785,7 +872,7 @@ async function handleGiftCheckoutCompleted(
       expiresAt: created.expiresAt,
       supportEmail: SUPPORT_EMAIL,
     })
-    await sendEmail({
+    const sendResult = await sendEmail({
       to: sender.email,
       subject: buildGiftSentSubject(locale, recipientEmail),
       html,
@@ -795,6 +882,20 @@ async function handleGiftCheckoutCompleted(
       relatedEntityType: 'gift',
       relatedEntityId: created.id,
     })
+    // sendEmail does NOT throw on enqueue-failed / no-api-key / send-failed —
+    // it returns a structured non-ok result. Previously this was silently
+    // ignored, so a DB blip during enqueue dropped the sender's notification
+    // without a log. Mirror the gift_received pattern by logging non-ok
+    // results loudly (no DB trace because there's no senderEmailSentAt column;
+    // logs are the only diagnostic surface).
+    if (!sendResult.ok) {
+      const level = sendResult.reason === 'preview-only' ? 'info' : 'error'
+      console[level]('[stripe/webhook] gift_sent email not sent', {
+        giftId: created.id,
+        senderEmail: sender.email,
+        reason: sendResult.reason,
+      })
+    }
   } catch (err) {
     console.error('[stripe/webhook] gift_sent email failed', err)
   }
