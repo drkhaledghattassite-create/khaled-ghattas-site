@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { urlOrStorageKey } from './storage'
 
 export const ARTICLE_CATEGORIES = [
   'PHILOSOPHY',
@@ -22,7 +23,8 @@ export const articleSchema = z.object({
   excerptEn: z.string().min(1).max(280),
   contentAr: z.string().min(1),
   contentEn: z.string().min(1),
-  coverImage: z.string().url().or(z.literal('')).nullable().optional(),
+  // Phase F1+ — accepts external URLs (legacy paste) or R2 article-cover keys.
+  coverImage: urlOrStorageKey.or(z.literal('')).nullable().optional(),
   category: z.enum(ARTICLE_CATEGORIES),
   status: z.enum(CONTENT_STATUSES),
   featured: z.boolean(),

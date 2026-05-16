@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { urlOrStorageKey } from './storage'
 
 /**
  * Phase C1 — Tests & Quizzes validators.
@@ -102,13 +103,9 @@ const baseTestSchema = z.object({
   introEn: z.string().min(1).max(2000),
   category: testCategorySchema,
   estimatedMinutes: z.number().int().min(1).max(120),
-  // Form coerces '' → null client-side before submit; validator
-  // rejects empty strings via .url(). Pass null explicitly to clear.
-  coverImageUrl: z
-    .string()
-    .url()
-    .nullable()
-    .optional(),
+  // Phase F1+ — accepts external URLs (legacy paste) or R2 test-cover keys.
+  // Form coerces '' → null client-side before submit; pass null explicitly to clear.
+  coverImageUrl: urlOrStorageKey.nullable().optional(),
   isPublished: z.boolean().default(false),
   displayOrder: z.number().int().min(0).default(0),
   questions: z.array(questionInputSchema).min(1).max(50),

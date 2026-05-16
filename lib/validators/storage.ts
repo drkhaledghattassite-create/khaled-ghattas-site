@@ -116,6 +116,42 @@ export function maxSizeFor(context: UploadContext): number {
 // upper bound. Per-context bounds are enforced in `validateUploadRequest`.
 const ABSOLUTE_MAX_BYTES = Math.max(...Object.values(MAX_BYTES))
 
+/**
+ * Discriminator for admin form fields that can hold EITHER a legacy
+ * external `http(s)://` URL or a new R2 storage key (post-F1 upload).
+ *
+ * Returns true for:
+ *   - http://… / https://… URLs (legacy paste-in pattern)
+ *   - R2 keys whose leading prefix is a known UploadContext —
+ *     `<contextType>/<uuid>/<slug>` — validated via `bucketForKey`
+ *
+ * Returns false for empty strings, local `/public/` paths, and unknown
+ * prefixes (which would silently leak placeholder content or 404 in
+ * production). Callers wrap with `.or(z.literal(''))` if empty is valid.
+ *
+ * Why this exists: before F1, `digitalFile` / `coverImageUrl` were paste-
+ * in URLs validated with `.url()`. After the upload widget landed, those
+ * fields can also receive R2 keys, but Zod's `.url()` rejects non-URL
+ * strings — admins saw "Invalid URL" the moment they uploaded a file.
+ * This helper unblocks the upload path without weakening URL validation
+ * for fields that are still genuinely external (videoUrl, websiteUrl,
+ * externalBookingUrl, etc. — those keep `.url()`).
+ */
+export function isUrlOrStorageKey(value: string): boolean {
+  if (!value) return false
+  if (/^https?:\/\//.test(value)) return true
+  try {
+    bucketForKey(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const urlOrStorageKey = z
+  .string()
+  .refine(isUrlOrStorageKey, { message: 'invalid-url-or-key' })
+
 export const createUploadRequestSchema = z.object({
   filename: z.string().trim().min(1).max(255),
   contentType: z.string().trim().min(1).max(127),

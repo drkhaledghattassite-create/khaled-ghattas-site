@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CONTENT_STATUSES } from './article'
+import { urlOrStorageKey } from './storage'
 
 export const bookSchema = z.object({
   slug: z
@@ -15,7 +16,11 @@ export const bookSchema = z.object({
   coverImage: z.string().min(1),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
   currency: z.string().length(3),
-  digitalFile: z.string().url().or(z.literal('')).nullable().optional(),
+  // Phase F1+ — digitalFile can be an external URL (legacy paste) or an
+  // R2 storage key (after admin upload). The shared `urlOrStorageKey`
+  // helper accepts both. externalUrl stays URL-only — it's a link to a
+  // third-party store, never an R2 object.
+  digitalFile: urlOrStorageKey.or(z.literal('')).nullable().optional(),
   externalUrl: z.string().url().or(z.literal('')).nullable().optional(),
   publisher: z.string().max(200).nullable().optional(),
   publicationYear: z.number().int().min(1900).max(2100).nullable().optional(),
