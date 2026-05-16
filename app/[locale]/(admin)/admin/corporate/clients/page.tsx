@@ -17,13 +17,14 @@ export default async function AdminCorporateClientsPage({ params }: Props) {
   const clients = await getCorporateClients({ publishedOnly: false })
 
   // Phase F2 — resolve client logo storage keys server-side. The CorporateClient
-  // image field is `logoUrl` (not coverImage). Mirrors the public /corporate
-  // page's resolve pattern. `logoUrl` is schema-NOT-NULL; preserve the original
-  // on resolution failure.
+  // image field is `logoUrl` (not coverImage). Resolve to a real URL or
+  // empty string ('') on failure — NOT the raw R2 key, which crashes
+  // next/image. CorporateClientsTable's cell treats empty/falsy logoUrl
+  // as "no logo" and renders the placeholder character.
   const resolvedClients = await Promise.all(
     clients.map(async (c) => ({
       ...c,
-      logoUrl: (await resolvePublicUrl(c.logoUrl)) ?? c.logoUrl,
+      logoUrl: (await resolvePublicUrl(c.logoUrl)) ?? '',
     })),
   )
 

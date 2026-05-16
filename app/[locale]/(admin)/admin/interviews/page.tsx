@@ -18,13 +18,14 @@ export default async function AdminInterviewsPage({ params }: Props) {
   const t = await getTranslations('admin.interviews')
   const interviews = await getInterviews()
 
-  // Phase F2 — resolve thumbnail storage keys server-side. `thumbnailImage`
-  // is schema-NOT-NULL so we preserve the original on resolution failure.
+  // Phase F2 — resolve thumbnail storage keys server-side. Fallback is the
+  // universal placeholder, NOT the raw value — a raw R2 key (`interview-
+  // thumbnail/uuid/file.jpg`) would crash next/image in InterviewsTable.
   const resolvedInterviews = await Promise.all(
     interviews.map(async (interview) => ({
       ...interview,
       thumbnailImage:
-        (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage,
+        (await resolvePublicUrl(interview.thumbnailImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
 

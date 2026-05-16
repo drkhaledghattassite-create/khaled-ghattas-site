@@ -15,17 +15,27 @@ export default async function HomePage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  // Phase G P1-1 — fan-out the four root reads so they share the same
-  // RSC tick instead of serializing ~4 round-trips. When the route renders
-  // statically at build time this is purely a build-time win; when it falls
-  // through to dynamic (no `revalidate`/`dynamic` exports, but data-fetching
-  // heuristics can make Next.js opt in), it saves real per-request latency.
-  const [settings, articles, books, interviews] = await Promise.all([
+  // Phase G P1-1 — fan-out the root reads so they share the same RSC tick
+  // instead of serializing ~5 round-trips. When the route renders statically
+  // at build time this is purely a build-time win; when it falls through to
+  // dynamic, it saves real per-request latency.
+  //
+  // BOOKs and SESSIONs are fetched as separate queries so neither type
+  // starves the other in a shared limit budget. The "محاضرات مسجّلة"
+  // section used to vanish when 10 BOOKs filled the unified 10-row response;
+  // separate queries guarantee both surfaces get the rows they need.
+  const [settings, articles, bookProducts, sessionProducts, interviews] = await Promise.all([
     getCachedSiteSettings(),
     getArticles({ limit: 6 }),
-    getBooks({ limit: 10 }),
+    getBooks({ limit: 10, productType: 'BOOK' }),
+    getBooks({ limit: 6, productType: 'SESSION' }),
     getInterviews({ limit: 5 }),
   ])
+
+  // StoreShowcase still expects a single mixed Book[] (it filters internally
+  // by productType for the book shelf vs the lectures section). Merge the
+  // two query results back into one array.
+  const books = [...bookProducts, ...sessionProducts]
 
   // Phase F2 — resolve R2 storage keys to signed/passthrough URLs server-side
   // before handing to client section components. External URLs and local
@@ -43,14 +53,13 @@ export default async function HomePage({ params }: Props) {
       coverImage: (await resolvePublicUrl(article.coverImage)) ?? null,
     })),
   )
-  // `thumbnailImage` is schema-NOT-NULL; preserve the original on resolution
-  // failure rather than coercing to null (the InterviewRotator type expects
-  // a string).
+  // `thumbnailImage` is schema-NOT-NULL; fall back to the universal
+  // placeholder (NOT the raw value — a raw R2 key crashes next/image).
   const resolvedInterviews = await Promise.all(
     interviews.map(async (interview) => ({
       ...interview,
       thumbnailImage:
-        (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage,
+        (await resolvePublicUrl(interview.thumbnailImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
 

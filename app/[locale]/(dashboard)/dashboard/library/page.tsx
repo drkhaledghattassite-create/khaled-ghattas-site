@@ -102,7 +102,7 @@ async function buildHeroActivity(userId: string): Promise<HeroActivity | null> {
   const activity = await getMostRecentActivity(userId)
   if (!activity) return null
   if (activity.type === 'BOOK') {
-    const cover = (await resolvePublicUrl(activity.book.coverImage)) ?? activity.book.coverImage
+    const cover = (await resolvePublicUrl(activity.book.coverImage)) ?? '/dr khaled photo.jpeg'
     return {
       type: 'BOOK',
       bookId: activity.bookId,
@@ -114,7 +114,7 @@ async function buildHeroActivity(userId: string): Promise<HeroActivity | null> {
       totalPages: activity.totalPages,
     }
   }
-  const cover = (await resolvePublicUrl(activity.session.coverImage)) ?? activity.session.coverImage
+  const cover = (await resolvePublicUrl(activity.session.coverImage)) ?? '/dr khaled photo.jpeg'
   return {
     type: 'SESSION',
     sessionId: activity.sessionId,

@@ -271,7 +271,10 @@ export function StoreShowcase({ books, featuredBookId }: StoreShowcaseProps) {
             </header>
 
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-[clamp(16px,2.5vw,28px)] list-none m-0 p-0">
-              {sessions.slice(0, 2).map((l, idx) => {
+              {/* Show up to 6 sessions (3 rows on desktop). The earlier cap
+                  of 2 hid most of Dr. Khaled's catalogue on the homepage —
+                  /books still surfaces the rest under the "جلسات" filter. */}
+              {sessions.slice(0, 6).map((l, idx) => {
                 const title = isRtl ? l.titleAr : l.titleEn
                 const duration = isRtl ? l.subtitleAr : l.subtitleEn
                 const price = Math.round(Number(l.price))

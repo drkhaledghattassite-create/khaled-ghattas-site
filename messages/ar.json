@@ -671,7 +671,8 @@
     "user": {
       "panel": "لوحة التحكم",
       "brand": "د. خالد غطاس",
-      "logout": "تسجيل الخروج"
+      "logout": "تسجيل الخروج",
+      "back_to_site": "العودة إلى الموقع"
     },
     "groups": {
       "content": "المحتوى",
@@ -1166,11 +1167,30 @@
       "cancel": "إلغاء",
       "aborted": "تم إلغاء الرفع.",
       "success": "تم رفع الملف.",
+      "deduplicated": "موجود مسبقاً في المكتبة — تمت إعادة استخدامه دون رفع.",
       "error_size": "الملف كبير جداً — الحد الأقصى {limit}.",
       "error_type": "نوع الملف غير مدعوم. المسموح: {types}.",
       "error_put": "فشل الرفع (الحالة {status}). يرجى المحاولة مرة أخرى.",
       "error_network": "خطأ في الشبكة أثناء الرفع. يرجى المحاولة مرة أخرى.",
-      "error_generic": "تعذّر تحضير الرفع. يرجى المحاولة مرة أخرى."
+      "error_generic": "تعذّر تحضير الرفع. يرجى المحاولة مرة أخرى.",
+      "browse_button": "تصفّح الموجود",
+      "picker_title": "اختر عنصراً موجوداً",
+      "picker_description": "اختر من العناصر التي تم رفعها سابقاً ضمن {context}.",
+      "picker_search_placeholder": "ابحث باسم الملف…",
+      "picker_search_aria": "ابحث في العناصر المرفوعة",
+      "picker_loading": "جارٍ تحميل العناصر…",
+      "picker_error": "تعذّر تحميل العناصر.",
+      "picker_retry": "إعادة المحاولة",
+      "picker_empty": "لا توجد عناصر بعد — ارفع أول ملف لبدء المكتبة.",
+      "picker_no_results": "لا توجد نتائج مطابقة لبحثك.",
+      "picker_select": "استخدم",
+      "picker_selected": "تم الاختيار من المكتبة.",
+      "picker_current": "قيد الاستخدام",
+      "picker_bucket_label": "السلة: {bucket}",
+      "bucket_public": "عامة",
+      "bucket_private": "خاصة",
+      "picker_count": "{count} من أصل {total} ظاهرة",
+      "picker_truncated": "تعرض أحدث {count}. استخدم البحث للعناصر الأقدم."
     },
     "orders": {
       "description": "طلبات العملاء ومدفوعات Stripe.",

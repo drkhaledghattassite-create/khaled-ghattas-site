@@ -265,14 +265,26 @@ export async function incrementArticleViews(id: string): Promise<void> {
  * Books
  * ──────────────────────────────────────────────────────────────────────── */
 
-export type GetBooksOptions = { limit?: number; featured?: boolean }
+export type GetBooksOptions = {
+  limit?: number
+  featured?: boolean
+  /**
+   * Narrow to BOOK or SESSION rows. Useful on surfaces that mix them in a
+   * shared limit budget (the homepage previously fetched 10 mixed rows and
+   * — if BOOKs filled the result — surfaced zero or one SESSIONs in the
+   * "محاضرات مسجّلة" carousel). Pass this when you need at least N of a
+   * specific type to land in the response.
+   */
+  productType?: 'BOOK' | 'SESSION'
+}
 
 export async function getBooks(options: GetBooksOptions = {}): Promise<Book[]> {
-  const { limit, featured } = options
+  const { limit, featured, productType } = options
   if (HAS_DB) {
     try {
       const conditions = [eq(books.status, 'PUBLISHED')]
       if (featured !== undefined) conditions.push(eq(books.featured, featured))
+      if (productType !== undefined) conditions.push(eq(books.productType, productType))
       return await db
         .select()
         .from(books)
@@ -285,6 +297,7 @@ export async function getBooks(options: GetBooksOptions = {}): Promise<Book[]> {
   }
   let rows = placeholderBooks.filter((b) => b.status === 'PUBLISHED').slice().sort(byOrder)
   if (featured !== undefined) rows = rows.filter((b) => b.featured === featured)
+  if (productType !== undefined) rows = rows.filter((b) => b.productType === productType)
   return limit ? rows.slice(0, limit) : rows
 }
 

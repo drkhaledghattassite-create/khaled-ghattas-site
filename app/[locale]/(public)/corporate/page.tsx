@@ -48,13 +48,13 @@ export default async function CorporatePage({ params }: Props) {
   ])
 
   // Phase F2 — resolve client logos (R2 storage keys → signed URLs;
-  // external URLs and local /public assets pass through). `logoUrl` is
-  // schema-NOT-NULL, so we keep the original on failed resolution rather
-  // than coercing to null (which would change the column's nullability).
+  // external URLs and local /public assets pass through). Fall back to ''
+  // on resolution failure — NOT the raw R2 key (next/image rejects it).
+  // The /corporate logo renderer treats falsy values as "no logo".
   const resolvedClients = await Promise.all(
     clients.map(async (c) => ({
       ...c,
-      logoUrl: (await resolvePublicUrl(c.logoUrl)) ?? c.logoUrl,
+      logoUrl: (await resolvePublicUrl(c.logoUrl)) ?? '',
     })),
   )
 

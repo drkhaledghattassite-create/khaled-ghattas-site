@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Link } from '@/lib/i18n/navigation'
+import { Link, useRouter } from '@/lib/i18n/navigation'
 import {
+  ArrowLeft,
   BookOpen,
   Briefcase,
   Building2,
@@ -21,6 +23,7 @@ import {
   Inbox,
   LayoutDashboard,
   Lightbulb,
+  Loader2,
   LogOut,
   MapPin,
   Mail,
@@ -34,6 +37,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { authClient } from '@/lib/auth/client'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import { stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
@@ -206,16 +210,33 @@ export function AdminSidebarContent({
   emailQueueAttentionCount?: number
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const tNav = useTranslations('admin.nav')
   const tGroups = useTranslations('admin.groups')
   const tCommon = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
+  const [signingOut, setSigningOut] = useState(false)
   const groups = buildGroups(
     pendingQuestionCount,
     draftTestCount,
     emailQueueAttentionCount,
     user.role,
   )
+
+  async function handleSignOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    // Wrap in try/catch so a mock-auth dev session (where authClient hits a
+    // real Better Auth endpoint and 401s) still redirects to /login instead
+    // of stranding the user on /admin.
+    try {
+      await authClient.signOut()
+    } catch (err) {
+      console.error('[AdminSidebar signOut]', err)
+    }
+    onNavigate?.()
+    router.push('/login')
+  }
 
   return (
     <>
@@ -242,6 +263,18 @@ export function AdminSidebarContent({
         data-lenis-prevent
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-gutter:stable]"
       >
+        {/* "Back to site" — primarily for the mobile drawer (the desktop
+            sidebar coexists with the public header), but harmless on desktop
+            too. Locale-aware via `Link` from `@/lib/i18n/navigation`. */}
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="mb-4 flex min-h-11 items-center gap-2.5 rounded border border-border px-2 py-2 text-[13px] text-fg2 transition-colors hover:bg-bg-deep hover:text-fg1 md:min-h-0 md:text-[12px]"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
+          <span>{tCommon('back_to_site')}</span>
+        </Link>
+
         {groups.map((group) => (
           <div key={group.key} className="mb-5">
             <p className="px-2 pb-2 text-[10px] uppercase tracking-[0.12em] text-fg3 font-display font-semibold">
@@ -326,10 +359,16 @@ export function AdminSidebarContent({
           </div>
           <button
             type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
             aria-label={tCommon('logout')}
-            className="inline-flex h-9 w-9 items-center justify-center rounded text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1"
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-fg3 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:cursor-wait disabled:opacity-60"
           >
-            <LogOut className="h-3.5 w-3.5" aria-hidden />
+            {signingOut ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
+            )}
           </button>
         </div>
       </div>

@@ -81,18 +81,19 @@ export default async function GiftsSendRoute({ params, searchParams }: Props) {
   // client component and reads `b.coverImage` straight into <Image src>;
   // bare R2 keys must be turned into signed URLs before they cross the
   // server-client boundary. `books.coverImage` and `sessions.coverImage`
-  // are schema-NOT-NULL (preserve original on null); `bookings.coverImage`
-  // is nullable (pass null through unchanged).
+  // are schema-NOT-NULL — fall back to the universal placeholder on
+  // resolution failure (NOT the raw value; a raw R2 key crashes next/image).
+  // `bookings.coverImage` is nullable so it passes null through unchanged.
   const resolvedBooks = await Promise.all(
     books.map(async (b) => ({
       ...b,
-      coverImage: (await resolvePublicUrl(b.coverImage)) ?? b.coverImage,
+      coverImage: (await resolvePublicUrl(b.coverImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
   const resolvedSessions = await Promise.all(
     sessions.map(async (b) => ({
       ...b,
-      coverImage: (await resolvePublicUrl(b.coverImage)) ?? b.coverImage,
+      coverImage: (await resolvePublicUrl(b.coverImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
   const resolvedBookings = await Promise.all(

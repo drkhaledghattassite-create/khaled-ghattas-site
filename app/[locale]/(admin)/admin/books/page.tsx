@@ -19,13 +19,17 @@ export default async function AdminBooksPage({ params }: Props) {
   const books = await getBooks()
 
   // Phase F2 — resolve cover storage keys server-side so the client
-  // BooksTable can pass them straight to <Image>. `coverImage` is
-  // schema-NOT-NULL; preserve the original on resolution failure.
-  // resolvePublicUrl is React.cache'd so duplicate keys are free.
+  // BooksTable can pass them straight to <Image>. resolvePublicUrl is
+  // React.cache'd so duplicate keys are free.
+  //
+  // Fallback is the universal placeholder, NOT the raw value. The raw value
+  // can be an R2 key (`book-cover/uuid/file.jpg`) which next/image rejects
+  // with "Failed to construct 'URL'" — preserving it on resolution failure
+  // crashes the table.
   const resolvedBooks = await Promise.all(
     books.map(async (book) => ({
       ...book,
-      coverImage: (await resolvePublicUrl(book.coverImage)) ?? book.coverImage,
+      coverImage: (await resolvePublicUrl(book.coverImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
 

@@ -671,7 +671,8 @@
     "user": {
       "panel": "Admin panel",
       "brand": "Dr. Khaled Ghattass",
-      "logout": "Sign out"
+      "logout": "Sign out",
+      "back_to_site": "Back to site"
     },
     "groups": {
       "content": "Content",
@@ -1166,11 +1167,30 @@
       "cancel": "Cancel",
       "aborted": "Upload cancelled.",
       "success": "File uploaded.",
+      "deduplicated": "Already in the library — reused without re-uploading.",
       "error_size": "File is too large — limit is {limit}.",
       "error_type": "Unsupported file type. Allowed: {types}.",
       "error_put": "Upload failed (status {status}). Please try again.",
       "error_network": "Network error during upload. Please try again.",
-      "error_generic": "Couldn't prepare the upload. Please try again."
+      "error_generic": "Couldn't prepare the upload. Please try again.",
+      "browse_button": "Browse existing",
+      "picker_title": "Choose an existing item",
+      "picker_description": "Pick from items already uploaded under {context}.",
+      "picker_search_placeholder": "Search by filename…",
+      "picker_search_aria": "Search uploaded items",
+      "picker_loading": "Loading items…",
+      "picker_error": "Couldn't load items.",
+      "picker_retry": "Retry",
+      "picker_empty": "Nothing here yet — upload your first file to start the library.",
+      "picker_no_results": "No items match your search.",
+      "picker_select": "Use",
+      "picker_selected": "Selected from library.",
+      "picker_current": "In use",
+      "picker_bucket_label": "Bucket: {bucket}",
+      "bucket_public": "public",
+      "bucket_private": "private",
+      "picker_count": "{count} of {total} shown",
+      "picker_truncated": "Showing the latest {count}. Use search to find older items."
     },
     "orders": {
       "description": "Customer orders and Stripe payments.",

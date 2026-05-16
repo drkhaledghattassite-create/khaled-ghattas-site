@@ -55,11 +55,23 @@ export function BooksTable({ books }: { books: Book[] }) {
     {
       id: 'cover',
       header: tBook('cover_image'),
-      cell: ({ row }) => (
-        <span className="relative block h-10 w-8 overflow-hidden rounded border border-border bg-bg-deep">
-          <Image src={row.original.coverImage} alt="" fill sizes="32px" className="object-cover" />
-        </span>
-      ),
+      cell: ({ row }) => {
+        // Defense-in-depth: even if upstream forgot to resolve the storage
+        // key (or resolvePublicUrl returned null and the caller fell back
+        // to the raw R2 key), don't crash <Image>. Accept only http(s) URLs
+        // and `/`-rooted local paths; anything else (R2 key, empty string)
+        // renders an empty placeholder slot.
+        const src = row.original.coverImage
+        const safe =
+          src && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/'))
+            ? src
+            : null
+        return (
+          <span className="relative block h-10 w-8 overflow-hidden rounded border border-border bg-bg-deep">
+            {safe ? <Image src={safe} alt="" fill sizes="32px" className="object-cover" /> : null}
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'titleEn',

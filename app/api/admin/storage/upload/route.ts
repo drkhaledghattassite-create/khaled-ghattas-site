@@ -82,8 +82,14 @@ export async function POST(req: Request) {
     })
   }
 
-  const { contextType, filename, contentType, sizeBytes } = validated.data
-  const key = `${contextType}/${randomUUID()}/${slugifyFilename(filename)}`
+  const { contextType, filename, contentType, sizeBytes, contentHash } = validated.data
+
+  // Key shape — when a content hash is supplied, the second segment is the
+  // hash (so identical bytes → identical key, enabling dedup). Otherwise
+  // a fresh UUID (the original Phase F1 behavior for large files that
+  // skip client-side hashing).
+  const keySegment = contentHash ?? randomUUID()
+  const key = `${contextType}/${keySegment}/${slugifyFilename(filename)}`
 
   // Phase F3 — pick the bucket adapter based on the context classification.
   // PUBLIC contexts route to the public bucket when it's configured; if not
@@ -94,6 +100,31 @@ export async function POST(req: Request) {
     bucket === 'public' && storagePublic !== null ? storagePublic : storage
 
   try {
+    // Dedup short-circuit: if the client computed a hash AND we already have
+    // an object at this deterministic key, skip the presign + PUT entirely.
+    // The client uses the returned `key` directly (form field gets populated
+    // exactly as if a fresh upload had landed). Saves R2 PUTs, browser
+    // bandwidth, and wall-clock wait time on re-uploads.
+    if (contentHash) {
+      const exists = await adapter.exists(key).catch(() => false)
+      if (exists) {
+        return NextResponse.json(
+          {
+            ok: true,
+            key,
+            deduplicated: true,
+            // Null upload fields so a misconfigured client that ignores
+            // `deduplicated` doesn't try to PUT to a fabricated URL.
+            uploadUrl: null,
+            expiresAt: null,
+            method: null,
+            headers: null,
+          },
+          { headers: rl.headers },
+        )
+      }
+    }
+
     const presigned = await adapter.getPresignedPutUrl({
       key,
       contentType,
@@ -104,6 +135,7 @@ export async function POST(req: Request) {
       {
         ok: true,
         key,
+        deduplicated: false,
         uploadUrl: presigned.url,
         expiresAt: presigned.expiresAt.toISOString(),
         method: 'PUT',

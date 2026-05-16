@@ -144,6 +144,16 @@ async function resolvePublicUrlInner(
     return `${base}/${trimmed}`
   }
 
+  // No R2 configured (dev without `.env.local` R2 vars, or build-time)
+  // → the mock adapter would return `/placeholder-content/<key>` which
+  // 404s silently and leaves the card blank. Returning null here lets
+  // the caller's `?? fallbackImage` chain engage so the user sees a real
+  // image instead of an empty box. Production with R2 set keeps the
+  // existing signed-URL path below.
+  if (!process.env.R2_ACCOUNT_ID) {
+    return null
+  }
+
   // Public bucket but R2_PUBLIC_URL unset (single-bucket / migration mode),
   // OR private bucket → mint a signed URL via the private adapter. This is
   // the Phase F2 behavior preserved verbatim for backward compat.

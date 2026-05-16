@@ -92,15 +92,15 @@ export default async function InterviewPage({ params }: Props) {
   const isRtl = locale === 'ar'
 
   // Phase F2 — resolve thumbnail storage keys server-side before any client
-  // <Image src=…> render. `thumbnailImage` is schema-NOT-NULL so we fall back
-  // to the original value on resolution failure (preserves the column's
-  // non-null contract). Same pattern as `c.logoUrl` in /corporate.
+  // <Image src=…> render. `thumbnailImage` is schema-NOT-NULL; fall back
+  // to the universal placeholder (NOT the raw value — a raw R2 key would
+  // crash next/image).
   const resolvedInterviewThumb =
-    (await resolvePublicUrl(interview.thumbnailImage)) ?? interview.thumbnailImage
+    (await resolvePublicUrl(interview.thumbnailImage)) ?? '/dr khaled photo.jpeg'
   const resolvedRelated = await Promise.all(
     related.map(async (r) => ({
       ...r,
-      thumbnailImage: (await resolvePublicUrl(r.thumbnailImage)) ?? r.thumbnailImage,
+      thumbnailImage: (await resolvePublicUrl(r.thumbnailImage)) ?? '/dr khaled photo.jpeg',
     })),
   )
 

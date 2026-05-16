@@ -95,7 +95,8 @@
       "WebFetch(domain:www.instagram.com)",
       "WebFetch(domain:www.youtube.com)",
       "WebFetch(domain:www.tiktok.com)",
-      "WebFetch(domain:www.facebook.com)"
+      "WebFetch(domain:www.facebook.com)",
+      "Skill(vercel:env)"
     ]
   }
 }

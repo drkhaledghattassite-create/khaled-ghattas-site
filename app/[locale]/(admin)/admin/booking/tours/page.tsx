@@ -18,12 +18,13 @@ export default async function AdminBookingToursPage({ params }: Props) {
 
   // Phase F2 gap-fix — resolve cover storage keys server-side so
   // ToursAdminTable can render straight to <Image>. coverImage is nullable
-  // on tours, so preserve null when resolution returns null.
+  // on tours; resolve to a real URL or null (NOT the raw R2 key, which
+  // would crash next/image — the table handles null with a placeholder).
   const resolvedTours = await Promise.all(
     tours.map(async (tour) => ({
       ...tour,
       coverImage: tour.coverImage
-        ? ((await resolvePublicUrl(tour.coverImage)) ?? tour.coverImage)
+        ? ((await resolvePublicUrl(tour.coverImage)) ?? null)
         : tour.coverImage,
     })),
   )

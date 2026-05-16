@@ -7,8 +7,7 @@ import { useLocale, useTranslations } from 'next-intl'
 // notifications bell. They'll come back in a later phase when the search and
 // notifications backends exist; until then hiding empty UI is more honest.
 import { ChevronRight, Menu, Plus } from 'lucide-react'
-import { Link, useRouter } from '@/lib/i18n/navigation'
-import { authClient } from '@/lib/auth/client'
+import { Link } from '@/lib/i18n/navigation'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import { stripLocale } from '@/lib/page-labels'
 import { LOCALES } from '@/lib/constants'
@@ -51,22 +50,12 @@ export function AdminTopbar({
 }) {
   const pathname = usePathname()
   const locale = useLocale()
-  const router = useRouter()
   const tNav = useTranslations('admin.nav')
   const tCommon = useTranslations('admin.topbar')
   const tUser = useTranslations('admin.user')
   const path = stripLocale(pathname, LOCALES)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerSide = locale === 'ar' ? 'right' : 'left'
-
-  async function handleSignOut() {
-    try {
-      await authClient.signOut()
-    } catch (err) {
-      console.error('[AdminTopbar signOut]', err)
-    }
-    router.push('/login')
-  }
 
   const segments = path.split('/').filter(Boolean) // ['admin', ...]
   const crumbs: { href: string; label: string }[] = []
@@ -172,44 +161,16 @@ export function AdminTopbar({
         </DropdownMenu>
 
         {/* Theme + locale toggles, mirroring the public site header so
-            admins can flip dark/light and AR/EN without leaving /admin. */}
+            admins can flip dark/light and AR/EN without leaving /admin.
+            The user-menu (avatar + email + logout) used to live here but
+            was a visual duplicate of the user card at the bottom of the
+            sidebar — sign-out and settings are reachable from there now. */}
         <span className="hidden sm:inline-flex">
           <ThemeToggle />
         </span>
         <span className="hidden sm:inline-flex">
           <LocaleSwitcher />
         </span>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label={user.name}
-            className="flex h-9 max-w-[160px] items-center gap-2 rounded-full border border-border ps-1 pe-3 text-[13px] text-fg1 transition-colors hover:bg-bg-deep md:max-w-[220px]"
-          >
-            <span aria-hidden className="block h-7 w-7 shrink-0 rounded-full bg-fg1/80" />
-            <span className="hidden truncate sm:inline">{user.name}</span>
-          </DropdownMenuTrigger>
-          {/* min-w-[260px] gives long emails (e.g., Team@drkhaledghattass.com)
-              room to render without horizontal-clip truncation that hid the
-              first few characters in RTL. */}
-          <DropdownMenuContent align="end" className="min-w-[260px]">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <span className="block max-w-[240px] truncate" dir="ltr" title={user.email}>
-                  {user.email}
-                </span>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            {/* Settings is developer-only; CLIENT viewers get a 404 if they
-                follow this link, so just hide it. */}
-            {user.role === 'ADMIN' && (
-              <DropdownMenuItem render={<Link href="/admin/settings" />}>
-                {tNav('settings')}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={handleSignOut}>{tCommon('logout')}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   )

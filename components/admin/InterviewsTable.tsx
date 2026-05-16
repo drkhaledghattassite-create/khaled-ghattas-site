@@ -53,11 +53,21 @@ export function InterviewsTable({ interviews }: { interviews: Interview[] }) {
     {
       id: 'thumb',
       header: t('thumbnail_image'),
-      cell: ({ row }) => (
-        <span className="relative block h-9 w-12 overflow-hidden rounded border border-border bg-bg-deep">
-          <Image src={row.original.thumbnailImage} alt="" fill sizes="48px" className="object-cover" />
-        </span>
-      ),
+      cell: ({ row }) => {
+        // Defense-in-depth: don't pass raw R2 keys (or empty strings) to
+        // <Image>. The page is expected to resolve to a safe URL, but
+        // guard here too so a missed resolution doesn't crash the table.
+        const src = row.original.thumbnailImage
+        const safe =
+          src && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/'))
+            ? src
+            : null
+        return (
+          <span className="relative block h-9 w-12 overflow-hidden rounded border border-border bg-bg-deep">
+            {safe ? <Image src={safe} alt="" fill sizes="48px" className="object-cover" /> : null}
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'titleEn',

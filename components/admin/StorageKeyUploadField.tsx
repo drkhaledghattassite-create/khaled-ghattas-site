@@ -26,11 +26,12 @@
  */
 
 import { useRef, useState } from 'react'
-import { Loader2, Upload } from 'lucide-react'
+import { FolderOpen, Loader2, Upload } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { MediaPicker } from '@/components/admin/MediaPicker'
 import {
   ALLOWED_CONTENT_TYPES,
   MAX_BYTES,
@@ -51,13 +52,43 @@ type Props = {
   inputId?: string
 }
 
-type UploadResponse = {
-  ok: true
-  key: string
-  uploadUrl: string
-  expiresAt: string
-  method: 'PUT'
-  headers: Record<string, string>
+type UploadResponse =
+  | {
+      ok: true
+      key: string
+      deduplicated: false
+      uploadUrl: string
+      expiresAt: string
+      method: 'PUT'
+      headers: Record<string, string>
+    }
+  | {
+      ok: true
+      key: string
+      deduplicated: true
+      uploadUrl: null
+      expiresAt: null
+      method: null
+      headers: null
+    }
+
+/**
+ * Files this size or smaller get hashed client-side for content-based dedup
+ * (see /api/admin/storage/upload). Above this, we skip hashing — `crypto.
+ * subtle.digest` loads the whole buffer into memory, which is fine for an
+ * image but punishing for a 2 GB video on a phone.
+ */
+const HASH_MAX_BYTES = 50 * 1024 * 1024
+
+async function computeSha256Hex(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  const bytes = new Uint8Array(digest)
+  let hex = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    hex += bytes[i].toString(16).padStart(2, '0')
+  }
+  return hex
 }
 
 const MB = 1024 * 1024
@@ -82,6 +113,7 @@ export function StorageKeyUploadField({
   const xhrRef = useRef<XMLHttpRequest | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const accept = ALLOWED_CONTENT_TYPES[context].join(',')
   const maxBytes = MAX_BYTES[context]
@@ -114,6 +146,20 @@ export function StorageKeyUploadField({
     setBusy(true)
     setProgress(0)
 
+    // Content-hash dedup — compute SHA-256 for files under HASH_MAX_BYTES.
+    // The server uses the hash as the key segment + HEADs R2 to short-
+    // circuit identical re-uploads. Hashing is silent on success; a failure
+    // here (crypto.subtle unavailable, OOM) falls back to UUID-keyed upload.
+    let contentHash: string | undefined
+    if (file.size <= HASH_MAX_BYTES) {
+      try {
+        contentHash = await computeSha256Hex(file)
+      } catch (err) {
+        console.warn('[StorageKeyUploadField] hash compute failed, skipping dedup', err)
+        contentHash = undefined
+      }
+    }
+
     let presigned: UploadResponse
     try {
       const res = await fetch('/api/admin/storage/upload', {
@@ -124,6 +170,7 @@ export function StorageKeyUploadField({
           contentType: file.type,
           sizeBytes: file.size,
           contextType: context,
+          ...(contentHash ? { contentHash } : {}),
         }),
       })
       if (!res.ok) {
@@ -138,6 +185,16 @@ export function StorageKeyUploadField({
     } catch (err) {
       console.error('[StorageKeyUploadField] sign request failed', err)
       toast.error(t('error_generic'))
+      reset()
+      return
+    }
+
+    // Dedup short-circuit — the server already had this object, skip the
+    // PUT entirely. The key is canonical: pointing the form field at it
+    // is functionally identical to uploading the same bytes a second time.
+    if (presigned.deduplicated) {
+      onChange(presigned.key)
+      toast.success(t('deduplicated'))
       reset()
       return
     }
@@ -227,6 +284,17 @@ export function StorageKeyUploadField({
             {busy ? t('uploading_label') : t('upload_button')}
           </span>
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setPickerOpen(true)}
+          disabled={busy}
+          className="min-h-11 md:min-h-0"
+        >
+          <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+          <span className="ms-1.5">{t('browse_button')}</span>
+        </Button>
         {busy ? (
           <Button
             type="button"
@@ -261,6 +329,17 @@ export function StorageKeyUploadField({
           </p>
         </div>
       ) : null}
+
+      <MediaPicker
+        context={context}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={(next) => {
+          onChange(next)
+          toast.success(t('picker_selected'))
+        }}
+        currentValue={value}
+      />
     </div>
   )
 }

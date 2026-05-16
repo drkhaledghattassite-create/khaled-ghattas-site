@@ -157,6 +157,27 @@ export const createUploadRequestSchema = z.object({
   contentType: z.string().trim().min(1).max(127),
   sizeBytes: z.number().int().nonnegative().max(ABSOLUTE_MAX_BYTES),
   contextType: z.enum(UPLOAD_CONTEXTS),
+  /**
+   * Optional SHA-256 of the file body, hex-encoded (64 chars). When present,
+   * the server uses the hash as the key's second segment instead of a fresh
+   * UUID, so two uploads of identical bytes land on the same R2 object.
+   *
+   * The server then `HEAD`s that key — if the object already exists, it
+   * short-circuits the presigned-PUT mint and tells the client to skip
+   * the upload entirely (`{ deduplicated: true }`).
+   *
+   * Why optional, not required: hashing a 2 GB lecture video client-side
+   * is slow + memory-heavy on mobile. The widget skips hashing for files
+   * over 50 MB and falls back to UUID-based keys (current behavior). For
+   * files under the threshold, dedup is cheap and silent.
+   *
+   * 64-char hex (the full SHA-256) is overkill collision-wise but uses zero
+   * extra storage on the R2 object and reads cleanly in the dashboard.
+   */
+  contentHash: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/, 'invalid-sha256-hex')
+    .optional(),
 })
 
 export type CreateUploadRequest = z.infer<typeof createUploadRequestSchema>
