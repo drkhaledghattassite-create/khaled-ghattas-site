@@ -1,4 +1,4 @@
-import { SITE_NAME, SITE_URL } from '@/lib/constants'
+import { SITE_NAME, SITE_URL, SOCIAL_LINKS_LIST } from '@/lib/constants'
 import type { Article, Book, Event, Interview } from '@/lib/db/queries'
 import { resolvePublicUrl } from '@/lib/storage/public-url'
 
@@ -79,6 +79,7 @@ export function PersonJsonLd({ locale }: LocaleProps) {
     description: isAr
       ? 'كاتب ومحاضر، مؤسس مبادرة الورشة في لبنان (2020).'
       : 'Author, speaker, and founder of the Al-Warsheh initiative in Lebanon (2020).',
+    sameAs: SOCIAL_LINKS_LIST,
   })
 }
 

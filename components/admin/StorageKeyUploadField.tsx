@@ -216,6 +216,7 @@ export function StorageKeyUploadField({
           size="sm"
           onClick={openPicker}
           disabled={busy || uploadDisabled}
+          className="min-h-11 md:min-h-0"
         >
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -232,6 +233,7 @@ export function StorageKeyUploadField({
             variant="ghost"
             size="sm"
             onClick={cancelUpload}
+            className="min-h-11 md:min-h-0"
           >
             {t('cancel')}
           </Button>

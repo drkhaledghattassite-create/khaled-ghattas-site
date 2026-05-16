@@ -20,6 +20,10 @@ const SITE_NAME_AR = 'د. خالد غطاس'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
+// High-traffic ISR — generateStaticParams pre-builds known interviews, this
+// keeps them refreshing every 30 min. See /books/page.tsx for the full rationale.
+export const revalidate = 1800
+
 export async function generateStaticParams() {
   const interviews = await getInterviews()
   return interviews.flatMap((i) =>

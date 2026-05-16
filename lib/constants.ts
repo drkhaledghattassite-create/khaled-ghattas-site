@@ -28,3 +28,27 @@ export type Locale = (typeof LOCALES)[number]
  * once the auth backend is configured.
  */
 export const AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true'
+
+/**
+ * Dr. Khaled's verified public social profiles. Static — these are
+ * fixed brand URLs, so they live in source rather than env vars or
+ * `site_settings`. If a handle changes, edit this file and ship.
+ *
+ * Used by:
+ *   - components/layout/SiteFooter.tsx           (colophon icon row)
+ *   - app/[locale]/(public)/contact/page.tsx     (contact-page social rail)
+ *   - components/seo/StructuredData.tsx          (Person.sameAs JSON-LD)
+ *
+ * The `sameAs` array surfaces these to search engines so Google can
+ * link the profiles to the same entity (knowledge-graph signal).
+ */
+export const SOCIAL_LINKS = {
+  instagram: 'https://www.instagram.com/dr.khaledghattass',
+  facebook: 'https://www.facebook.com/dr.khaledghattass',
+  youtube: 'https://www.youtube.com/@khaledghattass',
+  tiktok: 'https://www.tiktok.com/@dr.khaledghattass',
+  x: 'https://x.com/khaledghattass',
+  linkedin: 'https://www.linkedin.com/in/dr-khaled-ghattass-62255279',
+} as const
+
+export const SOCIAL_LINKS_LIST = Object.values(SOCIAL_LINKS) as readonly string[]

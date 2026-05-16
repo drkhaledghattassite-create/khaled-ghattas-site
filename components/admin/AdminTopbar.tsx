@@ -94,7 +94,10 @@ export function AdminTopbar({
         >
           <Menu className="h-5 w-5" aria-hidden />
         </SheetTrigger>
-        <SheetContent side={drawerSide} className="flex w-[260px] flex-col bg-bg-elevated p-0">
+        <SheetContent
+          side={drawerSide}
+          className="flex w-[min(88vw,300px)] flex-col bg-bg-elevated p-0"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>{tUser('panel')}</SheetTitle>
           </SheetHeader>
@@ -105,6 +108,13 @@ export function AdminTopbar({
             emailQueueAttentionCount={emailQueueAttentionCount}
             onNavigate={() => setDrawerOpen(false)}
           />
+          {/* Mobile-only theme + locale switchers. On desktop these live in
+              the topbar (hidden below sm in the right-cluster below), so they
+              were unreachable on phones until now. */}
+          <div className="flex items-center justify-around gap-2 border-t border-border p-3">
+            <ThemeToggle />
+            <LocaleSwitcher />
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -143,7 +153,7 @@ export function AdminTopbar({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={tCommon('quick_actions')}
-            className="inline-flex items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-3 py-1.5 text-[11px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-3 py-1.5 text-[12px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg md:min-h-9 md:text-[11px]"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             {tCommon('new')}

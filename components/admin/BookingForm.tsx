@@ -549,7 +549,7 @@ export function BookingForm({ mode, bookingId, initialValues }: Props) {
             <button
               type="submit"
               disabled={pending}
-              className="rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[13px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60 md:min-h-9 md:text-[12px]"
             >
               {pending
                 ? tForms('saving')
@@ -560,13 +560,13 @@ export function BookingForm({ mode, bookingId, initialValues }: Props) {
             <button
               type="button"
               onClick={() => router.back()}
-              className="rounded-full border border-border px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-fg1 font-display font-semibold hover:bg-bg-deep transition-colors"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 text-[13px] uppercase tracking-[0.08em] text-fg1 font-display font-semibold hover:bg-bg-deep transition-colors md:min-h-9 md:text-[12px]"
             >
               {tForms('cancel')}
             </button>
             {mode === 'edit' && bookingId && (
               <AlertDialog>
-                <AlertDialogTrigger className="inline-flex items-center justify-center gap-1.5 rounded-full border border-accent/60 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-accent font-display font-semibold transition-colors hover:bg-accent hover:text-accent-fg">
+                <AlertDialogTrigger className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-accent/60 px-4 py-2 text-[13px] uppercase tracking-[0.08em] text-accent font-display font-semibold transition-colors hover:bg-accent hover:text-accent-fg md:min-h-9 md:text-[12px]">
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   {t('delete_button')}
                 </AlertDialogTrigger>

@@ -2805,6 +2805,88 @@ async function main() {
     storageIdx.storagePublic === null,
   )
 
+  /* ─── (Phase G) INDEX_DECLARATIONS ──────────────────────────────────── */
+  // Regression guard for the three Phase G P0 commerce indexes added in
+  // migration 0016_commerce_indexes.sql. We verify the *schema declaration*
+  // (i.e. the Drizzle table definition), not the live DB — the harness runs
+  // against a dummy DATABASE_URL and never speaks to Neon. A future refactor
+  // that drops one of these indexes from schema.ts will fail this group; the
+  // separate `verify the index exists in pg_indexes` SQL is documented in
+  // the migration file's header for the user to run after applying.
+  const drizzleCore = await import('drizzle-orm/pg-core')
+  const schemaModule = await import('../../lib/db/schema')
+  const ordersTableConfig = drizzleCore.getTableConfig(schemaModule.orders)
+  const orderItemsTableConfig = drizzleCore.getTableConfig(
+    schemaModule.orderItems,
+  )
+  const ordersIndexNames = ordersTableConfig.indexes.map((i) => i.config.name)
+  const orderItemsIndexNames = orderItemsTableConfig.indexes.map(
+    (i) => i.config.name,
+  )
+  assert(
+    'SCHEMA',
+    "[Phase G P0-1] orders schema declares 'orders_user_created_idx'",
+    ordersIndexNames.includes('orders_user_created_idx'),
+    `got ${JSON.stringify(ordersIndexNames)}`,
+  )
+  assert(
+    'SCHEMA',
+    "[Phase G P0-2] order_items schema declares 'order_items_order_idx'",
+    orderItemsIndexNames.includes('order_items_order_idx'),
+    `got ${JSON.stringify(orderItemsIndexNames)}`,
+  )
+  assert(
+    'SCHEMA',
+    "[Phase G P0-3] order_items schema declares 'order_items_book_idx'",
+    orderItemsIndexNames.includes('order_items_book_idx'),
+    `got ${JSON.stringify(orderItemsIndexNames)}`,
+  )
+
+  /* ─── (Phase G) HOMEPAGE_FANOUT ─────────────────────────────────────── */
+  // Regression guard for the P1-1 Promise.all refactor on the public
+  // homepage. The four root reads (settings + articles + books + interviews)
+  // must continue to share a single Promise.all so they fan out instead of
+  // serializing. We check the source file rather than the module export
+  // because the page renders JSX — there's no public function we can call
+  // here without booting next-intl.
+  const fs = await import('node:fs/promises')
+  const path = await import('node:path')
+  const homepagePath = path.resolve(
+    process.cwd(),
+    'app',
+    '[locale]',
+    '(public)',
+    'page.tsx',
+  )
+  const homepageSrc = await fs.readFile(homepagePath, 'utf8')
+  // The Promise.all must enclose all four helper calls in a single
+  // destructuring assignment. The regex captures the destructured names so
+  // we also assert the ORDER (settings, articles, books, interviews) — a
+  // reorder would break downstream destructuring without TypeScript noticing
+  // until runtime since all four are referenced by name later in the file.
+  const fanoutMatch = homepageSrc.match(
+    /const \[settings, articles, books, interviews\] = await Promise\.all\(\[/,
+  )
+  assert(
+    'HOMEPAGE',
+    '[Phase G P1-1] homepage uses Promise.all for the four root reads',
+    Boolean(fanoutMatch),
+  )
+  // All four helper calls must appear once inside the Promise.all body.
+  // Take a slice from the destructured-array opener through the closing
+  // `])` so we don't pick up matches elsewhere in the file.
+  const fanoutBody = fanoutMatch
+    ? homepageSrc.slice(fanoutMatch.index ?? 0).split('])')[0] ?? ''
+    : ''
+  assert(
+    'HOMEPAGE',
+    '[Phase G P1-1] Promise.all body invokes all four root reads',
+    fanoutBody.includes('getCachedSiteSettings()') &&
+      fanoutBody.includes('getArticles(') &&
+      fanoutBody.includes('getBooks(') &&
+      fanoutBody.includes('getInterviews('),
+  )
+
   /* ─── Summary ───────────────────────────────────────────────────────── */
   const totalFail = results.filter((r) => !r.ok).length
   const totalOk = results.filter((r) => r.ok).length

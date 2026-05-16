@@ -12,9 +12,17 @@ const EASE_IN_OUT_QUART: [number, number, number, number] = [0.77, 0, 0.175, 1]
 
 const FIRST_DURATION_MS = 1500
 const NAV_DURATION_MS = 700
-/** Minimum time the nav loader stays on screen so it never flashes.
- *  Tuned for the logo to be clearly readable, not just a glimpse. */
-const NAV_MIN_DISPLAY_MS = 480
+/**
+ * Show-debounce — only display the nav overlay when the route actually
+ * takes work to resolve. Prefetched / cached routes that resolve in <200ms
+ * never show the loader at all, so the click feels instant. Slow routes
+ * (RSC + DB fetch + cover-image hydrate) get visual feedback.
+ */
+const NAV_SHOW_DELAY_MS = 200
+/** Minimum time the nav loader stays on screen AFTER it appears, so it
+ *  never flashes once visible. Combined with the show-delay above, the
+ *  loader is either invisible (fast nav) or visible for >=300ms (slow nav). */
+const NAV_MIN_DISPLAY_MS = 300
 
 type Mode = 'first' | 'nav' | null
 
@@ -37,9 +45,16 @@ export function AppLoader() {
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firstDoneRef = useRef(false)
-  /** Timestamp (performance.now()) of the most recent nav-trigger.
-   *  0 means: loader is not currently armed by an explicit click. */
-  const navStartRef = useRef<number>(0)
+  /**
+   * Pending show timer. Non-null when a click has armed the loader but the
+   * NAV_SHOW_DELAY_MS hasn't elapsed yet. If the pathname changes before
+   * the timer fires, we cancel it and never show the loader — that's the
+   * fast-nav path.
+   */
+  const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Timestamp (performance.now()) when the loader actually became visible.
+   *  0 means: loader is not currently visible. */
+  const shownAtRef = useRef<number>(0)
 
   // Mount: detect first-load vs already-seen, then settle
   useEffect(() => {
@@ -71,6 +86,7 @@ export function AppLoader() {
       mq.removeEventListener('change', onMq)
       if (firstTimerRef.current) clearTimeout(firstTimerRef.current)
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
+      if (showTimerRef.current) clearTimeout(showTimerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -113,9 +129,17 @@ export function AppLoader() {
         return
       }
 
+      // Cancel any pending hide or show — we're starting a fresh nav.
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
-      navStartRef.current = performance.now()
-      setMode('nav')
+      if (showTimerRef.current) clearTimeout(showTimerRef.current)
+      // Debounced show — only display the loader when the route actually
+      // takes a moment. Fast / prefetched navs resolve before this timer
+      // fires and never see a loader flash.
+      showTimerRef.current = setTimeout(() => {
+        setMode('nav')
+        shownAtRef.current = performance.now()
+        showTimerRef.current = null
+      }, reduceMotion ? 80 : NAV_SHOW_DELAY_MS)
     }
 
     // Capture phase so we run alongside ViewTransitionsRouter (which also uses
@@ -123,12 +147,20 @@ export function AppLoader() {
     // other nodes — our handler still fires.
     document.addEventListener('click', onClick, { capture: true })
     return () => document.removeEventListener('click', onClick, { capture: true })
-  }, [])
+    // reduceMotion is read inside the closure to pick the timer length — we
+    // intentionally re-register the click listener when it flips so the
+    // captured value stays in sync. Re-registration cost is negligible
+    // (one addEventListener / removeEventListener pair on a flag change).
+  }, [reduceMotion])
 
-  // Pathname change → schedule HIDE (with min-display window so the loader
-  // never flashes when prefetched/cached routes arrive instantly). Also
-  // covers browser back/forward and programmatic router.push, where the
-  // click handler above never fires — in that case we show + hide here.
+  // Pathname change → reconcile loader visibility.
+  //   1. If a show is still pending (showTimerRef truthy), the route
+  //      resolved faster than NAV_SHOW_DELAY_MS — cancel the show and
+  //      we're done. No loader flash.
+  //   2. If shownAtRef === 0, this is a back/forward or router.push that
+  //      didn't fire the click handler. Show + hide here.
+  //   3. If the loader is already visible, schedule a hide that respects
+  //      the post-show minimum display.
   useEffect(() => {
     if (!firstDoneRef.current) return
     if (prevPath.current === null) {
@@ -138,21 +170,29 @@ export function AppLoader() {
     if (prevPath.current === pathname) return
     prevPath.current = pathname
 
+    // Case 1 — fast nav. Show was pending; cancel it.
+    if (showTimerRef.current) {
+      clearTimeout(showTimerRef.current)
+      showTimerRef.current = null
+      return
+    }
+
     if (navTimerRef.current) clearTimeout(navTimerRef.current)
 
-    // Back/forward case: no click happened, mode is null. Arm now.
-    if (navStartRef.current === 0) {
-      navStartRef.current = performance.now()
+    // Case 2 — back/forward / programmatic nav. Show now.
+    if (shownAtRef.current === 0) {
+      shownAtRef.current = performance.now()
       setMode('nav')
     }
 
-    const elapsed = performance.now() - navStartRef.current
-    const minDisplay = reduceMotion ? 160 : NAV_MIN_DISPLAY_MS
+    // Case 3 — schedule hide with post-show minimum display.
+    const elapsed = performance.now() - shownAtRef.current
+    const minDisplay = reduceMotion ? 120 : NAV_MIN_DISPLAY_MS
     const remaining = Math.max(minDisplay - elapsed, 50)
 
     navTimerRef.current = setTimeout(() => {
       setMode(null)
-      navStartRef.current = 0
+      shownAtRef.current = 0
     }, remaining)
   }, [pathname, reduceMotion])
 

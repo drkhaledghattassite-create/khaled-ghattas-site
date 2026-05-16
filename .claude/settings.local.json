@@ -89,7 +89,13 @@
       "mcp__claude_ai_Vercel__web_fetch_vercel_url",
       "mcp__claude_ai_Vercel__deploy_to_vercel",
       "mcp__claude_ai_Vercel__get_deployment",
-      "WebFetch(domain:dr-khaled-ghattas-site.vercel.app)"
+      "WebFetch(domain:dr-khaled-ghattas-site.vercel.app)",
+      "WebFetch(domain:www.claudeflow.dev)",
+      "WebSearch",
+      "WebFetch(domain:www.instagram.com)",
+      "WebFetch(domain:www.youtube.com)",
+      "WebFetch(domain:www.tiktok.com)",
+      "WebFetch(domain:www.facebook.com)"
     ]
   }
 }

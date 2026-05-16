@@ -248,6 +248,13 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns,
+    // Hold optimized variants in the next/image cache for 24h. Without this,
+    // Next defaults to honoring upstream Cache-Control which R2 doesn't set
+    // tightly, so identical signed URLs would re-trigger optimization on
+    // each cold edge. At 100k+ users, repeated AVIF/WebP encodings for the
+    // same cover wastes CPU and inflates response time. 24h aligns with
+    // ISR's revalidate horizons (30 min) and the 7-day signed-URL TTL.
+    minimumCacheTTL: 60 * 60 * 24,
   },
   // Hide the floating "N issues" / build-activity badge in dev — it stamps
   // every screenshot and serves no production purpose.

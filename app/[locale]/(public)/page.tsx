@@ -15,10 +15,17 @@ export default async function HomePage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const settings = await getCachedSiteSettings()
-  const articles = await getArticles({ limit: 6 })
-  const books = await getBooks({ limit: 10 })
-  const interviews = await getInterviews({ limit: 5 })
+  // Phase G P1-1 — fan-out the four root reads so they share the same
+  // RSC tick instead of serializing ~4 round-trips. When the route renders
+  // statically at build time this is purely a build-time win; when it falls
+  // through to dynamic (no `revalidate`/`dynamic` exports, but data-fetching
+  // heuristics can make Next.js opt in), it saves real per-request latency.
+  const [settings, articles, books, interviews] = await Promise.all([
+    getCachedSiteSettings(),
+    getArticles({ limit: 6 }),
+    getBooks({ limit: 10 }),
+    getInterviews({ limit: 5 }),
+  ])
 
   // Phase F2 — resolve R2 storage keys to signed/passthrough URLs server-side
   // before handing to client section components. External URLs and local

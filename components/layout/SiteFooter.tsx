@@ -7,11 +7,14 @@ import { Link } from '@/lib/i18n/navigation'
 import { LogoLink } from '@/components/shared/Logo'
 import { AnimatedText } from '@/components/motion/AnimatedText'
 import {
+  FacebookIcon,
   InstagramIcon,
   LinkedInIcon,
+  TikTokIcon,
   TwitterIcon,
   YouTubeIcon,
 } from '@/components/shared/social-icons'
+import { SOCIAL_LINKS } from '@/lib/constants'
 import { staggerContainer, staggerItem, EASE_EDITORIAL } from '@/lib/motion/variants'
 
 const DEVELOPER_LINKEDIN_URL = 'https://www.linkedin.com/in/kamal-chhimi-77684b228'
@@ -127,10 +130,12 @@ export function SiteFooter({
 
   type SocialIcon = ComponentType<SVGProps<SVGSVGElement>>
   const social: Array<{ label: string; href: string; Icon: SocialIcon }> = [
-    { label: 'LinkedIn', href: 'https://www.linkedin.com', Icon: LinkedInIcon },
-    { label: 'X', href: 'https://x.com', Icon: TwitterIcon },
-    { label: 'YouTube', href: 'https://www.youtube.com', Icon: YouTubeIcon },
-    { label: 'Instagram', href: 'https://www.instagram.com', Icon: InstagramIcon },
+    { label: 'Instagram', href: SOCIAL_LINKS.instagram, Icon: InstagramIcon },
+    { label: 'Facebook', href: SOCIAL_LINKS.facebook, Icon: FacebookIcon },
+    { label: 'YouTube', href: SOCIAL_LINKS.youtube, Icon: YouTubeIcon },
+    { label: 'TikTok', href: SOCIAL_LINKS.tiktok, Icon: TikTokIcon },
+    { label: 'X', href: SOCIAL_LINKS.x, Icon: TwitterIcon },
+    { label: 'LinkedIn', href: SOCIAL_LINKS.linkedin, Icon: LinkedInIcon },
   ]
 
   return (

@@ -92,7 +92,7 @@ export function BookingOrderRefundButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] font-display font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[13px] font-display font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg md:min-h-9 md:text-[12px]"
       >
         <RotateCw className="h-3.5 w-3.5" aria-hidden />
         {t('refund')}

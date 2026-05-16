@@ -20,7 +20,7 @@ import { resendOrderReceiptAction } from '@/app/[locale]/(admin)/admin/orders/ac
 import type { Order } from '@/lib/db/queries'
 
 const PILL =
-  'inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold uppercase tracking-[0.08em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed md:min-h-9 md:text-[12px]'
 
 type ActionStatus = 'FULFILLED' | 'REFUNDED' | 'FAILED'
 

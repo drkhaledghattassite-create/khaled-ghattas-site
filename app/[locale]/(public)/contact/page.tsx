@@ -8,9 +8,12 @@ import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   FacebookIcon,
   InstagramIcon,
+  LinkedInIcon,
+  TikTokIcon,
   TwitterIcon,
   YouTubeIcon,
 } from '@/components/shared/social-icons'
+import { SOCIAL_LINKS } from '@/lib/constants'
 import { pageMetadata } from '@/lib/seo/page-metadata'
 import { getCachedSiteSettings } from '@/lib/site-settings/get'
 
@@ -40,10 +43,12 @@ export default async function ContactPage({ params }: Props) {
   const isRtl = locale === 'ar'
 
   const socialLinks = [
-    { label: 'Twitter', href: 'https://twitter.com', Icon: TwitterIcon },
-    { label: 'Facebook', href: 'https://facebook.com', Icon: FacebookIcon },
-    { label: 'YouTube', href: 'https://youtube.com', Icon: YouTubeIcon },
-    { label: 'Instagram', href: 'https://instagram.com', Icon: InstagramIcon },
+    { label: 'Instagram', href: SOCIAL_LINKS.instagram, Icon: InstagramIcon },
+    { label: 'Facebook', href: SOCIAL_LINKS.facebook, Icon: FacebookIcon },
+    { label: 'YouTube', href: SOCIAL_LINKS.youtube, Icon: YouTubeIcon },
+    { label: 'TikTok', href: SOCIAL_LINKS.tiktok, Icon: TikTokIcon },
+    { label: 'X', href: SOCIAL_LINKS.x, Icon: TwitterIcon },
+    { label: 'LinkedIn', href: SOCIAL_LINKS.linkedin, Icon: LinkedInIcon },
   ] as const
 
   return (

@@ -415,22 +415,53 @@ export const orders = pgTable(
     stripeSessionIdx: uniqueIndex('orders_stripe_session_idx')
       .on(t.stripeSessionId)
       .where(sql`${t.stripeSessionId} IS NOT NULL`),
+    // Phase G P0-1 — every authenticated dashboard render reads orders by
+    // user_id (getOrdersByUserId in queries.ts:600; getLibraryEntriesByUserId
+    // in queries.ts:953; userOwnsProduct in queries.ts:1004). Until this
+    // index existed, the table was sequentially scanned on every hit —
+    // tolerable at launch with ~100 orders, painful at 50k+ where each scan
+    // adds 5–50ms and three of them fire on /dashboard/library alone.
+    // Composite with createdAt DESC covers `ORDER BY createdAt DESC` in
+    // getOrdersByUserId without a separate sort step.
+    userCreatedIdx: index('orders_user_created_idx').on(
+      t.userId,
+      t.createdAt.desc(),
+    ),
   }),
 )
 
-export const orderItems = pgTable('order_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  orderId: uuid('order_id')
-    .notNull()
-    .references(() => orders.id, { onDelete: 'cascade' }),
-  bookId: uuid('book_id').references(() => books.id, { onDelete: 'set null' }),
-  quantity: integer('quantity').notNull().default(1),
-  priceAtPurchase: numeric('price_at_purchase', { precision: 10, scale: 2 })
-    .notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const orderItems = pgTable(
+  'order_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    bookId: uuid('book_id').references(() => books.id, { onDelete: 'set null' }),
+    quantity: integer('quantity').notNull().default(1),
+    priceAtPurchase: numeric('price_at_purchase', { precision: 10, scale: 2 })
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    // Phase G P0-2 — Postgres does NOT auto-index FK columns. Every
+    // `getLibraryEntriesByUserId` (queries.ts:953) and
+    // `getOrderItemsWithBooks` (queries.ts:1018) join walks order_items via
+    // orderId; the Stripe webhook does the same when rendering the
+    // post-purchase email. Without this index those joins were
+    // sequential-scanning order_items on every authenticated visit.
+    orderIdx: index('order_items_order_idx').on(t.orderId),
+    // Phase G P0-3 — `userOwnsProduct` (queries.ts:998) filters
+    // `WHERE order_items.book_id = $1`. Hit by /api/content/access on every
+    // PDF/video tap and by the BookBuyButton owner-check on
+    // /books/[slug]. Kept as a separate single-column index (instead of a
+    // composite with orderId) so Postgres can choose the better plan
+    // independently — both columns have high selectivity.
+    bookIdx: index('order_items_book_idx').on(t.bookId),
+  }),
+)
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Audience

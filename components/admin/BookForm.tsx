@@ -6,7 +6,6 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Trash2 } from 'lucide-react'
 import { bookSchema, type BookInput } from '@/lib/validators/book'
 import { CONTENT_STATUSES } from '@/lib/validators/article'
 import {
@@ -21,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { StorageKeyUploadField } from './StorageKeyUploadField'
+import { AdminFormActions } from './AdminFormActions'
 import {
   Select,
   SelectContent,
@@ -28,17 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 
 const DEFAULTS: BookInput = {
   slug: '',
@@ -69,7 +58,6 @@ type Props = {
 export function BookForm({ initialValues, mode, bookId }: Props) {
   const router = useRouter()
   const t = useTranslations('admin.book_form')
-  const tForms = useTranslations('admin.forms')
   const tActions = useTranslations('admin.actions')
   const [submitting, setSubmitting] = useState(false)
 
@@ -293,42 +281,12 @@ export function BookForm({ initialValues, mode, bookId }: Props) {
             </FormItem>
           )} />
 
-          <div className="flex flex-col gap-2 pt-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center justify-center rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-bg font-display font-semibold transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60"
-            >
-              {submitting ? tForms('saving') : tForms('save')}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/admin/books')}
-              className="rounded-full border border-border px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-fg1 font-display font-semibold hover:bg-bg-deep transition-colors"
-            >
-              {tForms('cancel')}
-            </button>
-            {mode === 'edit' && (
-              <AlertDialog>
-                <AlertDialogTrigger
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-accent/60 px-4 py-2 text-[12px] uppercase tracking-[0.08em] text-accent font-display font-semibold transition-colors hover:bg-accent hover:text-accent-fg"
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  {tForms('delete')}
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{tActions('confirm_delete')}</AlertDialogTitle>
-                    <AlertDialogDescription>{tActions('no_undo')}</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{tForms('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={onDelete}>{tForms('delete')}</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
+          <AdminFormActions
+            mode={mode}
+            submitting={submitting}
+            onCancel={() => router.push('/admin/books')}
+            onDelete={onDelete}
+          />
         </aside>
       </form>
     </Form>

@@ -261,7 +261,10 @@ export function AdminSidebarContent({
                       href={item.href}
                       onClick={onNavigate}
                       className={cn(
-                        'group flex items-center gap-2.5 rounded px-2 py-2 text-[13px] transition-colors',
+                        // Mobile: 44px touch target (min-h-11). Desktop:
+                        // condense to the original compact density (md:min-h-0
+                        // resets the floor so py-2 alone defines height).
+                        'group flex min-h-11 items-center gap-2.5 rounded px-2 py-2 text-[14px] transition-colors md:min-h-0 md:text-[13px]',
                         active
                           ? 'bg-accent-soft text-accent'
                           : 'text-fg1 hover:bg-bg-deep',

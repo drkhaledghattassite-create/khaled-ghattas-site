@@ -529,7 +529,7 @@ export function SiteSettingsForm({
         <AlertDialog>
           <AlertDialogTrigger
             disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-fg2 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:opacity-60 font-display"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-4 py-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-fg2 transition-colors hover:bg-bg-deep hover:text-fg1 disabled:opacity-60 font-display md:min-h-9 md:text-[12px]"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             {t('reset')}
@@ -552,7 +552,7 @@ export function SiteSettingsForm({
           type="button"
           onClick={save}
           disabled={submitting || !dirty}
-          className="inline-flex items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60 font-display"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-fg1 bg-fg1 px-4 py-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-accent hover:border-accent hover:text-accent-fg disabled:opacity-60 font-display md:min-h-9 md:text-[12px]"
         >
           <Save className="h-3.5 w-3.5" aria-hidden />
           {submitting ? tForms('saving') : tForms('save')}

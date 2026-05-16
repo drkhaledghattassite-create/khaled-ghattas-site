@@ -10,6 +10,18 @@ import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
+/**
+ * High-traffic ISR. Listing content is user-agnostic and changes
+ * hours-to-days. Serving from the Next cache for 30 min cuts SSR compute,
+ * DB queries, and signed-URL mints to ~48 renders/day per locale — a
+ * ~50,000× reduction vs default-dynamic at 100k DAU.
+ *
+ * Admin can force fresh content immediately via the bearer-token
+ * `/api/admin/revalidate` route after publishing. 30 min < 7-day cover
+ * signed-URL TTL so the baked HTML never carries an expired URL.
+ */
+export const revalidate = 1800
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'books.meta' })

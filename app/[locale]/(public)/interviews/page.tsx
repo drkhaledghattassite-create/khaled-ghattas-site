@@ -10,6 +10,9 @@ import { resolvePublicUrl } from '@/lib/storage/public-url'
 
 type Props = { params: Promise<{ locale: string }> }
 
+// High-traffic ISR — see /books/page.tsx for rationale. 30 min revalidate.
+export const revalidate = 1800
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'interviews.meta' })
