@@ -2470,6 +2470,66 @@ async function main() {
     )
   }
 
+  /* ─── (F4 fix) urlOrStorageKey — shared form-field validator ──────────
+   * The admin upload widget puts R2 keys into fields whose old `.url()`
+   * validator rejected them. The new helper accepts EITHER an http(s)
+   * URL or an R2 key whose prefix is a known UploadContext. */
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('https://example.com/x.pdf') is true",
+    storageVal.isUrlOrStorageKey('https://example.com/x.pdf') === true,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('http://example.com/x.pdf') is true",
+    storageVal.isUrlOrStorageKey('http://example.com/x.pdf') === true,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('book-digital-file/uuid/x.pdf') is true",
+    storageVal.isUrlOrStorageKey('book-digital-file/uuid/x.pdf') === true,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('book-cover/uuid/cover.jpg') is true",
+    storageVal.isUrlOrStorageKey('book-cover/uuid/cover.jpg') === true,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('') is false",
+    storageVal.isUrlOrStorageKey('') === false,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('not-a-context/uuid/x.jpg') is false (unknown prefix)",
+    storageVal.isUrlOrStorageKey('not-a-context/uuid/x.jpg') === false,
+  )
+  assert(
+    'STORAGE',
+    "isUrlOrStorageKey('/placeholder/x.jpg') is false (local /public/ path)",
+    storageVal.isUrlOrStorageKey('/placeholder/x.jpg') === false,
+  )
+  // urlOrStorageKey schema mirrors the discriminator — verify it parses
+  // both shapes successfully and rejects garbage with a clear message.
+  assert(
+    'STORAGE',
+    'urlOrStorageKey schema accepts a real R2 key',
+    storageVal.urlOrStorageKey.safeParse('book-digital-file/abc/x.pdf').success,
+  )
+  assert(
+    'STORAGE',
+    'urlOrStorageKey schema accepts an https URL',
+    storageVal.urlOrStorageKey.safeParse('https://amazon.com/dp/x').success,
+  )
+  {
+    const parsed = storageVal.urlOrStorageKey.safeParse('not-a-context/abc/x')
+    assert(
+      'STORAGE',
+      'urlOrStorageKey schema rejects unknown-prefix strings',
+      !parsed.success,
+    )
+  }
+
   /* ─── (F2) RESOLVER — public-URL resolver ───────────────────────────── */
   const resolver = await import('../../lib/storage/public-url')
 
