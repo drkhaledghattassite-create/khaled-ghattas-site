@@ -412,10 +412,30 @@ export async function POST(req: Request) {
       // PAID transition. Treat PAID as terminal here too — chargebacks/
       // disputes should flow through the admin tooling, not this fast-path
       // auto-flip.
+      //
+      // Phase H R-3 — log loudly when payment_failed lands on a PAID order.
+      // The break itself is the correct behavior (don't auto-revert PAID),
+      // but the silent drop hides Stripe-semantics drift. If a real refund
+      // ever arrives as payment_failed (Stripe changes event mapping, an
+      // off-session retry double-fires, etc.), the warn surfaces in Vercel
+      // Function logs within minutes of the first occurrence. The
+      // FAILED/REFUNDED branches stay silent — those are the expected
+      // no-op cases for duplicate delivery.
+      if (existing.status === 'PAID') {
+        console.warn(
+          '[stripe/webhook] payment_intent.payment_failed received for already-PAID order — investigate',
+          {
+            orderId: existing.id,
+            stripeSessionId: existing.stripeSessionId,
+            paymentIntentId: pi.id,
+            eventId: event.id,
+          },
+        )
+        break
+      }
       if (
         existing.status === 'FAILED' ||
-        existing.status === 'REFUNDED' ||
-        existing.status === 'PAID'
+        existing.status === 'REFUNDED'
       ) break
       try {
         await updateOrderStatusByPaymentIntentId(pi.id, 'FAILED')

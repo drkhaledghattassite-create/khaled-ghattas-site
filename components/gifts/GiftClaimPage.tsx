@@ -28,6 +28,7 @@ type ItemDisplay = {
 type SessionUser = {
   id: string
   email: string
+  emailVerified: boolean
 }
 
 function fmtDate(d: Date, locale: string): string {
@@ -146,6 +147,7 @@ type RenderState =
   | 'invalid'
   | 'logged_out'
   | 'mismatch'
+  | 'unverified'
   | 'ready'
   | 'already_claimed_by_you'
   | 'temporary_error'
@@ -190,12 +192,18 @@ export function GiftClaimPage({
   // Cascade ordering matters. temporary_error wins over everything (we don't
   // want to flash "invalid" while the DB is timing out). already_claimed_by_you
   // wins over !valid because CLAIMED gifts fail the valid check.
+  //
+  // The unverified state sits BETWEEN mismatch and ready: a viewer whose
+  // session email matches the recipient but hasn't verified yet needs the
+  // verification advisory, not the claim CTA. A mismatched session never
+  // sees this state — it would leak that the gift exists for THIS address.
   let renderState: RenderState
   if (loadError) renderState = 'temporary_error'
   else if (alreadyClaimedByViewer) renderState = 'already_claimed_by_you'
   else if (!valid) renderState = 'invalid'
   else if (!sessionUser) renderState = 'logged_out'
   else if (!emailMatch) renderState = 'mismatch'
+  else if (sessionUser && !sessionUser.emailVerified) renderState = 'unverified'
   else renderState = 'ready'
 
   const itemTitle =
@@ -221,6 +229,43 @@ export function GiftClaimPage({
   async function handleSignOut() {
     await authClient.signOut()
     router.refresh()
+  }
+
+  // Phase H — resend the verification email through Better Auth's
+  // built-in send-verification-email endpoint. The endpoint itself
+  // dispatches through our `sendEmail` wrapper (the same queue path
+  // every transactional email uses), so a resend never bypasses
+  // email_queue. Better Auth's own rate-limit guard applies; we
+  // surface a toast either way.
+  async function handleResendVerification() {
+    if (!sessionUser) return
+    try {
+      // The Better Auth client surface is `authClient.sendVerificationEmail`
+      // which takes `{ email, callbackURL }`. Casting through unknown so
+      // we don't lock the type if the surface changes across BA versions.
+      const client = authClient as unknown as {
+        sendVerificationEmail?: (args: {
+          email: string
+          callbackURL?: string
+        }) => Promise<{ error?: { message?: string } | null }>
+      }
+      if (!client.sendVerificationEmail) {
+        toast.error(t('errors.email_not_verified'))
+        return
+      }
+      const res = await client.sendVerificationEmail({
+        email: sessionUser.email,
+        callbackURL: `/${locale}/gifts/claim?token=${encodeURIComponent(token)}`,
+      })
+      if (res?.error) {
+        toast.error(res.error.message ?? t('errors.email_not_verified'))
+        return
+      }
+      toast.success(t('unverified_sent_toast'))
+    } catch (err) {
+      console.error('[GiftClaimPage] resend verification failed', err)
+      toast.error(t('errors.email_not_verified'))
+    }
   }
 
   const fontDisplay = isRtl ? 'font-arabic-display' : 'font-display'
@@ -382,6 +427,51 @@ export function GiftClaimPage({
                   className="btn-pill btn-pill-primary"
                 >
                   {t('mismatch_signout_cta')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {renderState === 'unverified' && (
+            <div className="text-center">
+              <span
+                className={`section-eyebrow ${
+                  isRtl ? 'eyebrow-invitation' : 'eyebrow-accent'
+                }`}
+              >
+                {t('eyebrow')}
+              </span>
+              <h1
+                className={`mt-3 m-0 text-[24px] font-bold leading-[1.25] text-[var(--color-fg1)] ${fontDisplay}`}
+              >
+                {t('unverified_heading')}
+              </h1>
+              <p
+                className={`mt-3 m-0 text-[15px] leading-[1.55] text-[var(--color-fg2)] ${fontBody}`}
+              >
+                {t.rich('unverified_body', {
+                  email: () => (
+                    <span className="font-semibold text-[var(--color-fg1)]">
+                      {sessionUser ? redactEmail(sessionUser.email) : ''}
+                    </span>
+                  ),
+                })}
+              </p>
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={isPending}
+                  className="btn-pill btn-pill-primary"
+                >
+                  {t('unverified_resend_cta')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.refresh()}
+                  className="link-underline text-[14px] text-[var(--color-fg2)]"
+                >
+                  {t('unverified_recheck_cta')}
                 </button>
               </div>
             </div>

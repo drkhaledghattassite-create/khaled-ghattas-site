@@ -11,11 +11,15 @@ import { resendGiftEmailAction } from '@/app/[locale]/(public)/gifts/actions'
 
 type Status = 'READY' | 'PENDING' | 'NOT_FOUND'
 
+// Phase H R-4 — the success route returns the pre-built `claimUrl`
+// rather than the raw token. The sender never needs the token in
+// isolation; sharing the URL is the only legitimate use. Server-side
+// construction keeps the token off the wire in this response.
 type StatusResponse =
   | {
       status: 'READY'
       giftId: string
-      token: string
+      claimUrl: string
       recipientEmail: string
       expiresAt: string
       giftStatus: 'PENDING' | 'CLAIMED' | 'EXPIRED' | 'REVOKED' | 'REFUNDED'
@@ -68,8 +72,11 @@ export function GiftSuccessIsland({ sessionId, locale, origin }: Props) {
       if (cancelled) return
       polls.current++
       try {
+        // Pass `locale` so the route returns a locale-prefixed claimUrl
+        // matching the sender's current view. The route defaults to 'ar'
+        // when this param is missing — same behavior in either case.
         const res = await fetch(
-          `/api/gifts/status?session_id=${encodeURIComponent(sessionId!)}`,
+          `/api/gifts/status?session_id=${encodeURIComponent(sessionId!)}&locale=${encodeURIComponent(locale)}`,
           { cache: 'no-store' },
         )
         if (res.ok) {
@@ -102,11 +109,14 @@ export function GiftSuccessIsland({ sessionId, locale, origin }: Props) {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [sessionId])
+  }, [sessionId, locale])
 
-  const claimUrl = data
-    ? `${origin}/${locale}/gifts/claim?token=${encodeURIComponent(data.token)}`
-    : null
+  // claimUrl is now provided by the route (Phase H R-4) — the raw
+  // token never crosses the wire in this response. `origin` is kept
+  // as a prop for backwards-compatibility with the parent route, but
+  // is unused once the response carries the assembled URL.
+  void origin
+  const claimUrl = data?.claimUrl ?? null
 
   const handleCopy = useCallback(async () => {
     if (!claimUrl) return

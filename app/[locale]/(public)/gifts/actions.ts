@@ -26,6 +26,7 @@ import { getServerSession } from '@/lib/auth/server'
 import { getStripe } from '@/lib/stripe'
 import { resolveStripeImageUrl } from '@/lib/stripe/images'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
+import { CLIENT_IP_FALLBACK } from '@/lib/api/client-ip'
 import { SITE_URL } from '@/lib/constants'
 import {
   claimGift as claimGiftDb,
@@ -301,6 +302,7 @@ export type ClaimGiftActionResult =
       | 'invalid_or_expired'
       | 'login_required'
       | 'email_mismatch'
+      | 'email_not_verified'
       | 'rate_limited'
       | 'item_unavailable'
       | 'db_failed'
@@ -319,9 +321,12 @@ export type ClaimGiftActionResult =
  *   3. `x-real-ip` — last-resort fallback for reverse proxies that
  *      provide it (some self-hosted setups).
  *
- * Returns 'unknown' if nothing resolves. The downstream rate-limit key
- * is `gift-claim:<ip>` so collisions on 'unknown' all hit the same bucket
- * — strictest case for the spoofing-defeated path.
+ * Returns `CLIENT_IP_FALLBACK` ('anon') if nothing resolves — sharing the
+ * sentinel with `getClientIp` in `lib/api/client-ip.ts` so a caller that
+ * ever switches between the two helpers doesn't silently re-key its
+ * rate-limit bucket. The downstream rate-limit key is `gift-claim:<ip>`,
+ * so collisions on the fallback all hit the same bucket — strictest case
+ * for the spoofing-defeated path. Audit Phase H R-2.
  */
 async function getRequestIp(): Promise<string> {
   try {
@@ -342,7 +347,7 @@ async function getRequestIp(): Promise<string> {
   } catch {
     /* ignore — fall through */
   }
-  return 'unknown'
+  return CLIENT_IP_FALLBACK
 }
 
 export async function claimGiftAction(
@@ -385,14 +390,21 @@ export async function claimGiftAction(
 
   const userEmailLc = (session.user.email ?? '').trim().toLowerCase()
   if (userEmailLc !== gift.recipientEmail.trim().toLowerCase()) {
-    // Don't leak that the gift exists — surface a generic "not for this account"
-    // copy. The action returns the discrete code for UI branching.
-    //
-    // Better Auth's email uniqueness is the proof-of-control here; we don't
-    // gate on emailVerified because the Better Auth instance has no
-    // verification flow configured (password signups would otherwise be
-    // permanently locked out).
+    // Don't leak that the gift exists — surface a generic "not for this
+    // account" copy. The action returns the discrete code for UI branching.
     return { ok: false, error: 'email_mismatch' }
+  }
+
+  // SECURITY [H-B1]: claim requires a verified address. Without this,
+  // an attacker who registered with a stranger's email (before the
+  // stranger had a chance to) could redeem gifts addressed to that
+  // address. Better Auth's emailVerification flow is the proof of
+  // mailbox control. This check sits AFTER the email match because
+  // a wrong-account viewer should see 'email_mismatch', not a
+  // verification advisory (would leak that the gift exists for THIS
+  // address).
+  if (!session.user.emailVerified) {
+    return { ok: false, error: 'email_not_verified' }
   }
 
   // Atomic claim — race-safe in DB; mock-mode replicates the same

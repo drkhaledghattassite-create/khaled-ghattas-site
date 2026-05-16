@@ -266,6 +266,7 @@
     "checkout": {
       "coming_soon": "Online checkout will open soon. Use the contact form to order in the meantime.",
       "error": "Could not start checkout. Please try again.",
+      "unavailable": "This book is not available for purchase.",
       "owned_label": "You own this",
       "owned_aria_label": "You own this — go to your library",
       "go_to_library": "Go to library"
@@ -2400,7 +2401,15 @@
       "signup_failed": "Sign-up failed.",
       "reset_failed": "Could not reset password.",
       "send_failed": "Could not send reset link.",
-      "google_failed": "Google sign-in failed."
+      "google_failed": "Google sign-in failed.",
+      "email_not_verified": "Please verify your email before signing in.",
+      "email_not_verified_title": "Verify your email to sign in",
+      "email_not_verified_body": "We sent a verification link to {email}. Click it, then try again. Didn't get it?",
+      "verification_resend_cta": "Resend verification email",
+      "verification_resending": "Sending…",
+      "verification_resent": "Verification email sent — check your inbox.",
+      "verification_resend_failed": "Could not send. Please try again.",
+      "verification_rate_limited": "Too many requests. Please wait a few minutes and try again."
     }
   },
   "tests": {
@@ -2539,6 +2548,14 @@
       "info_heading": "Your details",
       "name": "Name",
       "email": "Email",
+      "email_readonly_note": "To change your email, contact support.",
+      "verification_pending_title": "Your email isn't verified yet",
+      "verification_pending_body": "We sent a verification link to {email}. Please verify so you can claim gifts and access purchases.",
+      "verification_resend_cta": "Resend verification email",
+      "verification_resending": "Sending…",
+      "verification_resent": "Verification email sent — check your inbox.",
+      "verification_resend_failed": "Could not send. Please try again.",
+      "verification_rate_limited": "Too many requests. Please wait a few minutes and try again.",
       "bio": "Short bio",
       "role": "Role",
       "edit": "Edit details",
@@ -3191,6 +3208,11 @@
       "mismatch_heading": "This gift is not for this account",
       "mismatch_body": "Sign out and sign in with the correct email to claim.",
       "mismatch_signout_cta": "Sign out",
+      "unverified_heading": "Verify your email first",
+      "unverified_body": "Please verify <email></email> before claiming. Check your inbox for the verification link we sent at signup.",
+      "unverified_resend_cta": "Resend verification email",
+      "unverified_recheck_cta": "I've verified — re-check",
+      "unverified_sent_toast": "Verification email sent — check your inbox.",
       "already_claimed_heading": "You already opened this gift",
       "already_claimed_body": "It's ready in your library.",
       "temporary_error_heading": "Something went wrong",
@@ -3203,6 +3225,7 @@
         "invalid_or_expired": "This gift link isn't valid or has expired.",
         "login_required": "Please sign in to claim this gift.",
         "email_mismatch": "This gift is not for this account.",
+        "email_not_verified": "Please verify your email before claiming this gift.",
         "rate_limited": "Too many attempts. Please wait and try again.",
         "item_unavailable": "The item linked to this gift is no longer available.",
         "db_failed": "Something went wrong. Please retry."

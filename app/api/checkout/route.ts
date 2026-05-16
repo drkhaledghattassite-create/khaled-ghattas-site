@@ -64,6 +64,22 @@ export async function POST(req: Request) {
   const book = await getBookById(body.data.bookId)
   if (!book) return errNotFound('Book not found.')
 
+  // SECURITY [H-B2]: gate purchase on publish state + a real price. Same
+  // 404 shape as a missing book so admin/draft enumeration cannot
+  // distinguish "doesn't exist" from "exists but not for sale."
+  // `getBookById` itself does NOT filter on status (it's used by admin
+  // edit screens) so the route layer must enforce it. Gift creation
+  // already does the equivalent check in `resolveGiftItemPrice`
+  // (lib/db/queries.ts) — checkout was the last unguarded entry point.
+  if (book.status !== 'PUBLISHED') return errNotFound('Book not found.')
+  if (!book.price || Number(book.price) <= 0) {
+    return apiError(
+      'VALIDATION',
+      'This book is not available for purchase.',
+      { status: 400 },
+    )
+  }
+
   const customerEmail = session.user.email
 
   // SECURITY [H-4]: Stripe success/cancel URLs MUST be derived from a trusted

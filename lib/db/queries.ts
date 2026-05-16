@@ -9,7 +9,7 @@
  * `placeholder-data.ts`.
  */
 
-import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, ilike, inArray, lt, lte, ne, or, sql } from 'drizzle-orm'
 import { randomBytes } from 'node:crypto'
 import { revalidateTag } from 'next/cache'
 import { db } from '.'
@@ -3642,6 +3642,45 @@ export async function deleteHoldById(holdId: string): Promise<void> {
   }
 }
 
+/**
+ * Phase H R-5 — global stale-hold sweep.
+ *
+ * The per-booking cleanup at the top of `createBookingHold` is scoped to
+ * the booking the caller is attempting (queries.ts:3532-3537). Holds on
+ * OTHER bookings — abandoned mid-checkout, never re-attempted — sit in
+ * the table indefinitely. Capacity math is unaffected because the
+ * active-holds count filters on `expiresAt > NOW()` (queries.ts:3571),
+ * so deleting expired rows can never reduce availability. The harm is
+ * purely table bloat under abuse.
+ *
+ * One transactional DELETE — these are advisory rows, not financial,
+ * so per-row transactions add no safety. The capacity check's exclusion
+ * predicate makes this strictly garbage-collection: any caller that
+ * raced past our DELETE would already have been treating these rows
+ * as non-existent.
+ *
+ * Returns counts for cron logging.
+ */
+export async function expireStaleBookingHolds(): Promise<{
+  scanned: number
+  expired: number
+}> {
+  if (!HAS_DB) return { scanned: 0, expired: 0 }
+  try {
+    // `.returning({ id })` gives us the count without a separate SELECT;
+    // Postgres reports zero rows when nothing matched. We don't enumerate
+    // booking ids — capacity is already correctly computed regardless.
+    const deleted = await db
+      .delete(bookingsPendingHolds)
+      .where(lt(bookingsPendingHolds.expiresAt, sql`now()`))
+      .returning({ id: bookingsPendingHolds.id })
+    return { scanned: deleted.length, expired: deleted.length }
+  } catch (err) {
+    console.error('[queries.expireStaleBookingHolds]', err)
+    return { scanned: 0, expired: 0 }
+  }
+}
+
 /* ── Booking orders ────────────────────────────────────────────────────── */
 
 export async function createBookingOrder(input: {
@@ -3840,6 +3879,119 @@ export async function markBookingOrderRefunded(input: {
   } catch (err) {
     console.error('[queries.markBookingOrderRefunded]', err)
     return null
+  }
+}
+
+/**
+ * Phase H R-1 — sweep stale PENDING booking_orders.
+ *
+ * booking_orders are created PENDING when a user enters Stripe Checkout
+ * and flipped PAID by the webhook on `checkout.session.completed`, or
+ * FAILED by the webhook on `checkout.session.expired`. If Stripe never
+ * delivers the expired event (rare delivery failures, dashboard
+ * misconfig, webhook handler crash mid-request), the row stays PENDING
+ * forever and pollutes admin reporting.
+ *
+ * This sweep targets that orphan class specifically. We flip status to
+ * FAILED (not a new 'EXPIRED' enum value — the existing FAILED state
+ * matches the precedent already established by `markBookingOrderFailed`
+ * and `expirePendingGifts`'s booking-release branch at queries.ts:7663,
+ * which both reason "no money flowed, FAILED is the closest fit").
+ *
+ * Why no `expiredReason` column: adding one means a migration. The
+ * cron writes a `[cron][expire-bookings]` log line per row with the
+ * order id; that's the operator's audit trail. If the demand for a
+ * structured reason ever shows up in admin tooling, add the column
+ * then.
+ *
+ * Threshold rationale:
+ *   - Stripe checkout sessions auto-expire at 30 min by default and
+ *     at most 24h regardless (CMS 30 → set in lib/stripe at session
+ *     create time).
+ *   - Stripe's webhook retry backoff escalates over ~3 days but most
+ *     delivery failures clear inside 1 hour.
+ *   - 60 min strikes a balance: long enough that a delayed webhook
+ *     reaches us first, short enough that admin reports stay clean.
+ *   - Holds expire at 15 min (booking actions), so capacity is
+ *     already released by the time we flip the order; the hold-
+ *     delete here is defense-in-depth.
+ *
+ * Concurrency safety:
+ *   - The WHERE clause is gated on `status='PENDING'`. A racing
+ *     webhook that flipped the row to PAID in the millisecond
+ *     between our SELECT and UPDATE simply matches zero rows here
+ *     — exactly the "skip mid-processing rows" guard the audit
+ *     called for. No coordinator needed.
+ *   - A second cron firing while the first is still in-flight will
+ *     UPDATE the same rows; the second UPDATE matches zero rows
+ *     (status is already FAILED) and reports `expired: 0`.
+ *
+ * Returns counts for the cron's response body.
+ */
+export async function expirePendingBookingOrders(
+  olderThanMinutes = 60,
+): Promise<{ scanned: number; expired: number }> {
+  if (!HAS_DB) return { scanned: 0, expired: 0 }
+  // Floor + clamp the threshold so a bad caller can't trip the sweep
+  // into ancient rows.
+  const minutes = Math.max(1, Math.floor(olderThanMinutes))
+  const cutoff = new Date(Date.now() - minutes * 60 * 1000)
+  try {
+    return await db.transaction(async (tx) => {
+      // Step 1: identify the candidates (read-only window for logging).
+      const candidates = await tx
+        .select({
+          id: bookingOrders.id,
+          stripeSessionId: bookingOrders.stripeSessionId,
+        })
+        .from(bookingOrders)
+        .where(
+          and(
+            eq(bookingOrders.status, 'PENDING'),
+            lt(bookingOrders.createdAt, cutoff),
+          ),
+        )
+      if (candidates.length === 0) {
+        return { scanned: 0, expired: 0 }
+      }
+      // Step 2: flip status → FAILED in one go. The status='PENDING'
+      // predicate in the WHERE clause means a concurrent webhook that
+      // beat us to PAID is automatically respected (matches zero rows).
+      // Returning the rows we actually flipped (not just the candidate
+      // count) keeps the count honest in race-loss scenarios.
+      const flipped = await tx
+        .update(bookingOrders)
+        .set({
+          status: 'FAILED',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(bookingOrders.status, 'PENDING'),
+            lt(bookingOrders.createdAt, cutoff),
+          ),
+        )
+        .returning({
+          id: bookingOrders.id,
+          stripeSessionId: bookingOrders.stripeSessionId,
+        })
+      // Step 3: defense-in-depth — drop matching holds. Holds have
+      // their own 15-min TTL and are usually long gone by 60 min, but
+      // a stuck row might still have one. Single DELETE for the
+      // session-id set.
+      const sessionIds = flipped
+        .map((r) => r.stripeSessionId)
+        .filter((s): s is string => typeof s === 'string' && s.length > 0)
+      if (sessionIds.length > 0) {
+        await tx
+          .delete(bookingsPendingHolds)
+          .where(inArray(bookingsPendingHolds.stripeSessionId, sessionIds))
+      }
+      return { scanned: candidates.length, expired: flipped.length }
+    })
+  } catch (err) {
+    console.error('[queries.expirePendingBookingOrders]', err)
+    return { scanned: 0, expired: 0 }
   }
 }
 
@@ -6938,9 +7090,20 @@ export async function createGift(
   // Resolve recipient existence — needed for ADMIN_GRANT auto-claim AND for
   // setting recipientUserId on USER_PURCHASE if they happen to be a user
   // (so claim-time joins are simpler).
+  //
+  // SECURITY [H-B1]: ADMIN_GRANT auto-claim ONLY when the matched user is
+  // emailVerified. An unverified account at the recipient address could
+  // be a squatter (someone who registered with a stranger's email before
+  // the stranger did); auto-claiming would hand them the entitlement.
+  // The gift stays PENDING in that case, waiting for the real owner to
+  // verify (or for the squatter to lose access via the squatter taking
+  // it through the verified-claim path, which itself now requires
+  // emailVerified — same gate, two layers).
   const recipientUser = await getUserByEmail(recipientEmail)
   const autoClaim =
-    input.source === 'ADMIN_GRANT' && recipientUser != null
+    input.source === 'ADMIN_GRANT' &&
+    recipientUser != null &&
+    recipientUser.emailVerified === true
 
   if (MOCK_AUTH_ENABLED) {
     const store = readStore()
@@ -8143,6 +8306,9 @@ export type EmailRelatedEntityType =
   | 'booking_order'
   | 'question'
   | 'corporate_request'
+  // Phase H — Better Auth's emailVerification + password-reset flows
+  // relate to a user row; relatedEntityId is the user's uuid.
+  | 'user'
 
 export type EnqueueEmailInput = {
   emailType: string

@@ -61,6 +61,15 @@ export function BookBuyButton({ bookId, className, owned = false, children }: Pr
         toast.info(t('coming_soon'))
         return
       }
+      // SECURITY [H-B2]: the checkout route now returns 404 for
+      // unpublished books and 400/VALIDATION for products with no
+      // valid price. Both surface the same "not available" copy
+      // — leaking the distinction would let probers enumerate
+      // DRAFT vs ARCHIVED state of the catalog.
+      if (res.status === 404 || res.status === 400) {
+        toast.error(json.error?.message ?? t('unavailable'))
+        return
+      }
       if (!res.ok || !json.url) {
         toast.error(json.error?.message ?? t('error'))
         return

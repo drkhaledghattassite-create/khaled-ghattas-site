@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
+import { Loader2, ShieldAlert } from 'lucide-react'
 import type { ServerSessionUser } from '@/lib/auth/server'
 import { authClient } from '@/lib/auth/client'
+import { resendVerificationAction } from '@/app/[locale]/(auth)/actions'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
@@ -21,7 +23,10 @@ export function AccountView({
   const isRtl = locale === 'ar'
 
   const [name, setName] = useState(user.name)
-  const [email, setEmail] = useState(user.email)
+  // Email is read-only (Phase H B-3). Changes flow through support so the
+  // new address can be re-verified. Kept as state only so the field can
+  // render the user's current address.
+  const email = user.email
   const [bio, setBio] = useState(
     initialBio ??
       (isRtl
@@ -29,13 +34,34 @@ export function AccountView({
         : 'A reader passionate about philosophy, literature, and behavioral science.'),
   )
   const [saving, setSaving] = useState(false)
+  const [resending, startResend] = useTransition()
+
+  // Phase H Item 4 — resend the verification email through the
+  // rate-limited server-action wrapper. Surfacing rate_limited as a
+  // distinct toast (rather than the generic "send failed") so a user
+  // who tapped twice in a row gets clear feedback.
+  function handleResendVerification() {
+    startResend(async () => {
+      const result = await resendVerificationAction({ email })
+      if (result.ok) {
+        toast.success(t('verification_resent'))
+        return
+      }
+      if (result.error === 'rate_limited') {
+        toast.error(t('verification_rate_limited'))
+        return
+      }
+      toast.error(t('verification_resend_failed'))
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      // Update name/email via Better Auth (no-op in mock mode).
-      if (name !== user.name || email !== user.email) {
+      // Update name via Better Auth (no-op in mock mode). Email is read-only;
+      // see lib/auth/index.ts emailVerification block for the rationale.
+      if (name !== user.name) {
         try {
           await authClient.updateUser({ name })
         } catch (err) {
@@ -45,7 +71,7 @@ export function AccountView({
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, email, bio }),
+        body: JSON.stringify({ name, bio }),
       })
       if (!res.ok) {
         if (res.status === 401) {
@@ -70,6 +96,57 @@ export function AccountView({
       transition={{ duration: 0.5, ease: EASE }}
       className="flex flex-col gap-[clamp(28px,3.5vw,44px)]"
     >
+      {/* Phase H Item 4 — verification banner. Persistent (not dismissible)
+          because this is a security signal, not a notification. role="status"
+          + aria-live="polite" so screen readers announce the warning state
+          without interrupting other speech. Hidden entirely when the user
+          is verified — no DOM cost in the common case. */}
+      {!user.emailVerified && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent-soft)] bg-[var(--color-accent-soft)] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--color-accent)]"
+              aria-hidden
+            />
+            <div className="flex flex-col gap-1">
+              <p
+                className={`m-0 text-[14px] font-semibold leading-[1.4] text-[var(--color-accent-hover)] ${
+                  isRtl ? 'font-arabic-body !text-[15px]' : 'font-display'
+                }`}
+              >
+                {t('verification_pending_title')}
+              </p>
+              <p
+                className={`m-0 text-[13px] leading-[1.55] text-[var(--color-fg2)] ${
+                  isRtl ? 'font-arabic-body !text-[14px]' : 'font-display'
+                }`}
+              >
+                {t('verification_pending_body', { email })}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resending}
+            className={`btn-pill btn-pill-secondary inline-flex items-center justify-center gap-2 !text-[13px] !py-2 !px-4 self-start sm:self-auto disabled:opacity-60 disabled:cursor-not-allowed ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
+          >
+            {resending && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            )}
+            {resending
+              ? t('verification_resending')
+              : t('verification_resend_cta')}
+          </button>
+        </div>
+      )}
+
       {/* Section heading */}
       <header className="flex flex-col gap-2">
         <h2
@@ -103,15 +180,13 @@ export function AccountView({
           required
           autoComplete="name"
         />
-        <Field
+        <ReadOnlyField
           id="email"
           type="email"
           label={t('email')}
           value={email}
-          onChange={setEmail}
+          hint={t('email_readonly_note')}
           isRtl={isRtl}
-          required
-          autoComplete="email"
         />
         <FieldArea
           id="bio"
@@ -180,6 +255,60 @@ function Field({
           isRtl ? 'font-arabic-body' : 'font-display'
         }`}
       />
+    </div>
+  )
+}
+
+// Read-only variant of `Field`. Used by the email row in this view:
+// the value is displayed disabled-styled, with a small hint underneath
+// pointing the user to support for changes (which routes the request
+// through a re-verification flow). See Phase H blocker B-3.
+function ReadOnlyField({
+  id,
+  label,
+  value,
+  hint,
+  type = 'text',
+  isRtl,
+  className = '',
+}: {
+  id: string
+  label: string
+  value: string
+  hint: string
+  type?: 'text' | 'email'
+  isRtl: boolean
+  className?: string
+}) {
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <label
+        htmlFor={id}
+        className={`text-[12px] font-semibold tracking-[0.04em] text-[var(--color-fg2)] ${
+          isRtl ? 'font-arabic-body !text-[13px] !tracking-normal !font-bold' : 'font-display'
+        }`}
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        value={value}
+        readOnly
+        aria-readonly="true"
+        tabIndex={-1}
+        className={`w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-deep)] text-[15px] text-[var(--color-fg2)] outline-none cursor-not-allowed ${
+          isRtl ? 'font-arabic-body' : 'font-display'
+        }`}
+      />
+      <p
+        className={`m-0 text-[12.5px] leading-[1.5] text-[var(--color-fg3)] ${
+          isRtl ? 'font-arabic-body !text-[13px]' : 'font-display'
+        }`}
+      >
+        {hint}
+      </p>
     </div>
   )
 }

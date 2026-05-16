@@ -2887,6 +2887,651 @@ async function main() {
       fanoutBody.includes('getInterviews('),
   )
 
+  /* ─── (Phase H) LAUNCH_BLOCKER_FIXES ────────────────────────────────── */
+  // B-1 — Better Auth email-verification block.
+  // B-2 — /api/checkout filters book.status + price.
+  // B-3 — profile schema strips email.
+  //
+  // We verify SOURCE-FILE evidence (same approach the index_declarations
+  // group uses) because the harness can't boot Better Auth or hit the
+  // route handlers under MOCK_AUTH. Importing the auth module would
+  // require BETTER_AUTH_SECRET + the email transport, neither of which
+  // the smoke env provides.
+  const authIndexSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'lib', 'auth', 'index.ts'),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[B-1] Better Auth config declares emailVerification block',
+    authIndexSrc.includes('emailVerification:') &&
+      authIndexSrc.includes('sendOnSignUp: true'),
+  )
+  assert(
+    'PHASE-H',
+    '[B-1] emailVerification dispatches via sendEmail wrapper (queue path)',
+    authIndexSrc.includes("emailType: 'email_verification'") &&
+      authIndexSrc.includes('sendVerificationEmail'),
+  )
+  assert(
+    'PHASE-H',
+    '[B-1] emailAndPassword.requireEmailVerification = true (blocks unverified sign-in)',
+    authIndexSrc.includes('requireEmailVerification: true'),
+  )
+
+  const checkoutSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'app', 'api', 'checkout', 'route.ts'),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    "[B-2] /api/checkout rejects non-PUBLISHED books with 404 (errNotFound)",
+    checkoutSrc.includes("book.status !== 'PUBLISHED'") &&
+      checkoutSrc.includes("errNotFound('Book not found.')"),
+  )
+  assert(
+    'PHASE-H',
+    '[B-2] /api/checkout rejects null/zero price with 400 (VALIDATION)',
+    checkoutSrc.includes('!book.price || Number(book.price) <= 0') &&
+      checkoutSrc.includes("apiError(\n      'VALIDATION'"),
+  )
+
+  const profileSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'app', 'api', 'user', 'profile', 'route.ts'),
+    'utf8',
+  )
+  // profileSchema must NOT contain an email property; zod's default strip
+  // behavior then silently drops any email field a client might send.
+  const profileSchemaBlock =
+    profileSrc.match(
+      /const profileSchema = z\.object\(\{[^}]*\}\)/m,
+    )?.[0] ?? ''
+  assert(
+    'PHASE-H',
+    '[B-3] profileSchema removed the email field (Better Auth verification owns it)',
+    profileSchemaBlock.length > 0 && !profileSchemaBlock.includes('email:'),
+    profileSchemaBlock || '(profileSchema block not found)',
+  )
+
+  const accountViewSrc = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'components',
+      'dashboard',
+      'AccountView.tsx',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[B-3] AccountView no longer keeps email in component state (setEmail removed)',
+    !accountViewSrc.includes('setEmail('),
+  )
+  assert(
+    'PHASE-H',
+    '[B-3] AccountView renders email through ReadOnlyField with email_readonly_note',
+    accountViewSrc.includes('ReadOnlyField') &&
+      accountViewSrc.includes("t('email_readonly_note')"),
+  )
+
+  const giftsActionsSrc = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'app',
+      '[locale]',
+      '(public)',
+      'gifts',
+      'actions.ts',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    "[B-1] claimGiftAction gates on session.user.emailVerified",
+    giftsActionsSrc.includes('session.user.emailVerified') &&
+      giftsActionsSrc.includes("error: 'email_not_verified'"),
+  )
+
+  // ADMIN_GRANT auto-claim must require recipientUser.emailVerified === true.
+  const queriesSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'lib', 'db', 'queries.ts'),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    "[B-1] ADMIN_GRANT auto-claim requires recipientUser.emailVerified === true",
+    queriesSrc.includes('recipientUser.emailVerified === true'),
+  )
+
+  // Migration 0017 exists + is journalled.
+  const migration0017 = await fs
+    .readFile(
+      path.resolve(
+        process.cwd(),
+        'lib',
+        'db',
+        'migrations',
+        '0017_backfill_email_verified.sql',
+      ),
+      'utf8',
+    )
+    .catch(() => '')
+  assert(
+    'PHASE-H',
+    '[B-1] Migration 0017_backfill_email_verified.sql exists',
+    migration0017.length > 0 &&
+      migration0017.includes('UPDATE "user"') &&
+      migration0017.includes('email_verified = true'),
+  )
+  // The WHERE clause must scope the UPDATE to only-unverified rows so a
+  // re-apply matches zero rows (idempotent).
+  assert(
+    'PHASE-H',
+    '[B-1] Migration 0017 is idempotent (filters on email_verified = false)',
+    /WHERE\s+email_verified\s*=\s*false/i.test(migration0017),
+  )
+
+  const journalSrc = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'lib',
+      'db',
+      'migrations',
+      'meta',
+      '_journal.json',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[B-1] Migration 0017 is registered in _journal.json',
+    journalSrc.includes('"tag": "0017_backfill_email_verified"'),
+  )
+
+  // Translation parity for the new keys.
+  const enJson = JSON.parse(
+    await fs.readFile(
+      path.resolve(process.cwd(), 'messages', 'en.json'),
+      'utf8',
+    ),
+  ) as Record<string, unknown>
+  const arJson = JSON.parse(
+    await fs.readFile(
+      path.resolve(process.cwd(), 'messages', 'ar.json'),
+      'utf8',
+    ),
+  ) as Record<string, unknown>
+  function get(obj: Record<string, unknown>, dotted: string): unknown {
+    return dotted.split('.').reduce<unknown>((acc, k) => {
+      if (acc && typeof acc === 'object') {
+        return (acc as Record<string, unknown>)[k]
+      }
+      return undefined
+    }, obj)
+  }
+  const newKeys = [
+    'gifts.claim.unverified_heading',
+    'gifts.claim.unverified_body',
+    'gifts.claim.unverified_resend_cta',
+    'gifts.claim.unverified_recheck_cta',
+    'gifts.claim.unverified_sent_toast',
+    'gifts.claim.errors.email_not_verified',
+    'dashboard.account.email_readonly_note',
+    'book.checkout.unavailable',
+  ]
+  for (const key of newKeys) {
+    const enVal = get(enJson, key)
+    const arVal = get(arJson, key)
+    assert(
+      'PHASE-H',
+      `[i18n] EN has "${key}"`,
+      typeof enVal === 'string' && enVal.length > 0,
+    )
+    assert(
+      'PHASE-H',
+      `[i18n] AR has "${key}"`,
+      typeof arVal === 'string' && arVal.length > 0,
+    )
+  }
+
+  /* ─── (Phase H R-1) BOOKING_ORDER_SWEEP ──────────────────────────────── */
+  // The helper itself is gated on HAS_DB and the smoke harness runs with a
+  // dummy DATABASE_URL — calling `expirePendingBookingOrders` here returns
+  // `{ scanned: 0, expired: 0 }` immediately, which doesn't really exercise
+  // the logic. Verify SOURCE-FILE evidence instead (same approach used by
+  // the Phase G index_declarations group): the helper exists, the cron
+  // endpoint exists, vercel.json has the schedule, and the WHERE clause
+  // correctly filters on PENDING status only.
+  assert(
+    'PHASE-H',
+    "[R-1] queries module exports expirePendingBookingOrders",
+    typeof (q as Record<string, unknown>).expirePendingBookingOrders ===
+      'function',
+  )
+
+  // The dummy-DB call should return zero/zero (HAS_DB short-circuit).
+  const bookingSweepResult = await (
+    q as unknown as {
+      expirePendingBookingOrders: (
+        m?: number,
+      ) => Promise<{ scanned: number; expired: number }>
+    }
+  ).expirePendingBookingOrders(60)
+  assert(
+    'PHASE-H',
+    '[R-1] expirePendingBookingOrders no-ops cleanly on HAS_DB=false',
+    bookingSweepResult.scanned === 0 && bookingSweepResult.expired === 0,
+    JSON.stringify(bookingSweepResult),
+  )
+
+  const queriesSrcR1 = await fs.readFile(
+    path.resolve(process.cwd(), 'lib', 'db', 'queries.ts'),
+    'utf8',
+  )
+  // The helper MUST filter on status='PENDING' so PAID/FULFILLED/FAILED/
+  // REFUNDED rows are never touched. Grep the helper body for the literal
+  // gate. Both the SELECT and the UPDATE must have it (defense-in-depth
+  // against the concurrent-webhook race).
+  const sweepBody =
+    queriesSrcR1.match(
+      /export async function expirePendingBookingOrders[\s\S]*?\n\}\n/,
+    )?.[0] ?? ''
+  const pendingGuards = (sweepBody.match(/bookingOrders\.status,\s*'PENDING'/g) ?? [])
+    .length
+  assert(
+    'PHASE-H',
+    "[R-1] expirePendingBookingOrders gates on status='PENDING' in BOTH the SELECT and the UPDATE",
+    pendingGuards >= 2,
+    `got ${pendingGuards} status='PENDING' guard(s)`,
+  )
+  assert(
+    'PHASE-H',
+    "[R-1] expirePendingBookingOrders uses lt() against a computed cutoff (skips rows newer than threshold)",
+    sweepBody.includes('lt(bookingOrders.createdAt, cutoff)'),
+  )
+
+  // The cron endpoint exists and uses the same timingSafeEqual bearer
+  // pattern as expire-gifts.
+  const cronEndpointSrc = await fs
+    .readFile(
+      path.resolve(
+        process.cwd(),
+        'app',
+        'api',
+        'cron',
+        'expire-bookings',
+        'route.ts',
+      ),
+      'utf8',
+    )
+    .catch(() => '')
+  assert(
+    'PHASE-H',
+    '[R-1] /api/cron/expire-bookings route file exists',
+    cronEndpointSrc.length > 0,
+  )
+  assert(
+    'PHASE-H',
+    '[R-1] cron endpoint uses timingSafeEqual bearer compare',
+    cronEndpointSrc.includes('timingSafeEqual(') &&
+      cronEndpointSrc.includes('process.env.CRON_SECRET'),
+  )
+  assert(
+    'PHASE-H',
+    '[R-1] cron endpoint fails closed when CRON_SECRET unset',
+    cronEndpointSrc.includes('if (!secret) return false'),
+  )
+
+  // vercel.json contains the new schedule.
+  const vercelJsonSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'vercel.json'),
+    'utf8',
+  )
+  const vercelConfig = JSON.parse(vercelJsonSrc) as {
+    crons?: Array<{ path: string; schedule: string }>
+  }
+  const expireBookingsCron = (vercelConfig.crons ?? []).find(
+    (c) => c.path === '/api/cron/expire-bookings',
+  )
+  assert(
+    'PHASE-H',
+    '[R-1] vercel.json crons[] contains /api/cron/expire-bookings',
+    !!expireBookingsCron,
+  )
+  assert(
+    'PHASE-H',
+    '[R-1] /api/cron/expire-bookings runs every 30 min',
+    expireBookingsCron?.schedule === '*/30 * * * *',
+    `got ${expireBookingsCron?.schedule}`,
+  )
+
+  /* ─── (Phase H R-2) IP_SENTINEL_PARITY ───────────────────────────────── */
+  // The two IP-resolution helpers (lib/api/client-ip.ts route-handler
+  // helper, app/[locale]/(public)/gifts/actions.ts server-action helper)
+  // must share a sentinel. We extracted CLIENT_IP_FALLBACK to the lower-
+  // level helper; both surfaces import it now.
+  const clientIpSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'lib', 'api', 'client-ip.ts'),
+    'utf8',
+  )
+  const giftsActionsSrcR2 = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'app',
+      '[locale]',
+      '(public)',
+      'gifts',
+      'actions.ts',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    "[R-2] lib/api/client-ip.ts exports CLIENT_IP_FALLBACK = 'anon'",
+    clientIpSrc.includes("export const CLIENT_IP_FALLBACK = 'anon'"),
+  )
+  assert(
+    'PHASE-H',
+    '[R-2] getClientIp returns the shared CLIENT_IP_FALLBACK sentinel',
+    clientIpSrc.includes('return CLIENT_IP_FALLBACK'),
+  )
+  assert(
+    'PHASE-H',
+    "[R-2] gifts/actions.ts imports CLIENT_IP_FALLBACK from @/lib/api/client-ip",
+    giftsActionsSrcR2.includes(
+      "import { CLIENT_IP_FALLBACK } from '@/lib/api/client-ip'",
+    ),
+  )
+  assert(
+    'PHASE-H',
+    "[R-2] gifts/actions.ts getRequestIp no longer returns the divergent 'unknown' literal",
+    !giftsActionsSrcR2.includes("return 'unknown'"),
+  )
+  assert(
+    'PHASE-H',
+    '[R-2] gifts/actions.ts getRequestIp returns the shared CLIENT_IP_FALLBACK',
+    giftsActionsSrcR2.includes('return CLIENT_IP_FALLBACK'),
+  )
+
+  /* ─── (Phase H R-3) STRIPE_PAYMENT_FAILED_PAID_LOG ───────────────────── */
+  // Source-file evidence: the `payment_intent.payment_failed` branch
+  // must explicitly handle the PAID case and emit a `console.warn` for
+  // operator visibility, while leaving FAILED/REFUNDED as silent no-ops
+  // (expected duplicate-delivery cases).
+  const webhookSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'app', 'api', 'stripe', 'webhook', 'route.ts'),
+    'utf8',
+  )
+  // The PAID branch must be its own conditional with the warn before
+  // the break. The literal warning prefix is what operators grep for.
+  const paidWarnIdx = webhookSrc.indexOf(
+    "payment_intent.payment_failed received for already-PAID order",
+  )
+  assert(
+    'PHASE-H',
+    '[R-3] webhook warns when payment_failed lands on PAID order',
+    paidWarnIdx > 0,
+  )
+  // The FAILED/REFUNDED branch must still be a silent break (no warn
+  // for expected duplicate-delivery). Grep the lines around the PAID
+  // block for a non-PAID-branch warn that we'd want to flag as drift.
+  const failedRefundedBreak = webhookSrc.match(
+    /existing\.status === 'FAILED' \|\|\s+existing\.status === 'REFUNDED'\s*\)\s+break/,
+  )
+  assert(
+    'PHASE-H',
+    '[R-3] FAILED/REFUNDED branches still break silently (expected duplicate-delivery no-op)',
+    !!failedRefundedBreak,
+  )
+
+  /* ─── (Phase H R-4) GIFTS_STATUS_CLAIMURL ────────────────────────────── */
+  const giftsStatusSrc = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'app',
+      'api',
+      'gifts',
+      'status',
+      'route.ts',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[R-4] /api/gifts/status route emits claimUrl (server-built) not raw token',
+    giftsStatusSrc.includes('claimUrl,') &&
+      giftsStatusSrc.includes('${SITE_URL}/${locale}/gifts/claim?token='),
+  )
+  // The response body should NOT include a top-level `token:` field.
+  // Match the response-builder block specifically so a comment mentioning
+  // 'token' doesn't trip the assertion.
+  const giftStatusReady =
+    giftsStatusSrc.match(
+      /return NextResponse\.json\(\{[\s\S]*?status: 'READY' as const[\s\S]*?\}\)/,
+    )?.[0] ?? ''
+  assert(
+    'PHASE-H',
+    '[R-4] /api/gifts/status READY response does NOT carry a top-level token field',
+    giftStatusReady.length > 0 && !/^\s*token:/m.test(giftStatusReady),
+  )
+  // The success-page client must consume `claimUrl` from the response,
+  // not derive it from a `data.token` value (which no longer exists).
+  const successIslandSrc = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'app',
+      '[locale]',
+      '(public)',
+      'gifts',
+      'success',
+      'GiftSuccessIsland.tsx',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[R-4] GiftSuccessIsland consumes data.claimUrl from the route response',
+    successIslandSrc.includes('data?.claimUrl') ||
+      successIslandSrc.includes('data.claimUrl'),
+  )
+  assert(
+    'PHASE-H',
+    '[R-4] GiftSuccessIsland no longer reads data.token from the route response',
+    !/data\.token/.test(successIslandSrc),
+  )
+
+  /* ─── (Phase H R-5) STALE_HOLDS_SWEEP ────────────────────────────────── */
+  assert(
+    'PHASE-H',
+    '[R-5] queries module exports expireStaleBookingHolds',
+    typeof (q as Record<string, unknown>).expireStaleBookingHolds ===
+      'function',
+  )
+  // Dummy-DB invocation: HAS_DB=false short-circuit returns zero/zero.
+  const holdsSweepResult = await (
+    q as unknown as {
+      expireStaleBookingHolds: () => Promise<{
+        scanned: number
+        expired: number
+      }>
+    }
+  ).expireStaleBookingHolds()
+  assert(
+    'PHASE-H',
+    '[R-5] expireStaleBookingHolds no-ops cleanly on HAS_DB=false',
+    holdsSweepResult.scanned === 0 && holdsSweepResult.expired === 0,
+    JSON.stringify(holdsSweepResult),
+  )
+  // Body inspection: the DELETE must filter on `expiresAt < NOW()` so it
+  // never touches still-active holds. Regression guard against an edit
+  // that accidentally drops live capacity.
+  const queriesSrcR5 = await fs.readFile(
+    path.resolve(process.cwd(), 'lib', 'db', 'queries.ts'),
+    'utf8',
+  )
+  const sweepHoldsBody =
+    queriesSrcR5.match(
+      /export async function expireStaleBookingHolds[\s\S]*?\n\}\n/,
+    )?.[0] ?? ''
+  assert(
+    'PHASE-H',
+    '[R-5] expireStaleBookingHolds DELETE filters on expires_at < now() (never touches active holds)',
+    sweepHoldsBody.includes('lt(bookingsPendingHolds.expiresAt, sql`now()`)'),
+  )
+
+  // Cron endpoint runs BOTH sweeps in parallel.
+  const cronEndpointSrcR5 = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'app',
+      'api',
+      'cron',
+      'expire-bookings',
+      'route.ts',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[R-5] cron endpoint runs expirePendingBookingOrders + expireStaleBookingHolds in Promise.all',
+    cronEndpointSrcR5.includes('Promise.all') &&
+      cronEndpointSrcR5.includes('expirePendingBookingOrders(') &&
+      cronEndpointSrcR5.includes('expireStaleBookingHolds()'),
+  )
+  // Backwards-compat shape: top-level `scanned`/`expired` still present
+  // so external monitoring (if any) doesn't break.
+  assert(
+    'PHASE-H',
+    '[R-5] cron response preserves legacy scanned/expired fields for backwards-compat',
+    cronEndpointSrcR5.includes('scanned: orderResult.scanned') &&
+      cronEndpointSrcR5.includes('expired: orderResult.expired'),
+  )
+
+  /* ─── (Phase H Item 5) RESEND_VERIFICATION_ACTION ────────────────────── */
+  const resendActionSrc = await fs
+    .readFile(
+      path.resolve(
+        process.cwd(),
+        'app',
+        '[locale]',
+        '(auth)',
+        'actions.ts',
+      ),
+      'utf8',
+    )
+    .catch(() => '')
+  assert(
+    'PHASE-H',
+    '[Item 5] auth actions file exists (resendVerificationAction)',
+    resendActionSrc.length > 0 &&
+      resendActionSrc.includes('export async function resendVerificationAction'),
+  )
+  // Both rate-limit calls must precede the auth.api dispatch — IP first,
+  // then email. Order matters: IP-cap is the broadest defense; checking
+  // it first means an attacker rotating emails behind one IP still
+  // exhausts the limit on the cheaper check.
+  const ipLimitIdx = resendActionSrc.indexOf('verify-resend-ip:')
+  const emailLimitIdx = resendActionSrc.indexOf('verify-resend-email:')
+  const dispatchIdx = resendActionSrc.indexOf('sendVerificationEmail({')
+  assert(
+    'PHASE-H',
+    '[Item 5] action applies IP rate limit before email rate limit before Better Auth dispatch',
+    ipLimitIdx > 0 &&
+      emailLimitIdx > ipLimitIdx &&
+      dispatchIdx > emailLimitIdx,
+    `ip=${ipLimitIdx} email=${emailLimitIdx} dispatch=${dispatchIdx}`,
+  )
+  // Spec values: 5/15m per IP, 3/60m per email.
+  assert(
+    'PHASE-H',
+    '[Item 5] IP rate limit is 5 per 15 minutes',
+    /verify-resend-ip:[\s\S]*?limit:\s*5[\s\S]*?window:\s*'15 m'/.test(
+      resendActionSrc,
+    ),
+  )
+  assert(
+    'PHASE-H',
+    '[Item 5] email rate limit is 3 per 60 minutes',
+    /verify-resend-email:[\s\S]*?limit:\s*3[\s\S]*?window:\s*'60 m'/.test(
+      resendActionSrc,
+    ),
+  )
+
+  /* ─── (Phase H Item 4) RESEND_UI_BANNER ──────────────────────────────── */
+  const accountViewSrcItem4 = await fs.readFile(
+    path.resolve(
+      process.cwd(),
+      'components',
+      'dashboard',
+      'AccountView.tsx',
+    ),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[Item 4] AccountView renders verification banner gated on !user.emailVerified',
+    accountViewSrcItem4.includes('!user.emailVerified') &&
+      accountViewSrcItem4.includes("t('verification_pending_title')"),
+  )
+  assert(
+    'PHASE-H',
+    '[Item 4] AccountView banner wires resend through the rate-limited server action',
+    accountViewSrcItem4.includes('resendVerificationAction({ email })'),
+  )
+  assert(
+    'PHASE-H',
+    '[Item 4] AccountView banner exposes role="status" + aria-live="polite" (screen-reader announce)',
+    accountViewSrcItem4.includes('role="status"') &&
+      accountViewSrcItem4.includes('aria-live="polite"'),
+  )
+
+  const loginFormSrc = await fs.readFile(
+    path.resolve(process.cwd(), 'components', 'auth', 'LoginForm.tsx'),
+    'utf8',
+  )
+  assert(
+    'PHASE-H',
+    '[Item 4] LoginForm gates resend panel on the email-not-verified error (no resend for wrong password)',
+    loginFormSrc.includes('isEmailNotVerifiedError(error)') &&
+      loginFormSrc.includes('setUnverifiedEmail(email)'),
+  )
+  assert(
+    'PHASE-H',
+    '[Item 4] LoginForm resend handler calls the rate-limited server action',
+    loginFormSrc.includes('resendVerificationAction({ email: unverifiedEmail })'),
+  )
+
+  // i18n parity for the new keys.
+  const newKeysItems4_5 = [
+    'dashboard.account.verification_pending_title',
+    'dashboard.account.verification_pending_body',
+    'dashboard.account.verification_resend_cta',
+    'dashboard.account.verification_resending',
+    'dashboard.account.verification_resent',
+    'dashboard.account.verification_resend_failed',
+    'dashboard.account.verification_rate_limited',
+    'auth.errors.email_not_verified',
+    'auth.errors.email_not_verified_title',
+    'auth.errors.email_not_verified_body',
+    'auth.errors.verification_resend_cta',
+    'auth.errors.verification_resending',
+    'auth.errors.verification_resent',
+    'auth.errors.verification_resend_failed',
+    'auth.errors.verification_rate_limited',
+  ]
+  for (const key of newKeysItems4_5) {
+    assert(
+      'PHASE-H',
+      `[i18n] EN has "${key}"`,
+      typeof get(enJson, key) === 'string' && (get(enJson, key) as string).length > 0,
+    )
+    assert(
+      'PHASE-H',
+      `[i18n] AR has "${key}"`,
+      typeof get(arJson, key) === 'string' && (get(arJson, key) as string).length > 0,
+    )
+  }
+
   /* ─── Summary ───────────────────────────────────────────────────────── */
   const totalFail = results.filter((r) => !r.ok).length
   const totalOk = results.filter((r) => r.ok).length

@@ -13,6 +13,12 @@ export type ServerSessionUser = {
   name: string
   role: 'USER' | 'ADMIN' | 'CLIENT'
   image?: string | null
+  // Phase H — Better Auth's email-verification flag. Downstream surfaces
+  // (gift claim, future email-change flows) gate on this so an attacker
+  // who registered with a stranger's email cannot redeem entitlements
+  // before clicking the verification link. Mock sessions are treated as
+  // verified — the dev impersonation users predate the rule.
+  emailVerified: boolean
 }
 
 export type ServerSession = { user: ServerSessionUser } | null
@@ -24,6 +30,7 @@ function fromMock(u: MockUser): ServerSessionUser {
     name: u.name,
     role: u.role,
     image: u.image ?? null,
+    emailVerified: true,
   }
 }
 
@@ -50,6 +57,11 @@ export async function getServerSession(): Promise<ServerSession> {
     const role =
       ((session.user as { role?: string }).role as 'USER' | 'ADMIN' | 'CLIENT') ??
       'USER'
+    // Better Auth exposes `emailVerified` on the session user. Treat
+    // anything-not-strictly-true as unverified — defensive against shape
+    // drift across Better Auth versions.
+    const emailVerified =
+      (session.user as { emailVerified?: boolean }).emailVerified === true
     return {
       user: {
         id: session.user.id,
@@ -57,6 +69,7 @@ export async function getServerSession(): Promise<ServerSession> {
         name: session.user.name ?? session.user.email,
         role,
         image: session.user.image ?? null,
+        emailVerified,
       },
     }
   } catch (err) {

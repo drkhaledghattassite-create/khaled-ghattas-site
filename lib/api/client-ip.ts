@@ -15,15 +15,20 @@
  *      appended, not what the client wrote.
  *   3. `x-real-ip` — last-resort fallback for self-hosted reverse proxies.
  *
- * Returns 'anon' when nothing resolves. Downstream rate-limit keys hash
- * collisions on 'anon' into a single bucket — strictest possible behavior
- * when the spoofing-defeated path returned nothing.
+ * Returns `CLIENT_IP_FALLBACK` when nothing resolves. Downstream rate-
+ * limit keys hash collisions on the fallback into a single bucket —
+ * strictest possible behavior when the spoofing-defeated path returned
+ * nothing.
  *
  * IMPORTANT: do NOT call this from server actions — those have their own
  * IP-resolution helper (`getRequestIp` in `gifts/actions.ts`) that reads
  * from `next/headers`. This helper is for route handlers that receive a
- * `Request` argument.
+ * `Request` argument. Both helpers MUST use the same `CLIENT_IP_FALLBACK`
+ * sentinel so a future caller that switches between the two helpers
+ * doesn't silently re-key its rate-limit bucket (audit Phase H R-2).
  */
+export const CLIENT_IP_FALLBACK = 'anon'
+
 export function getClientIp(req: Request): string {
   const vercelIp = req.headers.get('x-vercel-forwarded-for')?.trim()
   if (vercelIp) return vercelIp
@@ -41,5 +46,5 @@ export function getClientIp(req: Request): string {
   const real = req.headers.get('x-real-ip')?.trim()
   if (real) return real
 
-  return 'anon'
+  return CLIENT_IP_FALLBACK
 }

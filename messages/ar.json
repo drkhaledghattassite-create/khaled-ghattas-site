@@ -266,6 +266,7 @@
     "checkout": {
       "coming_soon": "الدفع الإلكتروني سيُفعَّل قريبًا. لإتمام الشراء الآن، تواصل معنا عبر صفحة التواصل.",
       "error": "تعذّر بدء الدفع. حاول مرة أخرى.",
+      "unavailable": "هذا الكتاب غير متاح للشراء.",
       "owned_label": "تملك هذا",
       "owned_aria_label": "تملك هذا — اذهب إلى مكتبتك",
       "go_to_library": "إلى مكتبتي"
@@ -2400,7 +2401,15 @@
       "signup_failed": "فشل إنشاء الحساب.",
       "reset_failed": "تعذّر إعادة تعيين كلمة المرور.",
       "send_failed": "تعذّر إرسال رابط إعادة التعيين.",
-      "google_failed": "فشل تسجيل الدخول عبر Google."
+      "google_failed": "فشل تسجيل الدخول عبر Google.",
+      "email_not_verified": "أكّد بريدك الإلكتروني قبل تسجيل الدخول.",
+      "email_not_verified_title": "أكّد بريدك لمتابعة تسجيل الدخول",
+      "email_not_verified_body": "أرسلنا رابط التأكيد إلى {email}. افتح الرابط ثم حاول مجدداً. لم تصلك الرسالة؟",
+      "verification_resend_cta": "إعادة إرسال رسالة التأكيد",
+      "verification_resending": "جارٍ الإرسال…",
+      "verification_resent": "أُرسلت رسالة التأكيد — تحقّق من بريدك.",
+      "verification_resend_failed": "تعذّر الإرسال. حاول مرة أخرى.",
+      "verification_rate_limited": "محاولات كثيرة. انتظر بضع دقائق وحاول مجدداً."
     }
   },
   "tests": {
@@ -2539,6 +2548,14 @@
       "info_heading": "بياناتي",
       "name": "الاسم",
       "email": "البريد الإلكتروني",
+      "email_readonly_note": "لتغيير بريدك الإلكتروني، تواصل مع الدعم.",
+      "verification_pending_title": "لم يتم تأكيد بريدك بعد",
+      "verification_pending_body": "أرسلنا رابط التأكيد إلى {email}. أكّد بريدك للوصول إلى مشترياتك واستلام هداياك.",
+      "verification_resend_cta": "إعادة إرسال رسالة التأكيد",
+      "verification_resending": "جارٍ الإرسال…",
+      "verification_resent": "أُرسلت رسالة التأكيد — تحقّق من بريدك.",
+      "verification_resend_failed": "تعذّر الإرسال. حاول مرة أخرى.",
+      "verification_rate_limited": "محاولات كثيرة. انتظر بضع دقائق وحاول مجدداً.",
       "bio": "نبذة قصيرة",
       "role": "الدور",
       "edit": "تعديل البيانات",
@@ -3191,6 +3208,11 @@
       "mismatch_heading": "هذه الهدية ليست لهذا الحساب",
       "mismatch_body": "سجّل خروجك ثمّ أعد الدخول بالبريد الصحيح للاستلام.",
       "mismatch_signout_cta": "تسجيل الخروج",
+      "unverified_heading": "أكّد بريدك الإلكتروني أولاً",
+      "unverified_body": "يلزم تأكيد <email></email> قبل استلام الهدية. تحقق من بريدك الوارد بحثاً عن رسالة التأكيد التي أُرسلت عند التسجيل.",
+      "unverified_resend_cta": "إعادة إرسال رسالة التأكيد",
+      "unverified_recheck_cta": "أكّدتُ بريدي — تحقّق من جديد",
+      "unverified_sent_toast": "أُرسلت رسالة التأكيد — راجع بريدك الوارد.",
       "already_claimed_heading": "أنت فتحت هذه الهدية بالفعل",
       "already_claimed_body": "إنها جاهزة في مكتبتك.",
       "temporary_error_heading": "حدث خطأ ما",
@@ -3203,6 +3225,7 @@
         "invalid_or_expired": "رابط الهدية غير صالح أو منتهي الصلاحية.",
         "login_required": "سجّل الدخول لاستلام الهدية.",
         "email_mismatch": "هذه الهدية ليست لهذا الحساب.",
+        "email_not_verified": "أكّد بريدك الإلكتروني قبل استلام الهدية.",
         "rate_limited": "محاولات كثيرة. انتظر قليلاً وأعد المحاولة.",
         "item_unavailable": "العنصر المرتبط بهذه الهدية لم يعد متاحاً.",
         "db_failed": "حدث خطأ. أعد المحاولة."

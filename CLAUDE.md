@@ -563,10 +563,47 @@ unique indexes on `orders.stripe_session_id`, `booking_orders.stripe_session_id`
 ACKs 200 on commerce-handler failures too, rather than 500ing into a
 Stripe retry storm — failed orders are reconciled out-of-band via admin.
 
-**Cron auth uses `timingSafeEqual`.** Both `app/api/cron/expire-gifts`
-and `app/api/cron/process-email-queue` length-check then `timingSafeEqual`
+**Cron auth uses `timingSafeEqual`.** All three crons
+(`app/api/cron/expire-gifts`, `app/api/cron/process-email-queue`,
+`app/api/cron/expire-bookings`) length-check then `timingSafeEqual`
 the bearer against `process.env.CRON_SECRET`. Plain `===` leaks
 character-position timing.
+
+**Cron schedules** (defined in `vercel.json`):
+
+- `expire-gifts` — daily at `03:00` UTC. Sweeps `gifts` rows that hit
+  their 30-day TTL while still PENDING, releases booking capacity for
+  BOOKING gifts whose cohort is still in the future, and flips the
+  linked `booking_orders` row to FAILED.
+- `process-email-queue` — every 5 min. Drains `email_queue` via
+  `SELECT … FOR UPDATE SKIP LOCKED`; retries with backoff
+  (1m / 5m / 15m / 1h), marks EXHAUSTED at 5 attempts. Also rescues
+  rows stuck in `SENDING` for >10 min (Vercel function crashed
+  mid-batch).
+- `expire-bookings` — every 30 min (Phase H). Runs TWO sweeps in
+  parallel:
+  - **R-1**: flips PENDING `booking_orders` older than 60 min to
+    FAILED. The Stripe webhook's `checkout.session.expired` handler
+    is the primary path; this cron is the backstop for delivery
+    failures.
+  - **R-5**: deletes rows in `bookings_pending_holds` whose
+    `expires_at < NOW()`. The per-booking sweep at the top of
+    `createBookingHold` only fires when someone attempts that
+    specific booking — abandoned holds on other bookings would
+    otherwise accumulate. Capacity math already excludes expired
+    holds (via the `gt(expiresAt, now())` predicate in the active-
+    holds count), so the delete is strictly garbage collection.
+
+  Both sweeps are idempotent (status-gated UPDATE and time-gated
+  DELETE). Response shape preserves the top-level `scanned`/`expired`
+  fields for backwards-compat with any external monitoring, with
+  the new hold counts under a `holds` key alongside `orders`. Test
+  invocation:
+
+  ```
+  curl -H "Authorization: Bearer $CRON_SECRET" \
+       https://drkhaledghattass.com/api/cron/expire-bookings
+  ```
 
 ## Translations
 
@@ -941,7 +978,7 @@ Optional / feature-gated:
 | `R2_PUBLIC_URL`                                                                  | Phase F3 — Cloudflare-issued public-access URL for the public R2 bucket (e.g. `https://pub-abc123.r2.dev`, no trailing slash). Used by `lib/storage/public-url.ts` to mint unsigned cover URLs. When unset, `resolvePublicUrl` falls back to signing via the private adapter. Production MUST set this for cosmetic image delivery without per-render signing. The host is also added to `next.config.ts` `img-src` CSP and `remotePatterns` automatically; malformed values are skipped at build time. |
 | `R2_PUBLIC_URL`                                                                  | Optional — reserved for a future CDN/public-read pivot. Currently unread.                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `GOOGLE_SITE_VERIFICATION`                                                       | Search Console (consumed in `app/[locale]/layout.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `CRON_SECRET`                                                                    | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`).                                                  |
+| `CRON_SECRET`                                                                    | Phase D — Bearer token shared by all three crons: `app/api/cron/expire-gifts/route.ts`, `app/api/cron/process-email-queue/route.ts`, `app/api/cron/expire-bookings/route.ts` (Phase H R-1). Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the crons themselves run (without it, every request 401s). Schedules defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`).                                                  |
 | `ALLOW_MOCK_STORAGE_IN_PRODUCTION`                                               | Set to `'true'` to permit the mock storage adapter on a true production Vercel deploy (`VERCEL_ENV=production`). Without it, `lib/storage/index.ts` throws at module load — preview deploys are unaffected (`VERCEL_ENV='preview'` doesn't trip the guard). Currently set on production until a real storage adapter (Blob/R2/Stream) lands. Remove this env var the moment the real adapter is wired.                                                                                                  |
 
 Runtime flags (string-equality `'true'` / `'false'`):

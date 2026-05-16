@@ -11,9 +11,17 @@ import { apiError, errInternal, errUnauthorized, parseJsonBody } from '@/lib/api
 import { assertSameOrigin } from '@/lib/api/origin'
 import { tryRateLimit } from '@/lib/redis/ratelimit'
 
+// SECURITY [H-B3]: `email` is intentionally NOT in this schema. Email
+// changes must flow through Better Auth's account-management surface
+// (which sends a verification challenge to the new address). Allowing
+// unauthenticated email rewrite here would let a logged-in user squat
+// any unregistered address — and once Phase H email verification is
+// configured (lib/auth/index.ts), bypass that verification entirely.
+// If an email is supplied in the body, zod's default strip behavior
+// drops it silently — that's the desired UX (the client form simply
+// never sends one).
 const profileSchema = z.object({
   name: z.string().min(1).max(120).optional(),
-  email: z.string().email().max(254).optional(),
   bio: z.string().max(2000).optional(),
 })
 

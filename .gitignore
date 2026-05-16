@@ -56,3 +56,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Lighthouse audit output (regenerated locally)
+/lighthouse-reports/

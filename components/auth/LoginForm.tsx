@@ -1,14 +1,15 @@
 'use client'
 
-import { forwardRef, useRef, useState } from 'react'
+import { forwardRef, useRef, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldAlert } from 'lucide-react'
 import { Link, useRouter } from '@/lib/i18n/navigation'
 import { authClient } from '@/lib/auth/client'
 import { safeRedirect, withRedirect } from '@/lib/auth/redirect'
+import { resendVerificationAction } from '@/app/[locale]/(auth)/actions'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,6 +36,13 @@ export function LoginForm() {
   const [remember, setRemember] = useState(true)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
+  // Phase H Item 4 — gate the resend-verification button on a real
+  // failure signal from Better Auth. We only flip this true when
+  // signin returns an "email not verified" -shaped error; otherwise
+  // the panel stays hidden so users who mistyped their password don't
+  // get the resend affordance.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resending, startResend] = useTransition()
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -63,6 +71,23 @@ export function LoginForm() {
     }
   }
 
+  // Detect the email-not-verified case from Better Auth's error shape.
+  // BA exposes either a `code` (newer versions: 'EMAIL_NOT_VERIFIED')
+  // or a message string we string-match as a fallback. Defensive against
+  // shape drift across BA versions.
+  function isEmailNotVerifiedError(err: {
+    code?: string
+    message?: string
+    status?: number
+  } | null | undefined): boolean {
+    if (!err) return false
+    if (err.code && /verif/i.test(err.code)) return true
+    if (err.message && /(not\s+verified|verify\s+(?:your\s+)?email)/i.test(err.message)) {
+      return true
+    }
+    return false
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const fieldErrors = validate()
@@ -72,6 +97,7 @@ export function LoginForm() {
       return
     }
     setErrors({})
+    setUnverifiedEmail(null)
     setLoading(true)
     try {
       const { error } = await authClient.signIn.email({
@@ -81,6 +107,14 @@ export function LoginForm() {
         callbackURL: redirectTarget,
       })
       if (error) {
+        if (isEmailNotVerifiedError(error)) {
+          // Capture the email the user entered (not the BA-supplied one,
+          // which may be empty) so the resend button can show the
+          // address and the action has something to send to.
+          setUnverifiedEmail(email)
+          toast.error(tErr('email_not_verified'))
+          return
+        }
         toast.error(error.message ?? tErr('submit_failed'))
         return
       }
@@ -94,6 +128,22 @@ export function LoginForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleResendVerification() {
+    if (!unverifiedEmail) return
+    startResend(async () => {
+      const result = await resendVerificationAction({ email: unverifiedEmail })
+      if (result.ok) {
+        toast.success(tErr('verification_resent'))
+        return
+      }
+      if (result.error === 'rate_limited') {
+        toast.error(tErr('verification_rate_limited'))
+        return
+      }
+      toast.error(tErr('verification_resend_failed'))
+    })
   }
 
   async function handleGoogle() {
@@ -199,6 +249,56 @@ export function LoginForm() {
           {loading ? t('submitting') : t('submit')}
         </button>
       </form>
+
+      {/* Phase H Item 4 — only rendered when signin returned the
+          "email not verified" error. Hidden otherwise so a wrong-password
+          attempt doesn't surface a resend affordance (which would let an
+          attacker confirm the email exists). */}
+      {unverifiedEmail && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-4 flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent-soft)] bg-[var(--color-accent-soft)] px-4 py-3.5"
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--color-accent)]"
+              aria-hidden
+            />
+            <div className="flex flex-col gap-1">
+              <p
+                className={`m-0 text-[14px] font-semibold leading-[1.4] text-[var(--color-accent-hover)] ${
+                  isRtl ? 'font-arabic-body !text-[15px]' : 'font-display'
+                }`}
+              >
+                {tErr('email_not_verified_title')}
+              </p>
+              <p
+                className={`m-0 text-[13px] leading-[1.55] text-[var(--color-fg2)] ${
+                  isRtl ? 'font-arabic-body !text-[14px]' : 'font-display'
+                }`}
+              >
+                {tErr('email_not_verified_body', { email: unverifiedEmail })}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resending}
+            className={`btn-pill btn-pill-secondary inline-flex items-center justify-center gap-2 !text-[13px] !py-2 !px-4 self-start disabled:opacity-60 disabled:cursor-not-allowed ${
+              isRtl ? 'font-arabic-body' : 'font-display'
+            }`}
+          >
+            {resending && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            )}
+            {resending
+              ? tErr('verification_resending')
+              : tErr('verification_resend_cta')}
+          </button>
+        </div>
+      )}
 
       {/* Divider */}
       <div className="my-5 flex items-center gap-4">
