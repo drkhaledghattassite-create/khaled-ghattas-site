@@ -5,6 +5,7 @@ of truth for everything else; when this file and code disagree, trust the
 code and update this file.
 
 For per-surface deep dives, see `docs/architecture/`:
+
 - [pdf-reader.md](docs/architecture/pdf-reader.md) — `/dashboard/library/read/[bookId]`
 - [session-viewer.md](docs/architecture/session-viewer.md) — `/dashboard/library/session/[sessionId]`
 - [booking-domain.md](docs/architecture/booking-domain.md) — `/booking`, `/dashboard/bookings`, `/admin/booking/*`
@@ -24,6 +25,8 @@ CLAUDE.md is for conventions — patterns an AI needs every conversation.
 Surface-specific architecture (how the PDF reader saves progress, how
 booking holds work) goes in `docs/architecture/<surface>.md`.
 
+All your code would be reviewed by Codex.
+
 ## Project overview
 
 `drkhaledghattass.com` is the bilingual editorial site for Dr. Khaled
@@ -41,6 +44,7 @@ Primary locale: Arabic (RTL) at `/`. Secondary locale: English (LTR) at
 `/en/`.
 
 What's stubbed:
+
 - Stripe checkout creates real sessions when `STRIPE_SECRET_KEY` is set;
   otherwise returns 503 "coming soon". Webhook validates signatures.
 - Image upload pipeline for admin BOOK/article forms (URL-paste only; the R2 admin upload UI is wired for session items in Phase F1 — books/articles deferred to F2).
@@ -51,12 +55,14 @@ What's stubbed:
 ## Stack
 
 ### Core
+
 - Next.js **15** (App Router; Server Components default; async `params`/`searchParams`).
 - TypeScript strict — `any` is forbidden.
 - React 19.
 - Tailwind v4 with `@theme inline { ... }` tokens in `app/globals.css`.
 
 ### Data
+
 - Drizzle ORM (`drizzle-orm@^0.45`) + Neon Postgres (serverless).
 - Schema: `lib/db/schema.ts` — **37 tables**, **16 enums**.
   - Tables: `users`, `sessions`, `accounts`, `verifications`, `articles`,
@@ -106,6 +112,7 @@ What's stubbed:
   **There is no `HAS_DB` env flag** — don't introduce one.
 
 ### Auth
+
 - Better Auth (`better-auth@^1.6`).
 - Catch-all route: `app/api/auth/[...all]/route.ts`.
 - Session timing: `expiresIn` 30 days; `updateAge` 24 hours (sliding refresh).
@@ -126,6 +133,7 @@ What's stubbed:
   production; dev also includes `localhost:3000`/`:3001`.
 
 Three roles:
+
 - `USER` — buyer / reader, has `/dashboard`.
 - `ADMIN` — developer (Kamal). System + business surfaces.
 - `CLIENT` — site owner (Dr. Khaled). Business surfaces only.
@@ -158,6 +166,7 @@ reject the CLIENT explicitly. Belt + suspenders — UI is hidden, route
 on new developer-only surfaces.
 
 ### i18n
+
 - `next-intl@^4.9`.
 - Routing in `lib/i18n/routing.ts`: `locales: ['ar', 'en']`,
   `defaultLocale: 'ar'`, `localePrefix: 'as-needed'`,
@@ -168,6 +177,7 @@ on new developer-only surfaces.
   they drift on every change.
 
 ### Motion
+
 - `motion/react@^12.38`. **Never** `framer-motion` — different package.
 - Reusable variants: `lib/motion/variants.ts`.
   - Easings: `EASE_EDITORIAL` `(0.16, 1, 0.3, 1)`, `EASE_REVEAL`
@@ -198,6 +208,7 @@ on new developer-only surfaces.
   navigations (e.g. post-login `router.push`) can also trigger it.
 
 ### Other deps
+
 - `lenis@^1.3` — smooth scroll (`components/providers/LenisProvider.tsx`).
 - `@upstash/ratelimit` + `@upstash/redis` — rate limiting (`lib/redis/`).
 - `resend@^6.12` — transactional email (`lib/email/`).
@@ -220,6 +231,7 @@ Deploy target: **Vercel**.
 The PDF reader uses pdfjs-dist's LEGACY build, NOT the modern one.
 
 Why:
+
 - pdfjs-dist@5's modern build crashes at module-eval with
   "Object.defineProperty called on non-object" when bundled by
   Webpack/Next.js.
@@ -249,6 +261,7 @@ alias or the dev server (or build, if `build:tp` is used) will break.
 ### Palette (defined in `app/globals.css`)
 
 **Light** (default; `:root` and `@theme`):
+
 - `--color-bg` `#FAFAFA` (pure neutral, zero warmth)
 - `--color-bg-elevated` `#FFFFFF`
 - `--color-bg-deep` `#F4F4F4`
@@ -260,6 +273,7 @@ alias or the dev server (or build, if `build:tp` is used) will break.
 - `--color-destructive` `#DC2626`
 
 **Dark** (`.dark` scope):
+
 - `--color-bg` `#0A0A0A` · `--color-bg-elevated` `#171717` · `--color-bg-deep` `#1F1F1F`
 - `--color-fg1` `#FAFAFA` · `--color-fg2` `#A3A3A3` · `--color-fg3` `#737373`
 - `--color-border` `#262626` · `--color-border-strong` `#404040`
@@ -272,6 +286,7 @@ compatibility. Don't introduce new code that uses them.
 ### Typography
 
 Three Google fonts loaded via `next/font/google` in `app/[locale]/layout.tsx`:
+
 - `Readex Pro` (300–700, bilingual) → `--font-display`, `--font-arabic-display`
 - `IBM Plex Sans Arabic` (300–700) → `--font-arabic`
 - `Inter` (400–700) → `--font-display` (Latin)
@@ -280,15 +295,18 @@ Type scale, line heights, and tracking tokens live in the `@theme` block
 in `app/globals.css`. Don't redefine them in components.
 
 ### Spacing
+
 - Scale: `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128`.
 - `--section-pad-y` `clamp(80px, 10vw, 128px)`
 - `--section-pad-x` `clamp(20px, 4vw, 48px)`
 - `--container-max` `1280px` (use the `container` utility from globals).
 
 ### Radii
+
 `--radius-sm` 4px · `--radius-md`/`--radius` 8px · `--radius-lg`/`--radius-xl` 12px · `--radius-pill` 9999px.
 
 ### Shared UI patterns (in `globals.css`)
+
 - `.section-eyebrow` / `.eyebrow-accent` / `.eyebrow-invitation`
 - `.section-title` — canonical h2 style
 - `.btn-pill` + `.btn-pill-primary|secondary|accent`
@@ -328,6 +346,7 @@ Routes live under `app/[locale]/` for the locale-aware surfaces and
 route groups.
 
 ### Public (`app/[locale]/(public)/`)
+
 `/` · `/about` · `/articles` · `/articles/[slug]` · `/books` ·
 `/books/[slug]` · `/interviews` · `/interviews/[slug]` · `/events` ·
 `/corporate` · `/booking` (308 → `/booking/tours`) · `/booking/tours` ·
@@ -336,6 +355,7 @@ route groups.
 `/tests/[slug]/result/[attemptId]` · `/gifts/send` · `/gifts/claim`
 
 Notes:
+
 - No `/shop` route. The product surface is `/books` (with `productType`
   BOOK or SESSION). External-store fulfillment uses the `externalUrl`
   field on a book.
@@ -357,6 +377,7 @@ Notes:
   / READY). Token is opaque (~43 chars, base64url, gen via `randomBytes(32)`).
 
 ### Focus (`app/[locale]/(focus)/`)
+
 `/tests/[slug]/take`
 
 A separate route group with a minimal layout (no SiteHeader/Footer) so
@@ -364,21 +385,25 @@ the take page renders its own focus-mode chrome. Auth-gated; redirects
 to `/login` with the take URL preserved as `?redirect=`.
 
 ### Auth (`app/[locale]/(auth)/`)
+
 `/login` · `/register` · `/forgot-password` · `/reset-password`
 
 ### Dashboard (`app/[locale]/(dashboard)/`)
+
 `/dashboard` · `/dashboard/ask` · `/dashboard/library` ·
 `/dashboard/library/read/[bookId]` · `/dashboard/library/session/[sessionId]` ·
 `/dashboard/bookings` · `/dashboard/tests` · `/dashboard/gifts` ·
 `/dashboard/settings`
 
 Surface-specific architecture:
+
 - `/dashboard/library/read/[bookId]` → `docs/architecture/pdf-reader.md`
 - `/dashboard/library/session/[sessionId]` → `docs/architecture/session-viewer.md`
 - `/dashboard/ask` → `docs/architecture/ask-dr-khaled.md`
 - `/dashboard/bookings` → `docs/architecture/booking-domain.md`
 
 ### Admin (`app/[locale]/(admin)/`)
+
 - `/admin` — overview (Recharts)
 - `/admin/articles[/new][/[id]/edit]`
 - `/admin/books[/new][/[id]/edit][/[id]/content]` — `/[id]/content`
@@ -412,6 +437,7 @@ admin viewing the panel IS the operator. Hiding sections from
 yourself never made sense.
 
 ### Special / framework files
+
 - `app/[locale]/{layout,template,loading,not-found,error}.tsx`
 - `app/{sitemap,robots,manifest}.ts`
 - `app/opengraph-image.tsx` — dynamic OG; static `public/og.png` will
@@ -420,6 +446,7 @@ yourself never made sense.
   generators; see `scripts/gen-icons.mjs`).
 
 ### API (`app/api/`)
+
 - `auth/[...all]` — Better Auth catch-all
 - `contact` — POST, zod-validated, IP rate-limited
 - `corporate/request` — POST, zod-validated, IP rate-limited; persists
@@ -471,22 +498,22 @@ yourself never made sense.
 Every route handler that mutates state follows this shape:
 
 ```ts
-import { requireAdmin } from '@/lib/auth/admin-guard'
-import { parseJsonBody, errInternal } from '@/lib/api/errors'
+import { requireAdmin } from "@/lib/auth/admin-guard";
+import { parseJsonBody, errInternal } from "@/lib/api/errors";
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const guard = await requireAdmin(req)        // origin + role
-  if (!guard.ok) return guard.response
+  const guard = await requireAdmin(req); // origin + role
+  if (!guard.ok) return guard.response;
 
-  const body = await parseJsonBody(req, schema) // zod validation
-  if (!body.ok) return body.response
+  const body = await parseJsonBody(req, schema); // zod validation
+  if (!body.ok) return body.response;
 
   try {
-    const row = await updateThing(id, body.data)
-    return NextResponse.json({ ok: true, row })
+    const row = await updateThing(id, body.data);
+    return NextResponse.json({ ok: true, row });
   } catch (err) {
-    console.error('[api/admin/things PATCH]', err)
-    return errInternal('Could not update.')
+    console.error("[api/admin/things PATCH]", err);
+    return errInternal("Could not update.");
   }
 }
 ```
@@ -563,6 +590,7 @@ server-side; don't push the choice to the client.
 
 Stored as a single JSON blob in `site_settings.value_json` under the
 `site_config` key.
+
 - Types + defaults: `lib/site-settings/types.ts`,
   `lib/site-settings/defaults.ts`.
 - Validator: `lib/site-settings/zod.ts` — `siteSettingsPatchSchema`.
@@ -589,6 +617,7 @@ nav items used to reappear the moment a user signed in (the dashboard
 layout silently fell back to the unfiltered defaults).
 
 **Coming Soon ≠ Hide.** Two independent concerns:
+
 - A page in `coming_soon_pages` renders the `ComingSoon` placeholder
   instead of its content and is excluded from the sitemap. The link
   **stays** in navigation.
@@ -598,6 +627,7 @@ layout silently fell back to the unfiltered defaults).
 ## Workflow rules
 
 ### Git
+
 - **Manual commits only.** Claude must never run `git commit` or
   `git push` unprompted. Stage if asked.
 - Branch strategy: feature branches off `main`; `claude/*` branches for
@@ -622,6 +652,7 @@ you can't verify a UI behavior without running the dev server in front
 of a human, say so explicitly rather than implying success.
 
 ### Code conventions
+
 - Server Components by default. `'use client'` only when the file uses
   hooks, event handlers, refs, or browser APIs.
 - TypeScript strict — no `any`, no `as any`, no `@ts-ignore` without a
@@ -649,10 +680,10 @@ of a human, say so explicitly rather than implying success.
   `components/admin/AdminDashboardHome.tsx`, rendered at `/admin`. All
   data is real — no random-sine-wave fallbacks. Charts use recharts
   (`ComposedChart` with single sienna stroke + dashed prior-period line
-  + minimal corner-only axes). Attention threshold: flat `> 10` per E1b
-  (the design's per-card thresholds were rejected in favour of the
-  existing rule). Greeting time-of-day uses `Asia/Beirut` (not UTC) so
-  the cutoff matches Dr. Khaled's local clock.
+  - minimal corner-only axes). Attention threshold: flat `> 10` per E1b
+    (the design's per-card thresholds were rejected in favour of the
+    existing rule). Greeting time-of-day uses `Asia/Beirut` (not UTC) so
+    the cutoff matches Dr. Khaled's local clock.
 - `components/auth/` — login/signup/forgot/reset forms,
   `AuthRequiredDialog`, `AuthAside`.
 - `components/booking/` — public `/booking/*` surface (Phase A1). Three
@@ -698,107 +729,107 @@ of a human, say so explicitly rather than implying success.
   `diagnoseStorageAdapter()` helper for the smoke harness + a future
   admin "what storage am I on" surface.
   **Two-bucket model (Phase F3)**:
-    - **PRIVATE bucket** (`R2_BUCKET_NAME`) — paid content. Book PDFs,
-      session videos, session audio, session PDFs. Public access OFF;
-      every read is a signed URL minted server-side through
-      `/api/content/access` with ownership-gated auth.
-    - **PUBLIC bucket** (`R2_PUBLIC_BUCKET_NAME` + `R2_PUBLIC_URL`) —
-      cosmetic images. Book/tour/event/article covers, gallery photos,
-      client logos, program/test/interview/booking thumbnails. Public
-      read ON; delivered unsigned via the `R2_PUBLIC_URL` CDN host so
-      `next/image` can cache aggressively without signing on every
-      render.
-  **Why split**: signed URLs cost compute on every render, leak through
-  edge caches (each request mints a new URL), and don't play nicely with
-  `next/image` 's content hashing. Public covers deserve a CDN; paid
-  content deserves a signed gate. One R2 account, two buckets, same
-  credentials.
-  **Context classification (Phase F3)** lives in
-  `lib/validators/storage.ts`:
-    - `PUBLIC_CONTEXTS` (10) — book-cover, tour-cover, event-cover,
-      article-cover, gallery-image, client-logo, program-cover,
-      interview-thumbnail, booking-cover, test-cover.
-    - `PRIVATE_CONTEXTS` (4) — book-digital-file, session-item-video,
-      session-item-audio, session-item-pdf.
-  A pair of compile-time TS assertions (`_exhaustive` + `_disjoint`)
-  ensures every UploadContext is in exactly one of the two arrays —
-  forgetting to classify a new context, or duplicating one across both
-  lists, fails `tsc`. The duplicate guard is the dangerous case: a
-  paid-content context silently routed through the public path would
-  leak content.
-  **Adapter selection (Phase F1)** happens once at module load:
-    1. If all four R2 env vars are set (`R2_ACCOUNT_ID`,
-       `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`)
-       → Cloudflare R2 adapter (`adapters/r2-adapter.ts`).
-    2. Else if `ALLOW_MOCK_STORAGE_IN_PRODUCTION=true` on a production
-       Vercel deploy → mock adapter (escape hatch — currently set on
-       prod until R2 credentials confirm-rolled).
-    3. Else if `NODE_ENV !== 'production'` → mock adapter (dev default).
-    4. Else → throw at module load with a list of missing env vars.
-  The R2 adapter file itself THROWS at import time when any of its env
-  vars are missing — so `index.ts` imports it via a lazy `require`
-  inside the if-branch, keeping dev (no R2 creds) bootable. The Phase F3
-  factory `createR2Adapter({ bucket, accountId, accessKeyId, secretAccessKey })`
-  is shared by both default instances; `r2Adapter` reads
-  `R2_BUCKET_NAME`, `r2PublicAdapter` reads `R2_PUBLIC_BUCKET_NAME`. The
-  public adapter is `undefined` (and `storagePublic === null`) when its
-  bucket env var is unset — callers fall through to the private adapter
-  for backward compat.
-  **Storage interface (Phase F1)** has five methods: the original
-  `getSignedUrl({ storageKey, expiresInSeconds })` read path (unchanged
-  signature), plus `upload`, `getPresignedPutUrl`, `delete`, `exists`,
-  `list` for admin-side primitives. The mock adapter implements
-  `getSignedUrl` and throws `StorageError('NOT_IMPLEMENTED', …)` on the
-  admin primitives — loud failure in dev rather than silent "looks like
-  it worked."
-  **Two-step upload pattern (Phase F1)**: admins POST to
-  `/api/admin/storage/upload` with `{ filename, contentType, sizeBytes,
-  contextType }`; the route validates, mints
-  `${contextType}/${uuid()}/${slug}`, classifies via `bucketForContext`,
-  and presigns a 15-minute PUT URL against the chosen bucket. The
-  browser PUTs the file body directly to R2, bypassing Vercel's 4.5 MB
-  function payload limit. Per-context allowlists + size caps live in
-  `lib/validators/storage.ts` — video/mp4 ≤ 2 GB, audio/mpeg|mp4 ≤ 200
-  MB, application/pdf ≤ 50 MB (sessions) or ≤ 200 MB (books). Bulk
-  upload, transcoding, HLS, and DRM are later concerns.
-  **storageKey convention**: a value in any `*storageKey` column may
-  be either an opaque R2 object key (shape `<context>/<uuid>/<slug>`)
-  or a full `http(s)://` URL. Two read paths exist:
-    - `/api/content/access` (paid content) — auth + ownership gated.
-      External URLs pass through with a synthetic 1h expiry; private-
-      bucket keys are signed via the adapter (1h TTL). When BOTH buckets
-      are configured AND a key resolves to a public bucket via
-      `bucketForKey`, the route returns 400 — public covers must come
-      through `resolvePublicUrl`, not the auth-gated route.
-    - `lib/storage/public-url.ts` (`resolvePublicUrl`) — cosmetic
-      content. External URLs and `/`-prefixed local assets pass through
-      verbatim. R2 keys are classified via `bucketForKey`: public-bucket
-      keys get the unsigned `${R2_PUBLIC_URL}/${key}` form when the env
-      var is set, otherwise fall back to the signed private-adapter
-      path (migration / single-bucket mode). Private-bucket keys
-      always sign via the private adapter. Unknown prefixes throw — the
-      resolver catches and returns null so a malformed row renders a
-      placeholder instead of crashing.
-  Per-user rate limits on the access route are layered: `content-access`
-  10/min + `content-signed` 60/hr.
-  **CORS on the R2 buckets** must be configured manually in the
-  Cloudflare dashboard → R2 → `<bucket>` → Settings → CORS for each
-  bucket separately. The parent agent has the JSON snippet (allow
-  GET+PUT+HEAD from the production + localhost origins; expose `ETag`).
-  The public bucket additionally needs GET from `*` for unsigned reads.
-  **Migration: single-bucket → two-bucket**. While `R2_PUBLIC_URL` and
-  `R2_PUBLIC_BUCKET_NAME` are unset, all uploads/reads route through the
-  private bucket — the system works the same as Phase F2 (signed URLs
-  for everything). When the public-bucket env vars flip on, NEW public-
-  context uploads route to the public bucket, and ALL public-context
-  reads start resolving to `${R2_PUBLIC_URL}/${key}` (unsigned). This
-  means a one-time data copy of every existing public-context prefix
-  (`book-cover/`, `tour-cover/`, `event-cover/`, `article-cover/`,
-  `gallery-image/`, `client-logo/`, `program-cover/`,
-  `interview-thumbnail/`, `booking-cover/`, `test-cover/`) from the
-  private bucket to the public bucket BEFORE flipping the env vars —
-  otherwise existing covers 404 until copied. Use `wrangler r2 object
-  cp` or the Cloudflare dashboard's bulk copy UI for the migration.
+  - **PRIVATE bucket** (`R2_BUCKET_NAME`) — paid content. Book PDFs,
+    session videos, session audio, session PDFs. Public access OFF;
+    every read is a signed URL minted server-side through
+    `/api/content/access` with ownership-gated auth.
+  - **PUBLIC bucket** (`R2_PUBLIC_BUCKET_NAME` + `R2_PUBLIC_URL`) —
+    cosmetic images. Book/tour/event/article covers, gallery photos,
+    client logos, program/test/interview/booking thumbnails. Public
+    read ON; delivered unsigned via the `R2_PUBLIC_URL` CDN host so
+    `next/image` can cache aggressively without signing on every
+    render.
+    **Why split**: signed URLs cost compute on every render, leak through
+    edge caches (each request mints a new URL), and don't play nicely with
+    `next/image` 's content hashing. Public covers deserve a CDN; paid
+    content deserves a signed gate. One R2 account, two buckets, same
+    credentials.
+    **Context classification (Phase F3)** lives in
+    `lib/validators/storage.ts`:
+  - `PUBLIC_CONTEXTS` (10) — book-cover, tour-cover, event-cover,
+    article-cover, gallery-image, client-logo, program-cover,
+    interview-thumbnail, booking-cover, test-cover.
+  - `PRIVATE_CONTEXTS` (4) — book-digital-file, session-item-video,
+    session-item-audio, session-item-pdf.
+    A pair of compile-time TS assertions (`_exhaustive` + `_disjoint`)
+    ensures every UploadContext is in exactly one of the two arrays —
+    forgetting to classify a new context, or duplicating one across both
+    lists, fails `tsc`. The duplicate guard is the dangerous case: a
+    paid-content context silently routed through the public path would
+    leak content.
+    **Adapter selection (Phase F1)** happens once at module load:
+  1. If all four R2 env vars are set (`R2_ACCOUNT_ID`,
+     `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`)
+     → Cloudflare R2 adapter (`adapters/r2-adapter.ts`).
+  2. Else if `ALLOW_MOCK_STORAGE_IN_PRODUCTION=true` on a production
+     Vercel deploy → mock adapter (escape hatch — currently set on
+     prod until R2 credentials confirm-rolled).
+  3. Else if `NODE_ENV !== 'production'` → mock adapter (dev default).
+  4. Else → throw at module load with a list of missing env vars.
+     The R2 adapter file itself THROWS at import time when any of its env
+     vars are missing — so `index.ts` imports it via a lazy `require`
+     inside the if-branch, keeping dev (no R2 creds) bootable. The Phase F3
+     factory `createR2Adapter({ bucket, accountId, accessKeyId, secretAccessKey })`
+     is shared by both default instances; `r2Adapter` reads
+     `R2_BUCKET_NAME`, `r2PublicAdapter` reads `R2_PUBLIC_BUCKET_NAME`. The
+     public adapter is `undefined` (and `storagePublic === null`) when its
+     bucket env var is unset — callers fall through to the private adapter
+     for backward compat.
+     **Storage interface (Phase F1)** has five methods: the original
+     `getSignedUrl({ storageKey, expiresInSeconds })` read path (unchanged
+     signature), plus `upload`, `getPresignedPutUrl`, `delete`, `exists`,
+     `list` for admin-side primitives. The mock adapter implements
+     `getSignedUrl` and throws `StorageError('NOT_IMPLEMENTED', …)` on the
+     admin primitives — loud failure in dev rather than silent "looks like
+     it worked."
+     **Two-step upload pattern (Phase F1)**: admins POST to
+     `/api/admin/storage/upload` with `{ filename, contentType, sizeBytes,
+contextType }`; the route validates, mints
+     `${contextType}/${uuid()}/${slug}`, classifies via `bucketForContext`,
+     and presigns a 15-minute PUT URL against the chosen bucket. The
+     browser PUTs the file body directly to R2, bypassing Vercel's 4.5 MB
+     function payload limit. Per-context allowlists + size caps live in
+     `lib/validators/storage.ts` — video/mp4 ≤ 2 GB, audio/mpeg|mp4 ≤ 200
+     MB, application/pdf ≤ 50 MB (sessions) or ≤ 200 MB (books). Bulk
+     upload, transcoding, HLS, and DRM are later concerns.
+     **storageKey convention**: a value in any `*storageKey` column may
+     be either an opaque R2 object key (shape `<context>/<uuid>/<slug>`)
+     or a full `http(s)://` URL. Two read paths exist:
+  - `/api/content/access` (paid content) — auth + ownership gated.
+    External URLs pass through with a synthetic 1h expiry; private-
+    bucket keys are signed via the adapter (1h TTL). When BOTH buckets
+    are configured AND a key resolves to a public bucket via
+    `bucketForKey`, the route returns 400 — public covers must come
+    through `resolvePublicUrl`, not the auth-gated route.
+  - `lib/storage/public-url.ts` (`resolvePublicUrl`) — cosmetic
+    content. External URLs and `/`-prefixed local assets pass through
+    verbatim. R2 keys are classified via `bucketForKey`: public-bucket
+    keys get the unsigned `${R2_PUBLIC_URL}/${key}` form when the env
+    var is set, otherwise fall back to the signed private-adapter
+    path (migration / single-bucket mode). Private-bucket keys
+    always sign via the private adapter. Unknown prefixes throw — the
+    resolver catches and returns null so a malformed row renders a
+    placeholder instead of crashing.
+    Per-user rate limits on the access route are layered: `content-access`
+    10/min + `content-signed` 60/hr.
+    **CORS on the R2 buckets** must be configured manually in the
+    Cloudflare dashboard → R2 → `<bucket>` → Settings → CORS for each
+    bucket separately. The parent agent has the JSON snippet (allow
+    GET+PUT+HEAD from the production + localhost origins; expose `ETag`).
+    The public bucket additionally needs GET from `*` for unsigned reads.
+    **Migration: single-bucket → two-bucket**. While `R2_PUBLIC_URL` and
+    `R2_PUBLIC_BUCKET_NAME` are unset, all uploads/reads route through the
+    private bucket — the system works the same as Phase F2 (signed URLs
+    for everything). When the public-bucket env vars flip on, NEW public-
+    context uploads route to the public bucket, and ALL public-context
+    reads start resolving to `${R2_PUBLIC_URL}/${key}` (unsigned). This
+    means a one-time data copy of every existing public-context prefix
+    (`book-cover/`, `tour-cover/`, `event-cover/`, `article-cover/`,
+    `gallery-image/`, `client-logo/`, `program-cover/`,
+    `interview-thumbnail/`, `booking-cover/`, `test-cover/`) from the
+    private bucket to the public bucket BEFORE flipping the env vars —
+    otherwise existing covers 404 until copied. Use `wrangler r2 object
+cp` or the Cloudflare dashboard's bulk copy UI for the migration.
 - `lib/api/client-ip.ts` — spoof-resistant IP helper for route handlers.
   See the IP-resolution paragraph in the API conventions section.
 - `lib/video/` — Phase-4 video provider abstraction (mirrors storage).
@@ -847,6 +878,7 @@ of a human, say so explicitly rather than implying success.
   `node --env-file=.env.local scripts/promote-admin.mjs <email> ADMIN|CLIENT`.
 
 Two gates work together:
+
 - `MOCK_AUTH_ENABLED` (computed in `mock.ts`) — gates fake sessions.
 - **`features.auth_enabled`** (DB-backed via `site_settings.value_json`,
   read through `getCachedSiteSettings`) — runtime gate for the
@@ -857,12 +889,12 @@ Two gates work together:
 Behavior matrix (using the runtime `auth_enabled`; `MOCK_AUTH_ENABLED`
 is dev-only):
 
-| `auth_enabled` | `MOCK_AUTH_ENABLED` | Result |
-| --- | --- | --- |
-| false | true  | Public nav hides auth links. Admin/dashboard protected by mock. (Dev with `MOCK_AUTH=true`.) |
-| true  | true  | Public nav shows auth. Mock session active. (Dev demo mode.) |
-| true  | false | Public nav shows auth. Real Better Auth. (Production — mock can't run here.) |
-| false | false | Public nav hides auth. Routes return 401. (Maintenance / default dev with no opt-in.) |
+| `auth_enabled` | `MOCK_AUTH_ENABLED` | Result                                                                                       |
+| -------------- | ------------------- | -------------------------------------------------------------------------------------------- |
+| false          | true                | Public nav hides auth links. Admin/dashboard protected by mock. (Dev with `MOCK_AUTH=true`.) |
+| true           | true                | Public nav shows auth. Mock session active. (Dev demo mode.)                                 |
+| true           | false               | Public nav shows auth. Real Better Auth. (Production — mock can't run here.)                 |
+| false          | false               | Public nav hides auth. Routes return 401. (Maintenance / default dev with no opt-in.)        |
 
 > Mock-mode caveat: in dev with `MOCK_AUTH_ENABLED=true`, server-side
 > `getServerSession()` returns the mock user, but client-side
@@ -883,41 +915,41 @@ Real contact: `Team@drkhaledghattass.com` · `+961 3 579 666` · مكتبة
 
 Full reference in `.env.local.example`. Required for production:
 
-| Var | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Neon Postgres connection |
-| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. **Required at build & runtime in production** — server throws at module load if missing (SECURITY [C-1]). |
-| `BETTER_AUTH_URL` | Production origin |
-| `NEXT_PUBLIC_APP_URL` | Production origin (for metadata, sitemap, OG) |
-| `REVALIDATE_TOKEN` | `openssl rand -hex 32` |
+| Var                   | Purpose                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`        | Neon Postgres connection                                                                                                             |
+| `BETTER_AUTH_SECRET`  | `openssl rand -base64 32`. **Required at build & runtime in production** — server throws at module load if missing (SECURITY [C-1]). |
+| `BETTER_AUTH_URL`     | Production origin                                                                                                                    |
+| `NEXT_PUBLIC_APP_URL` | Production origin (for metadata, sitemap, OG)                                                                                        |
+| `REVALIDATE_TOKEN`    | `openssl rand -hex 32`                                                                                                               |
 
 Optional / feature-gated:
 
-| Var | Purpose |
-| --- | --- |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
-| `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 6 |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limiting |
-| `RESEND_API_KEY` | Transactional email |
-| `EMAIL_FROM` | Resend sender address. **Auto-selected** when unset: Vercel preview/dev → `onboarding@resend.dev` (Resend sandbox, zero DNS, delivers only to the Resend account owner). Vercel production → `noreply@drkhaledghattass.com` (requires domain verified in Resend with SPF/DKIM/DMARC). Set explicitly to override in any environment. Logic lives in `resolveFromAddress` in `lib/email/send.ts`. |
-| `EMAIL_FORCE_SEND` | Dev-only `'true'` flag that forces real Resend sends outside production (overrides the dev-preview short-circuit in `lib/email/send.ts`). Do NOT set in production. |
-| `CORPORATE_INBOX_EMAIL` | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly. |
-| `SUPPORT_EMAIL` | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly. |
-| `UPLOADTHING_TOKEN` | Legacy — superseded by R2 (Phase F1). Left in the schema so old preview envs don't crash; nothing reads it. |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 PRIVATE bucket (Phase F1). All four must be set together; missing one falls through to the mock adapter (dev) or throws at module load (true production). Public access OFF — paid content (book PDFs, session videos / audio / PDFs) delivered via signed URLs minted by `lib/storage/adapters/r2-adapter.ts`. CORS configured manually in the Cloudflare dashboard. |
-| `R2_PUBLIC_BUCKET_NAME` | Phase F3 — name of the PUBLIC R2 bucket (e.g. `drkhaledghattass-public`). Paired with `R2_PUBLIC_URL`. When set, public-context uploads (covers/logos/gallery — 10 contexts) route to this bucket via the same account credentials. When unset, public-context uploads fall back to the private bucket — the system continues working with signed URLs (Phase F2 behavior). Production MUST set this once the public bucket exists. |
-| `R2_PUBLIC_URL` | Phase F3 — Cloudflare-issued public-access URL for the public R2 bucket (e.g. `https://pub-abc123.r2.dev`, no trailing slash). Used by `lib/storage/public-url.ts` to mint unsigned cover URLs. When unset, `resolvePublicUrl` falls back to signing via the private adapter. Production MUST set this for cosmetic image delivery without per-render signing. The host is also added to `next.config.ts` `img-src` CSP and `remotePatterns` automatically; malformed values are skipped at build time. |
-| `R2_PUBLIC_URL` | Optional — reserved for a future CDN/public-read pivot. Currently unread. |
-| `GOOGLE_SITE_VERIFICATION` | Search Console (consumed in `app/[locale]/layout.tsx`) |
-| `CRON_SECRET` | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`). |
-| `ALLOW_MOCK_STORAGE_IN_PRODUCTION` | Set to `'true'` to permit the mock storage adapter on a true production Vercel deploy (`VERCEL_ENV=production`). Without it, `lib/storage/index.ts` throws at module load — preview deploys are unaffected (`VERCEL_ENV='preview'` doesn't trip the guard). Currently set on production until a real storage adapter (Blob/R2/Stream) lands. Remove this env var the moment the real adapter is wired. |
+| Var                                                                              | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                      | Google OAuth                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`           | Phase 6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`                            | Rate limiting                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `RESEND_API_KEY`                                                                 | Transactional email                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `EMAIL_FROM`                                                                     | Resend sender address. **Auto-selected** when unset: Vercel preview/dev → `onboarding@resend.dev` (Resend sandbox, zero DNS, delivers only to the Resend account owner). Vercel production → `noreply@drkhaledghattass.com` (requires domain verified in Resend with SPF/DKIM/DMARC). Set explicitly to override in any environment. Logic lives in `resolveFromAddress` in `lib/email/send.ts`.                                                                                                        |
+| `EMAIL_FORCE_SEND`                                                               | Dev-only `'true'` flag that forces real Resend sends outside production (overrides the dev-preview short-circuit in `lib/email/send.ts`). Do NOT set in production.                                                                                                                                                                                                                                                                                                                                     |
+| `CORPORATE_INBOX_EMAIL`                                                          | Inbox for `/api/corporate/request` notifications. Falls back to `Team@drkhaledghattass.com`. Production should set explicitly.                                                                                                                                                                                                                                                                                                                                                                          |
+| `SUPPORT_EMAIL`                                                                  | Footer support address on transactional emails (post-purchase, question-answered). Falls back to `Team@drkhaledghattass.com`. Distinct from `CORPORATE_INBOX_EMAIL` — that's an inbound recipient; this is an outbound footer address. Production should set explicitly.                                                                                                                                                                                                                                |
+| `UPLOADTHING_TOKEN`                                                              | Legacy — superseded by R2 (Phase F1). Left in the schema so old preview envs don't crash; nothing reads it.                                                                                                                                                                                                                                                                                                                                                                                             |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 PRIVATE bucket (Phase F1). All four must be set together; missing one falls through to the mock adapter (dev) or throws at module load (true production). Public access OFF — paid content (book PDFs, session videos / audio / PDFs) delivered via signed URLs minted by `lib/storage/adapters/r2-adapter.ts`. CORS configured manually in the Cloudflare dashboard.                                                                                                                     |
+| `R2_PUBLIC_BUCKET_NAME`                                                          | Phase F3 — name of the PUBLIC R2 bucket (e.g. `drkhaledghattass-public`). Paired with `R2_PUBLIC_URL`. When set, public-context uploads (covers/logos/gallery — 10 contexts) route to this bucket via the same account credentials. When unset, public-context uploads fall back to the private bucket — the system continues working with signed URLs (Phase F2 behavior). Production MUST set this once the public bucket exists.                                                                     |
+| `R2_PUBLIC_URL`                                                                  | Phase F3 — Cloudflare-issued public-access URL for the public R2 bucket (e.g. `https://pub-abc123.r2.dev`, no trailing slash). Used by `lib/storage/public-url.ts` to mint unsigned cover URLs. When unset, `resolvePublicUrl` falls back to signing via the private adapter. Production MUST set this for cosmetic image delivery without per-render signing. The host is also added to `next.config.ts` `img-src` CSP and `remotePatterns` automatically; malformed values are skipped at build time. |
+| `R2_PUBLIC_URL`                                                                  | Optional — reserved for a future CDN/public-read pivot. Currently unread.                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `GOOGLE_SITE_VERIFICATION`                                                       | Search Console (consumed in `app/[locale]/layout.tsx`)                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `CRON_SECRET`                                                                    | Phase D — Bearer token for `app/api/cron/expire-gifts/route.ts`. Vercel-scheduled invocations send `Authorization: Bearer $CRON_SECRET` automatically when this env var is set, and the same check rejects external probes. Generate with `openssl rand -hex 32`. **Production must set this** so the cron itself runs (without it, every request 401s). Cron schedule defined in `vercel.json`. Bearer comparison is timing-safe (`timingSafeEqual`).                                                  |
+| `ALLOW_MOCK_STORAGE_IN_PRODUCTION`                                               | Set to `'true'` to permit the mock storage adapter on a true production Vercel deploy (`VERCEL_ENV=production`). Without it, `lib/storage/index.ts` throws at module load — preview deploys are unaffected (`VERCEL_ENV='preview'` doesn't trip the guard). Currently set on production until a real storage adapter (Blob/R2/Stream) lands. Remove this env var the moment the real adapter is wired.                                                                                                  |
 
 Runtime flags (string-equality `'true'` / `'false'`):
 
-| Var | Effect |
-| --- | --- |
-| `NEXT_PUBLIC_AUTH_ENABLED` | Build-time fallback for the auth UI gate. The runtime gate is `features.auth_enabled` in the structured site settings. |
-| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Either set to `'true'` to opt into mock auth (dev only — hard-disabled in production). Default OFF. |
+| Var                                   | Effect                                                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_AUTH_ENABLED`            | Build-time fallback for the auth UI gate. The runtime gate is `features.auth_enabled` in the structured site settings. |
+| `MOCK_AUTH` + `NEXT_PUBLIC_MOCK_AUTH` | Either set to `'true'` to opt into mock auth (dev only — hard-disabled in production). Default OFF.                    |
 
 `HAS_DB` is **not** an env var. It's auto-detected from `DATABASE_URL`
 inside `lib/db/queries.ts`.
@@ -926,16 +958,16 @@ inside `lib/db/queries.ts`.
 
 Eight project-scoped subagents live in `.claude/agents/`:
 
-| Agent | Reads | Writes | When |
-| --- | :-: | :-: | --- |
-| `design-auditor` | ✓ |   | Pre-merge UI audit; Qalem v2 compliance |
-| `code-reviewer` | ✓ |   | Pre-PR review |
-| `qalem-implementer` | ✓ | ✓ | Build features in Qalem v2 |
-| `translation-syncer` | ✓ | ✓ (json) | i18n parity |
-| `security-auditor` | ✓ |   | Pre-launch / Phase 6 |
-| `content-swapper` | ✓ | ✓ (data) | New real content arrives |
-| `seo-checker` | ✓ |   | Pre-launch / new public route |
-| `accessibility-checker` | ✓ |   | Pre-launch / new UI surface |
+| Agent                   | Reads |  Writes  | When                                    |
+| ----------------------- | :---: | :------: | --------------------------------------- |
+| `design-auditor`        |   ✓   |          | Pre-merge UI audit; Qalem v2 compliance |
+| `code-reviewer`         |   ✓   |          | Pre-PR review                           |
+| `qalem-implementer`     |   ✓   |    ✓     | Build features in Qalem v2              |
+| `translation-syncer`    |   ✓   | ✓ (json) | i18n parity                             |
+| `security-auditor`      |   ✓   |          | Pre-launch / Phase 6                    |
+| `content-swapper`       |   ✓   | ✓ (data) | New real content arrives                |
+| `seo-checker`           |   ✓   |          | Pre-launch / new public route           |
+| `accessibility-checker` |   ✓   |          | Pre-launch / new UI surface             |
 
 Verify they're discovered: `claude agents`. Auditor agents are
 intentionally read-only — they report; the implementer fixes. Full docs
